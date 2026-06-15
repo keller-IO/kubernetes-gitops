@@ -1,0 +1,38 @@
+# One Application per infrastructure/base/<component> directory.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: infrastructure
+  namespace: argocd
+spec:
+  goTemplate: true
+  generators:
+    - git:
+        repoURL: https://git.f4mily.net/keller.io/keller.io.git # CHANGE ME
+        revision: main
+        directories:
+          - path: infrastructure/base/*
+  template:
+    metadata:
+      name: "infra-{{.path.basename}}"
+      annotations:
+        # Infra syncs before apps. Intra-infra ordering = production TODO.
+        argocd.argoproj.io/sync-wave: "-5"
+    spec:
+      project: infrastructure
+      source:
+        repoURL: https://git.f4mily.net/keller.io/keller.io.git # CHANGE ME
+        targetRevision: main
+        path: "{{.path.path}}"
+        plugin:
+          name: kustomize-helm # repo-server must run kustomize with --enable-helm + KSOPS
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: "{{.path.basename}}"
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true

@@ -1,0 +1,27 @@
+# App-of-apps root. Apply once after ArgoCD is installed.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-10"
+spec:
+  project: default
+  source:
+    repoURL: https://git.f4mily.net/keller.io/keller.io.git # CHANGE ME to the real repo URL
+    targetRevision: main
+    path: clusters/main
+    directory:
+      recurse: false
+      include: "{projects.yaml,appset-infrastructure.yaml,appset-apps.yaml}"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true

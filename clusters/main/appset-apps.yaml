@@ -1,0 +1,37 @@
+# One Application per apps/overlays/main/<app> directory.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: apps
+  namespace: argocd
+spec:
+  goTemplate: true
+  generators:
+    - git:
+        repoURL: https://git.f4mily.net/keller.io/keller.io.git # CHANGE ME
+        revision: main
+        directories:
+          - path: apps/overlays/main/*
+  template:
+    metadata:
+      name: "app-{{.path.basename}}"
+      annotations:
+        argocd.argoproj.io/sync-wave: "5"
+    spec:
+      project: apps
+      source:
+        repoURL: https://git.f4mily.net/keller.io/keller.io.git # CHANGE ME
+        targetRevision: main
+        path: "{{.path.path}}"
+        plugin:
+          name: kustomize-helm
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: "{{.path.basename}}"
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
