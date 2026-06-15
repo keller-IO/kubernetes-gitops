@@ -86,14 +86,14 @@ Die ausgerollten Workloads liegen unter `apps/base/` (Blaupause) und
 
 | Anwendung | Beschreibung |
 |-----------|--------------|
-| **Forgejo** | Git-Hosting (diese Plattform) |
-| **Kimai** | Zeiterfassung |
-| **Mastodon** | Föderiertes soziales Netzwerk |
-| **Paperless-ngx** | Dokumenten-Management / Archiv |
-| **Roundcube** | Webmail-Oberfläche (externer Mailserver) |
-| **WordPress** (×3) | Drei separate WordPress-Instanzen |
-| **Collabora** | Online-Office (Dokumentenbearbeitung) |
-| **Renovate** | Self-hosted Dependency-Update-Bot (CronJob) |
+| **[Forgejo](https://forgejo.org/)** | Git-Hosting (diese Plattform) |
+| **[Kimai](https://www.kimai.org/)** | Zeiterfassung |
+| **[Mastodon](https://joinmastodon.org/)** | Föderiertes soziales Netzwerk |
+| **[Paperless-ngx](https://docs.paperless-ngx.com/)** | Dokumenten-Management / Archiv |
+| **[Roundcube](https://roundcube.net/)** | Webmail-Oberfläche (externer Mailserver) |
+| **[WordPress](https://wordpress.org/)** (×3) | Drei separate WordPress-Instanzen |
+| **[Collabora](https://www.collaboraonline.com/)** | Online-Office (Dokumentenbearbeitung) |
+| **[Renovate](https://docs.renovatebot.com/)** | Self-hosted Dependency-Update-Bot (CronJob) |
 
 ---
 
