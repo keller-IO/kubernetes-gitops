@@ -1,0 +1,42 @@
+# CI: validate every manifest renders & passes schema + secret checks.
+# Runs on Forgejo Actions runners. Mirror to GitHub Actions if GitHub becomes leading.
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tooling
+        run: |
+          set -euo pipefail
+          curl -sSfL https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh | bash
+          curl -sSfL https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz | tar xz
+          sudo mv kustomize kubeconform /usr/local/bin/
+          pip install yamllint
+
+      - name: yamllint
+        run: yamllint -s .
+
+      - name: secrets-check (no plaintext *.sops.yaml)
+        run: |
+          fail=0
+          while IFS= read -r f; do
+            grep -q "sops:" "$f" || { echo "UNENCRYPTED: $f"; fail=1; }
+          done < <(find . -name '*.sops.yaml')
+          exit $fail
+
+      - name: kustomize build + kubeconform
+        run: |
+          set -euo pipefail
+          for dir in apps/overlays/main/*/ infrastructure/base/*/; do
+            [ -f "$dir/kustomization.yaml" ] || continue
+            echo "== $dir"
+            kustomize build --enable-helm "$dir" \
+              | kubeconform -strict -ignore-missing-schemas -summary
+          done

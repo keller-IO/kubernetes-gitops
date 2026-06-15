@@ -1,0 +1,44 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    ":semanticCommits"
+  ],
+  "timezone": "Europe/Berlin",
+  "schedule": ["before 6am on monday"],
+  "labels": ["dependencies"],
+  "kubernetes": {
+    "managerFilePatterns": [
+      "/infrastructure/.+\\.ya?ml$/",
+      "/apps/.+\\.ya?ml$/"
+    ]
+  },
+  "helmv3": {
+    "managerFilePatterns": ["/.+/kustomization\\.ya?ml$/"]
+  },
+  "packageRules": [
+    {
+      "description": "Auto-merge digest + patch for low-risk apps after CI",
+      "matchPackageNames": ["collabora/code", "roundcube/roundcubemail"],
+      "matchUpdateTypes": ["patch", "digest"],
+      "automerge": true
+    },
+    {
+      "description": "Group monitoring stack bumps",
+      "matchPackageNames": ["/victoria-metrics/"],
+      "groupName": "victoria-metrics"
+    }
+  ],
+  "customManagers": [
+    {
+      "description": "Parse appVersion / image tags pinned inside kustomize helmCharts values",
+      "customType": "regex",
+      "managerFilePatterns": ["/apps/base/.+/values\\.ya?ml$/"],
+      "matchStrings": [
+        "#\\s*renovate:\\s*image=(?<depName>.*?)\\s*\\n\\s*tag:\\s*[\"']?(?<currentValue>[\\w.+-]+)"
+      ],
+      "datasourceTemplate": "docker"
+    }
+  ]
+}

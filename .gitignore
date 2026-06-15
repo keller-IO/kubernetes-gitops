@@ -1,0 +1,52 @@
+# --- Secrets / SOPS / age (NEVER commit these) ---
+# Private age keys
+*.agekey
+*.age
+age.key
+key.txt
+keys.txt
+.sops/
+# Decrypted secret material (only the *.sops.yaml encrypted form belongs in git)
+*.dec
+*.dec.yaml
+*.decrypted
+*.plaintext.yaml
+secret.yaml
+secrets.yaml
+.env
+.env.*
+!.env.example
+
+# --- Kustomize / Helm render output ---
+# Locally rendered manifests should not be committed
+rendered/
+out/
+build/
+*.rendered.yaml
+# Helm chart caches pulled by `kustomize build --enable-helm`
+charts/
+Chart.lock
+*.tgz
+.helm/
+
+# --- Tooling caches ---
+kubeconfig
+*.kubeconfig
+.kube/
+
+# --- Nix ---
+result
+result-*
+.direnv/
+.envrc.local
+
+# --- Editors / IDE ---
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# --- OS ---
+.DS_Store
+Thumbs.db
