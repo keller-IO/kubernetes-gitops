@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kimai
+  namespace: kimai
+  labels:
+    app.kubernetes.io/name: kimai
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kimai
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kimai
+    spec:
+      containers:
+        - name: kimai
+          # renovate: image=kimai/kimai2
+          image: kimai/kimai2:apache-2.30.0
+          ports:
+            - containerPort: 8001
+          env:
+            - name: DATABASE_URL
+              value: "mysql://kimai:$(MARIADB_PASSWORD)@kimai-mariadb:3306/kimai?charset=utf8mb4&serverVersion=11.4.0-MariaDB"
+            - name: APP_SECRET
+              valueFrom:
+                secretKeyRef: { name: kimai-secret, key: app-secret }
+            - name: MARIADB_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: kimai-secret, key: mariadb-password }
+            - name: REDIS_URL
+              value: "redis://kimai-valkey:6379/0"
+            - name: TRUSTED_HOSTS
+              value: "kimai.jit.platzhalter,localhost" # CHANGE ME
+            - name: ADMINMAIL
+              valueFrom:
+                secretKeyRef: { name: kimai-secret, key: admin-mail }
+            - name: ADMINPASS
+              valueFrom:
+                secretKeyRef: { name: kimai-secret, key: admin-pass }
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { memory: 512Mi }
+          volumeMounts:
+            - { name: data, mountPath: /opt/kimai/var/data }
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: kimai-data
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: kimai-data
+  namespace: kimai
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: ceph-rbd # CHANGE ME
+  resources:
+    requests:
+      storage: 2Gi

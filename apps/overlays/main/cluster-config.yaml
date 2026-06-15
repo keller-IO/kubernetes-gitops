@@ -1,0 +1,24 @@
+# Central hostname reference for the `main` cluster. Placeholder domain: *.jit.platzhalter
+# Each app overlay patches its Ingress host from this list. Search & replace `jit.platzhalter`
+# with the real domain when going to production (see docs/PRODUCTION-READINESS.md).
+#
+# NOTE: This file sits directly in overlays/main/ and is intentionally NOT a kustomize
+# overlay dir, so the apps ApplicationSet (which globs overlays/main/*/) ignores it.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-config
+data:
+  domain: jit.platzhalter
+  host_argocd: argocd.jit.platzhalter
+  host_authentik: auth.jit.platzhalter
+  host_grafana: grafana.jit.platzhalter
+  host_kimai: kimai.jit.platzhalter
+  host_roundcube: webmail.jit.platzhalter
+  host_collabora: office.jit.platzhalter
+  host_paperless: paperless.jit.platzhalter
+  host_forgejo: git.jit.platzhalter
+  host_wordpress_1: site1.jit.platzhalter
+  host_wordpress_2: site2.jit.platzhalter
+  host_wordpress_3: site3.jit.platzhalter
+  host_mastodon: social.jit.platzhalter

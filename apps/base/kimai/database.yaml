@@ -1,0 +1,25 @@
+apiVersion: k8s.mariadb.com/v1alpha1
+kind: MariaDB
+metadata:
+  name: kimai-mariadb
+  namespace: kimai
+spec:
+  rootPasswordSecretRef:
+    name: kimai-secret
+    key: mariadb-root-password
+  username: kimai
+  passwordSecretRef:
+    name: kimai-secret
+    key: mariadb-password
+  database: kimai
+  storage:
+    size: 5Gi
+    storageClassName: ceph-rbd # CHANGE ME
+  replicas: 1 # set 3 + galera for HA
+  myCnf: |
+    [mariadb]
+    character-set-server = utf8mb4
+    collation-server = utf8mb4_unicode_ci
+    innodb_buffer_pool_size = 256M
+  metrics:
+    enabled: true

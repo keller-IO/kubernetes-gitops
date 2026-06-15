@@ -1,0 +1,10 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: paperless-pg
+  namespace: paperless-ngx
+spec:
+  schedule: "0 0 2 * * *" # 6-field (CNPG = seconds first): daily 02:00
+  backupOwnerReference: self
+  cluster:
+    name: paperless-pg

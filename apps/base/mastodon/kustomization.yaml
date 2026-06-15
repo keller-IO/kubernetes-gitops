@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: mastodon
+# Community-maintained mastodon chart (ananace). Postgres=CNPG, Redis=Valkey, media=Ceph S3.
+helmCharts:
+  - name: mastodon
+    repo: https://ananace.gitlab.io/charts
+    version: 5.0.0 # renovate: helm  (verify against chart's current appVersion = Mastodon release)
+    releaseName: mastodon
+    namespace: mastodon
+    valuesFile: values.yaml
+resources:
+  - database.yaml
+  - cache.yaml
+  - objectbucket.yaml
+  - secret.sops.yaml
+  - backup.yaml

@@ -1,0 +1,36 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: renovate
+  namespace: renovate
+spec:
+  schedule: "0 5 * * 1" # Mondays 05:00 — matches renovate.json schedule
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: renovate
+              # renovate: image=renovate/renovate
+              image: renovate/renovate:39.91.0
+              args: ["--schedule="] # ignore in-repo schedule when run by cron
+              env:
+                - name: RENOVATE_CONFIG_FILE
+                  value: /opt/renovate/config.js
+                - name: RENOVATE_TOKEN
+                  valueFrom:
+                    secretKeyRef: { name: renovate-secret, key: token }
+                - name: LOG_LEVEL
+                  value: info
+              volumeMounts:
+                - { name: config, mountPath: /opt/renovate }
+              resources:
+                requests: { cpu: 200m, memory: 512Mi }
+                limits: { memory: 1Gi }
+          volumes:
+            - name: config
+              configMap:
+                name: renovate-config

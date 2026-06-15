@@ -1,0 +1,16 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# Shared WordPress base. Each instance runs in its OWN namespace (wordpress-1/2/3),
+# so identical resource names across instances never collide. Overlays patch only the
+# host + site title. WordPress requires MariaDB → per-instance MariaDB CR (mariadb-operator).
+helmCharts:
+  - name: wordpress
+    repo: https://charts.bitnami.com/bitnami
+    version: 24.1.13 # renovate: helm  (verify image source — Bitnami catalog changes)
+    releaseName: wordpress
+    valuesFile: values.yaml
+resources:
+  - database.yaml
+  - cache.yaml
+  - secret.sops.yaml
+  - backup.yaml

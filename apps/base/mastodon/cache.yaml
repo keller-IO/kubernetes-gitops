@@ -1,0 +1,10 @@
+apiVersion: hyperspike.io/v1
+kind: Valkey
+metadata:
+  name: mastodon-valkey
+  namespace: mastodon
+spec:
+  nodes: 1
+  storage:
+    size: 2Gi
+    storageClassName: ceph-rbd # CHANGE ME

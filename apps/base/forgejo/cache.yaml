@@ -1,0 +1,10 @@
+apiVersion: hyperspike.io/v1
+kind: Valkey
+metadata:
+  name: forgejo-valkey
+  namespace: forgejo
+spec:
+  nodes: 1
+  storage:
+    size: 1Gi
+    storageClassName: ceph-rbd # CHANGE ME

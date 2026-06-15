@@ -1,0 +1,9 @@
+apiVersion: hyperspike.io/v1
+kind: Valkey
+metadata:
+  name: wordpress-valkey
+spec:
+  nodes: 1
+  storage:
+    size: 1Gi
+    storageClassName: ceph-rbd # CHANGE ME

@@ -1,0 +1,19 @@
+apiVersion: k8s.mariadb.com/v1alpha1
+kind: MariaDB
+metadata:
+  name: wordpress-mariadb
+spec:
+  rootPasswordSecretRef:
+    name: wordpress-db
+    key: mariadb-root-password
+  username: wordpress
+  passwordSecretRef:
+    name: wordpress-db
+    key: mariadb-password
+  database: wordpress
+  storage:
+    size: 5Gi
+    storageClassName: ceph-rbd # CHANGE ME
+  replicas: 1
+  metrics:
+    enabled: true

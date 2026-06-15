@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: forgejo
+helmCharts:
+  - name: forgejo
+    repo: https://code.forgejo.org/forgejo-helm
+    version: 11.0.4 # renovate: helm
+    releaseName: forgejo
+    namespace: forgejo
+    valuesFile: values.yaml
+resources:
+  - database.yaml
+  - cache.yaml
+  - secret.sops.yaml
+  - backup.yaml

@@ -1,0 +1,10 @@
+# Requests an S3 bucket from Ceph RGW. The OBC writes a Secret (access keys) + ConfigMap
+# (endpoint/bucket) named after metadata.name. Wire those into mastodon-s3 / values.s3.
+apiVersion: objectbucket.io/v1alpha1
+kind: ObjectBucketClaim
+metadata:
+  name: mastodon-media
+  namespace: mastodon
+spec:
+  generateBucketName: mastodon-media
+  storageClassName: ceph-bucket # CHANGE ME — Ceph RGW bucket StorageClass

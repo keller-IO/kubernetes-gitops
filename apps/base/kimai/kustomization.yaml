@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: kimai
+# Kimai runs best on MariaDB (official recommendation), so it uses the mariadb-operator
+# rather than CNPG. Valkey caches sessions/Doctrine to offload Ceph-backed volumes.
+resources:
+  - database.yaml
+  - cache.yaml
+  - deployment.yaml
+  - service.yaml
+  - ingress.yaml
+  - secret.sops.yaml
+  - backup.yaml

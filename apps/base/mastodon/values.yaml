@@ -1,0 +1,63 @@
+mastodon:
+  local_domain: social.jit.platzhalter # CHANGE ME
+  singleUserMode: false
+  secrets:
+    existingSecret: mastodon-secret # SECRET_KEY_BASE, OTP_SECRET, VAPID keys
+  createAdmin:
+    enabled: true
+    username: admin
+    email: admin@jit.platzhalter # CHANGE ME
+  s3:
+    enabled: true
+    existing_secret: mastodon-s3 # from the ObjectBucketClaim (keys) — see objectbucket.yaml
+    bucket: mastodon-media # aligns with OBC-provisioned bucket (verify exact name)
+    endpoint: https://s3.jit.platzhalter # CHANGE ME — Ceph RGW endpoint
+    region: default
+    existing_secret_keys:
+      access_key: AWS_ACCESS_KEY_ID
+      secret_key: AWS_SECRET_ACCESS_KEY
+  smtp:
+    server: mail.jit.platzhalter # CHANGE ME (external SMTP)
+    port: 587
+    from_address: notifications@jit.platzhalter # CHANGE ME
+    existingSecret: mastodon-smtp
+
+postgresql:
+  enabled: false
+  postgresAddress: mastodon-pg-rw
+  auth:
+    database: mastodon
+    username: mastodon
+    existingSecret: mastodon-db-app
+
+redis:
+  enabled: false
+  hostname: mastodon-valkey
+  port: 6379
+
+elasticsearch:
+  enabled: false # enable for full-text search (extra resources)
+
+web:
+  replicas: 1
+streaming:
+  replicas: 1
+sidekiq:
+  workers:
+    - name: all-queues
+      concurrency: 5
+
+ingress:
+  enabled: true
+  ingressClassName: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.org/ssl-redirect: "false"
+    nginx.org/redirect-to-https: "true"
+    nginx.org/websocket-services: mastodon-streaming
+    nginx.org/client-max-body-size: "100m"
+  hosts:
+    - host: social.jit.platzhalter # CHANGE ME
+  tls:
+    - hosts: [social.jit.platzhalter] # CHANGE ME
+      secretName: mastodon-tls

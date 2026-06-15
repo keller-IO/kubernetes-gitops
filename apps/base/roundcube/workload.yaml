@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: roundcube
+  namespace: roundcube
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app.kubernetes.io/name: roundcube }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: roundcube }
+    spec:
+      containers:
+        - name: roundcube
+          # renovate: image=roundcube/roundcubemail
+          image: roundcube/roundcubemail:1.6.9-apache
+          ports: [{ containerPort: 80 }]
+          env:
+            - name: ROUNDCUBEMAIL_DB_TYPE
+              value: pgsql
+            - name: ROUNDCUBEMAIL_DB_HOST
+              value: roundcube-pg-rw
+            - name: ROUNDCUBEMAIL_DB_NAME
+              value: roundcube
+            - name: ROUNDCUBEMAIL_DB_USER
+              valueFrom: { secretKeyRef: { name: roundcube-db-app, key: username } }
+            - name: ROUNDCUBEMAIL_DB_PASSWORD
+              valueFrom: { secretKeyRef: { name: roundcube-db-app, key: password } }
+            # EXTERNAL mail backend — point these at your real IMAP/SMTP host:
+            - name: ROUNDCUBEMAIL_DEFAULT_HOST
+              value: "ssl://mail.jit.platzhalter" # CHANGE ME (IMAP)
+            - name: ROUNDCUBEMAIL_DEFAULT_PORT
+              value: "993"
+            - name: ROUNDCUBEMAIL_SMTP_SERVER
+              value: "tls://mail.jit.platzhalter" # CHANGE ME (SMTP)
+            - name: ROUNDCUBEMAIL_SMTP_PORT
+              value: "587"
+            - name: ROUNDCUBEMAIL_PLUGINS
+              value: "archive,zipdownload,managesieve"
+            - name: ROUNDCUBEMAIL_UPLOAD_MAX_FILESIZE
+              value: "25M"
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: roundcube
+  namespace: roundcube
+spec:
+  selector: { app.kubernetes.io/name: roundcube }
+  ports: [{ name: http, port: 80, targetPort: 80 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: roundcube
+  namespace: roundcube
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.org/ssl-redirect: "false"
+    nginx.org/redirect-to-https: "true"
+    nginx.org/client-max-body-size: "25m"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: [webmail.jit.platzhalter] # CHANGE ME
+      secretName: roundcube-tls
+  rules:
+    - host: webmail.jit.platzhalter # CHANGE ME
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: roundcube, port: { number: 80 } } }

@@ -1,0 +1,50 @@
+image:
+  tag: 2.13.5 # renovate: image=ghcr.io/paperless-ngx/paperless-ngx
+env:
+  PAPERLESS_URL: https://paperless.jit.platzhalter # CHANGE ME
+  PAPERLESS_DBENGINE: postgresql
+  PAPERLESS_DBHOST: paperless-pg-rw
+  PAPERLESS_DBNAME: paperless
+  PAPERLESS_DBUSER: paperless
+  PAPERLESS_REDIS: redis://paperless-valkey:6379
+  PAPERLESS_TIME_ZONE: Europe/Berlin
+  PAPERLESS_OCR_LANGUAGE: deu+eng
+  # OIDC via django-allauth (matches authentik paperless-oauth blueprint)
+  PAPERLESS_APPS: allauth.socialaccount.providers.openid_connect
+envFrom:
+  - secretRef:
+      name: paperless-secret
+persistence:
+  data:
+    enabled: true
+    storageClass: ceph-rbd # CHANGE ME
+    size: 5Gi
+  media:
+    enabled: true
+    storageClass: ceph-fs # CHANGE ME — shared docs on CephFS
+    accessMode: ReadWriteMany
+    size: 20Gi
+  consume:
+    enabled: true
+    storageClass: ceph-fs # CHANGE ME
+    accessMode: ReadWriteMany
+    size: 2Gi
+resources:
+  requests: { cpu: 200m, memory: 512Mi }
+  limits: { memory: 1Gi }
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.org/ssl-redirect: "false"
+    nginx.org/redirect-to-https: "true"
+    nginx.org/client-max-body-size: "100m"
+  hosts:
+    - host: paperless.jit.platzhalter # CHANGE ME
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - hosts: [paperless.jit.platzhalter] # CHANGE ME
+      secretName: paperless-tls

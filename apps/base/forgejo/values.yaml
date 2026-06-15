@@ -1,0 +1,70 @@
+# Disable bundled DB/cache — we use CNPG + valkey-operator instead.
+postgresql:
+  enabled: false
+postgresql-ha:
+  enabled: false
+redis-cluster:
+  enabled: false
+valkey-cluster:
+  enabled: false
+
+persistence:
+  enabled: true
+  storageClass: ceph-rbd # CHANGE ME
+  size: 20Gi
+
+service:
+  ssh:
+    type: ClusterIP # expose via LoadBalancer or NodePort for git-over-SSH (production TODO)
+
+gitea:
+  admin:
+    existingSecret: forgejo-admin
+  config:
+    server:
+      DOMAIN: git.jit.platzhalter # CHANGE ME
+      ROOT_URL: https://git.jit.platzhalter/ # CHANGE ME
+      SSH_DOMAIN: git.jit.platzhalter # CHANGE ME
+    database:
+      DB_TYPE: postgres
+      HOST: forgejo-pg-rw:5432
+      NAME: forgejo
+      USER: forgejo
+      # PASSWD injected from forgejo-secret via env (see chart additionalConfigFromEnvs)
+    cache:
+      ADAPTER: redis
+      HOST: redis://forgejo-valkey:6379/0
+    session:
+      PROVIDER: redis
+      PROVIDER_CONFIG: redis://forgejo-valkey:6379/1
+    queue:
+      TYPE: redis
+      CONN_STR: redis://forgejo-valkey:6379/2
+    service:
+      DISABLE_REGISTRATION: true
+    # OIDC via Authentik is added post-install or via env; see forgejo-oauth blueprint.
+
+# Inject the DB password as GITEA__database__PASSWD without baking it into config.
+additionalConfigFromEnvs:
+  - name: GITEA__database__PASSWD
+    valueFrom:
+      secretKeyRef:
+        name: forgejo-db-app
+        key: password
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.org/ssl-redirect: "false"
+    nginx.org/redirect-to-https: "true"
+    nginx.org/client-max-body-size: "512m" # large git pushes / LFS
+  hosts:
+    - host: git.jit.platzhalter # CHANGE ME
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - hosts: [git.jit.platzhalter] # CHANGE ME
+      secretName: forgejo-tls

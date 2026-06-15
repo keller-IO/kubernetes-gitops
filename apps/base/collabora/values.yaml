@@ -1,0 +1,31 @@
+replicaCount: 1
+collabora:
+  # WOPI hosts allowed to embed the editor. Add your document app domains here.
+  aliasgroups:
+    - host: "https://.*\\.jit\\.platzhalter" # CHANGE ME (regex of WOPI client hosts)
+  extra_params: --o:ssl.enable=false --o:ssl.termination=true
+  # admin console credentials come from env (see existingSecret below)
+existingSecret:
+  enabled: true
+  secret: collabora-secret
+  usernameKey: username
+  passwordKey: password
+resources:
+  requests: { cpu: 250m, memory: 512Mi }
+  limits: { memory: 1Gi }
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.org/ssl-redirect: "false"
+    nginx.org/redirect-to-https: "true"
+    nginx.org/websocket-services: collabora # WOPI/editor needs WebSocket
+  hosts:
+    - host: office.jit.platzhalter # CHANGE ME
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - hosts: [office.jit.platzhalter] # CHANGE ME
+      secretName: collabora-tls

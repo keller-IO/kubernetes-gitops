@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: collabora
+# Standalone Collabora Online (CODE). WOPI host is configured by the consuming app
+# (e.g. a future Nextcloud, or any WOPI client). No database needed.
+helmCharts:
+  - name: collabora-online
+    repo: https://collaboraonline.github.io/online
+    version: 1.1.16 # renovate: helm
+    releaseName: collabora
+    namespace: collabora
+    valuesFile: values.yaml
+resources:
+  - secret.sops.yaml

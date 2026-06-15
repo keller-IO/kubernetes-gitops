@@ -1,0 +1,41 @@
+# Bitnami WordPress. Bundled MariaDB disabled — we use the mariadb-operator instance.
+mariadb:
+  enabled: true # NOTE: set false + use external DB below (see PRODUCTION-READINESS.md WordPress)
+externalDatabase:
+  host: wordpress-mariadb
+  port: 3306
+  user: wordpress
+  database: wordpress
+  existingSecret: wordpress-db
+wordpressUsername: admin
+existingSecret: wordpress-admin # provides wordpress-password
+wordpressBlogName: "Platzhalter Site" # patched per overlay
+service:
+  type: ClusterIP
+persistence:
+  enabled: true
+  storageClass: ceph-fs # CHANGE ME — RWX so multiple replicas share wp-content
+  accessModes: [ReadWriteMany]
+  size: 10Gi
+replicaCount: 1
+# Valkey object cache (install the "Redis Object Cache" WP plugin, then it reads these):
+extraEnvVars:
+  - name: WORDPRESS_ENABLE_REDIS
+    value: "true"
+  - name: WORDPRESS_REDIS_HOST
+    value: wordpress-valkey
+  - name: WORDPRESS_REDIS_PORT_NUMBER
+    value: "6379"
+resources:
+  requests: { cpu: 150m, memory: 512Mi }
+  limits: { memory: 1Gi }
+ingress:
+  enabled: true
+  ingressClassName: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.org/ssl-redirect: "false"
+    nginx.org/redirect-to-https: "true"
+    nginx.org/client-max-body-size: "128m"
+  hostname: site.jit.platzhalter # CHANGE ME (patched per overlay)
+  tls: true

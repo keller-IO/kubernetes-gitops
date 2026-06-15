@@ -1,0 +1,10 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: mastodon-pg
+  namespace: mastodon
+spec:
+  schedule: "0 0 2 * * *" # 6-field (CNPG = seconds first): daily 02:00
+  backupOwnerReference: self
+  cluster:
+    name: mastodon-pg
