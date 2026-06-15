@@ -1,0 +1,5 @@
+# CRDs installed by the separate mariadb-operator-crds chart above.
+crds:
+  enabled: false
+metrics:
+  enabled: true

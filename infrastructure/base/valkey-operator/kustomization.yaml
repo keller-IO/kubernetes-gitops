@@ -1,0 +1,12 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: valkey-system
+# Hyperspike valkey-operator. Per-app Valkey CRs live in each app overlay.
+# Mirrors the CNPG pattern: operator here, one small CR per app.
+helmCharts:
+  - name: valkey-operator
+    repo: https://hyperspike.io/valkey-operator
+    version: 0.0.55 # renovate: helm
+    releaseName: valkey-operator
+    namespace: valkey-system
+    valuesFile: values.yaml

@@ -1,0 +1,38 @@
+# Cilium CNI for Talos. Talos manages kube-proxy replacement.
+# See https://docs.cilium.io/en/stable/installation/k8s-install-helm/
+ipam:
+  mode: kubernetes
+kubeProxyReplacement: true
+# Talos: cgroup + bpf mounts handled by securityContext below.
+securityContext:
+  capabilities:
+    ciliumAgent:
+      - CHOWN
+      - KILL
+      - NET_ADMIN
+      - NET_RAW
+      - IPC_LOCK
+      - SYS_ADMIN
+      - SYS_RESOURCE
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
+    cleanCiliumState:
+      - NET_ADMIN
+      - SYS_ADMIN
+      - SYS_RESOURCE
+cgroup:
+  autoMount:
+    enabled: false
+  hostRoot: /sys/fs/cgroup
+# k8sServiceHost/Port MUST be set on Talos (no kube-proxy). CHANGE ME to the API VIP.
+k8sServiceHost: 127.0.0.1 # CHANGE ME (Talos: localhost:7445 via KubePrism, or control-plane VIP)
+k8sServicePort: 7445
+hubble:
+  relay:
+    enabled: true
+  ui:
+    enabled: true
+operator:
+  replicas: 1 # bump to 2 for HA once >1 control-plane node exists

@@ -1,0 +1,35 @@
+version: 1
+metadata:
+  name: Homelab Paperless-ngx OIDC
+  labels:
+    blueprints.goauthentik.io/description: OAuth2 provider and application for Paperless-ngx
+entries:
+  - model: authentik_providers_oauth2.oauth2provider
+    id: paperless-provider
+    identifiers:
+      client_id: paperless-client-id # CHANGE ME
+    attrs:
+      name: Provider for Paperless-ngx
+      client_type: confidential
+      client_id: paperless-client-id
+      client_secret: placeholder-change-me # CHANGE ME
+      authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+      invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+      signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
+      redirect_uris:
+        - matching_mode: strict
+          url: https://paperless.jit.platzhalter/accounts/oidc/authentik/login/callback/ # CHANGE ME
+      property_mappings:
+        - !Find [authentik_providers_oauth2.scopemapping, [scope_name, openid]]
+        - !Find [authentik_providers_oauth2.scopemapping, [scope_name, profile]]
+        - !Find [authentik_providers_oauth2.scopemapping, [scope_name, email]]
+  - model: authentik_core.application
+    identifiers:
+      slug: paperless
+    attrs:
+      name: Paperless-ngx
+      slug: paperless
+      provider: !KeyOf paperless-provider
+      launch_url: https://paperless.jit.platzhalter
+      meta_launch_url: https://paperless.jit.platzhalter
+      icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/paperless-ngx.svg

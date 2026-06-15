@@ -1,0 +1,11 @@
+apiVersion: hyperspike.io/v1
+kind: Valkey
+metadata:
+  name: authentik-valkey
+  namespace: authentik
+spec:
+  nodes: 1 # set 3 + replicas for HA
+  storage:
+    size: 1Gi
+    storageClassName: ceph-rbd # CHANGE ME
+  # Verify apiVersion/kind/spec against the installed valkey-operator CRD version.

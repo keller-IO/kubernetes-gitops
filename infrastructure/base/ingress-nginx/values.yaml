@@ -1,0 +1,15 @@
+controller:
+  kind: deployment
+  replicaCount: 2
+  service:
+    type: LoadBalancer # requires Cilium LB-IPAM or MetalLB pool — see PRODUCTION-READINESS.md
+  config:
+    # Global tuning; per-app overrides via nginx.org/* annotations on each Ingress.
+    proxy-protocol: "False"
+    redirect-to-https: "True"
+  enableSnippets: true
+  ingressClass:
+    name: nginx
+    setAsDefaultIngress: true
+prometheus:
+  create: true

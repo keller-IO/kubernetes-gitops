@@ -1,0 +1,62 @@
+configs:
+  cm:
+    # Register the kustomize-helm config-management-plugin used by the ApplicationSets.
+    kustomize.buildOptions: "--enable-helm"
+    timeout.reconciliation: 180s
+  params:
+    server.insecure: true # TLS terminated at NGINX Ingress
+repoServer:
+  # KSOPS init-container + age key for decrypting *.sops.yaml during manifest render.
+  # The 'sops-age' secret (keys.txt) must exist in the argocd namespace (see bootstrap).
+  initContainers:
+    - name: install-ksops
+      image: viaductoss/ksops:v4.3.2 # renovate: image=viaductoss/ksops
+      command: ["/bin/sh", "-c"]
+      args:
+        - echo "installing ksops"; mv ksops /custom-tools/; mv kustomize /custom-tools/;
+      volumeMounts:
+        - mountPath: /custom-tools
+          name: custom-tools
+  volumes:
+    - name: custom-tools
+      emptyDir: {}
+    - name: sops-age
+      secret:
+        secretName: sops-age
+  volumeMounts:
+    - mountPath: /usr/local/bin/ksops
+      name: custom-tools
+      subPath: ksops
+    - mountPath: /usr/local/bin/kustomize
+      name: custom-tools
+      subPath: kustomize
+    - mountPath: /home/argocd/.config/sops/age
+      name: sops-age
+  env:
+    - name: SOPS_AGE_KEY_FILE
+      value: /home/argocd/.config/sops/age/keys.txt
+    - name: XDG_CONFIG_HOME
+      value: /home/argocd/.config
+  # config-management-plugin: kustomize-helm (used by ApplicationSet spec.source.plugin)
+  extraContainers:
+    - name: kustomize-helm
+      image: quay.io/argoproj/argocd:v2.13.2 # keep in sync with chart appVersion
+      command: [/var/run/argocd/argocd-cmp-server]
+      env:
+        - name: SOPS_AGE_KEY_FILE
+          value: /home/argocd/.config/sops/age/keys.txt
+      volumeMounts:
+        - mountPath: /home/argocd/cmp-server/plugins
+          name: plugins
+        - mountPath: /home/argocd/cmp-server/config/plugin.yaml
+          subPath: kustomize-helm.yaml
+          name: cmp-plugin
+        - mountPath: /home/argocd/.config/sops/age
+          name: sops-age
+  # plugin.yaml ConfigMap content lives in PRODUCTION-READINESS.md (repo-server CMP setup).
+dex:
+  enabled: false
+applicationSet:
+  enabled: true
+notifications:
+  enabled: false

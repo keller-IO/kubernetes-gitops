@@ -1,0 +1,35 @@
+authentik:
+  # secret_key + bootstrap credentials injected from the SOPS secret (envFrom below).
+  error_reporting:
+    enabled: false
+  postgresql:
+    host: authentik-pg-rw
+    name: authentik
+    user: authentik
+    # password from env AUTHENTIK_POSTGRESQL__PASSWORD (see secret.sops.yaml)
+  redis:
+    host: authentik-valkey
+server:
+  envFrom:
+    - secretRef:
+        name: authentik-secret
+  ingress:
+    enabled: false # we provide our own Ingress (ingress.yaml) with nginx.org/* annotations
+worker:
+  envFrom:
+    - secretRef:
+        name: authentik-secret
+# Use the cluster Postgres/Valkey we provision, not the chart subcharts.
+postgresql:
+  enabled: false
+redis:
+  enabled: false
+# Mount blueprint ConfigMap so blueprints_discovery applies per-app OIDC providers.
+global:
+  volumes:
+    - name: blueprints
+      configMap:
+        name: authentik-blueprints
+  volumeMounts:
+    - name: blueprints
+      mountPath: /blueprints/mounted

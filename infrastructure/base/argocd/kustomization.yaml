@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: argocd
+# ArgoCD manages itself (after the one-time bootstrap install). The repo-server is
+# patched to support kustomize --enable-helm AND KSOPS (SOPS/age) decryption.
+helmCharts:
+  - name: argo-cd
+    repo: https://argoproj.github.io/argo-helm
+    version: 7.7.7 # renovate: helm
+    releaseName: argocd
+    namespace: argocd
+    valuesFile: values.yaml
+resources:
+  - ingress.yaml

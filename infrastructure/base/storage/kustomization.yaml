@@ -1,0 +1,8 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# Ceph itself is assumed to already exist (rbd + cephfs + s3 per AGENTS.md).
+# These manifests only declare the StorageClasses + S3 bucket examples apps reference.
+# If your existing Ceph already ships these classes, delete the duplicates and keep names aligned.
+resources:
+  - storageclasses.yaml
+  - objectbucket-example.yaml

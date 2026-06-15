@@ -1,0 +1,31 @@
+# ENCRYPT BEFORE COMMIT:  sops --encrypt --in-place cluster-issuer.sops.yaml
+# Only the Secret's stringData is encrypted (see .sops.yaml encrypted_regex).
+# Example uses Let's Encrypt + DNS-01 (Cloudflare). Swap solver for your DNS provider.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: acme-dns-token
+  namespace: cert-manager
+type: Opaque
+stringData:
+  api-token: REPLACE_WITH_DNS_PROVIDER_TOKEN
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: admin@jit.platzhalter # CHANGE ME
+    privateKeySecretRef:
+      name: letsencrypt-prod-account
+    solvers:
+      - dns01:
+          cloudflare:
+            apiTokenSecretRef:
+              name: acme-dns-token
+              key: api-token
+        selector:
+          dnsZones:
+            - jit.platzhalter # CHANGE ME

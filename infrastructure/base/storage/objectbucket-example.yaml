@@ -1,0 +1,11 @@
+# Example: request an S3 bucket from Ceph RGW via ObjectBucketClaim.
+# Apps needing S3 (mastodon media, forgejo LFS, CNPG barman backups) create their own OBC
+# in their overlay. The OBC produces a Secret + ConfigMap with endpoint/keys/bucket name.
+apiVersion: objectbucket.io/v1alpha1
+kind: ObjectBucketClaim
+metadata:
+  name: example-bucket
+  namespace: storage
+spec:
+  generateBucketName: example
+  storageClassName: ceph-bucket # CHANGE ME — the RGW bucket StorageClass on your Ceph
