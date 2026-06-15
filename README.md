@@ -170,3 +170,4 @@ Ab hier übernimmt ArgoCD und rollt Infrastruktur und Apps aus. Detaillierte Sch
 - [`docs/PRODUCTION-READINESS.md`](docs/PRODUCTION-READINESS.md) — Weg zur Produktion
 - [`docs/runbooks/`](docs/runbooks/) — Betriebsabläufe
 - [`docs/learnings/`](docs/learnings/) — gesammelte Erkenntnisse
+- [`docs/decisions/`](docs/decisions/) — Architecture Decision Records

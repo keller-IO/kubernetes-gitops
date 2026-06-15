@@ -2,11 +2,11 @@
 
 ## Purpose
 
-Durable project documentation: production gap-tracking, runbooks, learnings.
+Durable project documentation: production gap-tracking, runbooks, learnings, decisions.
 
 ## Ownership
 
-Owns `PRODUCTION-READINESS.md`, `runbooks/`, `learnings/`.
+Owns `PRODUCTION-READINESS.md`, `runbooks/`, `learnings/`, `decisions/`.
 
 ## Local Contracts
 
@@ -16,6 +16,8 @@ Owns `PRODUCTION-READINESS.md`, `runbooks/`, `learnings/`.
   AGENTS.md "Production Readiness Document".
 - `runbooks/` — one Markdown per operational procedure (restore, rotation, incident).
 - `learnings/` — distilled pitfalls; criteria in root AGENTS.md "Operational Learnings".
+- `decisions/` — Architecture Decision Records (`NNNN-titel.md`, fortlaufend nummeriert),
+  je Datei: Status, Kontext, Optionen, Entscheidung, Konsequenzen.
 
 ## Work Guidance
 
