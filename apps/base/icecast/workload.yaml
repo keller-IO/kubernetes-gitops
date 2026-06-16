@@ -23,7 +23,7 @@ spec:
                 name: icecast-secret
           env:
             - name: ICECAST_HOSTNAME
-              value: radio.jit.platzhalter # CHANGE ME
+              value: radio.jit.services # CHANGE ME
             - name: ICECAST_LOCATION
               value: Homelab # CHANGE ME
             - name: ICECAST_MAX_CLIENTS
@@ -68,10 +68,10 @@ metadata:
 spec:
   ingressClassName: nginx
   tls:
-    - hosts: [radio.jit.platzhalter] # CHANGE ME
+    - hosts: [radio.jit.services] # CHANGE ME
       secretName: icecast-tls
   rules:
-    - host: radio.jit.platzhalter # CHANGE ME
+    - host: radio.jit.services # CHANGE ME
       http:
         paths:
           - path: /

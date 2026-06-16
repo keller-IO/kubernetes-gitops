@@ -1,7 +1,7 @@
 image:
   tag: 2.13.5 # renovate: image=ghcr.io/paperless-ngx/paperless-ngx
 env:
-  PAPERLESS_URL: https://paperless.jit.platzhalter # CHANGE ME
+  PAPERLESS_URL: https://paperless.jit.services # CHANGE ME
   PAPERLESS_DBENGINE: postgresql
   PAPERLESS_DBHOST: paperless-pg-rw
   PAPERLESS_DBNAME: paperless
@@ -49,7 +49,7 @@ ingress:
       nginx.org/redirect-to-https: "true"
       nginx.org/client-max-body-size: "100m"
     hosts:
-      - host: paperless.jit.platzhalter # CHANGE ME
+      - host: paperless.jit.services # CHANGE ME
         paths:
           - path: /
             pathType: Prefix
@@ -57,5 +57,5 @@ ingress:
               identifier: main
               port: 8000
     tls:
-      - hosts: [paperless.jit.platzhalter] # CHANGE ME
+      - hosts: [paperless.jit.services] # CHANGE ME
         secretName: paperless-tls

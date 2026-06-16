@@ -37,7 +37,7 @@ ingress:
     nginx.org/ssl-redirect: "false"
     nginx.org/redirect-to-https: "true"
     nginx.org/client-max-body-size: "64m"
-  hostname: dbadmin.jit.platzhalter # CHANGE ME
+  hostname: dbadmin.jit.services # CHANGE ME
   pathType: Prefix
   tls: true
   existingSecretName: phpmyadmin-tls

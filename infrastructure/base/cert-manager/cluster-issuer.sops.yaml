@@ -17,7 +17,7 @@ metadata:
 spec:
   acme:
     server: https://acme-v02.api.letsencrypt.org/directory
-    email: admin@jit.platzhalter # CHANGE ME
+    email: admin@jit.services # CHANGE ME
     privateKeySecretRef:
       name: letsencrypt-prod-account
     solvers:
@@ -28,4 +28,4 @@ spec:
               key: api-token
         selector:
           dnsZones:
-            - jit.platzhalter # CHANGE ME
+            - jit.services # CHANGE ME

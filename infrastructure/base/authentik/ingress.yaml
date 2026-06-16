@@ -11,10 +11,10 @@ metadata:
 spec:
   ingressClassName: nginx
   tls:
-    - hosts: [auth.jit.platzhalter] # CHANGE ME
+    - hosts: [auth.jit.services] # CHANGE ME
       secretName: authentik-tls
   rules:
-    - host: auth.jit.platzhalter # CHANGE ME
+    - host: auth.jit.services # CHANGE ME
       http:
         paths:
           - path: /

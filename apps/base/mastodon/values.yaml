@@ -1,13 +1,13 @@
 # Values for the official mastodon/helm-charts chart (schema 0.5.x).
 # Postgres via CNPG, Redis via standalone Valkey, media via Ceph S3 (RGW).
 mastodon:
-  localDomain: social.jit.platzhalter # CHANGE ME
+  localDomain: social.jit.services # CHANGE ME
   singleUserMode: false
 
   createAdmin:
     enabled: true
     username: admin
-    email: admin@jit.platzhalter # CHANGE ME
+    email: admin@jit.services # CHANGE ME
 
   # secret-key-base, OTP/VAPID and Active-Record-Encryption keys.
   # Key names must match the chart's existingSecretKeys defaults (see secret.sops.yaml).
@@ -21,14 +21,14 @@ mastodon:
       accessKeyId: AWS_ACCESS_KEY_ID
       secretAccessKey: AWS_SECRET_ACCESS_KEY
     bucket: mastodon-media # aligns with OBC-provisioned bucket (verify exact name)
-    endpoint: https://s3.jit.platzhalter # CHANGE ME — Ceph RGW API endpoint (full URL)
-    hostname: s3.jit.platzhalter # CHANGE ME — Ceph RGW host (bare, used for object URLs)
+    endpoint: https://s3.jit.services # CHANGE ME — Ceph RGW API endpoint (full URL)
+    hostname: s3.jit.services # CHANGE ME — Ceph RGW host (bare, used for object URLs)
     region: default
 
   smtp:
-    server: mail.jit.platzhalter # CHANGE ME (external SMTP)
+    server: mail.jit.services # CHANGE ME (external SMTP)
     port: 587
-    fromAddress: notifications@jit.platzhalter # CHANGE ME
+    fromAddress: notifications@jit.services # CHANGE ME
     existingSecret: mastodon-smtp
 
   web:
@@ -63,12 +63,12 @@ ingress:
     nginx.org/websocket-services: mastodon-streaming
     nginx.org/client-max-body-size: "100m"
   hosts:
-    - host: social.jit.platzhalter # CHANGE ME
+    - host: social.jit.services # CHANGE ME
       paths:
         - path: "/"
           pathType: Prefix
   tls:
-    - hosts: [social.jit.platzhalter] # CHANGE ME
+    - hosts: [social.jit.services] # CHANGE ME
       secretName: mastodon-tls
 
 # Gateway API not used — this cluster routes through NGINX Ingress.

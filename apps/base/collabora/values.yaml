@@ -22,10 +22,10 @@ ingress:
     nginx.org/redirect-to-https: "true"
     nginx.org/websocket-services: collabora # WOPI/editor needs WebSocket
   hosts:
-    - host: office.jit.platzhalter # CHANGE ME
+    - host: office.jit.services # CHANGE ME
       paths:
         - path: /
           pathType: Prefix
   tls:
-    - hosts: [office.jit.platzhalter] # CHANGE ME
+    - hosts: [office.jit.services] # CHANGE ME
       secretName: collabora-tls

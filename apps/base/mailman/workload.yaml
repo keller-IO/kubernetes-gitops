@@ -46,7 +46,7 @@ spec:
             - name: MTA
               value: postfix
             - name: SMTP_HOST
-              value: smtp.jit.platzhalter # CHANGE ME
+              value: smtp.jit.services # CHANGE ME
             - name: SMTP_PORT
               value: "587"
             - name: SMTP_SECURE_MODE
@@ -106,9 +106,9 @@ spec:
             - name: DATABASE_TYPE
               value: postgres
             - name: SERVE_FROM_DOMAIN
-              value: lists.jit.platzhalter # CHANGE ME
+              value: lists.jit.services # CHANGE ME
             - name: DJANGO_ALLOWED_HOSTS
-              value: lists.jit.platzhalter,localhost,127.0.0.1 # CHANGE ME
+              value: lists.jit.services,localhost,127.0.0.1 # CHANGE ME
             - name: MAILMAN_REST_URL
               value: http://mailman-core:8001
             - name: MAILMAN_REST_USER
@@ -128,7 +128,7 @@ spec:
             - name: MAILMAN_ADMIN_EMAIL
               valueFrom: { secretKeyRef: { name: mailman-secret, key: MAILMAN_ADMIN_EMAIL } }
             - name: SMTP_HOST
-              value: smtp.jit.platzhalter # CHANGE ME
+              value: smtp.jit.services # CHANGE ME
             - name: SMTP_PORT
               value: "587"
             - name: SMTP_HOST_USER
@@ -227,10 +227,10 @@ metadata:
 spec:
   ingressClassName: nginx
   tls:
-    - hosts: [lists.jit.platzhalter] # CHANGE ME
+    - hosts: [lists.jit.services] # CHANGE ME
       secretName: mailman-tls
   rules:
-    - host: lists.jit.platzhalter # CHANGE ME
+    - host: lists.jit.services # CHANGE ME
       http:
         paths:
           - path: /

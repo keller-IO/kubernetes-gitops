@@ -33,7 +33,7 @@ spec:
             - name: REDIS_URL
               value: "redis://kimai-valkey:6379/0"
             - name: TRUSTED_HOSTS
-              value: "kimai.jit.platzhalter,localhost" # CHANGE ME
+              value: "kimai.jit.services,localhost" # CHANGE ME
             - name: ADMINMAIL
               valueFrom:
                 secretKeyRef: { name: kimai-secret, key: admin-mail }
