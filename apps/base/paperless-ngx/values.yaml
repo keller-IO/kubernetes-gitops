@@ -18,6 +18,7 @@ persistence:
   data:
     enabled: true
     storageClass: ceph-rbd # CHANGE ME
+    accessMode: ReadWriteOnce
     size: 5Gi
   media:
     enabled: true
@@ -29,22 +30,32 @@ persistence:
     storageClass: ceph-fs # CHANGE ME
     accessMode: ReadWriteMany
     size: 2Gi
+  export:
+    enabled: true
+    storageClass: ceph-rbd # CHANGE ME
+    accessMode: ReadWriteOnce
+    size: 2Gi
 resources:
   requests: { cpu: 200m, memory: 512Mi }
   limits: { memory: 1Gi }
+# bjw-s common-library: ingress is a named map (main), not a flat block.
 ingress:
-  enabled: true
-  className: nginx
-  annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-prod
-    nginx.org/ssl-redirect: "false"
-    nginx.org/redirect-to-https: "true"
-    nginx.org/client-max-body-size: "100m"
-  hosts:
-    - host: paperless.jit.platzhalter # CHANGE ME
-      paths:
-        - path: /
-          pathType: Prefix
-  tls:
-    - hosts: [paperless.jit.platzhalter] # CHANGE ME
-      secretName: paperless-tls
+  main:
+    enabled: true
+    className: nginx
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+      nginx.org/ssl-redirect: "false"
+      nginx.org/redirect-to-https: "true"
+      nginx.org/client-max-body-size: "100m"
+    hosts:
+      - host: paperless.jit.platzhalter # CHANGE ME
+        paths:
+          - path: /
+            pathType: Prefix
+            service:
+              identifier: main
+              port: 8000
+    tls:
+      - hosts: [paperless.jit.platzhalter] # CHANGE ME
+        secretName: paperless-tls

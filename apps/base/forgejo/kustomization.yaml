@@ -3,7 +3,7 @@ kind: Kustomization
 namespace: forgejo
 helmCharts:
   - name: forgejo
-    repo: https://code.forgejo.org/forgejo-helm
+    repo: oci://code.forgejo.org/forgejo-helm
     version: 11.0.4 # renovate: helm
     releaseName: forgejo
     namespace: forgejo
