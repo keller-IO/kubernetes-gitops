@@ -1,9 +1,33 @@
-# keller.io — Homelab GitOps
+<div align="center">
 
-Deklaratives, GitOps-gesteuertes Kubernetes-Setup für einen Homelab-Cluster auf
-**Talos Linux**, ausgerollt über **ArgoCD**. Der gesamte Cluster-Zustand ist in diesem
-Repository beschrieben — Änderungen passieren ausschließlich über Git-Commits, nicht per
-`kubectl edit`.
+# 🏠 keller.io — Homelab GitOps
+
+**Der gesamte Cluster-Zustand als Code — ausgerollt rein über Git.**
+
+Deklaratives Kubernetes-Setup für einen Homelab-Cluster auf **Talos Linux**,
+kontinuierlich abgeglichen durch **ArgoCD**.
+
+<br>
+
+[![CI](https://github.com/keller-IO/kubernetes-gitops/actions/workflows/ci.yml/badge.svg)](https://github.com/keller-IO/kubernetes-gitops/actions/workflows/ci.yml)
+[![Renovate](https://img.shields.io/badge/Renovate-enabled-1A1F6C?logo=renovate&logoColor=white)](https://docs.renovatebot.com/)
+[![SOPS](https://img.shields.io/badge/secrets-SOPS_%2B_age-2F855A?logo=gnuprivacyguard&logoColor=white)](https://github.com/getsops/sops)
+[![License](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)](LICENSE)
+![Last commit](https://img.shields.io/github/last-commit/keller-IO/kubernetes-gitops?logo=git&logoColor=white)
+
+[![Talos Linux](https://img.shields.io/badge/Talos_Linux-FF7300?logo=talos&logoColor=white)](https://www.talos.dev/)
+[![Kubernetes](https://img.shields.io/badge/Kubernetes-326CE5?logo=kubernetes&logoColor=white)](https://kubernetes.io/)
+[![Argo CD](https://img.shields.io/badge/Argo_CD-EF7B4D?logo=argo&logoColor=white)](https://argo-cd.readthedocs.io/)
+[![Helm](https://img.shields.io/badge/Helm-0F1689?logo=helm&logoColor=white)](https://helm.sh/)
+[![Cilium](https://img.shields.io/badge/Cilium-F8C517?logo=cilium&logoColor=black)](https://cilium.io/)
+[![Ceph](https://img.shields.io/badge/Ceph-EF5C55?logo=ceph&logoColor=white)](https://ceph.io/)
+
+</div>
+
+---
+
+Der gesamte Cluster-Zustand ist in diesem Repository beschrieben — Änderungen passieren
+ausschließlich über Git-Commits, nicht per `kubectl edit`.
 
 > **Hinweis — Blaupausen-Phase:** Alle Manifeste sind funktionsbereite Vorlagen mit
 > Platzhaltern (`*.jit.platzhalter`, `CHANGE ME`, `REPLACE_ME`). Was bis zum
@@ -22,6 +46,7 @@ Repository beschrieben — Änderungen passieren ausschließlich über Git-Commi
 - [Secrets verwalten (SOPS + age)](#secrets-verwalten-sops--age)
 - [Cluster-Bootstrap](#cluster-bootstrap)
 - [Weiterführende Dokumentation](#weiterführende-dokumentation)
+- [Lizenz](#lizenz)
 
 ---
 
@@ -171,3 +196,9 @@ Ab hier übernimmt ArgoCD und rollt Infrastruktur und Apps aus. Detaillierte Sch
 - [`docs/runbooks/`](docs/runbooks/) — Betriebsabläufe
 - [`docs/learnings/`](docs/learnings/) — gesammelte Erkenntnisse
 - [`docs/decisions/`](docs/decisions/) — Architecture Decision Records
+
+---
+
+## Lizenz
+
+Veröffentlicht unter der [BSD-3-Clause-Lizenz](LICENSE).
