@@ -18,7 +18,7 @@ entries:
       signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
       redirect_uris:
         - matching_mode: strict
-          url: https://paperless.jit.platzhalter/accounts/oidc/authentik/login/callback/ # CHANGE ME
+          url: https://paperless.jit.services/accounts/oidc/authentik/login/callback/ # CHANGE ME
       property_mappings:
         - !Find [authentik_providers_oauth2.scopemapping, [scope_name, openid]]
         - !Find [authentik_providers_oauth2.scopemapping, [scope_name, profile]]
@@ -30,6 +30,6 @@ entries:
       name: Paperless-ngx
       slug: paperless
       provider: !KeyOf paperless-provider
-      launch_url: https://paperless.jit.platzhalter
-      meta_launch_url: https://paperless.jit.platzhalter
+      launch_url: https://paperless.jit.services
+      meta_launch_url: https://paperless.jit.services
       icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/paperless-ngx.svg

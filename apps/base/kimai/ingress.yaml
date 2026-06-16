@@ -11,10 +11,10 @@ metadata:
 spec:
   ingressClassName: nginx
   tls:
-    - hosts: [kimai.jit.platzhalter] # CHANGE ME (patched per overlay)
+    - hosts: [kimai.jit.services] # CHANGE ME (patched per overlay)
       secretName: kimai-tls
   rules:
-    - host: kimai.jit.platzhalter # CHANGE ME
+    - host: kimai.jit.services # CHANGE ME
       http:
         paths:
           - path: /

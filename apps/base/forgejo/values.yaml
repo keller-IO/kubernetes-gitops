@@ -22,9 +22,9 @@ gitea:
     existingSecret: forgejo-admin
   config:
     server:
-      DOMAIN: git.jit.platzhalter # CHANGE ME
-      ROOT_URL: https://git.jit.platzhalter/ # CHANGE ME
-      SSH_DOMAIN: git.jit.platzhalter # CHANGE ME
+      DOMAIN: git.jit.services # CHANGE ME
+      ROOT_URL: https://git.jit.services/ # CHANGE ME
+      SSH_DOMAIN: git.jit.services # CHANGE ME
     database:
       DB_TYPE: postgres
       HOST: forgejo-pg-rw:5432
@@ -61,10 +61,10 @@ ingress:
     nginx.org/redirect-to-https: "true"
     nginx.org/client-max-body-size: "512m" # large git pushes / LFS
   hosts:
-    - host: git.jit.platzhalter # CHANGE ME
+    - host: git.jit.services # CHANGE ME
       paths:
         - path: /
           pathType: Prefix
   tls:
-    - hosts: [git.jit.platzhalter] # CHANGE ME
+    - hosts: [git.jit.services] # CHANGE ME
       secretName: forgejo-tls

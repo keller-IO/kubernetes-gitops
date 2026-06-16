@@ -10,10 +10,10 @@ metadata:
 spec:
   ingressClassName: nginx
   tls:
-    - hosts: [grafana.jit.platzhalter] # CHANGE ME
+    - hosts: [grafana.jit.services] # CHANGE ME
       secretName: grafana-tls
   rules:
-    - host: grafana.jit.platzhalter # CHANGE ME
+    - host: grafana.jit.services # CHANGE ME
       http:
         paths:
           - path: /

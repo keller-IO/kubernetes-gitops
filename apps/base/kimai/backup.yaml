@@ -13,7 +13,7 @@ spec:
   storage:
     s3:
       bucket: mariadb-kimai # CHANGE ME (bucket must exist)
-      endpoint: s3.jit.platzhalter # CHANGE ME (Ceph RGW, no scheme)
+      endpoint: s3.jit.services # CHANGE ME (Ceph RGW, no scheme)
       region: default
       accessKeyIdSecretKeyRef: { name: kimai-backup-s3, key: ACCESS_KEY_ID }
       secretAccessKeySecretKeyRef: { name: kimai-backup-s3, key: SECRET_ACCESS_KEY }

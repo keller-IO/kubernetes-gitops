@@ -20,7 +20,7 @@ spec:
     retentionPolicy: "30d"
     barmanObjectStore:
       destinationPath: s3://cnpg-roundcube/ # CHANGE ME (bucket must exist — provision via OBC/RGW)
-      endpointURL: https://s3.jit.platzhalter # CHANGE ME (Ceph RGW)
+      endpointURL: https://s3.jit.services # CHANGE ME (Ceph RGW)
       s3Credentials:
         accessKeyId: { name: roundcube-backup-s3, key: ACCESS_KEY_ID }
         secretAccessKey: { name: roundcube-backup-s3, key: SECRET_ACCESS_KEY }
