@@ -1,3 +1,0 @@
-# Operator only. Each app declares its own Valkey CR (see apps/base/<app>/cache.yaml).
-# Verify chart repo URL/version against the operator's current release before first sync.
-replicaCount: 1
