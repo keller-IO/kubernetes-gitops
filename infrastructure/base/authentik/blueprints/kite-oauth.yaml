@@ -1,0 +1,35 @@
+version: 1
+metadata:
+  name: Homelab Kite OIDC
+  labels:
+    blueprints.goauthentik.io/description: OAuth2 provider and application for Kite
+entries:
+  - model: authentik_providers_oauth2.oauth2provider
+    id: kite-provider
+    identifiers:
+      client_id: kite-client-id # CHANGE ME
+    attrs:
+      name: Provider for Kite
+      client_type: confidential
+      client_id: kite-client-id
+      client_secret: placeholder-change-me # CHANGE ME
+      authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+      invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+      signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
+      redirect_uris:
+        - matching_mode: strict
+          url: https://kite.jit.platzhalter/api/auth/callback # CHANGE ME
+      property_mappings:
+        - !Find [authentik_providers_oauth2.scopemapping, [scope_name, openid]]
+        - !Find [authentik_providers_oauth2.scopemapping, [scope_name, profile]]
+        - !Find [authentik_providers_oauth2.scopemapping, [scope_name, email]]
+  - model: authentik_core.application
+    identifiers:
+      slug: kite
+    attrs:
+      name: Kite
+      slug: kite
+      provider: !KeyOf kite-provider
+      launch_url: https://kite.jit.platzhalter
+      meta_launch_url: https://kite.jit.platzhalter
+      icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/kubernetes.svg

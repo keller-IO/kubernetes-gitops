@@ -1,0 +1,57 @@
+# Kite — lightweight Kubernetes dashboard.
+replicaCount: 1
+
+resources:
+  requests: { cpu: 100m, memory: 128Mi }
+  limits: { memory: 256Mi }
+
+# In-cluster access. Chart creates the ServiceAccount + ClusterRole/Binding.
+serviceAccount:
+  create: true
+rbac:
+  create: true
+
+# SQLite on a RWO PVC → Recreate avoids two pods locking the same volume.
+deploymentStrategy:
+  type: Recreate
+db:
+  type: sqlite
+  sqlite:
+    persistence:
+      pvc:
+        enabled: true
+        size: 1Gi
+
+# JWT signing, data-encryption key and OAuth client secret come from the SOPS
+# secret. The chart mounts it via envFrom, so every key becomes an env var and
+# can be referenced as ${KEY} in the config below.
+secret:
+  create: false
+  existingSecret: kite-secrets
+
+config:
+  enabled: true
+  oauth:
+    - name: authentik
+      clientId: kite-client-id # CHANGE ME (must match Authentik blueprint)
+      clientSecret: ${OAUTH_CLIENT_SECRET} # from kite-secrets
+      issuer: https://auth.jit.platzhalter/application/o/kite/ # CHANGE ME
+      scopes: openid,profile,email
+      enabled: true
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.org/ssl-redirect: "false"
+    nginx.org/redirect-to-https: "true"
+  hosts:
+    - host: kite.jit.platzhalter # CHANGE ME
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: kite-tls
+      hosts:
+        - kite.jit.platzhalter # CHANGE ME

@@ -22,3 +22,5 @@ data:
   host_wordpress_2: site2.jit.platzhalter
   host_wordpress_3: site3.jit.platzhalter
   host_mastodon: social.jit.platzhalter
+  host_gatus: status.jit.platzhalter
+  host_kite: kite.jit.platzhalter

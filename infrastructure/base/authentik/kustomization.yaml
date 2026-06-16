@@ -22,6 +22,8 @@ configMapGenerator:
       - blueprints/kimai-oauth.yaml
       - blueprints/paperless-oauth.yaml
       - blueprints/forgejo-oauth.yaml
+      - blueprints/gatus-oauth.yaml
+      - blueprints/kite-oauth.yaml
 generatorOptions:
   disableNameSuffixHash: true
   labels:

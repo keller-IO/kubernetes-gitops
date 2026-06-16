@@ -350,6 +350,8 @@ Jede App liegt unter `apps/base/<app>/` (Basis) + `apps/overlays/main/<app>/` (C
 | **renovate** | `apps/base/renovate/` | Forgejo-Token; `autodiscover` vs. feste Repo-Liste; Schedule abstimmen. |
 | **wordpress-1/2/3** | `apps/base/wordpress/` + `apps/overlays/main/wordpress-{1,2,3}/` | Pro Instanz Secret + Host (in Overlay gepatcht); „Redis Object Cache"-Plugin installieren; `mariadb.enabled:false` + externalDatabase final schalten. |
 | **mastodon** | `apps/base/mastodon/` | `SECRET_KEY_BASE`/`OTP_SECRET`/VAPID generieren; S3 (OBC) verdrahten; SMTP; Streaming-WebSocket testen; ggf. Elasticsearch. |
+| **gatus** | `apps/base/gatus/` | `gatus-oidc`-Secret füllen (== Blueprint-`client_secret`); `issuer-url`/`redirect-url`/`client-id` auf reale Domain; echte `endpoints` statt Samples eintragen. |
+| **kite** | `apps/base/kite/` | `kite-secrets` füllen (`JWT_SECRET`/`KITE_ENCRYPT_KEY` via `openssl rand -hex 32`, `OAUTH_CLIENT_SECRET` == Blueprint); `issuer`/`clientId` setzen; RBAC-Rollen-Mapping für OIDC-User; PVC-StorageClass prüfen. |
 
 **Beispiel** — neue App hinzufügen (Kurzform, Details in AGENTS.md):
 ```
