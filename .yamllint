@@ -1,0 +1,20 @@
+# yamllint config for the GitOps repo. Run strict (`yamllint -s .`) in CI:
+# stylistic rules that conflict with Helm values / Kustomize files are disabled,
+# structural checks (duplicate keys, trailing spaces, …) stay on.
+extends: default
+
+rules:
+  line-length: disable # Helm values & annotations are routinely long
+  document-start: disable # single-doc kustomize/values files don't need ---
+  comments: disable # inline `# renovate:` markers use a single space
+  comments-indentation: disable
+  truthy: disable # Helm values use on/off, yes/no
+  indentation: disable # mixed sequence indentation across vendored values
+  empty-lines: disable
+  braces: disable
+  brackets: disable
+
+ignore: |
+  rendered/
+  charts/
+  .git/
