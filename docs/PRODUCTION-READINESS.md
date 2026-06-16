@@ -190,20 +190,29 @@ spec:
 
 ## 8. Cache (Valkey)
 
-**Dateien:** `infrastructure/base/valkey-operator/`, jedes `apps/base/*/cache.yaml`
+**Dateien:** jedes `apps/base/*/cache.yaml` (eigenständige Valkey-Instanz pro App)
+
+> Der `hyperspike/valkey-operator` wurde entfernt (Upstream-Chart-Repo mit
+> abgelaufenem TLS-Zertifikat). Jede App betreibt jetzt ein eigenes, isoliertes
+> Valkey-StatefulSet + Service unter demselben DNS-Namen `<app>-valkey:6379`.
+
+> **Ausnahme mastodon:** das offizielle Chart erzwingt Redis-Auth. Die
+> mastodon-Valkey läuft daher mit `requirepass` aus dem Secret `mastodon-redis`,
+> auf das auch `values.redis.existingSecret` zeigt. Alle anderen Apps laufen
+> (vorerst) passwortlos.
 
 **Offen:**
-- [ ] **Operator-Chart-Repo & -Version verifizieren** und CRD-Schema (`apiVersion: hyperspike.io/v1`,
-      `kind: Valkey`, `spec`) gegen die installierte Operator-Version prüfen — Felder ggf. anpassen.
-- [ ] HA: `nodes: 1 → 3` + Replicas/Sentinel für Apps mit harten Cache-Anforderungen.
+- [ ] HA: `replicas: 1 → 3` + Sentinel/Cluster-Topologie für Apps mit harten Cache-Anforderungen.
 - [ ] Pro App prüfen, ob Valkey-Verbindung (Host/Port/DB-Index) in den App-Env/Values stimmt.
+- [ ] `storageClassName` (`ceph-rbd`) und Größe pro App final setzen.
+- [ ] `mastodon-redis`-Passwort setzen + verschlüsseln (Valkey `requirepass` ↔ App müssen identisch sein).
 
 **Beispiel** (`apps/base/forgejo/cache.yaml`) — eine kleine, isolierte Instanz pro App:
 ```yaml
-apiVersion: hyperspike.io/v1
-kind: Valkey
+apiVersion: apps/v1
+kind: StatefulSet
 metadata: { name: forgejo-valkey, namespace: forgejo }
-spec: { nodes: 1, storage: { size: 1Gi, storageClassName: ceph-rbd } }
+spec: { serviceName: forgejo-valkey, replicas: 1, ... } # + Service forgejo-valkey:6379
 ```
 
 ---
@@ -349,7 +358,7 @@ Jede App liegt unter `apps/base/<app>/` (Basis) + `apps/overlays/main/<app>/` (C
 | **forgejo** | `apps/base/forgejo/` | Admin-Secret; SSH-Service exponieren (LB/NodePort); OIDC-Provider in Forgejo anlegen; LFS→S3 optional. |
 | **renovate** | `apps/base/renovate/` | Forgejo-Token; `autodiscover` vs. feste Repo-Liste; Schedule abstimmen. |
 | **wordpress-1/2/3** | `apps/base/wordpress/` + `apps/overlays/main/wordpress-{1,2,3}/` | Pro Instanz Secret + Host (in Overlay gepatcht); „Redis Object Cache"-Plugin installieren; `mariadb.enabled:false` + externalDatabase final schalten. |
-| **mastodon** | `apps/base/mastodon/` | `SECRET_KEY_BASE`/`OTP_SECRET`/VAPID generieren; S3 (OBC) verdrahten; SMTP; Streaming-WebSocket testen; ggf. Elasticsearch. |
+| **mastodon** | `apps/base/mastodon/` | Chart migriert auf offizielles `mastodon/helm-charts` (0.5.1). Secret `mastodon-secret` (`secret-key-base`/VAPID/`are-*` Active-Record-Encryption-Keys) generieren; `mastodon-redis`-Passwort setzen (Valkey `requirepass`); S3 (OBC) verdrahten; SMTP; Streaming-WebSocket testen; ggf. Elasticsearch. ArgoCD: `mastodon.hooks` (dbPrepare/dbMigrate Helm-Hooks) für GitOps-Sync prüfen. |
 | **gatus** | `apps/base/gatus/` | `gatus-oidc`-Secret füllen (== Blueprint-`client_secret`); `issuer-url`/`redirect-url`/`client-id` auf reale Domain; echte `endpoints` statt Samples eintragen. |
 | **kite** | `apps/base/kite/` | `kite-secrets` füllen (`JWT_SECRET`/`KITE_ENCRYPT_KEY` via `openssl rand -hex 32`, `OAUTH_CLIENT_SECRET` == Blueprint); `issuer`/`clientId` setzen; RBAC-Rollen-Mapping für OIDC-User; PVC-StorageClass prüfen. |
 

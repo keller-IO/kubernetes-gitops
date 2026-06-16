@@ -71,7 +71,7 @@ Diese Dienste bilden das Fundament des Clusters und liegen unter `infrastructure
 | **Authentik** | Identity-Provider / OIDC — Single Sign-On, mit Blueprints pro App |
 | **CloudNativePG (CNPG)** | PostgreSQL-Operator inkl. Backups (Barman → S3) |
 | **mariadb-operator** | MySQL/MariaDB-Operator (z. B. für WordPress) |
-| **valkey-operator** | Redis-kompatibler Cache — eine kleine `Valkey`-CR pro App |
+| **Valkey** | Redis-kompatibler Cache — eine kleine, eigenständige Instanz pro App (`apps/base/*/cache.yaml`) |
 | **VictoriaMetrics + Grafana** | Monitoring-Stack (Metriken, Dashboards, Alerting) |
 | **Ceph (Storage)** | Persistenter Speicher: RBD (Block), CephFS (Datei), S3 (Objekt) |
 | **SOPS + age** | Verschlüsselung von Secrets im Git-Repo (KSOPS im ArgoCD repo-server) |

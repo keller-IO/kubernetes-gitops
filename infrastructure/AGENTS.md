@@ -4,7 +4,7 @@
 Cluster-wide platform services. Everything apps depend on.
 
 ## Ownership
-Owns `base/<component>/` dirs (argocd, cilium, ingress-nginx, cert-manager, cnpg, mariadb-operator, valkey-operator, authentik, monitoring, storage).
+Owns `base/<component>/` dirs (argocd, cilium, ingress-nginx, cert-manager, cnpg, mariadb-operator, authentik, monitoring, storage). Cache (Valkey) runs as a standalone instance per app under `apps/base/*/cache.yaml` (no operator).
 
 ## Local Contracts
 - **Manifests**: Kustomize + Helm inflation. Namespace = dir name.
@@ -39,7 +39,7 @@ entries:
 
 ## Work Guidance
 - New component → new `base/<component>/` dir. Update `docs/PRODUCTION-READINESS.md`.
-- Verify chart repo URL + version (especially `valkey-operator`).
+- Verify chart repo URL + version against an actual `helm pull` (CI renders with `--enable-helm`).
 
 ## Verification
 - `just build && just test` (kustomize + kubeconform).

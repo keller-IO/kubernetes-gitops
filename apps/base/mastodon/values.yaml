@@ -1,55 +1,61 @@
+# Values for the official mastodon/helm-charts chart (schema 0.5.x).
+# Postgres via CNPG, Redis via standalone Valkey, media via Ceph S3 (RGW).
 mastodon:
-  local_domain: social.jit.platzhalter # CHANGE ME
+  localDomain: social.jit.platzhalter # CHANGE ME
   singleUserMode: false
-  secrets:
-    existingSecret: mastodon-secret # SECRET_KEY_BASE, OTP_SECRET, VAPID keys
+
   createAdmin:
     enabled: true
     username: admin
     email: admin@jit.platzhalter # CHANGE ME
+
+  # secret-key-base, OTP/VAPID and Active-Record-Encryption keys.
+  # Key names must match the chart's existingSecretKeys defaults (see secret.sops.yaml).
+  secrets:
+    existingSecret: mastodon-secret
+
   s3:
     enabled: true
-    existing_secret: mastodon-s3 # from the ObjectBucketClaim (keys) — see objectbucket.yaml
+    existingSecret: mastodon-s3 # from the ObjectBucketClaim — see objectbucket.yaml
+    existingSecretKeys:
+      accessKeyId: AWS_ACCESS_KEY_ID
+      secretAccessKey: AWS_SECRET_ACCESS_KEY
     bucket: mastodon-media # aligns with OBC-provisioned bucket (verify exact name)
-    endpoint: https://s3.jit.platzhalter # CHANGE ME — Ceph RGW endpoint
+    endpoint: https://s3.jit.platzhalter # CHANGE ME — Ceph RGW API endpoint (full URL)
+    hostname: s3.jit.platzhalter # CHANGE ME — Ceph RGW host (bare, used for object URLs)
     region: default
-    existing_secret_keys:
-      access_key: AWS_ACCESS_KEY_ID
-      secret_key: AWS_SECRET_ACCESS_KEY
+
   smtp:
     server: mail.jit.platzhalter # CHANGE ME (external SMTP)
     port: 587
-    from_address: notifications@jit.platzhalter # CHANGE ME
+    fromAddress: notifications@jit.platzhalter # CHANGE ME
     existingSecret: mastodon-smtp
 
+  web:
+    replicas: 1
+  streaming:
+    replicas: 1
+
 postgresql:
-  enabled: false
-  postgresAddress: mastodon-pg-rw
-  auth:
-    database: mastodon
-    username: mastodon
-    existingSecret: mastodon-db-app
+  hostname: mastodon-pg-rw # CNPG read-write service
+  port: 5432
+  database: mastodon
+  username: mastodon
+  existingSecret: mastodon-db-app # CNPG basic-auth secret (keys: username/password)
 
 redis:
-  enabled: false
   hostname: mastodon-valkey
   port: 6379
+  # The official chart requires Redis auth. Shared secret with the Valkey
+  # StatefulSet's requirepass (see cache.yaml). Default key name is "password".
+  existingSecret: mastodon-redis
 
 elasticsearch:
   enabled: false # enable for full-text search (extra resources)
 
-web:
-  replicas: 1
-streaming:
-  replicas: 1
-sidekiq:
-  workers:
-    - name: all-queues
-      concurrency: 5
-
 ingress:
   enabled: true
-  ingressClassName: nginx
+  className: nginx
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.org/ssl-redirect: "false"
@@ -58,6 +64,13 @@ ingress:
     nginx.org/client-max-body-size: "100m"
   hosts:
     - host: social.jit.platzhalter # CHANGE ME
+      paths:
+        - path: "/"
+          pathType: Prefix
   tls:
     - hosts: [social.jit.platzhalter] # CHANGE ME
       secretName: mastodon-tls
+
+# Gateway API not used — this cluster routes through NGINX Ingress.
+httproute:
+  enabled: false

@@ -1,10 +1,92 @@
-apiVersion: hyperspike.io/v1
-kind: Valkey
+# Standalone Valkey cache — replaces the hyperspike valkey-operator CR.
+# Exposes mastodon-valkey:6379, the same DNS name the app already uses.
+# NOTE: the official mastodon chart mandates Redis auth, so this instance runs
+# with requirepass. Password comes from the shared `mastodon-redis` secret
+# (see secret.sops.yaml); the app references it via values.redis.existingSecret.
+apiVersion: apps/v1
+kind: StatefulSet
 metadata:
   name: mastodon-valkey
   namespace: mastodon
+  labels:
+    app.kubernetes.io/name: mastodon-valkey
+    app.kubernetes.io/component: cache
 spec:
-  nodes: 1
-  storage:
-    size: 2Gi
-    storageClassName: ceph-rbd # CHANGE ME
+  serviceName: mastodon-valkey
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mastodon-valkey
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: mastodon-valkey
+        app.kubernetes.io/component: cache
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+      containers:
+        - name: valkey
+          image: valkey/valkey:8.1-alpine # renovate: image=valkey/valkey
+          # $(REDISCLI_AUTH) is expanded from the env var below; valkey-cli also
+          # reads REDISCLI_AUTH automatically, so the readiness probe stays authed.
+          args: ["--appendonly", "yes", "--requirepass", "$(REDISCLI_AUTH)"]
+          env:
+            - name: REDISCLI_AUTH
+              valueFrom:
+                secretKeyRef:
+                  name: mastodon-redis
+                  key: password
+          ports:
+            - name: valkey
+              containerPort: 6379
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          livenessProbe:
+            tcpSocket:
+              port: valkey
+            initialDelaySeconds: 10
+          readinessProbe:
+            exec:
+              command: ["valkey-cli", "ping"]
+            initialDelaySeconds: 5
+          volumeMounts:
+            - name: data
+              mountPath: /data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: ceph-rbd # CHANGE ME
+        resources:
+          requests:
+            storage: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mastodon-valkey
+  namespace: mastodon
+  labels:
+    app.kubernetes.io/name: mastodon-valkey
+    app.kubernetes.io/component: cache
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: mastodon-valkey
+  ports:
+    - name: valkey
+      port: 6379
+      targetPort: valkey
