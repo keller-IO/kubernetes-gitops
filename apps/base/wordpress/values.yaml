@@ -37,5 +37,5 @@ ingress:
     nginx.org/ssl-redirect: "false"
     nginx.org/redirect-to-https: "true"
     nginx.org/client-max-body-size: "128m"
-  hostname: site.jit.platzhalter # CHANGE ME (patched per overlay)
+  hostname: site.jit.services # CHANGE ME (patched per overlay)
   tls: true

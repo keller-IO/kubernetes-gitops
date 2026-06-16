@@ -18,7 +18,7 @@ entries:
       signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
       redirect_uris:
         - matching_mode: strict
-          url: https://status.jit.platzhalter/authorization-code/callback # CHANGE ME
+          url: https://status.jit.services/authorization-code/callback # CHANGE ME
       property_mappings:
         - !Find [authentik_providers_oauth2.scopemapping, [scope_name, openid]]
         - !Find [authentik_providers_oauth2.scopemapping, [scope_name, profile]]
@@ -30,6 +30,6 @@ entries:
       name: Gatus
       slug: gatus
       provider: !KeyOf gatus-provider
-      launch_url: https://status.jit.platzhalter
-      meta_launch_url: https://status.jit.platzhalter
+      launch_url: https://status.jit.services
+      meta_launch_url: https://status.jit.services
       icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/gatus.svg

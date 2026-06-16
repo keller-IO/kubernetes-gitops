@@ -15,18 +15,18 @@ ingress:
     nginx.org/ssl-redirect: "false"
     nginx.org/redirect-to-https: "true"
   hosts:
-    - status.jit.platzhalter # CHANGE ME
+    - status.jit.services # CHANGE ME
   tls:
     - secretName: gatus-tls
       hosts:
-        - status.jit.platzhalter # CHANGE ME
+        - status.jit.services # CHANGE ME
 
 config:
   # Protect the dashboard with Authentik OIDC. Callback path is fixed by gatus.
   security:
     oidc:
-      issuer-url: https://auth.jit.platzhalter/application/o/gatus/ # CHANGE ME
-      redirect-url: https://status.jit.platzhalter/authorization-code/callback # CHANGE ME
+      issuer-url: https://auth.jit.services/application/o/gatus/ # CHANGE ME
+      redirect-url: https://status.jit.services/authorization-code/callback # CHANGE ME
       client-id: gatus-client-id # CHANGE ME (must match Authentik blueprint)
       client-secret: ${OIDC_CLIENT_SECRET} # from gatus-oidc secret
       scopes: [openid, profile, email]
@@ -35,12 +35,12 @@ config:
   # Sample probes — replace with the real internal endpoints to watch.
   endpoints:
     - name: argocd
-      url: https://argocd.jit.platzhalter # CHANGE ME
+      url: https://argocd.jit.services # CHANGE ME
       interval: 60s
       conditions:
         - "[STATUS] == 200"
     - name: authentik
-      url: https://auth.jit.platzhalter # CHANGE ME
+      url: https://auth.jit.services # CHANGE ME
       interval: 60s
       conditions:
         - "[STATUS] == 200"

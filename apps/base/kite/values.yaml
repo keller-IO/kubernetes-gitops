@@ -35,7 +35,7 @@ config:
     - name: authentik
       clientId: kite-client-id # CHANGE ME (must match Authentik blueprint)
       clientSecret: ${OAUTH_CLIENT_SECRET} # from kite-secrets
-      issuer: https://auth.jit.platzhalter/application/o/kite/ # CHANGE ME
+      issuer: https://auth.jit.services/application/o/kite/ # CHANGE ME
       scopes: openid,profile,email
       enabled: true
 
@@ -47,11 +47,11 @@ ingress:
     nginx.org/ssl-redirect: "false"
     nginx.org/redirect-to-https: "true"
   hosts:
-    - host: kite.jit.platzhalter # CHANGE ME
+    - host: kite.jit.services # CHANGE ME
       paths:
         - path: /
           pathType: Prefix
   tls:
     - secretName: kite-tls
       hosts:
-        - kite.jit.platzhalter # CHANGE ME
+        - kite.jit.services # CHANGE ME

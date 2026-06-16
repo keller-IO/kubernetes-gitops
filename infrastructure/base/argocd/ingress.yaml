@@ -11,10 +11,10 @@ metadata:
 spec:
   ingressClassName: nginx
   tls:
-    - hosts: [argocd.jit.platzhalter] # CHANGE ME
+    - hosts: [argocd.jit.services] # CHANGE ME
       secretName: argocd-tls
   rules:
-    - host: argocd.jit.platzhalter # CHANGE ME
+    - host: argocd.jit.services # CHANGE ME
       http:
         paths:
           - path: /

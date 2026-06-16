@@ -29,11 +29,11 @@ spec:
               valueFrom: { secretKeyRef: { name: roundcube-db-app, key: password } }
             # EXTERNAL mail backend — point these at your real IMAP/SMTP host:
             - name: ROUNDCUBEMAIL_DEFAULT_HOST
-              value: "ssl://mail.jit.platzhalter" # CHANGE ME (IMAP)
+              value: "ssl://mail.jit.services" # CHANGE ME (IMAP)
             - name: ROUNDCUBEMAIL_DEFAULT_PORT
               value: "993"
             - name: ROUNDCUBEMAIL_SMTP_SERVER
-              value: "tls://mail.jit.platzhalter" # CHANGE ME (SMTP)
+              value: "tls://mail.jit.services" # CHANGE ME (SMTP)
             - name: ROUNDCUBEMAIL_SMTP_PORT
               value: "587"
             - name: ROUNDCUBEMAIL_PLUGINS
@@ -66,10 +66,10 @@ metadata:
 spec:
   ingressClassName: nginx
   tls:
-    - hosts: [webmail.jit.platzhalter] # CHANGE ME
+    - hosts: [webmail.jit.services] # CHANGE ME
       secretName: roundcube-tls
   rules:
-    - host: webmail.jit.platzhalter # CHANGE ME
+    - host: webmail.jit.services # CHANGE ME
       http:
         paths:
           - path: /
