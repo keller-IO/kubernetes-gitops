@@ -118,6 +118,7 @@ Die ausgerollten Workloads liegen unter `apps/base/` (Blaupause) und
 | **[Roundcube](https://roundcube.net/)** | Webmail-Oberfläche (externer Mailserver) |
 | **[Mailman](https://www.list.org/)** | Mailinglisten-Verwaltung mit Postorius/HyperKitty |
 | **[Icecast](https://icecast.org/)** | Audio-Streaming-Server |
+| **[phpMyAdmin](https://www.phpmyadmin.net/)** | Web-Admin für MariaDB/MySQL-Instanzen |
 | **[WordPress](https://wordpress.org/)** (×3) | Drei separate WordPress-Instanzen |
 | **[Collabora](https://www.collaboraonline.com/)** | Online-Office (Dokumentenbearbeitung) |
 | **[Renovate](https://docs.renovatebot.com/)** | Self-hosted Dependency-Update-Bot (CronJob) |

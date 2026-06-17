@@ -26,3 +26,4 @@ data:
   host_kite: kite.jit.platzhalter
   host_mailman: lists.jit.platzhalter
   host_icecast: radio.jit.platzhalter
+  host_phpmyadmin: dbadmin.jit.platzhalter

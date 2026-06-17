@@ -371,6 +371,7 @@ Jede App liegt unter `apps/base/<app>/` (Basis) + `apps/overlays/main/<app>/` (C
 | **kite** | `apps/base/kite/` | `kite-secrets` füllen (`JWT_SECRET`/`KITE_ENCRYPT_KEY` via `openssl rand -hex 32`, `OAUTH_CLIENT_SECRET` == Blueprint); `issuer`/`clientId` setzen; RBAC-Rollen-Mapping für OIDC-User; PVC-StorageClass prüfen. |
 | **mailman** | `apps/base/mailman/` | Secrets füllen; Host `lists.jit.platzhalter` und SMTP-Host ersetzen; externes MTA auf LMTP-Service routen; CNPG-Bucket `cnpg-mailman`/S3-Creds anlegen; PVC- und DB-Größen prüfen; erste Admin-Initialisierung testen. |
 | **icecast** | `apps/base/icecast/` | Source/Admin/Relay-Passwörter setzen; Host `radio.jit.platzhalter` ersetzen; Source-Clients auf HTTPS-URL und Source-Passwort umstellen; Listener-Limit und Ingress-Timeouts nach Stream-Profil prüfen. |
+| **phpmyadmin** | `apps/base/phpmyadmin/` | Host `dbadmin.jit.platzhalter` ersetzen; Zugriff zusätzlich absichern (Authentik Forward-Auth oder IP-Allowlist); nur dedizierte DB-User statt Root verwenden; Default-DB-Host `kimai-mariadb.kimai.svc.cluster.local` prüfen; weitere Ziele als FQDN eintragen. |
 
 **Beispiel** — neue App hinzufügen (Kurzform, Details in AGENTS.md):
 ```
