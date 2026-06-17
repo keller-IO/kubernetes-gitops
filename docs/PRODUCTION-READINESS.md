@@ -165,7 +165,7 @@ spec:
 
 ## 7. Datenbanken
 
-**Postgres (CNPG):** `infrastructure/base/cnpg/`, `apps/base/{roundcube,paperless-ngx,forgejo,mastodon}/database.yaml`, `infrastructure/base/authentik/postgres.yaml`
+**Postgres (CNPG):** `infrastructure/base/cnpg/`, `apps/base/{roundcube,paperless-ngx,forgejo,mastodon,mailman}/database.yaml`, `infrastructure/base/authentik/postgres.yaml`
 **MariaDB (Operator):** `infrastructure/base/mariadb-operator/`, `apps/base/{kimai,wordpress}/database.yaml`
 
 **Offen:**
@@ -266,11 +266,13 @@ alertmanager:
 
 **Verdrahtet (Blaupause):** DB-Backups sind in den Manifesten aktiv — täglich 02:00 nach Ceph S3,
 30 Tage Retention.
-- **CNPG** (roundcube, paperless, forgejo, mastodon, authentik): `backup.barmanObjectStore` im
+- **CNPG** (roundcube, paperless, forgejo, mastodon, mailman, authentik): `backup.barmanObjectStore` im
   jeweiligen `database.yaml` (bzw. `postgres.yaml`) + `ScheduledBackup` in `backup.yaml`.
   Continuous WAL + base → PITR.
 - **MariaDB** (kimai, wordpress): `Backup` CR in `apps/base/<app>/backup.yaml` (logischer Dump).
 - **S3-Creds**: `<app>-backup-s3` Secret in jeder `secret.sops.yaml`.
+- **Keine DB**: Icecast ist zustandsarm; Backup betrifft nur die GitOps-Konfiguration und externe
+  Stream-Quellen/Clients.
 
 **Dateien:** `apps/base/*/backup.yaml`, `apps/base/*/database.yaml`, `infrastructure/base/authentik/{postgres,backup}.yaml`,
 `apps/base/*/secret.sops.yaml`, `infrastructure/overlays/main/` (DR-Overlay, anzulegen)
@@ -328,11 +330,17 @@ module.exports = { platform: 'gitea', endpoint: 'https://git.DEINE-DOMAIN.tld/ap
 
 ## 13. Mail (extern)
 
-**Dateien:** `apps/base/roundcube/workload.yaml`, `apps/base/mastodon/{values,secret.sops}.yaml`
+**Dateien:** `apps/base/roundcube/workload.yaml`, `apps/base/mastodon/{values,secret.sops}.yaml`,
+`apps/base/mailman/{workload,secret.sops}.yaml`
 
-**Offen:** (Entscheidung: **nur Frontends**, kein Mailserver im Cluster)
+**Offen:**
 - [ ] Externen IMAP/SMTP-Host in roundcube setzen (`ROUNDCUBEMAIL_DEFAULT_HOST`/`SMTP_SERVER`).
 - [ ] SMTP-Credentials für Mastodon (`mastodon-smtp`) + Paperless/Authentik (falls Mailversand).
+- [ ] Mailman: externes MTA/Gateway so konfigurieren, dass Listendomains an
+      `mailman-core.mailman.svc.cluster.local:8024` (LMTP) geroutet werden; ausgehend nutzt Mailman
+      `SMTP_HOST`/`SMTP_PORT` aus `workload.yaml`.
+- [ ] Mailman: `MAILMAN_ADMIN_EMAIL`, `SMTP_HOST_USER`, `HYPERKITTY_API_KEY`, `SECRET_KEY` und
+      REST-Passwort in `apps/base/mailman/secret.sops.yaml` setzen + verschlüsseln.
 - [ ] SPF/DKIM/DMARC beim externen Mailprovider (außerhalb des Clusters).
 
 **Beispiel** (`apps/base/roundcube/workload.yaml`):
@@ -361,10 +369,12 @@ Jede App liegt unter `apps/base/<app>/` (Basis) + `apps/overlays/main/<app>/` (C
 | **mastodon** | `apps/base/mastodon/` | Chart migriert auf offizielles `mastodon/helm-charts` (0.5.1). Secret `mastodon-secret` (`secret-key-base`/VAPID/`are-*` Active-Record-Encryption-Keys) generieren; `mastodon-redis`-Passwort setzen (Valkey `requirepass`); S3 (OBC) verdrahten; SMTP; Streaming-WebSocket testen; ggf. Elasticsearch. ArgoCD: `mastodon.hooks` (dbPrepare/dbMigrate Helm-Hooks) für GitOps-Sync prüfen. |
 | **gatus** | `apps/base/gatus/` | `gatus-oidc`-Secret füllen (== Blueprint-`client_secret`); `issuer-url`/`redirect-url`/`client-id` auf reale Domain; echte `endpoints` statt Samples eintragen. |
 | **kite** | `apps/base/kite/` | `kite-secrets` füllen (`JWT_SECRET`/`KITE_ENCRYPT_KEY` via `openssl rand -hex 32`, `OAUTH_CLIENT_SECRET` == Blueprint); `issuer`/`clientId` setzen; RBAC-Rollen-Mapping für OIDC-User; PVC-StorageClass prüfen. |
+| **mailman** | `apps/base/mailman/` | Secrets füllen; Host `lists.jit.platzhalter` und SMTP-Host ersetzen; externes MTA auf LMTP-Service routen; CNPG-Bucket `cnpg-mailman`/S3-Creds anlegen; PVC- und DB-Größen prüfen; erste Admin-Initialisierung testen. |
+| **icecast** | `apps/base/icecast/` | Source/Admin/Relay-Passwörter setzen; Host `radio.jit.platzhalter` ersetzen; Source-Clients auf HTTPS-URL und Source-Passwort umstellen; Listener-Limit und Ingress-Timeouts nach Stream-Profil prüfen. |
 
 **Beispiel** — neue App hinzufügen (Kurzform, Details in AGENTS.md):
 ```
-apps/base/<app>/{kustomization,values|workload,database,cache,secret.sops}.yaml
+apps/base/<app>/{kustomization,values|workload,database,cache,backup,secret.sops}.yaml
 apps/overlays/main/<app>/kustomization.yaml   # -> wird von appset-apps automatisch deployed
 ```
 ```

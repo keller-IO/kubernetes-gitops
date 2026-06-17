@@ -1,0 +1,10 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: mailman
+# Mailman 3 Suite: Core + Postorius/HyperKitty web UI.
+# Postgres is provided by CNPG; an external MTA must route list mail to LMTP.
+resources:
+  - database.yaml
+  - workload.yaml
+  - secret.sops.yaml
+  - backup.yaml

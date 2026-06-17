@@ -116,6 +116,8 @@ Die ausgerollten Workloads liegen unter `apps/base/` (Blaupause) und
 | **[Mastodon](https://joinmastodon.org/)** | Föderiertes soziales Netzwerk |
 | **[Paperless-ngx](https://docs.paperless-ngx.com/)** | Dokumenten-Management / Archiv |
 | **[Roundcube](https://roundcube.net/)** | Webmail-Oberfläche (externer Mailserver) |
+| **[Mailman](https://www.list.org/)** | Mailinglisten-Verwaltung mit Postorius/HyperKitty |
+| **[Icecast](https://icecast.org/)** | Audio-Streaming-Server |
 | **[WordPress](https://wordpress.org/)** (×3) | Drei separate WordPress-Instanzen |
 | **[Collabora](https://www.collaboraonline.com/)** | Online-Office (Dokumentenbearbeitung) |
 | **[Renovate](https://docs.renovatebot.com/)** | Self-hosted Dependency-Update-Bot (CronJob) |

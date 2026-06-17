@@ -24,3 +24,5 @@ data:
   host_mastodon: social.jit.platzhalter
   host_gatus: status.jit.platzhalter
   host_kite: kite.jit.platzhalter
+  host_mailman: lists.jit.platzhalter
+  host_icecast: radio.jit.platzhalter
