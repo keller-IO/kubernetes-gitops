@@ -261,7 +261,18 @@ alertmanager:
 
 ---
 
-## 11. Backup & Disaster Recovery
+## 11. Kubernetes MCP Server
+
+**Dateien:** `infrastructure/base/kubernetes-mcp/*`
+
+**Offen:**
+- [ ] `htpasswd`-Wert in `secret.sops.yaml` generieren + verschlüsseln:
+      `htpasswd -nb mcp <starkes-passwort>` → in `stringData.htpasswd` eintragen.
+- [ ] Claude Code konfigurieren: `Authorization: Basic base64(mcp:<passwort>)` als Header setzen.
+
+---
+
+## 12. Backup & Disaster Recovery
 
 **Verdrahtet (Blaupause):** DB-Backups sind in den Manifesten aktiv — täglich 02:00 nach Ceph S3,
 30 Tage Retention.
@@ -308,7 +319,7 @@ spec: { schedule: "0 0 2 * * *", cluster: { name: forgejo-pg } }
 
 ---
 
-## 12. CI & Renovate
+## 13. CI & Renovate
 
 **Dateien:** `.forgejo/workflows/ci.yaml`, `renovate.json`, `apps/base/renovate/*`
 
@@ -327,7 +338,7 @@ module.exports = { platform: 'gitea', endpoint: 'https://git.DEINE-DOMAIN.tld/ap
 
 ---
 
-## 13. Mail (extern)
+## 14. Mail (extern)
 
 **Dateien:** `apps/base/roundcube/workload.yaml`, `apps/base/mastodon/{values,secret.sops}.yaml`,
 `apps/base/mailman/{workload,secret.sops}.yaml`
@@ -352,7 +363,7 @@ module.exports = { platform: 'gitea', endpoint: 'https://git.DEINE-DOMAIN.tld/ap
 
 ---
 
-## 14. Pro-App-TODOs
+## 15. Pro-App-TODOs
 
 Jede App liegt unter `apps/base/<app>/` (Basis) + `apps/overlays/main/<app>/` (Cluster-Patch).
 

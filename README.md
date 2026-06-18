@@ -101,6 +101,7 @@ Diese Dienste bilden das Fundament des Clusters und liegen unter `infrastructure
 | **Ceph (Storage)** | Persistenter Speicher: RBD (Block), CephFS (Datei), S3 (Objekt) |
 | **SOPS + age** | Verschlüsselung von Secrets im Git-Repo (KSOPS im ArgoCD repo-server) |
 | **Renovate** | Hält Helm-Chart- und Image-Versionen automatisch aktuell |
+| **[Kubernetes MCP Server](https://github.com/manusa/kubernetes-mcp-server)** | Cluster-Observability für KI-Agenten (read-only, HTTP Basic Auth) |
 
 ---
 
