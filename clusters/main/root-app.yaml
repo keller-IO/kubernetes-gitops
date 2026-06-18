@@ -9,7 +9,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://git.f4mily.net/keller.io/keller.io.git # CHANGE ME to the real repo URL
+    repoURL: https://github.com/keller-IO/kubernetes-gitops.git
     targetRevision: main
     path: clusters/main
     directory:
