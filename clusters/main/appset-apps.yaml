@@ -8,7 +8,7 @@ spec:
   goTemplate: true
   generators:
     - git:
-        repoURL: https://git.f4mily.net/keller.io/keller.io.git # CHANGE ME
+        repoURL: https://github.com/keller-IO/kubernetes-gitops.git
         revision: main
         directories:
           - path: apps/overlays/main/*
@@ -20,7 +20,7 @@ spec:
     spec:
       project: apps
       source:
-        repoURL: https://git.f4mily.net/keller.io/keller.io.git # CHANGE ME
+        repoURL: https://github.com/keller-IO/kubernetes-gitops.git
         targetRevision: main
         path: "{{.path.path}}"
         plugin:
