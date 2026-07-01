@@ -1,11 +1,5 @@
-# SOPS encryption rules. All *.sops.yaml secrets MUST be encrypted before commit.
-# Encrypt:  sops --encrypt --in-place path/to/secret.sops.yaml
-# Decrypt:  sops --decrypt path/to/secret.sops.yaml
-#
-# Replace the age public key below with your real recipient(s).
-# Generate a key:  age-keygen -o age.agekey   (keep the private key OUT of git)
+# Replace the age public key with yours: age-keygen -y < ~/.config/sops/age/keys.txt
 creation_rules:
   - path_regex: .*\.sops\.ya?ml$
     encrypted_regex: "^(data|stringData)$"
-    age: >-
-      age1placeholderxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+    age: age1rmm7srdkne4js7edykzgk39ltvamkps0y88xe4mxkx7gz7rmf3eqvvg4u5
