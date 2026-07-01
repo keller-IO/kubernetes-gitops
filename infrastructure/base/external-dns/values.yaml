@@ -1,0 +1,44 @@
+# ExternalDNS + ClouDNS webhook provider.
+# Reads the `host:` of every Ingress and creates/updates the matching record at
+# ClouDNS, pointing at the ingress-nginx LoadBalancer IP. Removes nothing on its
+# own (policy: upsert-only) — flip to `sync` once you trust it to also prune.
+
+provider:
+  name: webhook
+  webhook:
+    image:
+      repository: ghcr.io/rwunderer/external-dns-cloudns-webhook
+      tag: v0.4.9 # renovate: github-releases rwunderer/external-dns-cloudns-webhook
+    # Credentials come from the SOPS secret (secret.sops.yaml). Reuse the same
+    # zone-scoped ClouDNS sub user as cert-manager (must allow DNS record writes).
+    env:
+      - name: CLOUDNS_AUTH_ID_TYPE
+        valueFrom:
+          secretKeyRef:
+            name: cloudns-config
+            key: CLOUDNS_AUTH_ID_TYPE
+      - name: CLOUDNS_AUTH_ID
+        valueFrom:
+          secretKeyRef:
+            name: cloudns-config
+            key: CLOUDNS_AUTH_ID
+      - name: CLOUDNS_AUTH_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: cloudns-config
+            key: CLOUDNS_AUTH_PASSWORD
+
+# Only manage records from Ingress objects for now.
+sources:
+  - ingress
+
+# Safe default: create/update only, never delete records.
+policy: upsert-only
+
+# TXT ownership registry so ExternalDNS only touches records it created.
+registry: txt
+txtOwnerId: main-cluster
+
+# Restrict to our zone so foreign records are never touched.
+domainFilters:
+  - jit.services # CHANGE ME (real domain)
