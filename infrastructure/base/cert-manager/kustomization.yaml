@@ -15,5 +15,6 @@ helmCharts:
     releaseName: cert-manager-webhook-cloudns
     namespace: cert-manager
     valuesFile: cloudns-webhook-values.yaml
-resources:
-  - cluster-issuer.sops.yaml
+
+generators:
+  - ./secret-generator.yaml

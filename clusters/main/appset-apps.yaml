@@ -23,8 +23,8 @@ spec:
         repoURL: https://github.com/keller-IO/kubernetes-gitops.git
         targetRevision: main
         path: "{{.path.path}}"
-        plugin:
-          name: kustomize-helm
+        # Native kustomize (repo-server runs it with --enable-helm --enable-alpha-plugins
+        # --enable-exec + ksops in PATH; see infrastructure/base/argocd + Terraform argocd.tf).
       destination:
         server: https://kubernetes.default.svc
         namespace: "{{.path.basename}}"

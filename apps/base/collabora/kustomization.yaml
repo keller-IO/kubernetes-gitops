@@ -10,5 +10,6 @@ helmCharts:
     releaseName: collabora
     namespace: collabora
     valuesFile: values.yaml
-resources:
-  - secret.sops.yaml
+
+generators:
+  - ./secret-generator.yaml

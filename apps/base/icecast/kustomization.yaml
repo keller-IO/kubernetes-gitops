@@ -4,4 +4,6 @@ namespace: icecast
 # Icecast is a stateless stream server. Source clients publish to port 8000.
 resources:
   - workload.yaml
-  - secret.sops.yaml
+
+generators:
+  - ./secret-generator.yaml

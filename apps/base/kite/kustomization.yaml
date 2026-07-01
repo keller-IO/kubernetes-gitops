@@ -9,5 +9,6 @@ helmCharts:
     releaseName: kite
     namespace: kite
     valuesFile: values.yaml
-resources:
-  - secret.sops.yaml
+
+generators:
+  - ./secret-generator.yaml

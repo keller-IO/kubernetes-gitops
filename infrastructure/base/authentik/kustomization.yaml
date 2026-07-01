@@ -11,7 +11,6 @@ helmCharts:
     namespace: authentik
     valuesFile: values.yaml
 resources:
-  - secret.sops.yaml
   - postgres.yaml
   - cache.yaml
   - ingress.yaml
@@ -28,3 +27,6 @@ generatorOptions:
   disableNameSuffixHash: true
   labels:
     app.kubernetes.io/part-of: authentik
+
+generators:
+  - ./secret-generator.yaml

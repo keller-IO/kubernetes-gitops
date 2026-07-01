@@ -1,19 +1,22 @@
 configs:
   cm:
-    # Register the kustomize-helm config-management-plugin used by the ApplicationSets.
-    kustomize.buildOptions: "--enable-helm"
+    # Native kustomize handles BOTH helm inflation and the KSOPS exec plugin (SOPS
+    # decryption). This MUST stay in sync with the Terraform bootstrap (argocd.tf),
+    # otherwise ArgoCD self-management drifts from the initial install.
+    kustomize.buildOptions: "--enable-helm --enable-alpha-plugins --enable-exec"
     timeout.reconciliation: 180s
   params:
     server.insecure: true # TLS terminated at NGINX Ingress
 repoServer:
-  # KSOPS init-container + age key for decrypting *.sops.yaml during manifest render.
-  # The 'sops-age' secret (keys.txt) must exist in the argocd namespace (see bootstrap).
+  # KSOPS + a matching kustomize installed into a shared volume, plus the age key
+  # for SOPS decryption. Mirrors Terraform argocd.tf (secret name: argocd-sops-age).
+  env:
+    - name: SOPS_AGE_KEY_FILE
+      value: /home/argocd/.config/sops/age/keys.txt
   initContainers:
     - name: install-ksops
       image: viaductoss/ksops:v4.3.2 # renovate: image=viaductoss/ksops
-      command: ["/bin/sh", "-c"]
-      args:
-        - echo "installing ksops"; mv ksops /custom-tools/; mv kustomize /custom-tools/;
+      command: ["/usr/local/bin/ksops", "install", "--with-kustomize", "/custom-tools"]
       volumeMounts:
         - mountPath: /custom-tools
           name: custom-tools
@@ -22,38 +25,17 @@ repoServer:
       emptyDir: {}
     - name: sops-age
       secret:
-        secretName: sops-age
+        secretName: argocd-sops-age # created by Terraform (infrastructure/tofu .../argocd.tf)
   volumeMounts:
-    - mountPath: /usr/local/bin/ksops
-      name: custom-tools
-      subPath: ksops
     - mountPath: /usr/local/bin/kustomize
       name: custom-tools
       subPath: kustomize
-    - mountPath: /home/argocd/.config/sops/age
+    - mountPath: /usr/local/bin/ksops
+      name: custom-tools
+      subPath: ksops
+    - mountPath: /home/argocd/.config/sops/age/keys.txt
       name: sops-age
-  env:
-    - name: SOPS_AGE_KEY_FILE
-      value: /home/argocd/.config/sops/age/keys.txt
-    - name: XDG_CONFIG_HOME
-      value: /home/argocd/.config
-  # config-management-plugin: kustomize-helm (used by ApplicationSet spec.source.plugin)
-  extraContainers:
-    - name: kustomize-helm
-      image: quay.io/argoproj/argocd:v2.13.2 # keep in sync with chart appVersion
-      command: [/var/run/argocd/argocd-cmp-server]
-      env:
-        - name: SOPS_AGE_KEY_FILE
-          value: /home/argocd/.config/sops/age/keys.txt
-      volumeMounts:
-        - mountPath: /home/argocd/cmp-server/plugins
-          name: plugins
-        - mountPath: /home/argocd/cmp-server/config/plugin.yaml
-          subPath: kustomize-helm.yaml
-          name: cmp-plugin
-        - mountPath: /home/argocd/.config/sops/age
-          name: sops-age
-  # plugin.yaml ConfigMap content lives in PRODUCTION-READINESS.md (repo-server CMP setup).
+      subPath: keys.txt
 dex:
   enabled: false
 applicationSet:

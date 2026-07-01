@@ -4,10 +4,12 @@ namespace: renovate
 # Self-hosted Renovate as a CronJob, scanning the Forgejo instance (platform: gitea).
 resources:
   - cronjob.yaml
-  - secret.sops.yaml
 configMapGenerator:
   - name: renovate-config
     files:
       - config.js
 generatorOptions:
   disableNameSuffixHash: true
+
+generators:
+  - ./secret-generator.yaml

@@ -14,7 +14,7 @@ build:
     for dir in apps/overlays/main/*/ infrastructure/base/*/; do
       [ -f "$dir/kustomization.yaml" ] || continue
       echo "== building $dir"
-      kustomize build --enable-helm "$dir" >/dev/null
+      kustomize build --enable-helm --enable-alpha-plugins --enable-exec "$dir" >/dev/null
     done
 
 # Lint YAML formatting.
@@ -27,7 +27,7 @@ test:
     set -euo pipefail
     for dir in apps/overlays/main/*/ infrastructure/base/*/; do
       [ -f "$dir/kustomization.yaml" ] || continue
-      kustomize build --enable-helm "$dir" | kubeconform -strict -ignore-missing-schemas -summary
+      kustomize build --enable-helm --enable-alpha-plugins --enable-exec "$dir" | kubeconform -strict -ignore-missing-schemas -summary
     done
 
 # Encrypt a single secret in place.

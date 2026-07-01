@@ -12,5 +12,7 @@ helmCharts:
 resources:
   - database.yaml
   - cache.yaml
-  - secret.sops.yaml
   - backup.yaml
+
+generators:
+  - ./secret-generator.yaml

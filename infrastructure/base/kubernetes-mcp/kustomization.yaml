@@ -5,4 +5,6 @@ resources:
   - workload.yaml
   - rbac.yaml
   - ingress.yaml
-  - secret.sops.yaml
+
+generators:
+  - ./secret-generator.yaml

@@ -10,5 +10,6 @@ helmCharts:
     releaseName: external-dns
     namespace: external-dns
     valuesFile: values.yaml
-resources:
-  - secret.sops.yaml
+
+generators:
+  - ./secret-generator.yaml

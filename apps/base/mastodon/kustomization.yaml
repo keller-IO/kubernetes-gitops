@@ -13,5 +13,7 @@ resources:
   - database.yaml
   - cache.yaml
   - objectbucket.yaml
-  - secret.sops.yaml
   - backup.yaml
+
+generators:
+  - ./secret-generator.yaml

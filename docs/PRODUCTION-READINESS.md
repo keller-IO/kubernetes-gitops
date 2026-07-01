@@ -48,27 +48,19 @@ kubeProxyReplacement: true
 **Offen:**
 - [ ] `repoURL` in `clusters/main/root-app.yaml`, `appset-infrastructure.yaml`,
       `appset-apps.yaml` auf echte Repo-URL setzen (aktuell `git.f4mily.net/keller.io/keller.io.git`).
-- [ ] ArgoCD einmalig installieren, dann `kubectl apply -f clusters/main/root-app.yaml`.
-- [ ] `kustomize-helm` Config-Management-Plugin (CMP) im repo-server registrieren
-      (plugin.yaml unten) — nötig, weil ApplicationSets `plugin.name: kustomize-helm` nutzen.
+- [ ] ArgoCD wird per Terraform installiert (`infrastructure/tofu .../argocd.tf`), das den
+      Bootstrap-Root-App deployt. `clusters/main/root-app.yaml` ist die manuelle Alternative.
 - [ ] Intra-Infra-Reihenfolge prüfen: CNI/CRDs/Operatoren vor Apps (sync-waves grob gesetzt,
       ggf. verfeinern: cilium → cert-manager/CRDs → operatoren → authentik/monitoring → apps).
 
-**Beispiel** — CMP `plugin.yaml` ConfigMap (im argocd-Namespace), referenziert von
-`infrastructure/base/argocd/values.yaml`:
-```yaml
-apiVersion: v1
-kind: ConfigMap
-metadata: { name: cmp-plugin, namespace: argocd }
-data:
-  kustomize-helm.yaml: |
-    apiVersion: argoproj.io/v1alpha1
-    kind: ConfigManagementPlugin
-    metadata: { name: kustomize-helm }
-    spec:
-      generate:
-        command: [sh, -c, "kustomize build --enable-helm . | ksops"]
-```
+**Secret-Handling (KEIN CMP-Plugin):** ArgoCD nutzt **nativen kustomize** mit
+`kustomize.buildOptions: --enable-helm --enable-alpha-plugins --enable-exec` und dem
+**KSOPS-Exec-Generator**. Jede Komponente mit Secret hat ein `secret-generator.yaml`
+(`kind: ksops`), das die zugehörige `*.sops.yaml` beim Build entschlüsselt. Der repo-server
+bekommt `ksops`+`kustomize` (Init-Container) und den age-Key (`argocd-sops-age`). Die
+AppSets nutzen **kein** `plugin:` mehr. Konfiguration muss mit Terraform `argocd.tf`
+übereinstimmen. Wichtig: `*.sops.yaml` müssen **verschlüsselt** sein, sonst schlägt der
+Build der App fehl (`sops metadata not found`).
 
 ---
 
