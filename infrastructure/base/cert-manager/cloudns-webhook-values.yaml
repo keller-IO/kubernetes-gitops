@@ -1,0 +1,21 @@
+# Values for the ClouDNS ACME DNS-01 webhook (chart: cert-manager-webhook-cloudns).
+# The webhook registers as an APIService under `groupName` and is referenced by the
+# ClusterIssuer solver (see cluster-issuer.sops.yaml).
+
+# MUST match the ClusterIssuer solver `groupName`.
+groupName: acme.jit.services
+
+# Use the externally managed, SOPS-encrypted secret from cluster-issuer.sops.yaml
+# instead of putting credentials into these values. Secret keys must be
+# `auth_id` and `auth_password`.
+secretName: cloudns-credentials
+
+clouDNS:
+  # 'sub-auth-id' (RECOMMENDED, zone-scoped sub API user) or 'auth-id' (master account).
+  # Must match the credential you put into the cloudns-credentials secret.
+  authIdType: sub-auth-id
+
+# The webhook impersonates the cert-manager ServiceAccount to read its solver config.
+certManager:
+  namespace: cert-manager
+  serviceAccountName: cert-manager

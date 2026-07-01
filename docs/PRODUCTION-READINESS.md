@@ -1,14 +1,14 @@
 # Production Readiness — Offene Schritte bis zum Go-Live
 
 Status: **Blaupausen-Phase.** Alle Manifeste sind funktionsbereite Vorlagen mit
-Platzhaltern (`CHANGE ME`, `REPLACE_ME`, Domain `*.jit.platzhalter`). Dieses Dokument
+Platzhaltern (`CHANGE ME`, `REPLACE_ME`, Domain `*.jit.services`). Dieses Dokument
 listet pro Bereich, was noch zu erledigen ist, **welche Dateien** betroffen sind und
 gibt **je Section ein Beispiel**.
 
 Konventionen:
 - `CHANGE ME`  → nicht-geheimer Platzhalter (Domain, StorageClass, ID).
 - `REPLACE_ME` → Geheimnis. Nur in `*.sops.yaml`, **vor Commit verschlüsseln**.
-- Suche global: `grep -rn "CHANGE ME\|REPLACE_ME\|jit.platzhalter" .`
+- Suche global: `grep -rn "CHANGE ME\|REPLACE_ME\|jit.services" .`
 
 Schnellstart-Checkliste (Reihenfolge):
 1. [Bootstrap & Talos](#1-bootstrap--talos) → 2. [GitOps / ArgoCD](#2-gitops--argocd) →
@@ -145,9 +145,16 @@ spec:
 
 **Dateien:** `infrastructure/base/cert-manager/*`, alle `cert-manager.io/cluster-issuer` Annotations
 
+DNS-01 läuft über **ClouDNS**. Da ClouDNS kein nativer cert-manager-Provider ist, wird der
+ACME-Webhook `cert-manager-webhook-cloudns` mitausgerollt (Chart in `kustomization.yaml`,
+Werte in `cloudns-webhook-values.yaml`).
+
 **Offen:**
-- [ ] DNS-Provider-Token in `cluster-issuer.sops.yaml` setzen + verschlüsseln (Beispiel Cloudflare;
-      Solver tauschen wenn anderer Provider).
+- [ ] ClouDNS-Credentials in `cluster-issuer.sops.yaml` setzen + verschlüsseln
+      (`auth_id`/`auth_password`). Empfohlen: zonen-beschränkter **sub-auth-id**-Nutzer.
+- [ ] `clouDNS.authIdType` in `cloudns-webhook-values.yaml` zum Credential passend setzen
+      (`sub-auth-id` oder `auth-id`).
+- [ ] `groupName` in Issuer **und** Webhook-Werten müssen identisch sein (`acme.jit.services`).
 - [ ] `email:` und `dnsZones:` auf echte Werte.
 - [ ] Optional Staging-Issuer für Testläufe (Let's-Encrypt-Ratelimits).
 
@@ -157,7 +164,7 @@ spec:
   acme:
     email: admin@DEINE-DOMAIN.tld
     solvers:
-      - dns01: { cloudflare: { apiTokenSecretRef: { name: acme-dns-token, key: api-token } } }
+      - dns01: { webhook: { groupName: acme.jit.services, solverName: cloudns } }
 ```
 
 ---

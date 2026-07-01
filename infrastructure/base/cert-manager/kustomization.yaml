@@ -8,5 +8,12 @@ helmCharts:
     releaseName: cert-manager
     namespace: cert-manager
     valuesFile: values.yaml
+  # ACME DNS-01 webhook for ClouDNS (not a native cert-manager provider).
+  - name: cert-manager-webhook-cloudns
+    repo: https://schich.tel/helm-charts
+    version: 1.2.0 # renovate: helm
+    releaseName: cert-manager-webhook-cloudns
+    namespace: cert-manager
+    valuesFile: cloudns-webhook-values.yaml
 resources:
   - cluster-issuer.sops.yaml

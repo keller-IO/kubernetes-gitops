@@ -30,7 +30,7 @@ Der gesamte Cluster-Zustand ist in diesem Repository beschrieben — Änderungen
 ausschließlich über Git-Commits, nicht per `kubectl edit`.
 
 > **Hinweis — Blaupausen-Phase:** Alle Manifeste sind funktionsbereite Vorlagen mit
-> Platzhaltern (`*.jit.platzhalter`, `CHANGE ME`, `REPLACE_ME`). Was bis zum
+> Platzhaltern (`*.jit.services`, `CHANGE ME`, `REPLACE_ME`). Was bis zum
 > Produktivbetrieb noch fehlt, steht in [`docs/PRODUCTION-READINESS.md`](docs/PRODUCTION-READINESS.md).
 
 ---

@@ -112,7 +112,7 @@ Betroffen u.a.: `infrastructure/base/authentik/secret.sops.yaml`,
 
 - [ ] Domain global ersetzen (vorher Diff reviewen!):
       ```bash
-      grep -rl jit.platzhalter . | xargs sed -i 's/jit.platzhalter/DEINE-DOMAIN.tld/g'
+      grep -rl jit.services . | xargs sed -i 's/jit.services/DEINE-DOMAIN.tld/g'
       ```
 - [ ] LoadBalancer-IP-Quelle: Cilium LB-IPAM **oder** MetalLB-Pool.
 - [ ] Cilium `k8sServiceHost/Port` auf KubePrism (127.0.0.1:7445), `kubeProxyReplacement: true`.
@@ -194,7 +194,7 @@ Betroffen u.a.: `infrastructure/base/authentik/secret.sops.yaml`,
 - [ ] Grafana-Admin-Passwort aus SOPS statt Klartext.
 - [ ] **Alertmanager-Receiver** konfigurieren (aktuell `"null"`).
 - [ ] S3-Buckets (`cnpg-<app>`, `mariadb-<app>`) anlegen, `<app>-backup-s3`-Secrets füllen,
-      `endpointURL` (`s3.jit.platzhalter`) auf reale RGW-URL.
+      `endpointURL` (`s3.jit.services`) auf reale RGW-URL.
 - [ ] PVC-Daten-Backup (Ceph-Snapshots/Velero) — DB-Backup deckt nur die DB.
 - [ ] **Restore einmal testen** und Runbook hier in `docs/runbooks/` ablegen.
 

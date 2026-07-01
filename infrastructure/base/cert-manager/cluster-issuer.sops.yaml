@@ -1,14 +1,20 @@
 # ENCRYPT BEFORE COMMIT:  sops --encrypt --in-place cluster-issuer.sops.yaml
 # Only the Secret's stringData is encrypted (see .sops.yaml encrypted_regex).
-# Example uses Let's Encrypt + DNS-01 (Cloudflare). Swap solver for your DNS provider.
+# DNS-01 via ClouDNS. ClouDNS is NOT a native cert-manager provider, so an ACME
+# webhook solver is used (chart wired up in kustomization.yaml + cloudns-webhook-values.yaml).
 apiVersion: v1
 kind: Secret
 metadata:
-  name: acme-dns-token
+  name: cloudns-credentials
   namespace: cert-manager
 type: Opaque
 stringData:
-  api-token: REPLACE_WITH_DNS_PROVIDER_TOKEN
+  # ClouDNS API credentials, consumed by the cert-manager-webhook-cloudns pod
+  # (referenced via `secretName` in cloudns-webhook-values.yaml). Keys are fixed.
+  # RECOMMENDED: use a zone-scoped *sub* API user (sub-auth-id), not the master
+  # account — set `clouDNS.authIdType: sub-auth-id` in the webhook values to match.
+  auth_id: "REPLACE_WITH_CLOUDNS_SUB_AUTH_ID" # CHANGE ME (numeric sub-auth-id, or full auth-id)
+  auth_password: "REPLACE_WITH_CLOUDNS_AUTH_PASSWORD" # CHANGE ME
 ---
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
@@ -22,10 +28,10 @@ spec:
       name: letsencrypt-prod-account
     solvers:
       - dns01:
-          cloudflare:
-            apiTokenSecretRef:
-              name: acme-dns-token
-              key: api-token
+          webhook:
+            # groupName MUST match `groupName` in cloudns-webhook-values.yaml.
+            groupName: acme.jit.services
+            solverName: cloudns
         selector:
           dnsZones:
             - jit.services # CHANGE ME
