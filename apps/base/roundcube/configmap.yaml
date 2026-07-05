@@ -1,0 +1,52 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: roundcube-config
+  namespace: roundcube
+data:
+  roundcube.php: |
+    <?php
+    $config['product_name'] = 'J.I.T. - Mail';
+    $config['useragent'] = 'Roundcube Webmail';
+    $config['support_url'] = 'http://www.jit-creatives.de';
+    $config['max_recipients'] = 250;
+    $config['draft_autosave'] = 30;
+    $config['imap_delimiter'] = '/';
+    $config['x_frame_options'] = false;
+    $config['zipdownload_selection'] = true;
+    $config['enable_spellcheck'] = true;
+
+    $config['virtuser_query_dsn'] = getenv('ROUNDCUBE_VIRTUSER_QUERY_DSN') ?: null;
+    $config['virtuser_query'] = [
+      'email' => 'SELECT IF(domain IN (\'jit.email\',\'jitmail.de\'),(SELECT email FROM jitmgmt.auth_user WHERE username = \'%u\'),acc.user) AS email, IF(domain IN (\'jit.email\',\'jitmail.de\'),(SELECT CONCAT(first_name, \' \', last_name) FROM jitmgmt.auth_user WHERE username = \'%u\'),\' \') AS name FROM mail.accounts acc WHERE acc.user = \'%u\'',
+    ];
+
+  managesieve.php: |
+    <?php
+    $config['managesieve_host'] = 'tls://mail.jitcreatives.de';
+    $config['managesieve_script_name'] = 'roundcube';
+    $config['managesieve_mbox_encoding'] = 'UTF-8';
+    $config['managesieve_replace_delimiter'] = '';
+    $config['managesieve_vacation_addresses_init'] = true;
+    $config['managesieve_raw_editor'] = true;
+
+  password.php: |
+    <?php
+    $config['password_driver'] = 'sql';
+    $config['password_confirm_current'] = false;
+    $config['password_minimum_length'] = 8;
+    $config['password_require_nonalpha'] = false;
+    $config['password_log'] = true;
+    $config['password_db_dsn'] = getenv('ROUNDCUBE_PASSWORD_DB_DSN') ?: null;
+    $config['password_query'] = 'UPDATE accounts SET pwd_new=SHA2(%p,512) WHERE user=IF(domain IN ("jit.email","jitmail.de"),REPLACE(%u,"_","@"),REPLACE(%u,"@","_"))';
+    $config['password_dovecotpw_method'] = 'CRAM-MD5';
+    $config['password_hash_algorithm'] = 'sha1';
+    $config['password_hash_base64'] = false;
+
+  fetchmail.php: |
+    <?php
+    $config['fetchmail_db_dsn'] = null;
+    $config['fetchmail_limit'] = 10;
+    $config['fetchmail_folder'] = false;
+    $config['fetchmail_mda'] = '';
+    $config['fetchmail_check_server'] = false;

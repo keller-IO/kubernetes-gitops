@@ -1,5 +1,20 @@
 # Replace the age public key with yours: age-keygen -y < ~/.config/sops/age/keys.txt
 creation_rules:
-  - path_regex: .*\.sops\.ya?ml$
-    encrypted_regex: "^(data|stringData)$"
-    age: age1rmm7srdkne4js7edykzgk39ltvamkps0y88xe4mxkx7gz7rmf3eqvvg4u5
+    - path_regex: .*\.sops\.ya?ml$
+      encrypted_regex: ^(data|stringData)$
+      age: age1rmm7srdkne4js7edykzgk39ltvamkps0y88xe4mxkx7gz7rmf3eqvvg4u5
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBXRFVGZkl1R0RMZ0ZaVDRs
+            R3Z6MDIvcm1OQWdSQlpNQlFuT0dBV0tYeXc4Ck12RHBEVmpLcXhuWlZHZnk2S3lW
+            RjVVb09lNks2RCs1Y1JKRzVWcHg2MGMKLS0tIEdGYUx3MUdTTFpTSmYrUFNmVEE5
+            YUtZSmlRaXhZQUZKNHhmWEpJSHlZQncKAavcgerrPZfCLYXcf3AJf5Lay+T48bYc
+            9C7eiDi8Kw1y4DBqtJbIfI6jtbI/F4+O7lczHlOT1YHAHIEfUxPK1Q==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1rmm7srdkne4js7edykzgk39ltvamkps0y88xe4mxkx7gz7rmf3eqvvg4u5
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-07-05T18:06:20Z"
+    mac: ENC[AES256_GCM,data:n2fphGirMGmdZSQEqRefdm5VqevHHJ41Q310gPPV9ZSUFfdoCxfv4aUJaJg1Zp9fUZpZz3Rj4/j/uZZKqw56BWOudwmzRizNL1Eb3Y6Qxh9PDN58FnzyeZC7kfSjDYG0E8xE0pQ5r0VOg7ABTqcy6VKeIWuAccBM1W/XlLuNigA=,iv:wmCUDOwHrwCjLTZApti/jXuLTGEIyJ21GVxO+F5ojB4=,tag:B6c4NHcoSvDUHJ6ZpVuWfQ==,type:str]
+    version: 3.13.1

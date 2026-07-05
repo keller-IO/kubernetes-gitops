@@ -21,28 +21,46 @@ spec:
               value: pgsql
             - name: ROUNDCUBEMAIL_DB_HOST
               value: roundcube-pg-rw
+            - name: ROUNDCUBEMAIL_DB_PORT
+              value: "5432"
             - name: ROUNDCUBEMAIL_DB_NAME
               value: roundcube
             - name: ROUNDCUBEMAIL_DB_USER
               valueFrom: { secretKeyRef: { name: roundcube-db-app, key: username } }
             - name: ROUNDCUBEMAIL_DB_PASSWORD
               valueFrom: { secretKeyRef: { name: roundcube-db-app, key: password } }
-            # EXTERNAL mail backend — point these at your real IMAP/SMTP host:
             - name: ROUNDCUBEMAIL_DEFAULT_HOST
-              value: "ssl://mail.jit.services" # CHANGE ME (IMAP)
+              value: "tls://mail.jit-creatives.de"
             - name: ROUNDCUBEMAIL_DEFAULT_PORT
-              value: "993"
+              value: "143"
             - name: ROUNDCUBEMAIL_SMTP_SERVER
-              value: "tls://mail.jit.services" # CHANGE ME (SMTP)
+              value: "tls://mail.jit-creatives.de"
             - name: ROUNDCUBEMAIL_SMTP_PORT
               value: "587"
             - name: ROUNDCUBEMAIL_PLUGINS
-              value: "archive,zipdownload,managesieve"
+              value: "managesieve,virtuser_query,acl,password,archive,additional_message_headers,fetchmail,zipdownload,contextmenu"
+            - name: ROUNDCUBEMAIL_COMPOSER_PLUGINS
+              value: "johndoh/contextmenu:3.3.1,pf4public/fetchmail:1.0.13"
+            - name: ROUNDCUBEMAIL_SKIN
+              value: elastic
             - name: ROUNDCUBEMAIL_UPLOAD_MAX_FILESIZE
               value: "25M"
+            - name: ROUNDCUBEMAIL_DES_KEY
+              valueFrom: { secretKeyRef: { name: roundcube-legacy-app, key: des_key } }
+            - name: ROUNDCUBE_VIRTUSER_QUERY_DSN
+              valueFrom: { secretKeyRef: { name: roundcube-legacy-app, key: virtuser_query_dsn } }
+            - name: ROUNDCUBE_PASSWORD_DB_DSN
+              valueFrom: { secretKeyRef: { name: roundcube-legacy-app, key: password_db_dsn } }
+          volumeMounts:
+            - name: roundcube-config
+              mountPath: /var/roundcube/config
           resources:
             requests: { cpu: 50m, memory: 128Mi }
             limits: { memory: 256Mi }
+      volumes:
+        - name: roundcube-config
+          configMap:
+            name: roundcube-config
 ---
 apiVersion: v1
 kind: Service

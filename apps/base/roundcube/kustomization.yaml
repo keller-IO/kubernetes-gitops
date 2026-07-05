@@ -3,6 +3,7 @@ kind: Kustomization
 namespace: roundcube
 # Webmail frontend only. Points at an EXTERNAL IMAP/SMTP server (no mailserver in-cluster).
 resources:
+  - configmap.yaml
   - database.yaml
   - cache.yaml
   - workload.yaml
