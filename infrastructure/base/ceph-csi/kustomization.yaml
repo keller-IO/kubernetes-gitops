@@ -1,0 +1,16 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: ceph-csi
+# ceph-csi (RBD) gegen das externe PVE-Ceph (fsid 74747628-…, Mons cloud64/65/67).
+# CephFS-Treiber folgt separat, sobald client.kubernetes mds/cephfs-Caps hat.
+helmCharts:
+  - name: ceph-csi-rbd
+    repo: https://ceph.github.io/csi-charts
+    version: 3.17.0 # renovate: helm
+    releaseName: ceph-csi-rbd
+    namespace: ceph-csi
+    valuesFile: values-rbd.yaml
+    includeCRDs: true
+
+generators:
+  - ./secret-generator.yaml

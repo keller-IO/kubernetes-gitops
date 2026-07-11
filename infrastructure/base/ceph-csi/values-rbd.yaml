@@ -1,0 +1,17 @@
+# Externes PVE-Ceph (squid). Werte aus `ceph mon dump` auf cloud61 (11.07.2026).
+csiConfig:
+  - clusterID: "74747628-63a3-440d-a3f6-f4681660b858"
+    monitors:
+      - "192.168.2.7:6789" # mon.cloud64
+      - "192.168.2.5:6789" # mon.cloud67
+      - "192.168.2.4:6789" # mon.cloud65
+
+provisioner:
+  replicaCount: 1 # Homelab; auf 2 erhöhen, wenn HA gewünscht
+
+# StorageClass + Secret verwalten wir selbst:
+# SC in infrastructure/base/storage/storageclasses.yaml, Secret via SOPS (secret.sops.yaml).
+storageClass:
+  create: false
+secret:
+  create: false
