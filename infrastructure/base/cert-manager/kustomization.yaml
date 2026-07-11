@@ -16,5 +16,8 @@ helmCharts:
     namespace: cert-manager
     valuesFile: cloudns-webhook-values.yaml
 
+resources:
+  - cloudns-webhook-authentication-rbac.yaml
+
 generators:
   - ./secret-generator.yaml

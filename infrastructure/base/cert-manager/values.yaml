@@ -1,5 +1,8 @@
 crds:
   enabled: true
+global:
+  leaderElection:
+    namespace: cert-manager
 replicaCount: 1
 prometheus:
   enabled: true
