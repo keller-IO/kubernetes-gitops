@@ -44,7 +44,9 @@ spec:
             requests: { cpu: 100m, memory: 256Mi }
             limits: { memory: 512Mi }
           volumeMounts:
-            - { name: data, mountPath: /opt/kimai/var/data }
+            - { name: data, mountPath: /opt/kimai/var/data, subPath: data }
+            # Plugins (z. B. ImportBundle) überleben Image-Updates auf der PVC.
+            - { name: data, mountPath: /opt/kimai/var/plugins, subPath: plugins }
       volumes:
         - name: data
           persistentVolumeClaim:
