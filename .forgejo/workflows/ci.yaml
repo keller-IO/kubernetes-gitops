@@ -28,7 +28,7 @@ jobs:
           fail=0
           while IFS= read -r f; do
             grep -q "sops:" "$f" || { echo "UNENCRYPTED: $f"; fail=1; }
-          done < <(find . -name '*.sops.yaml')
+          done < <(find . -name '*.sops.yaml' -not -name '.sops.yaml')
           exit $fail
 
       - name: kustomize build + kubeconform

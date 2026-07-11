@@ -26,9 +26,18 @@ cgroup:
   autoMount:
     enabled: false
   hostRoot: /sys/fs/cgroup
-# k8sServiceHost/Port MUST be set on Talos (no kube-proxy). CHANGE ME to the API VIP.
-k8sServiceHost: 127.0.0.1 # CHANGE ME (Talos: localhost:7445 via KubePrism, or control-plane VIP)
+# k8sServiceHost/Port MUST be set on Talos (no kube-proxy).
+k8sServiceHost: 127.0.0.1 # KubePrism — in der Talos machineconfig verifiziert (features.kubePrism, Port 7445)
 k8sServicePort: 7445
+# LB-IPAM/L2: LoadBalancer-IPs aus lb-ipam.yaml per ARP announcen (statt MetalLB).
+l2announcements:
+  enabled: true
+# L2-Leases erzeugen deutlich mehr API-Traffic — Limits anheben (Cilium-Doku-Empfehlung).
+k8sClientRateLimit:
+  qps: 20
+  burst: 40
+# Agenten bei ConfigMap-Änderungen rollend neu starten, sonst greift neue Config nie.
+rollOutCiliumPods: true
 hubble:
   relay:
     enabled: true

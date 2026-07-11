@@ -56,7 +56,7 @@ jobs:
         run: |
           while IFS= read -r f; do
             grep -q "sops:" "$f" || echo "::warning file=$f::$f is not SOPS-encrypted"
-          done < <(find . -name '*.sops.yaml')
+          done < <(find . -name '*.sops.yaml' -not -name '.sops.yaml')
 
   # Static security scan of the rendered manifests (misconfig) + repo (secrets).
   # Reports findings; does NOT fail the build yet — add `--exit-code 1` to enforce.

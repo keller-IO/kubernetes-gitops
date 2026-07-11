@@ -45,7 +45,7 @@ secrets-check:
     fail=0
     while IFS= read -r f; do
       if ! grep -q "sops:" "$f"; then echo "UNENCRYPTED: $f"; fail=1; fi
-    done < <(find . -name '*.sops.yaml')
+    done < <(find . -name '*.sops.yaml' -not -name '.sops.yaml')
     exit $fail
 
 fmt:

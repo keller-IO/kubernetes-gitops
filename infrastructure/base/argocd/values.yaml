@@ -15,7 +15,7 @@ repoServer:
       value: /home/argocd/.config/sops/age/keys.txt
   initContainers:
     - name: install-ksops
-      image: viaductoss/ksops:v4.3.2 # renovate: image=viaductoss/ksops
+      image: viaductoss/ksops:v4.5.1 # renovate: image=viaductoss/ksops
       command: ["/usr/local/bin/ksops", "install", "--with-kustomize", "/custom-tools"]
       volumeMounts:
         - mountPath: /custom-tools
