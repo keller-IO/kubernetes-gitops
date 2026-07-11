@@ -4,4 +4,4 @@ creation_rules:
     # diese Konfigdatei selbst und `sops -e -i .sops.yaml` zerstört sie.
     - path_regex: (^|/)[^/]+\.sops\.ya?ml$
       encrypted_regex: ^(data|stringData)$
-      age: age1rmm7srdkne4js7edykzgk39ltvamkps0y88xe4mxkx7gz7rmf3eqvvg4u5
+      age: age17x04ga87qyu9lzcuja9k83z90veew9cez7jusul4y5xyr09xaejs9rq755

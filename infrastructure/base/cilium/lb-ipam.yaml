@@ -1,14 +1,15 @@
 # LB-IPAM + L2-Announcements: vergibt LoadBalancer-IPs aus einem statischen Block
 # und announced sie per ARP im LAN (kein MetalLB nötig).
-# 192.168.2.240-249 liegt AUSSERHALB des dnsmasq-DHCP-Pools (192.168.2.60-190,
-# dnsmasq auf 192.168.2.10) und kollidiert mit keiner statischen Reservierung.
+# 192.168.2.246-249: außerhalb des dnsmasq-DHCP-Pools (60-190, dnsmasq auf .10),
+# keine Reservierung, im Ping-Sweep frei. NICHT .240-.245 — dort leben Geräte
+# (IP-Konflikt am 11.07. zwang zum Cluster-Shutdown).
 apiVersion: cilium.io/v2alpha1
 kind: CiliumLoadBalancerIPPool
 metadata:
   name: default-pool
 spec:
   blocks:
-    - start: 192.168.2.240
+    - start: 192.168.2.246
       stop: 192.168.2.249
 ---
 apiVersion: cilium.io/v2alpha1
