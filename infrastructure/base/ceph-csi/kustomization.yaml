@@ -12,5 +12,8 @@ helmCharts:
     valuesFile: values-rbd.yaml
     includeCRDs: true
 
+resources:
+  - namespace.yaml
+
 generators:
   - ./secret-generator.yaml

@@ -1,0 +1,8 @@
+# CSI-Treiber brauchen hostPath/privileged — Talos' PSA-Default (baseline)
+# blockiert das. Namespace daher explizit auf privileged setzen.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ceph-csi
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
