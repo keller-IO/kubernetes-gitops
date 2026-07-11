@@ -5,4 +5,7 @@ kind: Kustomization
 # If your existing Ceph already ships these classes, delete the duplicates and keep names aligned.
 resources:
   - storageclasses.yaml
-  - objectbucket-example.yaml
+  # objectbucket-example.yaml braucht die objectbucket.io-CRD (Rook/lib-bucket-
+  # provisioner) — ohne sie blockiert der Beispiel-OBC den GESAMTEN storage-Sync
+  # inkl. StorageClasses. Wieder aktivieren, sobald ein Bucket-Provisioner läuft.
+  # - objectbucket-example.yaml

@@ -1,5 +1,9 @@
 victoria-metrics-operator:
   enabled: true
+# monitoring.coreos.com-CRDs (PodMonitor/ServiceMonitor) — cnpg und mariadb-operator
+# rendern solche Ressourcen; ohne diese CRDs schlagen deren Syncs komplett fehl.
+prometheus-operator-crds:
+  enabled: true
 vmsingle:
   spec:
     retentionPeriod: "30d"

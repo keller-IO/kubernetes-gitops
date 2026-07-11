@@ -9,3 +9,4 @@ helmCharts:
     releaseName: cnpg
     namespace: cnpg-system
     valuesFile: values.yaml
+    includeCRDs: true
