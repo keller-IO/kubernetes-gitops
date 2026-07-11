@@ -1,0 +1,6 @@
+# Der App-Destination-Namespace heißt "cnpg" (Verzeichnisname im ApplicationSet),
+# die Manifeste liegen aber in cnpg-system — CreateNamespace=true greift dafür nicht.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cnpg-system

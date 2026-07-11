@@ -10,3 +10,5 @@ helmCharts:
     namespace: cnpg-system
     valuesFile: values.yaml
     includeCRDs: true
+resources:
+  - namespace.yaml

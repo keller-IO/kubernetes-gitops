@@ -16,3 +16,5 @@ helmCharts:
     releaseName: mariadb-operator
     namespace: mariadb-system
     valuesFile: values.yaml
+resources:
+  - namespace.yaml
