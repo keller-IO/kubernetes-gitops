@@ -15,7 +15,7 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install yamllint
         run: pipx install yamllint
       - name: yamllint
@@ -25,7 +25,7 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: azure/setup-helm@v4
 
@@ -35,6 +35,9 @@ jobs:
           curl -sSfL https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh | bash
           curl -sSfL https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz | tar xz
           sudo mv kustomize kubeconform /usr/local/bin/
+          # KSOPS-Stub: CI hat keinen age-Key, Secrets werden nicht gerendert.
+          printf '#!/bin/sh\nexit 0\n' | sudo tee /usr/local/bin/ksops >/dev/null
+          sudo chmod +x /usr/local/bin/ksops
 
       - name: kustomize build + kubeconform
         run: |
@@ -42,7 +45,7 @@ jobs:
           for dir in apps/overlays/main/*/ infrastructure/base/*/; do
             [ -f "$dir/kustomization.yaml" ] || continue
             echo "== $dir"
-            kustomize build --enable-helm "$dir" \
+            kustomize build --enable-helm --enable-alpha-plugins --enable-exec "$dir" \
               | kubeconform -strict -ignore-missing-schemas -summary
           done
 
@@ -51,7 +54,7 @@ jobs:
   secrets-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Warn on unencrypted *.sops.yaml (non-blocking)
         run: |
           while IFS= read -r f; do
@@ -63,7 +66,7 @@ jobs:
   security:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: azure/setup-helm@v4
 
@@ -73,6 +76,9 @@ jobs:
           curl -sSfL https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh | bash
           sudo mv kustomize /usr/local/bin/
           curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin
+          # KSOPS-Stub: CI hat keinen age-Key, Secrets werden nicht gerendert.
+          printf '#!/bin/sh\nexit 0\n' | sudo tee /usr/local/bin/ksops >/dev/null
+          sudo chmod +x /usr/local/bin/ksops
 
       - name: Render manifests
         run: |
@@ -81,7 +87,7 @@ jobs:
           for dir in apps/overlays/main/*/ infrastructure/base/*/; do
             [ -f "$dir/kustomization.yaml" ] || continue
             name=$(echo "$dir" | tr '/' '_')
-            kustomize build --enable-helm "$dir" > "rendered/${name}.yaml"
+            kustomize build --enable-helm --enable-alpha-plugins --enable-exec "$dir" > "rendered/${name}.yaml"
           done
 
       - name: Trivy misconfiguration scan
