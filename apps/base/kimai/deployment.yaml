@@ -9,6 +9,7 @@ spec:
   replicas: 1
   strategy:
     type: Recreate # RWO-PVC: RollingUpdate verklemmt, wenn alter+neuer Pod auf verschiedenen Nodes landen
+    rollingUpdate: null # Altwert im Live-Objekt muss beim Apply explizit gelöscht werden
   selector:
     matchLabels:
       app.kubernetes.io/name: kimai

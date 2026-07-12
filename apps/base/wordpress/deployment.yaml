@@ -12,6 +12,7 @@ spec:
   replicas: 1
   strategy:
     type: Recreate # RWO-PVC: RollingUpdate verklemmt bei Node-Wechsel
+    rollingUpdate: null # Altwert im Live-Objekt muss beim Apply explizit gelöscht werden
   selector:
     matchLabels:
       app.kubernetes.io/name: wordpress
