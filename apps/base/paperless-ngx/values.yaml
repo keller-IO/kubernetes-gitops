@@ -10,7 +10,7 @@ env:
   PAPERLESS_TIME_ZONE: Europe/Berlin
   # OCR-Einstellungen wie im Alt-System auf 192.168.2.15
   PAPERLESS_OCR_LANGUAGE: deu+eng
-  PAPERLESS_OCR_LANGUAGES: deu+eng
+  PAPERLESS_OCR_LANGUAGES: deu # Paket-Liste (Leerzeichen-Format), eng ist im Image enthalten
   PAPERLESS_OCR_MODE: skip
   PAPERLESS_OCR_CLEAN: clean
   PAPERLESS_OCR_ROTATE_PAGES: "true"
