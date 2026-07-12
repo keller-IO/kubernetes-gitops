@@ -1,0 +1,80 @@
+# Offizielles WordPress-Image (Projekt-Image, kein Bitnami — deren freier
+# Katalog ist eingefroren, Images nicht mehr ziehbar). Das komplette
+# /var/www/html liegt auf der PVC (wie im Alt-Setup auf 192.168.2.15);
+# das Image kopiert den Core nur in ein LEERES Verzeichnis.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wordpress
+  labels:
+    app.kubernetes.io/name: wordpress
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate # RWO-PVC: RollingUpdate verklemmt bei Node-Wechsel
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: wordpress
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: wordpress
+    spec:
+      containers:
+        - name: wordpress
+          # renovate: image=wordpress
+          image: wordpress:7.0.1-php8.3-apache
+          ports:
+            - containerPort: 80
+          env:
+            - name: WORDPRESS_DB_HOST
+              value: wordpress-mariadb
+            - name: WORDPRESS_DB_USER
+              value: wordpress
+            - name: WORDPRESS_DB_NAME
+              value: wordpress
+            - name: WORDPRESS_DB_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: wordpress-db, key: mariadb-password }
+            - name: WORDPRESS_SMTP_HOST
+              value: mail.jitcreatives.de
+            - name: WORDPRESS_SMTP_PORT
+              value: "25"
+          readinessProbe:
+            httpGet: { path: /wp-login.php, port: 80 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket: { port: 80 }
+            initialDelaySeconds: 30
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { memory: 768Mi }
+          volumeMounts:
+            - { name: wordpress, mountPath: /var/www/html }
+      volumes:
+        - name: wordpress
+          persistentVolumeClaim:
+            claimName: wordpress
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: wordpress
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: ceph-rbd
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wordpress
+spec:
+  selector:
+    app.kubernetes.io/name: wordpress
+  ports:
+    - port: 80
+      targetPort: 80

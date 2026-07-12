@@ -1,36 +1,26 @@
-# ENCRYPT BEFORE COMMIT:  sops --encrypt --in-place cluster-issuer.sops.yaml
-# Only the Secret's stringData is encrypted (see .sops.yaml encrypted_regex).
-# DNS-01 via ClouDNS. ClouDNS is NOT a native cert-manager provider, so an ACME
-# webhook solver is used (chart wired up in kustomization.yaml + cloudns-webhook-values.yaml).
 apiVersion: v1
 kind: Secret
 metadata:
     name: cloudns-credentials
     namespace: cert-manager
-type: Opaque
 stringData:
-    #ENC[AES256_GCM,data:jRkuVmDMcbldK72G3D5IwRU68L7as7LrJG2yv3olEi9mmLg4/AIYw/NaYzZHrDB59nubAmxtqZLyOUZkMoxLxGhcJJnLUZhyjX4=,iv:dYA88y8B82hShkuyyBqqgjIwG/9dwaXDublO9TxeGSQ=,tag:ZLaNRfjbNuRiyM2LQBki+g==,type:comment]
-    #ENC[AES256_GCM,data:5a7PZX22kHM88tPmNDRqAtZFTFfrlEW9l3zllQaoF6Q1kZHNmzsMccYwAq1c6YfrPFzg8duL11I6anHev4YoGgSFy7Lw6OV0MdRXscBk,iv:movdyUNRrAD4KaoYxfpgwDMjfq8KuuaHYZun/5ZBAq8=,tag:LiM9+xLJvjWDkFPgRM8+MA==,type:comment]
-    #ENC[AES256_GCM,data:boLbTrPvNEMdG8R71wEjhcdwzPHqee2KhfrR0ENHzVrRLFHYQASUct11bvnXTDmHqejyEKX4pEwukvQhf565zLQRmQ0vJxALxZg2/A==,iv:ANc1wN0B1LXtqxZLKZRa+bCdz2JCTy7o8APblC+Oybw=,tag:k5PuYHQzpvnajb33XycHiA==,type:comment]
-    #ENC[AES256_GCM,data:lO1P8jUtmhUMJ297mtAx8DoEkiYjQsUbjxAP1qbtikHIbYihuBnrKnaCLUdVLri4dEfH/9zN4kdwxgZjXgFBnqVGC3blp331DsuRILyg/4p4QA==,iv:btrQOVrrBgh3JXV72dCsO4ATFUMmnd3LzzKCM68pYCw=,tag:w5Uzh9Zr9swbsE/H0Jdfug==,type:comment]
-    #ENC[AES256_GCM,data:fcNXbhPm9Duojssj853r1JCF4VrtsfD8AfWi5U1dfYjg6ppVv/XoYTmgDwWPajBeBA==,iv:WS+iL6FXLfP3GVLdI7TDb1gLSceuGUvjJ1BZQa6Bx3s=,tag:R85WWjwth5GO4I9e4nMPAw==,type:comment]
-    auth_id: ENC[AES256_GCM,data:9ZSHAlc=,iv:WmaMJtmcBTCy6uiWLg3q+sNpan3/WUWvTNmL0ui/+X8=,tag:Z4c/SqRefWUnBsCvMkuWQA==,type:str]
-    #ENC[AES256_GCM,data:laRIf8xPR+8YZQ==,iv:9hC6lfYqxauYzFq4uvtPWtABYskimRZEcyHPIOVUWOA=,tag:8Kj5/qSMKEqNrKwtmYIdvw==,type:comment]
-    auth_password: ENC[AES256_GCM,data:39Dvfhdp439sNXPS,iv:Pn64WZgbKo2BdN2/Q1WKaSrAacY0zynSqBygAtY4VVQ=,tag:nt0XR8wxG62U9F2EYJBZ5A==,type:str]
+    auth_id: ENC[AES256_GCM,data:zyfN2IA=,iv:vAw9N7CfpfFTCi9w9L6u5Tl6fg81fymPO7yHLR66YqE=,tag:NXakkKFeCXIj62SfFqWIJw==,type:str]
+    auth_password: ENC[AES256_GCM,data:zs/91DqZHOStzMvb,iv:PxKvMR9AQBMNTYG/RF4fb1MbwqDAhHw4LQpQ8WKmVSU=,tag:9wRDCx3uHafHy8yr4z2vNg==,type:str]
+type: Opaque
 sops:
     age:
         - enc: |
             -----BEGIN AGE ENCRYPTED FILE-----
-            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSAzZ2VGMjRhd0RTQmpWd1Vv
-            c1hDaWxKemhUSHJmUFM1WGswcEVnRzU5czBrCjgrVmdaVk0yR1BOa1JleHIvbUln
-            QWlPdjMrdmd1UkxwZDByb0RhZWhSNTAKLS0tIFZXVlY3akJFanlZZkdzYkVCL0NH
-            VXpWd05CTzYySXBrbHN1QVl0aEh6U1kK5mSYTFhaHUWO0c++1KcsjD209coZeLYz
-            XQZXFSxEYVTN/ArDfRPkiq4zksCx3Z+gBgCVwzpXz91GqtbAK9kUMA==
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBCVEw2NURpMER4ZVlWRjFy
+            TWhQNnRMTkkvYmhZVWJ6aERuTWNTWm5VeHprCkNkV2RFZ2x4cHdRaDhSaitudWJ4
+            M1BqOW5DSFk4ZWJrL05DbFlhcFpkUnMKLS0tIE1zc0VkclMzM1lWUDN5MUZDNGRy
+            YVM5bmluSEVmZlNhY2EvdUtOWTlqL00K2H+8PuEjuW+eDVWM4z/x14kie+/R/Zyi
+            AjUmRglnlWKC3WKpa4ZAY76zJ9f+f/2EzrCblFtNckBoeRkk2d5tUQ==
             -----END AGE ENCRYPTED FILE-----
           recipient: age17x04ga87qyu9lzcuja9k83z90veew9cez7jusul4y5xyr09xaejs9rq755
     encrypted_regex: ^(data|stringData)$
-    lastmodified: "2026-07-11T16:16:36Z"
-    mac: ENC[AES256_GCM,data:nMonqahRomwCY8EXP8ioY/FWKmvBcKcu2S5hb3uKd1LFnWyveZZuSh/S7Eejwk7wYhsolOWYK86NCcw0XbOE5URlLyqRWn/YFzdr4jGnyoWM4wyRmHMNUOFL9ogN63bFEi2qTXHLiCfG8BCAs2y0irVkLUmw8QDYVeyA3StXmGk=,iv:u270+F2UwpBwPmXHie0QY4sLTxmhu3ty5o2CG4DjXBI=,tag:306s/fm51Zo7vxQXF201gQ==,type:str]
+    lastmodified: "2026-07-12T07:14:26Z"
+    mac: ENC[AES256_GCM,data:HfC0Z7ZK+fqah3utsUcTMmIy6pmAJ+iRZ1GOvuf9N2o6F19+7hB81dbVzrftlzkXeOodPodlkzpYr+rMXkkZputRJaDQnj/zkYfcsNy6JOupGKJ/TZM4m/ZPd0jGhVxh6Q01Fw4uu2agq9Qbd+RBiCTRXce2tE2wLABbUsljicw=,iv:Lx7hI4F0/EBx752DSMMduoxSh3el/N3viW0KCvU1sFE=,tag:XbOWvF1AoXiPFx35mt4m3w==,type:str]
     version: 3.13.1
 ---
 apiVersion: cert-manager.io/v1
@@ -39,31 +29,33 @@ metadata:
     name: letsencrypt-prod
 spec:
     acme:
-        server: https://acme-v02.api.letsencrypt.org/directory
-        email: admin@jit.services # CHANGE ME
+        email: admin@jit.services
         privateKeySecretRef:
             name: letsencrypt-prod-account
+        server: https://acme-v02.api.letsencrypt.org/directory
         solvers:
             - dns01:
                 webhook:
-                    # groupName MUST match `groupName` in cloudns-webhook-values.yaml.
                     groupName: acme.jit.services
                     solverName: cloudns
               selector:
                 dnsZones:
-                    - jit.services # CHANGE ME
+                    - jit.services
+            - http01:
+                ingress:
+                    ingressClassName: nginx
 sops:
     age:
         - enc: |
             -----BEGIN AGE ENCRYPTED FILE-----
-            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSAzZ2VGMjRhd0RTQmpWd1Vv
-            c1hDaWxKemhUSHJmUFM1WGswcEVnRzU5czBrCjgrVmdaVk0yR1BOa1JleHIvbUln
-            QWlPdjMrdmd1UkxwZDByb0RhZWhSNTAKLS0tIFZXVlY3akJFanlZZkdzYkVCL0NH
-            VXpWd05CTzYySXBrbHN1QVl0aEh6U1kK5mSYTFhaHUWO0c++1KcsjD209coZeLYz
-            XQZXFSxEYVTN/ArDfRPkiq4zksCx3Z+gBgCVwzpXz91GqtbAK9kUMA==
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBCVEw2NURpMER4ZVlWRjFy
+            TWhQNnRMTkkvYmhZVWJ6aERuTWNTWm5VeHprCkNkV2RFZ2x4cHdRaDhSaitudWJ4
+            M1BqOW5DSFk4ZWJrL05DbFlhcFpkUnMKLS0tIE1zc0VkclMzM1lWUDN5MUZDNGRy
+            YVM5bmluSEVmZlNhY2EvdUtOWTlqL00K2H+8PuEjuW+eDVWM4z/x14kie+/R/Zyi
+            AjUmRglnlWKC3WKpa4ZAY76zJ9f+f/2EzrCblFtNckBoeRkk2d5tUQ==
             -----END AGE ENCRYPTED FILE-----
           recipient: age17x04ga87qyu9lzcuja9k83z90veew9cez7jusul4y5xyr09xaejs9rq755
     encrypted_regex: ^(data|stringData)$
-    lastmodified: "2026-07-11T16:16:36Z"
-    mac: ENC[AES256_GCM,data:nMonqahRomwCY8EXP8ioY/FWKmvBcKcu2S5hb3uKd1LFnWyveZZuSh/S7Eejwk7wYhsolOWYK86NCcw0XbOE5URlLyqRWn/YFzdr4jGnyoWM4wyRmHMNUOFL9ogN63bFEi2qTXHLiCfG8BCAs2y0irVkLUmw8QDYVeyA3StXmGk=,iv:u270+F2UwpBwPmXHie0QY4sLTxmhu3ty5o2CG4DjXBI=,tag:306s/fm51Zo7vxQXF201gQ==,type:str]
+    lastmodified: "2026-07-12T07:14:26Z"
+    mac: ENC[AES256_GCM,data:HfC0Z7ZK+fqah3utsUcTMmIy6pmAJ+iRZ1GOvuf9N2o6F19+7hB81dbVzrftlzkXeOodPodlkzpYr+rMXkkZputRJaDQnj/zkYfcsNy6JOupGKJ/TZM4m/ZPd0jGhVxh6Q01Fw4uu2agq9Qbd+RBiCTRXce2tE2wLABbUsljicw=,iv:Lx7hI4F0/EBx752DSMMduoxSh3el/N3viW0KCvU1sFE=,tag:XbOWvF1AoXiPFx35mt4m3w==,type:str]
     version: 3.13.1

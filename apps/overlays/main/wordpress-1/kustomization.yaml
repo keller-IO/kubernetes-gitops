@@ -1,6 +1,9 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: wordpress-1
+# Instanz "jugend": Migration von 192.168.2.15 (/opt/containers/jugendbeauftragter).
+# TLS kommt via HTTP-01, sobald die Domain öffentlich auf den Cluster zeigt
+# (Zone liegt auf ns.jitcreatives.de, NICHT ClouDNS — kein DNS-01 möglich).
 resources:
   - ../../../base/wordpress
 patches:
@@ -8,7 +11,23 @@ patches:
     patch: |
       - op: replace
         path: /spec/rules/0/host
-        value: site1.jit.services
+        value: jugendbeauftragter-halbe.de
       - op: replace
         path: /spec/tls/0/hosts/0
-        value: site1.jit.services
+        value: jugendbeauftragter-halbe.de
+      - op: add
+        path: /spec/tls/0/hosts/-
+        value: www.jugendbeauftragter-halbe.de
+      - op: add
+        path: /spec/rules/-
+        value:
+          host: www.jugendbeauftragter-halbe.de
+          http:
+            paths:
+              - path: /
+                pathType: Prefix
+                backend:
+                  service:
+                    name: wordpress
+                    port:
+                      number: 80
