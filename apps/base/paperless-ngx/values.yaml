@@ -19,6 +19,10 @@ env:
 envFrom:
   - secretRef:
       name: paperless-secret
+# Bitnami-redis-Subchart des Charts abschalten (Images tot, wir nutzen die
+# eigene Valkey-Instanz aus cache.yaml — PAPERLESS_REDIS zeigt dorthin).
+redis:
+  enabled: false
 persistence:
   data:
     enabled: true
