@@ -22,7 +22,7 @@ ingress:
     cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.org/ssl-redirect: "false"
     nginx.org/redirect-to-https: "true"
-    nginx.org/websocket-services: collabora # WOPI/editor needs WebSocket
+    nginx.org/websocket-services: collabora-collabora-online # MUSS dem Service-Namen entsprechen, sonst verwirft NGINX den ganzen Ingress
   hosts:
     - host: office.jit.services # CHANGE ME
       paths:
