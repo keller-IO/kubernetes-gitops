@@ -1,8 +1,10 @@
 replicaCount: 1
 collabora:
-  # WOPI hosts allowed to embed the editor. Add your document app domains here.
+  # WOPI hosts allowed to embed the editor (aus dem Swarm-Setup übernommen:
+  # jit.cloud ist die Nextcloud, die Collabora einbindet).
   aliasgroups:
-    - host: "https://.*\\.jit\\.services" # CHANGE ME (regex of WOPI client hosts)
+    - host: "https://jit\\.cloud"
+    - host: "https://.*\\.jit\\.services"
   extra_params: --o:ssl.enable=false --o:ssl.termination=true
   # admin console credentials come from env (see existingSecret below)
 existingSecret:
