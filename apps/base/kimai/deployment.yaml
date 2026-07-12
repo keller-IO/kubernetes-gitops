@@ -22,14 +22,16 @@ spec:
           ports:
             - containerPort: 8001
           env:
+            # MARIADB_PASSWORD MUSS vor DATABASE_URL stehen: K8s expandiert
+            # $(VAR)-Referenzen nur auf zuvor definierte Variablen.
+            - name: MARIADB_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: kimai-secret, key: mariadb-password }
             - name: DATABASE_URL
               value: "mysql://kimai:$(MARIADB_PASSWORD)@kimai-mariadb:3306/kimai?charset=utf8mb4&serverVersion=11.4.0-MariaDB"
             - name: APP_SECRET
               valueFrom:
                 secretKeyRef: { name: kimai-secret, key: app-secret }
-            - name: MARIADB_PASSWORD
-              valueFrom:
-                secretKeyRef: { name: kimai-secret, key: mariadb-password }
             - name: REDIS_URL
               value: "redis://kimai-valkey:6379/0"
             - name: TRUSTED_HOSTS
@@ -40,6 +42,10 @@ spec:
             - name: ADMINPASS
               valueFrom:
                 secretKeyRef: { name: kimai-secret, key: admin-pass }
+          readinessProbe:
+            httpGet: { path: /, port: 8001 }
+            initialDelaySeconds: 15
+            periodSeconds: 10
           resources:
             requests: { cpu: 100m, memory: 256Mi }
             limits: { memory: 512Mi }
