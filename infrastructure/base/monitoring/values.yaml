@@ -21,10 +21,9 @@ alertmanager:
       receiver: "null"
     receivers:
       - name: "null"
+# Kein internes Grafana: das Haupt-Grafana (192.168.23.9) zieht VictoriaMetrics
+# als Prometheus-Datasource über https://metrics.jit.services (vmsingle-ingress.yaml).
 grafana:
-  enabled: true
-  ingress:
-    enabled: false # own Ingress in grafana-ingress.yaml
-  adminPassword: REPLACE_ME # CHANGE ME — better: reference a SOPS secret, see PRODUCTION-READINESS.md
+  enabled: false
 defaultDashboards:
-  enabled: true
+  enabled: false # ohne internes Grafana nutzlos — Dashboards im Haupt-Grafana importieren

@@ -1,0 +1,30 @@
+# VictoriaMetrics für das externe Haupt-Grafana (192.168.23.9) als
+# Prometheus-Datasource. BasicAuth über NGINX-Inc-Annotation; das
+# htpasswd liegt SOPS-verschlüsselt in secret.sops.yaml.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: vmsingle
+  namespace: monitoring
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.org/ssl-redirect: "false"
+    nginx.org/redirect-to-https: "true"
+    nginx.org/basic-auth-secret: vmsingle-basic-auth
+    nginx.org/basic-auth-realm: "VictoriaMetrics"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: [metrics.jit.services]
+      secretName: vmsingle-tls
+  rules:
+    - host: metrics.jit.services
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: vmsingle-vm-k8s-stack-victoria-metrics-k8s-stack
+                port:
+                  number: 8429

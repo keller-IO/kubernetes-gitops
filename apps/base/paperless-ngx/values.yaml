@@ -1,14 +1,19 @@
 image:
-  tag: 2.13.5 # renovate: image=ghcr.io/paperless-ngx/paperless-ngx
+  tag: 2.20.6 # renovate: image=ghcr.io/paperless-ngx/paperless-ngx — = Version des Alt-Systems (Migration)
 env:
-  PAPERLESS_URL: https://paperless.jit.services # CHANGE ME
+  PAPERLESS_URL: https://paperless.jit.services
   PAPERLESS_DBENGINE: postgresql
   PAPERLESS_DBHOST: paperless-pg-rw
   PAPERLESS_DBNAME: paperless
   PAPERLESS_DBUSER: paperless
   PAPERLESS_REDIS: redis://paperless-valkey:6379
   PAPERLESS_TIME_ZONE: Europe/Berlin
+  # OCR-Einstellungen wie im Alt-System auf 192.168.2.15
   PAPERLESS_OCR_LANGUAGE: deu+eng
+  PAPERLESS_OCR_LANGUAGES: deu+eng
+  PAPERLESS_OCR_MODE: skip
+  PAPERLESS_OCR_CLEAN: clean
+  PAPERLESS_OCR_ROTATE_PAGES: "true"
   # OIDC via django-allauth (matches authentik paperless-oauth blueprint)
   PAPERLESS_APPS: allauth.socialaccount.providers.openid_connect
 envFrom:
@@ -22,13 +27,15 @@ persistence:
     size: 5Gi
   media:
     enabled: true
-    storageClass: ceph-fs # CHANGE ME — shared docs on CephFS
-    accessMode: ReadWriteMany
+    # RWO statt CephFS/RWX: Single-Replica reicht; zurück auf ceph-fs/RWX,
+    # sobald der CephFS-Treiber deployt ist (client.kubernetes braucht mds-Caps).
+    storageClass: ceph-rbd
+    accessMode: ReadWriteOnce
     size: 20Gi
   consume:
     enabled: true
-    storageClass: ceph-fs # CHANGE ME
-    accessMode: ReadWriteMany
+    storageClass: ceph-rbd
+    accessMode: ReadWriteOnce
     size: 2Gi
   export:
     enabled: true
