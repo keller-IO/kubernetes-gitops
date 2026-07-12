@@ -13,7 +13,7 @@ resources:
   - database.yaml
   - cache.yaml
   - objectbucket.yaml
-  - backup.yaml
+  # - backup.yaml # deaktiviert bis externes S3-Ziel existiert (siehe database.yaml)
 
 generators:
   - ./secret-generator.yaml

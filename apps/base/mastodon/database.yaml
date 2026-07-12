@@ -14,17 +14,8 @@ spec:
       owner: mastodon
       secret:
         name: mastodon-db-app
-  # Continuous backup to Ceph S3 (base backup + WAL → PITR). Schedule in backup.yaml.
-  # TODO prod: in-tree barmanObjectStore deprecated in CNPG ≥1.26 → migrate to barman-cloud plugin.
-  backup:
-    retentionPolicy: "30d"
-    barmanObjectStore:
-      destinationPath: s3://cnpg-mastodon/ # CHANGE ME (bucket must exist)
-      endpointURL: https://s3.jit.services # CHANGE ME (Ceph RGW)
-      s3Credentials:
-        accessKeyId: { name: mastodon-backup-s3, key: ACCESS_KEY_ID }
-        secretAccessKey: { name: mastodon-backup-s3, key: SECRET_ACCESS_KEY }
-      wal: { compression: gzip }
-      data: { compression: gzip }
+  # Backup (barmanObjectStore) DEAKTIVIERT bis ein EXTERNES S3-Ziel existiert
+  # (nicht dasselbe Ceph!). Kaputtes Archive-Target = WAL-Stau = Disk voll
+  # (so fiel roundcube-pg am 12.07. aus). backup.yaml ebenfalls deaktiviert.
   monitoring:
     enablePodMonitor: true
