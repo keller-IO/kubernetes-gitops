@@ -1,14 +1,34 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: wordpress-2
+# Instanz "halbe": Migration von 192.168.2.15 (/opt/containers/gemeinsamfuerhalbe).
+# TLS terminiert während der Migration weiter am Traefik auf 192.168.2.15,
+# der HTTP an den K8s-Ingress (.246) weiterleitet — wie bei wordpress-1/kimai.
 resources:
   - ../../../base/wordpress
 patches:
   - target: { kind: Ingress }
     patch: |
+      - op: remove
+        path: /metadata/annotations/cert-manager.io~1cluster-issuer
+      - op: replace
+        path: /metadata/annotations/nginx.org~1redirect-to-https
+        value: "false"
+      - op: remove
+        path: /spec/tls
       - op: replace
         path: /spec/rules/0/host
-        value: site2.jit.services
-      - op: replace
-        path: /spec/tls/0/hosts/0
-        value: site2.jit.services
+        value: www.gemeinsam-fuer-halbe.de
+      - op: add
+        path: /spec/rules/-
+        value:
+          host: gemeinsam-fuer-halbe.de
+          http:
+            paths:
+              - path: /
+                pathType: Prefix
+                backend:
+                  service:
+                    name: wordpress
+                    port:
+                      number: 80
