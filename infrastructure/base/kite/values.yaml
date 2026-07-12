@@ -31,13 +31,17 @@ secret:
 
 config:
   enabled: true
+  # Login mit Super-User (Passwort aus kite-secrets), bis Authentik läuft.
+  superUser:
+    username: admin
+    password: ${KITE_SUPERUSER_PASSWORD}
   oauth:
     - name: authentik
       clientId: kite-client-id # CHANGE ME (must match Authentik blueprint)
       clientSecret: ${OAUTH_CLIENT_SECRET} # from kite-secrets
-      issuer: https://auth.jit.services/application/o/kite/ # CHANGE ME
+      issuer: https://auth.jit.services/application/o/kite/
       scopes: openid,profile,email
-      enabled: true
+      enabled: false # aktivieren, sobald Authentik läuft
 
 ingress:
   enabled: true

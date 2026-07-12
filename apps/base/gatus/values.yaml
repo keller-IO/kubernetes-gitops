@@ -15,32 +15,64 @@ ingress:
     nginx.org/ssl-redirect: "false"
     nginx.org/redirect-to-https: "true"
   hosts:
-    - status.jit.services # CHANGE ME
+    - status.jit.services
   tls:
     - secretName: gatus-tls
       hosts:
-        - status.jit.services # CHANGE ME
+        - status.jit.services
 
 config:
-  # Protect the dashboard with Authentik OIDC. Callback path is fixed by gatus.
-  security:
-    oidc:
-      issuer-url: https://auth.jit.services/application/o/gatus/ # CHANGE ME
-      redirect-url: https://status.jit.services/authorization-code/callback # CHANGE ME
-      client-id: gatus-client-id # CHANGE ME (must match Authentik blueprint)
-      client-secret: ${OIDC_CLIENT_SECRET} # from gatus-oidc secret
-      scopes: [openid, profile, email]
+  # OIDC DEAKTIVIERT bis Authentik läuft: Gatus macht beim Start die
+  # OIDC-Discovery gegen auth.jit.services und panict, wenn die fehlschlägt
+  # (so crashloopte gatus seit dem ersten Deploy). Block wieder einsetzen,
+  # sobald Authentik healthy ist:
+  # security:
+  #   oidc:
+  #     issuer-url: https://auth.jit.services/application/o/gatus/
+  #     redirect-url: https://status.jit.services/authorization-code/callback
+  #     client-id: gatus-client-id # muss zum Authentik-Blueprint passen
+  #     client-secret: ${OIDC_CLIENT_SECRET} # from gatus-oidc secret
+  #     scopes: [openid, profile, email]
   ui:
     title: Homelab Status
-  # Sample probes — replace with the real internal endpoints to watch.
   endpoints:
     - name: argocd
-      url: https://argocd.jit.services # CHANGE ME
+      group: intern (jit.services)
+      url: https://argocd.jit.services
       interval: 60s
-      conditions:
-        - "[STATUS] == 200"
-    - name: authentik
-      url: https://auth.jit.services # CHANGE ME
+      conditions: ["[STATUS] == 200"]
+    - name: webmail
+      group: intern (jit.services)
+      url: https://webmail.jit.services
       interval: 60s
-      conditions:
-        - "[STATUS] == 200"
+      conditions: ["[STATUS] == 200"]
+    - name: paperless
+      group: intern (jit.services)
+      url: https://paperless.jit.services
+      interval: 60s
+      conditions: ["[STATUS] == 302", "[STATUS] < 400"]
+    - name: phpmyadmin
+      group: intern (jit.services)
+      url: https://dbadmin.jit.services
+      interval: 60s
+      conditions: ["[STATUS] == 200"]
+    - name: collabora (WOPI)
+      group: intern (jit.services)
+      url: https://office.jit.services/hosting/discovery
+      interval: 60s
+      conditions: ["[STATUS] == 200"]
+    - name: victoriametrics
+      group: intern (jit.services)
+      url: https://metrics.jit.services/health
+      interval: 60s
+      conditions: ["[STATUS] == 401", "[STATUS] < 500"] # BasicAuth erwartet
+    - name: kimai
+      group: extern (via Legacy-Traefik)
+      url: https://kimai.savar.de
+      interval: 60s
+      conditions: ["[STATUS] < 400"]
+    - name: gemeinsam-fuer-halbe
+      group: extern (via Legacy-Traefik)
+      url: https://www.gemeinsam-fuer-halbe.de
+      interval: 60s
+      conditions: ["[STATUS] == 200"]
