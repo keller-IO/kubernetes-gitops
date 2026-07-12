@@ -46,7 +46,11 @@ spec:
               valueFrom:
                 secretKeyRef: { name: kimai-secret, key: admin-pass }
           readinessProbe:
-            httpGet: { path: /, port: 8001 }
+            httpGet:
+              path: /
+              port: 8001
+              httpHeaders: # Probe nutzt sonst die Pod-IP als Host -> 400 wegen TRUSTED_HOSTS
+                - { name: Host, value: localhost }
             initialDelaySeconds: 15
             periodSeconds: 10
           resources:
