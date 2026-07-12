@@ -7,6 +7,8 @@ metadata:
     app.kubernetes.io/name: kimai
 spec:
   replicas: 1
+  strategy:
+    type: Recreate # RWO-PVC: RollingUpdate verklemmt, wenn alter+neuer Pod auf verschiedenen Nodes landen
   selector:
     matchLabels:
       app.kubernetes.io/name: kimai
