@@ -30,6 +30,7 @@ spec:
       s3Credentials:
         accessKeyId: { name: mailman-backup-s3, key: ACCESS_KEY_ID }
         secretAccessKey: { name: mailman-backup-s3, key: SECRET_ACCESS_KEY }
+        region: { name: mailman-backup-s3, key: region } # Garage erzwingt Region-Match bei HeadBucket
       wal: { compression: gzip }
       data: { compression: gzip }
   monitoring:
