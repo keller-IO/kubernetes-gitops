@@ -3,3 +3,4 @@ kind: Kustomization
 namespace: roundcube
 resources:
   - ../../../base/roundcube
+  - jitmail-ingress.yaml
