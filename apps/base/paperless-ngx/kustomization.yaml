@@ -11,7 +11,7 @@ helmCharts:
 resources:
   - database.yaml
   - cache.yaml
-  # - backup.yaml # deaktiviert bis externes S3-Ziel existiert (siehe database.yaml)
+  - backup.yaml
 
 generators:
   - ./secret-generator.yaml

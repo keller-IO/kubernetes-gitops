@@ -14,8 +14,18 @@ spec:
       owner: roundcube
       secret:
         name: roundcube-db-app # basic-auth secret (username/password) — see secret.sops.yaml
-  # Backup (barmanObjectStore) DEAKTIVIERT bis ein EXTERNES S3-Ziel existiert
-  # (nicht dasselbe Ceph!). Kaputtes Archive-Target = WAL-Stau = Disk voll
-  # (so fiel roundcube-pg am 12.07. aus). backup.yaml ebenfalls deaktiviert.
+  # Kontinuierliches Backup nach Garage-S3 (192.168.23.21, Bucket backups).
+  # WICHTIG: erst reaktiviert, seit das externe S3 existiert (13.07.) — ein
+  # kaputtes Archive-Target würde WALs stauen bis die Disk voll ist.
+  backup:
+    retentionPolicy: "30d"
+    barmanObjectStore:
+      destinationPath: s3://backups/cnpg-roundcube/
+      endpointURL: http://192.168.23.21:3900
+      s3Credentials:
+        accessKeyId: { name: roundcube-backup-s3, key: ACCESS_KEY_ID }
+        secretAccessKey: { name: roundcube-backup-s3, key: SECRET_ACCESS_KEY }
+      wal: { compression: gzip }
+      data: { compression: gzip }
   monitoring:
     enablePodMonitor: true
