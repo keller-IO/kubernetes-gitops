@@ -56,8 +56,8 @@ spec:
             - name: SERVER_EMAIL
               value: postmaster@lists.jitmail.de
           resources:
-            requests: { cpu: 150m, memory: 256Mi }
-            limits: { memory: 768Mi }
+            requests: { cpu: 150m, memory: 512Mi }
+            limits: { memory: 1536Mi } # 768Mi war zu knapp -> OOMKilled beim Start (13.07.)
           volumeMounts:
             - name: core-data
               mountPath: /opt/mailman
@@ -136,8 +136,8 @@ spec:
             - name: UWSGI_STATIC_MAP
               value: /static=/opt/mailman-web-data/static
           resources:
-            requests: { cpu: 200m, memory: 384Mi }
-            limits: { memory: 1Gi }
+            requests: { cpu: 200m, memory: 512Mi }
+            limits: { memory: 1536Mi } # Django-Migrations/collectstatic spiken beim Start
           volumeMounts:
             - name: web-data
               mountPath: /opt/mailman-web-data
