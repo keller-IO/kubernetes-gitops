@@ -141,6 +141,10 @@ DNS-01 läuft über **ClouDNS**. Da ClouDNS kein nativer cert-manager-Provider i
 ACME-Webhook `cert-manager-webhook-cloudns` mitausgerollt (Chart in `kustomization.yaml`,
 Werte in `cloudns-webhook-values.yaml`).
 
+`savar.de` nutzt zusätzlich DNS-01 via RFC2136/TSIG gegen `dns01.jit-creatives.de`.
+Das Secret liegt in `infrastructure/base/cert-manager/rfc2136-tsig.sops.yaml`; der
+Solver ist im `letsencrypt-prod`-ClusterIssuer auf `dnsZones: [savar.de]` begrenzt.
+
 **Offen:**
 - [ ] ClouDNS-Credentials in `cluster-issuer.sops.yaml` setzen + verschlüsseln
       (`auth_id`/`auth_password`). Empfohlen: zonen-beschränkter **sub-auth-id**-Nutzer.
