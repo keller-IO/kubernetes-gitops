@@ -17,6 +17,11 @@ spec:
           image: roundcube/roundcubemail:1.6.9-apache
           ports: [{ containerPort: 80 }]
           env:
+            # Ohne dies deaktiviert Composer (läuft als root) den roundcube/
+            # plugin-installer -> composer-Plugins (fetchmail, contextmenu)
+            # landen in vendor/, aber nie in plugins/ -> "Failed to load plugin".
+            - name: COMPOSER_ALLOW_SUPERUSER
+              value: "1"
             - name: ROUNDCUBEMAIL_DB_TYPE
               value: pgsql
             - name: ROUNDCUBEMAIL_DB_HOST
