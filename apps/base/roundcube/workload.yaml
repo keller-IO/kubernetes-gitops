@@ -38,7 +38,7 @@ spec:
             - name: ROUNDCUBEMAIL_SMTP_PORT
               value: "587"
             - name: ROUNDCUBEMAIL_PLUGINS
-              value: "managesieve,virtuser_query,acl,password,archive,additional_message_headers,fetchmail,zipdownload,contextmenu"
+              value: "managesieve,virtuser_query,acl,password,archive,additional_message_headers,fetchmail,zipdownload,contextmenu,showpassword"
             - name: ROUNDCUBEMAIL_COMPOSER_PLUGINS
               value: "johndoh/contextmenu:3.3.1,pf4public/fetchmail:1.0.13"
             - name: ROUNDCUBEMAIL_SKIN
@@ -54,6 +54,11 @@ spec:
           volumeMounts:
             - name: roundcube-config
               mountPath: /var/roundcube/config
+            # J.I.T.-Anpassungen aus dem Swarm (roundcube-customizations CM):
+            - { name: roundcube-custom, mountPath: /var/www/html/plugins/showpassword/showpassword.php, subPath: showpassword.php }
+            - { name: roundcube-custom, mountPath: /var/www/html/plugins/showpassword/init.js, subPath: init.js }
+            - { name: roundcube-custom, mountPath: /var/www/html/plugins/showpassword/style.css, subPath: style.css }
+            - { name: roundcube-custom, mountPath: /var/www/html/skins/jit-logo.png, subPath: jit-logo.png }
           resources:
             requests: { cpu: 50m, memory: 128Mi }
             limits: { memory: 256Mi }
@@ -61,6 +66,9 @@ spec:
         - name: roundcube-config
           configMap:
             name: roundcube-config
+        - name: roundcube-custom
+          configMap:
+            name: roundcube-customizations
 ---
 apiVersion: v1
 kind: Service

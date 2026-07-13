@@ -7,6 +7,7 @@ data:
   roundcube.php: |
     <?php
     $config['product_name'] = 'J.I.T. - Mail';
+    $config['skin_logo'] = 'skins/jit-logo.png'; // J.I.T.-Logo (customizations-CM)
     $config['useragent'] = 'Roundcube Webmail';
     $config['support_url'] = 'http://www.jit-creatives.de';
     $config['max_recipients'] = 250;
