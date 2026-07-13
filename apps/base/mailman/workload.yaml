@@ -149,11 +149,15 @@ spec:
             httpGet:
               path: /
               port: http
+              httpHeaders: # kube-probe sendet sonst die Pod-IP als Host -> Django 400 (ALLOWED_HOSTS)
+                - { name: Host, value: localhost }
             initialDelaySeconds: 30
           livenessProbe:
             httpGet:
               path: /
               port: http
+              httpHeaders:
+                - { name: Host, value: localhost }
             initialDelaySeconds: 90
       volumes:
         - name: web-data
