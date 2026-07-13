@@ -31,8 +31,12 @@ spec:
               value: postgres
             - name: DATABASE_CLASS
               value: mailman.database.postgresql.PostgreSQLDatabase
+            # LMTP/REST an alle Interfaces binden. NICHT den Service-Namen nehmen:
+            # der löst in k8s auf die (nicht bindbare) ClusterIP auf -> core crasht
+            # mit "could not bind on 8024". Erreichbarkeit läuft über die Services
+            # (mailman-core:8001 REST, mailman-lmtp:8024 LoadBalancer).
             - name: MM_HOSTNAME
-              value: mailman-core
+              value: 0.0.0.0
             - name: MAILMAN_REST_PORT
               value: "8001"
             - name: MAILMAN_REST_USER
