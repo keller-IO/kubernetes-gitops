@@ -31,17 +31,18 @@ secret:
 
 config:
   enabled: true
-  # Login mit Super-User (Passwort aus kite-secrets), bis Authentik läuft.
+  # Login mit Super-User (Passwort aus kite-secrets), bis der Keycloak-Client
+  # im Realm bgt existiert und das OAuth-Secret passt.
   superUser:
     username: admin
     password: ${KITE_SUPERUSER_PASSWORD}
   oauth:
-    - name: authentik
-      clientId: kite-client-id # CHANGE ME (must match Authentik blueprint)
+    - name: keycloak
+      clientId: kite
       clientSecret: ${OAUTH_CLIENT_SECRET} # from kite-secrets
-      issuer: https://auth.jit.services/application/o/kite/
+      issuer: https://auth.savar.de/realms/bgt
       scopes: openid,profile,email
-      enabled: false # aktivieren, sobald Authentik läuft
+      enabled: false # aktivieren, sobald Keycloak-Client und Secret passen
 
 ingress:
   enabled: true

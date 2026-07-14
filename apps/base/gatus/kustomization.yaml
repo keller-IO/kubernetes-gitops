@@ -1,7 +1,7 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: gatus
-# Service health dashboard. UI gated behind Authentik OIDC (see values.yaml).
+# Service health dashboard. Optional Keycloak OIDC is configured in values.yaml.
 helmCharts:
   - name: gatus
     repo: https://twin.github.io/helm-charts

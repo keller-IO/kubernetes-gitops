@@ -14,7 +14,8 @@ env:
   PAPERLESS_OCR_MODE: skip
   PAPERLESS_OCR_CLEAN: clean
   PAPERLESS_OCR_ROTATE_PAGES: "true"
-  # OIDC via django-allauth (matches authentik paperless-oauth blueprint)
+  # OIDC via django-allauth. Provider JSON lives in paperless-secret and must
+  # match the Keycloak client in Realm bgt before login is enabled.
   PAPERLESS_APPS: allauth.socialaccount.providers.openid_connect
 envFrom:
   - secretRef:

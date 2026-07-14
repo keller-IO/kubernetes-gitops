@@ -69,7 +69,7 @@ Git push ──▶ ArgoCD (root-app) ──▶ ApplicationSets ──▶ Kustomi
 | Pfad | Inhalt |
 |------|--------|
 | `clusters/main/` | ArgoCD-Einstiegspunkte: `root-app.yaml`, `projects.yaml`, ApplicationSets für Infrastruktur und Apps |
-| `infrastructure/base/` | Plattform-Services (CNI, Ingress, Operatoren, Authentik, Monitoring) als Kustomize-Bases mit Helm-Inflation |
+| `infrastructure/base/` | Plattform-Services (CNI, Ingress, Operatoren, Monitoring) als Kustomize-Bases mit Helm-Inflation; Authentik ist nur noch Legacy-Migrationsbestand |
 | `infrastructure/overlays/main/` | Cluster-spezifische Patches der Infrastruktur |
 | `apps/base/` | Anwendungs-Blaupausen (je App: Workload, Datenbank, Cache, Backup, Secret-Vorlage) |
 | `apps/overlays/main/` | Cluster-spezifische Patches (Hostnamen etc.) — von der ApplicationSet automatisch ausgerollt |
@@ -93,7 +93,7 @@ Diese Dienste bilden das Fundament des Clusters und liegen unter `infrastructure
 | **Cilium** | CNI / Netzwerk-Layer (eBPF-basiertes Pod-Networking & Policies) |
 | **NGINX Ingress** | Ingress-Controller — externer HTTP(S)-Zugang zu den Anwendungen |
 | **cert-manager** | Automatische TLS-Zertifikate (Let's Encrypt via DNS-01) |
-| **Authentik** | Identity-Provider / OIDC — Single Sign-On, mit Blueprints pro App |
+| **Keycloak (extern)** | Identity-Provider / OIDC — bestehender Realm `bgt` unter `auth.savar.de` |
 | **CloudNativePG (CNPG)** | PostgreSQL-Operator inkl. Backups (Barman → S3) |
 | **mariadb-operator** | MySQL/MariaDB-Operator (z. B. für WordPress) |
 | **Valkey** | Redis-kompatibler Cache — eine kleine, eigenständige Instanz pro App (`apps/base/*/cache.yaml`) |

@@ -22,15 +22,14 @@ ingress:
         - status.jit.services
 
 config:
-  # OIDC DEAKTIVIERT bis Authentik läuft: Gatus macht beim Start die
-  # OIDC-Discovery gegen auth.jit.services und panict, wenn die fehlschlägt
-  # (so crashloopte gatus seit dem ersten Deploy). Block wieder einsetzen,
-  # sobald Authentik healthy ist:
+  # OIDC DEAKTIVIERT bis der Keycloak-Client im Realm bgt existiert und das
+  # Secret passt: Gatus macht beim Start OIDC-Discovery und panict, wenn die
+  # fehlschlägt. Block erst nach Client-/Secret-Abgleich wieder einsetzen.
   # security:
   #   oidc:
-  #     issuer-url: https://auth.jit.services/application/o/gatus/
+  #     issuer-url: https://auth.savar.de/realms/bgt
   #     redirect-url: https://status.jit.services/authorization-code/callback
-  #     client-id: gatus-client-id # muss zum Authentik-Blueprint passen
+  #     client-id: gatus
   #     client-secret: ${OIDC_CLIENT_SECRET} # from gatus-oidc secret
   #     scopes: [openid, profile, email]
   ui:

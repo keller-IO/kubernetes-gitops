@@ -99,8 +99,7 @@ grep -rn --exclude-dir=.git --exclude-dir=.terraform --exclude-dir=charts \
       find . -name '*.sops.yaml'
       ```
 
-Betroffen u.a.: `infrastructure/base/authentik/secret.sops.yaml`,
-`infrastructure/base/cert-manager/cluster-issuer.sops.yaml`,
+Betroffen u.a.: `infrastructure/base/cert-manager/cluster-issuer.sops.yaml`,
 `apps/base/{kimai,roundcube,paperless-ngx,forgejo,mastodon,wordpress,gatus,kite,collabora,renovate}/secret.sops.yaml`.
 
 ---
@@ -175,14 +174,15 @@ Betroffen u.a.: `infrastructure/base/authentik/secret.sops.yaml`,
 
 ---
 
-## 8. Identity / OIDC (Authentik)
+## 8. Identity / OIDC (External Keycloak)
 
-**Dateien:** `infrastructure/base/authentik/*`, `.../blueprints/*`
+**Dateien:** App-spezifische `values.yaml` und `secret.sops.yaml`; externer Keycloak auf `auth.savar.de`, Realm `bgt`
 
-- [ ] `authentik-secret` (SECRET_KEY, Bootstrap-Creds) füllen.
-- [ ] Pro App `client_id`/`client_secret` in Blueprint **und** App-Secret identisch.
-- [ ] `redirect_uris` auf reale Domain.
-- [ ] Login + ein OIDC-Flow (z.B. forgejo) manuell testen.
+- [ ] Keycloak-Client pro App im Realm `bgt` anlegen.
+- [ ] Redirect-URIs auf reale App-Domain setzen.
+- [ ] `client_id`/`client_secret` in Keycloak und SOPS-App-Secret abgleichen.
+- [ ] App-OIDC aktivieren.
+- [ ] Login + ein OIDC-Flow (z.B. Paperless) manuell testen.
 
 ---
 

@@ -10,7 +10,7 @@ You are **Senior Kubernetes System Architect** and **GitOps Automation Engineer*
 - **GitOps Controller**: ArgoCD (app‑of‑apps + ApplicationSets). No Flux.
 - **Ingress**: NGINX Ingress Controller + Cilium CNI.
 - **Secrets**: SOPS + age (KSOPS in ArgoCD repo‑server).
-- **Identity**: Authentik (OIDC).
+- **Identity**: External Keycloak (OIDC), Realm `bgt` at `https://auth.savar.de/realms/bgt`.
 - **Storage**: Ceph.
 
 ## Repository Layout
@@ -28,7 +28,7 @@ You are **Senior Kubernetes System Architect** and **GitOps Automation Engineer*
 - **Database Strategy**: Postgres via CNPG operator; MariaDB via mariadb-operator. Dedicated CRs per app in `apps/base/<app>/database.yaml`.
 - **Ingress**: Use `nginx.org/*` annotations. Hosts in `cluster-config.yaml`.
 - **Backup**: Daily to Ceph S3 via operator-native backup CRs.
-- **OIDC**: Authentik blueprints pro app. Follow "OIDC Blueprint Onboarding" below.
+- **OIDC**: Use external Keycloak clients and app SOPS secrets. Do not add new Authentik blueprints unless the architecture decision changes again.
 
 ## Work Guidance
 - Follow Root AGENTS.md for global rules (Caveman, Commit, DOX).
@@ -38,7 +38,7 @@ You are **Senior Kubernetes System Architect** and **GitOps Automation Engineer*
   3. Add `database.yaml`, `cache.yaml`, `backup.yaml`, `secret.sops.yaml`.
   4. Create overlay in `apps/overlays/main/`.
   5. Update `docs/PRODUCTION-READINESS.md` (mandatory).
-- **OIDC Onboarding**: Ask user first. Create blueprint in `infrastructure/base/authentik/blueprints/`. Search icon on `dashboardicons.com`.
+- **OIDC Onboarding**: Ask user first. Create or confirm a Keycloak client in Realm `bgt`, set app redirect URIs, then store client secrets in the app `secret.sops.yaml`. Enable app OIDC only after a client/secret match is confirmed.
 
 ## Operational Learnings
 - Check `docs/learnings/` before complex changes. 

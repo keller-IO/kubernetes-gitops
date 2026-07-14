@@ -15,7 +15,7 @@ Schnellstart-Checkliste (Reihenfolge):
 3. [Secrets](#3-secrets-sops--age) → 4. [Netzwerk/Ingress/DNS](#4-netzwerk-ingress--dns) →
 5. [Storage](#5-storage-ceph) → 6. [TLS](#6-tls--cert-manager) →
 7. [Datenbanken](#7-datenbanken) → 8. [Cache](#8-cache-valkey) →
-9. [Identity/OIDC](#9-identity--oidc-authentik) → 10. [Observability](#10-observability--alerting) →
+9. [Identity/OIDC](#9-identity--oidc-external-keycloak) → 10. [Observability](#10-observability--alerting) →
 11. [Backup/DR](#11-backup--disaster-recovery) → 12. [CI & Renovate](#12-ci--renovate) →
 13. [Mail](#13-mail-extern) → 14. [Pro-App-TODOs](#14-pro-app-todos).
 
@@ -51,7 +51,7 @@ kubeProxyReplacement: true
 - [ ] ArgoCD wird per Terraform installiert (`infrastructure/tofu .../argocd.tf`), das den
       Bootstrap-Root-App deployt. `clusters/main/root-app.yaml` ist die manuelle Alternative.
 - [ ] Intra-Infra-Reihenfolge prüfen: CNI/CRDs/Operatoren vor Apps (sync-waves grob gesetzt,
-      ggf. verfeinern: cilium → cert-manager/CRDs → operatoren → authentik/monitoring → apps).
+      ggf. verfeinern: cilium → cert-manager/CRDs → operatoren → monitoring → apps).
 
 **Secret-Handling (KEIN CMP-Plugin):** ArgoCD nutzt **nativen kustomize** mit
 `kustomize.buildOptions: --enable-helm --enable-alpha-plugins --enable-exec` und dem
@@ -167,7 +167,7 @@ spec:
 
 ## 7. Datenbanken
 
-**Postgres (CNPG):** `infrastructure/base/cnpg/`, `apps/base/{roundcube,paperless-ngx,forgejo,mastodon,mailman}/database.yaml`, `infrastructure/base/authentik/postgres.yaml`
+**Postgres (CNPG):** `infrastructure/base/cnpg/`, `apps/base/{roundcube,paperless-ngx,forgejo,mastodon,mailman}/database.yaml`; legacy Authentik, if still deployed, uses `infrastructure/base/authentik/postgres.yaml`
 **MariaDB (Operator):** `infrastructure/base/mariadb-operator/`, `apps/base/{kimai,wordpress}/database.yaml`
 
 **Offen:**
@@ -219,24 +219,20 @@ spec: { serviceName: forgejo-valkey, replicas: 1, ... } # + Service forgejo-valk
 
 ---
 
-## 9. Identity / OIDC (Authentik)
+## 9. Identity / OIDC (External Keycloak)
 
-**Dateien:** `infrastructure/base/authentik/*`, `infrastructure/base/authentik/blueprints/*`
+**Dateien:** App-spezifische `values.yaml` und `secret.sops.yaml`; externer Keycloak auf `auth.savar.de`, Realm `bgt`
 
 **Offen:**
-- [ ] `authentik-secret` füllen (SECRET_KEY, Bootstrap-Credentials) + verschlüsseln.
-- [ ] CNPG-Owner-Secret für Authentik-DB angleichen (siehe Hinweis in `postgres.yaml`).
-- [ ] Pro App `client_id`/`client_secret` in Blueprint **und** App-Secret identisch setzen.
-- [ ] redirect_uris an reale Domain anpassen; Flows/Scopes prüfen.
-- [ ] Weitere Apps (kimai web-login, roundcube, mastodon, wordpress) nach AGENTS.md-Checkliste onboarden.
+- [ ] Keycloak auf Zielversion aktualisieren und Custom SPI passend bauen.
+- [ ] Binärgewitter-Theme im Realm `bgt` aktivieren.
+- [ ] Pro App Keycloak-Client mit korrekter Redirect-URI anlegen.
+- [ ] Pro App `client_id`/`client_secret` im SOPS-Secret identisch zum Keycloak-Client setzen.
+- [ ] OIDC pro App erst nach Client-/Secret-Abgleich aktivieren und Login testen.
 
-**Beispiel** — Blueprint-Provider (`infrastructure/base/authentik/blueprints/forgejo-oauth.yaml`):
-```yaml
-- model: authentik_providers_oauth2.oauth2provider
-  attrs:
-    client_id: forgejo-client-id
-    client_secret: <gleich wie in forgejo-secret>
-    redirect_uris: [{ matching_mode: strict, url: https://git.DEINE-DOMAIN.tld/user/oauth2/authentik/callback }]
+**Issuer:**
+```text
+https://auth.savar.de/realms/bgt
 ```
 
 ---
@@ -279,7 +275,7 @@ alertmanager:
 
 **Verdrahtet (Blaupause):** DB-Backups sind in den Manifesten aktiv — täglich 02:00 nach Ceph S3,
 30 Tage Retention.
-- **CNPG** (roundcube, paperless, forgejo, mastodon, mailman, authentik): `backup.barmanObjectStore` im
+- **CNPG** (roundcube, paperless, forgejo, mastodon, mailman): `backup.barmanObjectStore` im
   jeweiligen `database.yaml` (bzw. `postgres.yaml`) + `ScheduledBackup` in `backup.yaml`.
   Continuous WAL + base → PITR.
 - **MariaDB** (kimai, wordpress): `Backup` CR in `apps/base/<app>/backup.yaml` (logischer Dump).
@@ -287,7 +283,7 @@ alertmanager:
 - **Keine DB**: Icecast ist zustandsarm; Backup betrifft nur die GitOps-Konfiguration und externe
   Stream-Quellen/Clients.
 
-**Dateien:** `apps/base/*/backup.yaml`, `apps/base/*/database.yaml`, `infrastructure/base/authentik/{postgres,backup}.yaml`,
+**Dateien:** `apps/base/*/backup.yaml`, `apps/base/*/database.yaml`,
 `apps/base/*/secret.sops.yaml`, `infrastructure/overlays/main/` (DR-Overlay, anzulegen)
 
 **Offen:**
@@ -348,7 +344,7 @@ module.exports = { platform: 'gitea', endpoint: 'https://git.DEINE-DOMAIN.tld/ap
 
 **Offen:**
 - [ ] Externen IMAP/SMTP-Host in roundcube setzen (`ROUNDCUBEMAIL_DEFAULT_HOST`/`SMTP_SERVER`).
-- [ ] SMTP-Credentials für Mastodon (`mastodon-smtp`) + Paperless/Authentik (falls Mailversand).
+- [ ] SMTP-Credentials für Mastodon (`mastodon-smtp`) + Paperless (falls Mailversand).
 - [ ] Mailman: externes MTA/Gateway so konfigurieren, dass Listendomains an
       `mailman-core.mailman.svc.cluster.local:8024` (LMTP) geroutet werden; ausgehend nutzt Mailman
       `SMTP_HOST`/`SMTP_PORT` aus `workload.yaml`.
@@ -380,11 +376,11 @@ Jede App liegt unter `apps/base/<app>/` (Basis) + `apps/overlays/main/<app>/` (C
 | **renovate** | `apps/base/renovate/` | Forgejo-Token; `autodiscover` vs. feste Repo-Liste; Schedule abstimmen. |
 | **wordpress-1/2/3** | `apps/base/wordpress/` + `apps/overlays/main/wordpress-{1,2,3}/` | Pro Instanz Secret + Host (in Overlay gepatcht); „Redis Object Cache"-Plugin installieren; `mariadb.enabled:false` + externalDatabase final schalten. |
 | **mastodon** | `apps/base/mastodon/` | Chart migriert auf offizielles `mastodon/helm-charts` (0.5.1). Secret `mastodon-secret` (`secret-key-base`/VAPID/`are-*` Active-Record-Encryption-Keys) generieren; `mastodon-redis`-Passwort setzen (Valkey `requirepass`); S3 (OBC) verdrahten; SMTP; Streaming-WebSocket testen; ggf. Elasticsearch. ArgoCD: `mastodon.hooks` (dbPrepare/dbMigrate Helm-Hooks) für GitOps-Sync prüfen. |
-| **gatus** | `apps/base/gatus/` | `gatus-oidc`-Secret füllen (== Blueprint-`client_secret`); `issuer-url`/`redirect-url`/`client-id` auf reale Domain; echte `endpoints` statt Samples eintragen. |
-| **kite** | `apps/base/kite/` | `kite-secrets` füllen (`JWT_SECRET`/`KITE_ENCRYPT_KEY` via `openssl rand -hex 32`, `OAUTH_CLIENT_SECRET` == Blueprint); `issuer`/`clientId` setzen; RBAC-Rollen-Mapping für OIDC-User; PVC-StorageClass prüfen. |
+| **gatus** | `apps/base/gatus/` | `gatus-oidc`-Secret mit Keycloak-Client-Secret füllen; `issuer-url`/`redirect-url`/`client-id` auf reale Domain; echte `endpoints` statt Samples eintragen. |
+| **kite** | `apps/base/kite/` | `kite-secrets` füllen (`JWT_SECRET`/`KITE_ENCRYPT_KEY` via `openssl rand -hex 32`, `OAUTH_CLIENT_SECRET` == Keycloak-Client-Secret); `issuer`/`clientId` setzen; RBAC-Rollen-Mapping für OIDC-User; PVC-StorageClass prüfen. |
 | **mailman** | `apps/base/mailman/` | Secrets füllen (`HYPERKITTY_API_KEY`, `SECRET_KEY`, REST-Passwort, `MAILMAN_ADMIN_EMAIL`, `SMTP_HOST_USER`); externes MTA auf LMTP-Service routen; CNPG-Bucket `cnpg-mailman`/S3-Creds anlegen; PVC- und DB-Größen prüfen; erste Admin-Initialisierung testen. |
 | **icecast** | `apps/base/icecast/` | Source/Admin/Relay-Passwörter setzen; Source-Clients auf HTTPS-URL und Source-Passwort umstellen; Listener-Limit und Ingress-Timeouts nach Stream-Profil prüfen. |
-| **phpmyadmin** | `apps/base/phpmyadmin/` | Legacy-Domains `phpmyadmin.savar.de`/`phpmyadmin.jit-creatives.de` sind im Overlay ergänzt; TLS endet dort am Legacy-Traefik. Zugriff absichern (Authentik Forward-Auth oder IP-Allowlist); nur dedizierte DB-User statt Root verwenden; Default-DB-Host `kimai-mariadb.kimai.svc.cluster.local` prüfen; weitere Ziele als FQDN eintragen. |
+| **phpmyadmin** | `apps/base/phpmyadmin/` | Legacy-Domains `phpmyadmin.savar.de`/`phpmyadmin.jit-creatives.de` sind im Overlay ergänzt; TLS endet dort am Legacy-Traefik. Zugriff absichern (IP-Allowlist oder separater Auth-Proxy); nur dedizierte DB-User statt Root verwenden; Default-DB-Host `kimai-mariadb.kimai.svc.cluster.local` prüfen; weitere Ziele als FQDN eintragen. |
 
 **Beispiel** — neue App hinzufügen (Kurzform, Details in AGENTS.md):
 ```
