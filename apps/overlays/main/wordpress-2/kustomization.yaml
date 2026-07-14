@@ -32,3 +32,8 @@ patches:
                     name: wordpress
                     port:
                       number: 80
+  - target: { kind: Backup, name: wordpress-mariadb }
+    patch: |
+      - op: replace
+        path: /spec/storage/s3/prefix
+        value: mariadb-wordpress-2
