@@ -115,10 +115,102 @@ Ablauf:
 > Voraussetzung: der Restore-Cluster braucht dieselbe Postgres-Major-Version wie
 > das Backup (`imageName`), sonst verweigert CNPG den Recovery.
 
+---
+
+# MariaDB-Backup & Restore (mariadb-operator → Garage-S3)
+
+Für die MariaDB-Apps (**kimai**, **wordpress-1/2/3**) gibt es kein barman —
+stattdessen der native `Backup`-CRD des mariadb-operators (logischer
+`mariadb-dump`, geplant).
+
+```
+MariaDB (kimai-mariadb, wordpress-mariadb ×3)
+  └─ Backup-CR (schedule 0 2 * * *)  ──►  s3://backups/mariadb-<app>/  @ Garage
+```
+
+- **Prefixe:** `mariadb-kimai`, `mariadb-wordpress-1`, `-2`, `-3`. Bei WordPress
+  wird der Prefix PRO Instanz im Overlay gepatcht (`apps/overlays/main/wordpress-N/`),
+  sonst schreiben alle drei in denselben Ordner.
+- **Format:** `backup.<timestamp>.gzip.sql` (ein logischer Dump je Lauf).
+- **Retention:** 30 Tage (`maxRetention: 720h`). **Zeitplan:** täglich 02:00.
+- **Config:** `apps/base/<app>/backup.yaml`. Secrets: `<app>-backup-s3` (derselbe
+  Garage-Key wie CNPG). Endpoint OHNE Schema (`192.168.23.21:3900`), `tls.enabled: false`.
+
+> ⚠️ `spec.storage.s3.bucket` und `.endpoint` sind auf einem bestehenden Backup-CR
+> **immutable**. Ändert man das Ziel, muss das alte CR erst gelöscht werden
+> (`kubectl delete backup.k8s.mariadb.com <name> -n <ns>`), dann re-sync.
+
+## MariaDB-Backups prüfen
+
+```bash
+kubectl get cronjob -A | grep -E 'kimai-mariadb|wordpress-mariadb'   # SCHEDULE aktiv?
+kubectl get backup.k8s.mariadb.com -A                                 # CRs
+# Dumps im Bucket:
+aws --endpoint-url http://192.168.23.21:3900 --region garage-potsdam \
+  s3 ls s3://backups/mariadb-kimai/
+```
+
+Sofortiges Test-Backup (einmalig, ohne schedule):
+```bash
+kubectl apply -f - <<'EOF'
+apiVersion: k8s.mariadb.com/v1alpha1
+kind: Backup
+metadata: { name: adhoc, namespace: kimai }
+spec:
+  mariaDbRef: { name: kimai-mariadb }
+  compression: gzip
+  storage:
+    s3:
+      bucket: backups
+      prefix: mariadb-kimai
+      endpoint: 192.168.23.21:3900
+      region: garage-potsdam
+      accessKeyIdSecretKeyRef: { name: kimai-backup-s3, key: ACCESS_KEY_ID }
+      secretAccessKeySecretKeyRef: { name: kimai-backup-s3, key: SECRET_ACCESS_KEY }
+      tls: { enabled: false }
+EOF
+kubectl get backup.k8s.mariadb.com adhoc -n kimai -o jsonpath='{.status.conditions[0]}'
+```
+
+## MariaDB-Restore
+
+Über den `Restore`-CRD des Operators, der aus dem S3-Ziel in die (laufende)
+MariaDB zurückspielt. **Achtung: überschreibt die Ziel-Datenbank.**
+
+```yaml
+apiVersion: k8s.mariadb.com/v1alpha1
+kind: Restore
+metadata:
+  name: kimai-restore
+  namespace: kimai
+spec:
+  mariaDbRef:
+    name: kimai-mariadb          # Ziel-Instanz (muss laufen)
+  # targetRecoveryTime: "2026-07-14T02:00:00Z"  # optional: nächstgelegener Dump
+  s3:
+    bucket: backups
+    prefix: mariadb-kimai
+    endpoint: 192.168.23.21:3900
+    region: garage-potsdam
+    accessKeyIdSecretKeyRef: { name: kimai-backup-s3, key: ACCESS_KEY_ID }
+    secretAccessKeySecretKeyRef: { name: kimai-backup-s3, key: SECRET_ACCESS_KEY }
+    tls: { enabled: false }
+```
+
+Ablauf: Manifest anwenden, `kubectl get restore -n kimai -w` bis
+`Complete=True`; der Operator startet einen Job, der den jüngsten (bzw. den zu
+`targetRecoveryTime` passenden) Dump einliest. Danach App-Pod ggf. neu starten.
+
+WordPress analog mit `wordpress-mariadb` / `wordpress-backup-s3` und dem
+Instanz-Prefix (`mariadb-wordpress-1` etc.) im jeweiligen Namespace.
+
+---
+
 ## Bekannte Grenzen / offen
 
-- MariaDB (kimai, 3× wordpress) hat KEIN S3-Backup — separater Job nötig
-  (mariadb-operator `Backup`-CR oder mysqldump-CronJob nach Garage).
 - Der `cnpg-backups`-Garage-Key hat Zugriff auf den gesamten `backups`-Bucket
-  (alle App-Prefixe). Für strengere Trennung: pro App eigener Key/Bucket.
-- Restore einmal echt getestet? → nach dem ersten grünen ScheduledBackup einplanen.
+  (alle App-Prefixe, CNPG + MariaDB). Für strengere Trennung: pro App eigener Key.
+- MariaDB = nur logische Dumps (kein PITR). Für PITR wäre der `PhysicalBackup`-CRD
+  + Binlog nötig.
+- Restore je einmal echt testen (CNPG **und** MariaDB) → nach dem ersten grünen
+  geplanten Backup einplanen.
