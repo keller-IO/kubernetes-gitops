@@ -167,7 +167,7 @@ spec:
 
 ## 7. Datenbanken
 
-**Postgres (CNPG):** `infrastructure/base/cnpg/`, `apps/base/{roundcube,paperless-ngx,forgejo,mastodon,mailman}/database.yaml`; legacy Authentik, if still deployed, uses `infrastructure/base/authentik/postgres.yaml`
+**Postgres (CNPG):** `infrastructure/base/cnpg/`, `apps/base/{roundcube,paperless-ngx,forgejo,mastodon,mailman}/database.yaml`; legacy Authentik manifests remain in-tree but are excluded from ArgoCD
 **MariaDB (Operator):** `infrastructure/base/mariadb-operator/`, `apps/base/{kimai,wordpress}/database.yaml`
 
 **Offen:**

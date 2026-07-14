@@ -23,7 +23,7 @@ Der Cluster nutzt den bestehenden externen Keycloak als OIDC-Provider. Authentik
 
 - App-Konfigurationen verwenden den Issuer `https://auth.savar.de/realms/bgt`.
 - OAuth-Clients und Client-Secrets werden in Keycloak gepflegt und als SOPS-Secrets in den App-Manifests referenziert.
-- Bestehende Authentik-Manifeste bleiben bis zur vollständigen Migration im Repo, werden aber nicht als Zielarchitektur weiterentwickelt.
+- Bestehende Authentik-Manifeste bleiben als Migrationshistorie im Repo, sind aber in der Infrastructure-ApplicationSet ausgeschlossen und werden nicht mehr reconciled.
 - Apps ohne native OIDC-Unterstützung brauchen einen separaten Schutzmechanismus, weil Keycloak kein eingebautes Forward-Auth wie Authentik bereitstellt.
 
 ## Migrationsstand

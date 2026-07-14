@@ -12,6 +12,8 @@ spec:
         revision: main
         directories:
           - path: infrastructure/base/*
+          - path: infrastructure/base/authentik
+            exclude: true
   template:
     metadata:
       name: "infra-{{.path.basename}}"

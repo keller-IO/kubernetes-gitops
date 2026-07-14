@@ -4,7 +4,7 @@
 Cluster-wide platform services. Everything apps depend on.
 
 ## Ownership
-Owns `base/<component>/` dirs (argocd, cilium, ingress-nginx, cert-manager, cnpg, mariadb-operator, authentik, monitoring, storage, kubernetes-mcp). Cache (Valkey) runs as a standalone instance per app under `apps/base/*/cache.yaml` (no operator). Authentik manifests are legacy migration leftovers; new OIDC work targets external Keycloak.
+Owns `base/<component>/` dirs (argocd, cilium, ingress-nginx, cert-manager, cnpg, mariadb-operator, authentik, monitoring, storage, kubernetes-mcp). Cache (Valkey) runs as a standalone instance per app under `apps/base/*/cache.yaml` (no operator). Authentik manifests are legacy migration leftovers and are excluded from the infrastructure ApplicationSet; new OIDC work targets external Keycloak.
 
 ## Local Contracts
 - **Manifests**: Kustomize + Helm inflation. Namespace = dir name.

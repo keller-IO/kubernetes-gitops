@@ -69,7 +69,7 @@ Git push ──▶ ArgoCD (root-app) ──▶ ApplicationSets ──▶ Kustomi
 | Pfad | Inhalt |
 |------|--------|
 | `clusters/main/` | ArgoCD-Einstiegspunkte: `root-app.yaml`, `projects.yaml`, ApplicationSets für Infrastruktur und Apps |
-| `infrastructure/base/` | Plattform-Services (CNI, Ingress, Operatoren, Monitoring) als Kustomize-Bases mit Helm-Inflation; Authentik ist nur noch Legacy-Migrationsbestand |
+| `infrastructure/base/` | Plattform-Services (CNI, Ingress, Operatoren, Monitoring) als Kustomize-Bases mit Helm-Inflation; Authentik ist Legacy-Migrationsbestand und in der Infrastructure-ApplicationSet ausgeschlossen |
 | `infrastructure/overlays/main/` | Cluster-spezifische Patches der Infrastruktur |
 | `apps/base/` | Anwendungs-Blaupausen (je App: Workload, Datenbank, Cache, Backup, Secret-Vorlage) |
 | `apps/overlays/main/` | Cluster-spezifische Patches (Hostnamen etc.) — von der ApplicationSet automatisch ausgerollt |
