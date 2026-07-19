@@ -1,21 +1,21 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: mailman
-# lists.jitmail.de liegt nicht in der jit.services-Zone: TLS terminiert
-# übergangsweise am Legacy-Traefik (.15), der HTTP an den Ingress (.246)
-# weiterleitet — gleiches Muster wie kimai/wordpress-1/2.
+# lists.jitmail.de liegt nicht in der ClouDNS-Zone jit.services. Seit dem
+# .15-Ausfall (14.07.) terminiert der Cluster TLS selbst: cert-manager via
+# HTTP-01. redirect-to-https bleibt aus, bis das Zertifikat steht.
 resources:
   - ../../../base/mailman
 patches:
   - target: { kind: Ingress, name: mailman }
     patch: |
-      - op: remove
-        path: /metadata/annotations/cert-manager.io~1cluster-issuer
       - op: replace
         path: /metadata/annotations/nginx.org~1redirect-to-https
         value: "false"
-      - op: remove
-        path: /spec/tls
+      - op: replace
+        path: /spec/tls/0/hosts
+        value:
+          - lists.jitmail.de
       - op: replace
         path: /spec/rules/0/host
         value: lists.jitmail.de

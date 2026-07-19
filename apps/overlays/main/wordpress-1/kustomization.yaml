@@ -1,21 +1,23 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: wordpress-1
-# Instanz "jugend": Migration von 192.168.2.15 (/opt/containers/jugendbeauftragter).
-# TLS endet waehrend der Migration noch am Traefik auf 192.168.2.15; Traefik
-# leitet HTTP an den K8s-Ingress auf 192.168.2.246 weiter.
+# Instanz "jugend" (Migration von 192.168.2.15). Seit dem .15-Ausfall (14.07.)
+# terminiert der Cluster TLS selbst: cert-manager via HTTP-01 (Domain liegt
+# nicht in der ClouDNS-Zone jit.services). redirect-to-https bleibt aus, bis
+# das Zertifikat steht — sonst wäre die Seite während der Ausstellung tot.
 resources:
   - ../../../base/wordpress
 patches:
   - target: { kind: Ingress }
     patch: |
-      - op: remove
-        path: /metadata/annotations/cert-manager.io~1cluster-issuer
       - op: replace
         path: /metadata/annotations/nginx.org~1redirect-to-https
         value: "false"
-      - op: remove
-        path: /spec/tls
+      - op: replace
+        path: /spec/tls/0/hosts
+        value:
+          - jugendbeauftragter-halbe.de
+          - www.jugendbeauftragter-halbe.de
       - op: replace
         path: /spec/rules/0/host
         value: jugendbeauftragter-halbe.de
