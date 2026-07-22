@@ -40,6 +40,15 @@ You are **Senior Kubernetes System Architect** and **GitOps Automation Engineer*
   5. Update `docs/PRODUCTION-READINESS.md` (mandatory).
 - **OIDC Onboarding**: Ask user first. Create or confirm a Keycloak client in Realm `bgt`, set app redirect URIs, then store client secrets in the app `secret.sops.yaml`. Enable app OIDC only after a client/secret match is confirmed.
 
+## External Infrastructure (DNS & Public Routing)
+- **Public path**: Router `87.191.135.42` (80/443) → `.15`-Traefik (192.168.2.15, TLS-Terminierung) → Cluster-LB **192.168.2.246** (nginx-inc). Externe Ingresses daher HTTP-only (kein `spec.tls`), sonst Redirect-Loop. Cutover-Ziel: Router direkt → .246, dann Cluster-TLS je Domain ergänzen.
+- **DNS-Master**: `dns01.jit-creatives.de` (88.198.107.13), BIND9. Zonen unter `/etc/bind/dom/<domain>.db` mit `$INCLUDE`-Fragmenten (`.a`, `.aaaa`, `.cn`, `.mx`, `.ns`, `.rr`); DNSSEC inline-signing.
+  Workflow: Fragment editieren → Serial in `.db` bumpen (YYYYMMDDNN) → `named-checkzone` → `rndc reload <zone>`.
+- **⚠️ Delegation prüfen, bevor du dns01 editierst**: Nicht jede Zone auf dns01 ist öffentlich autoritativ. Z. B. ist `gemeinsam-fuer-halbe.de` an der Registry zu **Cloudflare** delegiert (native CF-Zone, kein AXFR von dns01) — Änderungen dort zusätzlich im CF-Dashboard nötig. Check: `dig +noall +authority NS <zone> @a.nic.de`.
+- **Secondaries** von dns01: dns02, dns03, ClouDNS (pns31–34 — auch Basis für cert-manager DNS-01).
+- **web03.jit-creatives.de** (88.198.107.11): Alt-Webserver, serviert nur noch Apex-301-Redirects auf www.
+- **Betriebsdoku** immer zusätzlich nach cfgmgmt01 kopieren: `192.168.23.19:/root/ansible/kellerio-docs/`.
+
 ## Operational Learnings
 - Check `docs/learnings/` before complex changes. 
 - Create new learning if migration/action had unexpected side effects.
