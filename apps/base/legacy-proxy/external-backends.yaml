@@ -61,3 +61,118 @@ ports: [{ name: http, port: 8080 }]
 endpoints:
   - addresses: ["192.168.2.240"]
     conditions: { ready: true }
+---
+# gitlab (Web) -> 192.168.2.17:8081
+apiVersion: v1
+kind: Service
+metadata: { name: gitlab, namespace: legacy-proxy }
+spec:
+  ports: [{ name: http, port: 8081, targetPort: 8081 }]
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: gitlab
+  namespace: legacy-proxy
+  labels: { kubernetes.io/service-name: gitlab }
+addressType: IPv4
+ports: [{ name: http, port: 8081 }]
+endpoints:
+  - addresses: ["192.168.2.17"]
+    conditions: { ready: true }
+---
+# gitlab-registry (Container-Registry) -> 192.168.2.17:5050
+apiVersion: v1
+kind: Service
+metadata: { name: gitlab-registry, namespace: legacy-proxy }
+spec:
+  ports: [{ name: http, port: 5050, targetPort: 5050 }]
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: gitlab-registry
+  namespace: legacy-proxy
+  labels: { kubernetes.io/service-name: gitlab-registry }
+addressType: IPv4
+ports: [{ name: http, port: 5050 }]
+endpoints:
+  - addresses: ["192.168.2.17"]
+    conditions: { ready: true }
+---
+# spam (Rspamd/Web) -> 192.168.2.230:80
+apiVersion: v1
+kind: Service
+metadata: { name: spam, namespace: legacy-proxy }
+spec:
+  ports: [{ name: http, port: 80, targetPort: 80 }]
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: spam
+  namespace: legacy-proxy
+  labels: { kubernetes.io/service-name: spam }
+addressType: IPv4
+ports: [{ name: http, port: 80 }]
+endpoints:
+  - addresses: ["192.168.2.230"]
+    conditions: { ready: true }
+---
+# imcor (Kunden-Webserver, HTTPS-Backend!) -> 192.168.2.21:443
+# Re-encrypt via nginx.org/ssl-services am Ingress.
+apiVersion: v1
+kind: Service
+metadata: { name: imcor, namespace: legacy-proxy }
+spec:
+  ports: [{ name: https, port: 443, targetPort: 443 }]
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: imcor
+  namespace: legacy-proxy
+  labels: { kubernetes.io/service-name: imcor }
+addressType: IPv4
+ports: [{ name: https, port: 443 }]
+endpoints:
+  - addresses: ["192.168.2.21"]
+    conditions: { ready: true }
+---
+# aios (www.aios.tools) -> 192.168.2.26:8080
+apiVersion: v1
+kind: Service
+metadata: { name: aios, namespace: legacy-proxy }
+spec:
+  ports: [{ name: http, port: 8080, targetPort: 8080 }]
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: aios
+  namespace: legacy-proxy
+  labels: { kubernetes.io/service-name: aios }
+addressType: IPv4
+ports: [{ name: http, port: 8080 }]
+endpoints:
+  - addresses: ["192.168.2.26"]
+    conditions: { ready: true }
+---
+# aios-test (test.aios.tools) -> 192.168.2.26:8181
+apiVersion: v1
+kind: Service
+metadata: { name: aios-test, namespace: legacy-proxy }
+spec:
+  ports: [{ name: http, port: 8181, targetPort: 8181 }]
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: aios-test
+  namespace: legacy-proxy
+  labels: { kubernetes.io/service-name: aios-test }
+addressType: IPv4
+ports: [{ name: http, port: 8181 }]
+endpoints:
+  - addresses: ["192.168.2.26"]
+    conditions: { ready: true }
