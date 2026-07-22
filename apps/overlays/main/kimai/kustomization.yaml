@@ -1,21 +1,23 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: kimai
-# Seit dem .15-Ausfall (14.07.) terminiert der Cluster TLS selbst
-# (cert-manager via HTTP-01). redirect-to-https bleibt aus, bis das
-# Zertifikat steht.
+# kimai.savar.de wird öffentlich über den .15-Traefik erreicht, der TLS
+# terminiert und HTTP zum Cluster proxied. Deshalb HTTP-only (kein TLS/kein
+# Redirect) — sonst 301-Loop (nginx würde HTTP->HTTPS umleiten, Traefik wieder
+# HTTP proxien ...). Für Cluster-direktes TLS: Router 443 -> .246 + tls/issuer
+# wieder ergänzen.
 resources:
   - ../../../base/kimai
 patches:
   - target: { kind: Ingress, name: kimai }
     patch: |
+      - op: remove
+        path: /metadata/annotations/cert-manager.io~1cluster-issuer
       - op: replace
         path: /metadata/annotations/nginx.org~1redirect-to-https
         value: "false"
-      - op: replace
-        path: /spec/tls/0/hosts
-        value:
-          - kimai.savar.de
+      - op: remove
+        path: /spec/tls
       - op: replace
         path: /spec/rules/0/host
         value: kimai.savar.de

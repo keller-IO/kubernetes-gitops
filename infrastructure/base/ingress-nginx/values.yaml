@@ -11,12 +11,7 @@ controller:
   config:
     # Global tuning; per-app overrides via nginx.org/* annotations on each Ingress.
     proxy-protocol: "False"
-    # False als Default: das globale "True" überstimmte die per-Ingress-
-    # Annotation redirect-to-https:false und erzeugte HTTP->HTTPS-Loops bei
-    # Sites, die hinter dem .15-Traefik hängen (Traefik terminiert TLS, proxied
-    # HTTP -> nginx 301 -> HTTPS -> Traefik -> ...). HTTPS-Zugriff bleibt
-    # unberührt; Ingresses, die einen Redirect wollen, setzen ihn per Annotation.
-    redirect-to-https: "False"
+    redirect-to-https: "True"
   enableSnippets: true
   ingressClass:
     name: nginx
