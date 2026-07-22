@@ -41,6 +41,12 @@ spec:
               value: mail.jitcreatives.de
             - name: WORDPRESS_SMTP_PORT
               value: "25"
+            # TLS terminiert upstream (.15-Traefik bzw. spaeter Cluster-nginx),
+            # aber nginx-inc ueberschreibt X-Forwarded-Proto mit $scheme (http)
+            # -> WP saehe http und wp-admin loopt (301 auf https). Alle Sites
+            # sind oeffentlich https-only, daher HTTPS fest setzen.
+            - name: WORDPRESS_CONFIG_EXTRA
+              value: "$_SERVER['HTTPS'] = 'on';"
           readinessProbe:
             httpGet: { path: /wp-login.php, port: 80 }
             initialDelaySeconds: 10
