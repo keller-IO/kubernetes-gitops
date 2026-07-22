@@ -1,0 +1,53 @@
+# binaergewitter läuft NICHT im Cluster — die Backends liegen auf savarcast
+# (192.168.2.66). Der Cluster proxied nur (wie vorher der .15-Traefik).
+# Service ohne Selector + manuelle EndpointSlice = Verweis auf die externe IP.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: savarcast-web
+  namespace: binaergewitter
+spec:
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: savarcast-web
+  namespace: binaergewitter
+  labels:
+    kubernetes.io/service-name: savarcast-web
+addressType: IPv4
+ports:
+  - name: http
+    port: 80
+endpoints:
+  - addresses: ["192.168.2.66"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: savarcast-etherpad
+  namespace: binaergewitter
+spec:
+  ports:
+    - name: http
+      port: 9001
+      targetPort: 9001
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: savarcast-etherpad
+  namespace: binaergewitter
+  labels:
+    kubernetes.io/service-name: savarcast-etherpad
+addressType: IPv4
+ports:
+  - name: http
+    port: 9001
+endpoints:
+  - addresses: ["192.168.2.66"]
