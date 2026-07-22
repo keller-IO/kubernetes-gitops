@@ -1,0 +1,10 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: legacy-proxy
+# Reverse-Proxy zu Legacy-Backends außerhalb des Clusters (nachgebaut aus dem
+# .15-Traefik): mgmt02 (jit-creatives), umdiehand/gesinefranze, horads-Stream.
+# Keine eigenen Workloads; nur Service/EndpointSlice + Ingress.
+resources:
+  - namespace.yaml
+  - external-backends.yaml
+  - ingress.yaml

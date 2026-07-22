@@ -1,0 +1,67 @@
+# HTTP-only Reverse-Proxy-Routen (TLS upstream am .15-Traefik/Router, wie bisher).
+# Cutover zu Cluster-TLS: cert-manager-Issuer + tls-Block ergänzen, sobald die
+# Domains öffentlich auf .246 zeigen.
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: mgmt02
+  namespace: legacy-proxy
+  annotations:
+    nginx.org/ssl-redirect: "false"
+    nginx.org/redirect-to-https: "false"
+    nginx.org/client-max-body-size: "0" # keine Upload-Grenze (Web/FTP)
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: www.jit-creatives.de
+      http:
+        paths: [{ path: /, pathType: Prefix, backend: { service: { name: mgmt02, port: { number: 80 } } } }]
+    - host: mgmt02.jit-creatives.de
+      http:
+        paths: [{ path: /, pathType: Prefix, backend: { service: { name: mgmt02, port: { number: 80 } } } }]
+    - host: www.jitcreatives.de
+      http:
+        paths: [{ path: /, pathType: Prefix, backend: { service: { name: mgmt02, port: { number: 80 } } } }]
+    - host: ftp.jit-creatives.de
+      http:
+        paths: [{ path: /, pathType: Prefix, backend: { service: { name: mgmt02, port: { number: 80 } } } }]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: umdiehand
+  namespace: legacy-proxy
+  annotations:
+    nginx.org/ssl-redirect: "false"
+    nginx.org/redirect-to-https: "false"
+    nginx.org/client-max-body-size: "0" # Nextcloud: keine Upload-Grenze
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: umdiehand.jit-creatives.de
+      http:
+        paths: [{ path: /, pathType: Prefix, backend: { service: { name: umdiehand, port: { number: 80 } } } }]
+    - host: gesinefranze.jit-creatives.de
+      http:
+        paths: [{ path: /, pathType: Prefix, backend: { service: { name: umdiehand, port: { number: 80 } } } }]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: horads
+  namespace: legacy-proxy
+  annotations:
+    nginx.org/ssl-redirect: "false"
+    nginx.org/redirect-to-https: "false"
+    # Icecast-Stream: Buffering aus + lange Timeouts (Dauer-Verbindung).
+    nginx.org/location-snippets: |
+      proxy_buffering off;
+      proxy_read_timeout 3600s;
+      proxy_send_timeout 3600s;
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: stream.horads.de
+      http:
+        paths: [{ path: /, pathType: Prefix, backend: { service: { name: horads, port: { number: 8080 } } } }]

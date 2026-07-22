@@ -1,0 +1,63 @@
+# Reverse-Proxy zu Legacy-Backends, die (noch) außerhalb des Clusters laufen —
+# nachgebaut aus dem .15-Traefik. Selector-lose Services + EndpointSlices.
+#
+# WICHTIG: ArgoCD schließt EndpointSlice/Endpoints aus Sync UND Prune aus
+# (resource.exclusions). Die Slices EINMALIG manuell anwenden (bleiben stehen):
+#   kubectl apply -f apps/base/legacy-proxy/external-backends.yaml
+---
+# mgmt02 (jit-creatives Web) -> 192.168.2.234:80
+apiVersion: v1
+kind: Service
+metadata: { name: mgmt02, namespace: legacy-proxy }
+spec:
+  ports: [{ name: http, port: 80, targetPort: 80 }]
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: mgmt02
+  namespace: legacy-proxy
+  labels: { kubernetes.io/service-name: mgmt02 }
+addressType: IPv4
+ports: [{ name: http, port: 80 }]
+endpoints:
+  - addresses: ["192.168.2.234"]
+    conditions: { ready: true }
+---
+# umdiehand (Nextcloud/Web) -> 192.168.2.20:80
+apiVersion: v1
+kind: Service
+metadata: { name: umdiehand, namespace: legacy-proxy }
+spec:
+  ports: [{ name: http, port: 80, targetPort: 80 }]
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: umdiehand
+  namespace: legacy-proxy
+  labels: { kubernetes.io/service-name: umdiehand }
+addressType: IPv4
+ports: [{ name: http, port: 80 }]
+endpoints:
+  - addresses: ["192.168.2.20"]
+    conditions: { ready: true }
+---
+# horads (Icecast-Stream) -> 192.168.2.240:8080
+apiVersion: v1
+kind: Service
+metadata: { name: horads, namespace: legacy-proxy }
+spec:
+  ports: [{ name: http, port: 8080, targetPort: 8080 }]
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: horads
+  namespace: legacy-proxy
+  labels: { kubernetes.io/service-name: horads }
+addressType: IPv4
+ports: [{ name: http, port: 8080 }]
+endpoints:
+  - addresses: ["192.168.2.240"]
+    conditions: { ready: true }
