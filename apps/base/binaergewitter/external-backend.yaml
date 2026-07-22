@@ -1,8 +1,13 @@
-# binaergewitter läuft NICHT im Cluster — die Backends liegen auf savarcast
-# (savarcast.jit.land = 192.168.2.66). Der Cluster proxied nur (wie vorher der
-# .15-Traefik). ExternalName-Service statt Service+EndpointSlice, weil ArgoCD
-# EndpointSlice/Endpoints per Default aus dem Sync ausschließt (resource.exclusions).
-# CoreDNS löst savarcast.jit.land clusterintern auf.
+# binaergewitter läuft NICHT im Cluster — Backends auf savarcast (192.168.2.66).
+# Selector-loser Service + manuelle EndpointSlice (Verweis auf die externe IP).
+#
+# WICHTIG: ArgoCD schließt EndpointSlice/Endpoints per Default aus dem Sync UND
+# Prune aus (resource.exclusions). Die Slices unten werden NICHT von ArgoCD
+# angewendet — sie müssen EINMALIG manuell appliziert werden (bleiben dann
+# stehen, ArgoCD löscht sie nicht):
+#   kubectl apply -f apps/base/binaergewitter/external-backend.yaml
+# (ExternalName-Service ginge nicht: nginx-inc setzt dafür den Platzhalter-
+#  Upstream 127.0.0.1:8181 -> 502.)
 ---
 apiVersion: v1
 kind: Service
@@ -10,11 +15,26 @@ metadata:
   name: savarcast-web
   namespace: binaergewitter
 spec:
-  type: ExternalName
-  externalName: savarcast.jit.land
   ports:
     - name: http
       port: 80
+      targetPort: 80
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: savarcast-web
+  namespace: binaergewitter
+  labels:
+    kubernetes.io/service-name: savarcast-web
+addressType: IPv4
+ports:
+  - name: http
+    port: 80
+endpoints:
+  - addresses: ["192.168.2.66"]
+    conditions:
+      ready: true
 ---
 apiVersion: v1
 kind: Service
@@ -22,8 +42,23 @@ metadata:
   name: savarcast-etherpad
   namespace: binaergewitter
 spec:
-  type: ExternalName
-  externalName: savarcast.jit.land
   ports:
     - name: http
       port: 9001
+      targetPort: 9001
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: savarcast-etherpad
+  namespace: binaergewitter
+  labels:
+    kubernetes.io/service-name: savarcast-etherpad
+addressType: IPv4
+ports:
+  - name: http
+    port: 9001
+endpoints:
+  - addresses: ["192.168.2.66"]
+    conditions:
+      ready: true
