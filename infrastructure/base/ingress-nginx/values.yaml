@@ -12,6 +12,11 @@ controller:
     # Global tuning; per-app overrides via nginx.org/* annotations on each Ingress.
     proxy-protocol: "False"
     redirect-to-https: "True"
+    # Resolver (CoreDNS), damit nginx-inc ExternalName-Services zur Laufzeit
+    # auflösen kann (z.B. binaergewitter -> savarcast.jit.land). Ohne setzt es
+    # den Platzhalter-Upstream 127.0.0.1:8181 -> 502.
+    resolver-addresses: "10.96.0.10"
+    resolver-valid: "30s"
   enableSnippets: true
   ingressClass:
     name: nginx
