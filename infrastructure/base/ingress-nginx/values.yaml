@@ -3,6 +3,11 @@ controller:
   replicaCount: 2
   service:
     type: LoadBalancer # requires Cilium LB-IPAM or MetalLB pool — see PRODUCTION-READINESS.md
+    # Cluster statt (Chart-Default) Local: der Cilium-L2-Announcer kann ein Node
+    # OHNE nginx-Pod sein (nginx läuft nur auf einem Node) — mit Local würde der
+    # den Traffic verwerfen (Ausfall am 22.07. nach wrk3-Rebuild). Cluster routet
+    # intern zu nginx. Trade-off: Client-Source-IP wird SNAT'd.
+    externalTrafficPolicy: Cluster
   config:
     # Global tuning; per-app overrides via nginx.org/* annotations on each Ingress.
     proxy-protocol: "False"
