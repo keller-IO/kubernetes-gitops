@@ -24,7 +24,7 @@ spec:
       containers:
         - name: wordpress
           # renovate: image=wordpress
-          image: wordpress:7.0.1-php8.3-apache
+          image: wordpress:7.0.2-php8.3-apache
           ports:
             - containerPort: 80
           env:
