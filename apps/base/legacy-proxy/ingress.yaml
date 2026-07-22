@@ -54,11 +54,12 @@ metadata:
   annotations:
     nginx.org/ssl-redirect: "false"
     nginx.org/redirect-to-https: "false"
-    # Icecast-Stream: Buffering aus + lange Timeouts (Dauer-Verbindung).
-    nginx.org/location-snippets: |
-      proxy_buffering off;
-      proxy_read_timeout 3600s;
-      proxy_send_timeout 3600s;
+    # Icecast-Stream: Buffering aus + lange Timeouts (Dauer-Verbindung). Als
+    # nginx-inc-Annotations statt Snippet (Snippet dupliziert proxy_read_timeout
+    # -> nginx-Reload scheitert [emerg]).
+    nginx.org/proxy-buffering: "false"
+    nginx.org/proxy-read-timeout: "3600s"
+    nginx.org/proxy-send-timeout: "3600s"
 spec:
   ingressClassName: nginx
   rules:
