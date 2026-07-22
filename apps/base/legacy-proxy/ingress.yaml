@@ -170,3 +170,97 @@ spec:
     - host: test.aios.tools
       http:
         paths: [{ path: /, pathType: Prefix, backend: { service: { name: aios-test, port: { number: 8181 } } } }]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: auth
+  namespace: legacy-proxy
+  annotations:
+    nginx.org/ssl-redirect: "false"
+    nginx.org/redirect-to-https: "false"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: auth.savar.de
+      http:
+        paths: [{ path: /, pathType: Prefix, backend: { service: { name: auth, port: { number: 8080 } } } }]
+    - host: auth2.savar.de
+      http:
+        paths: [{ path: /, pathType: Prefix, backend: { service: { name: auth, port: { number: 8080 } } } }]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: office
+  namespace: legacy-proxy
+  annotations:
+    nginx.org/ssl-redirect: "false"
+    nginx.org/redirect-to-https: "false"
+    # Collabora: WebSocket (Upgrade-Header) + lange Verbindungen + grosse Docs
+    nginx.org/websocket-services: "office"
+    nginx.org/proxy-read-timeout: "3600s"
+    nginx.org/proxy-send-timeout: "3600s"
+    nginx.org/client-max-body-size: "0"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: office.savar.de
+      http:
+        paths: [{ path: /, pathType: Prefix, backend: { service: { name: office, port: { number: 9980 } } } }]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: s3
+  namespace: legacy-proxy
+  annotations:
+    nginx.org/ssl-redirect: "false"
+    nginx.org/redirect-to-https: "false"
+    # S3: grosse Objekte streamen, nicht puffern; lange Multipart-Transfers
+    nginx.org/client-max-body-size: "0"
+    nginx.org/proxy-buffering: "false"
+    nginx.org/proxy-read-timeout: "3600s"
+    nginx.org/proxy-send-timeout: "3600s"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: s3.savar.de
+      http:
+        paths: [{ path: /, pathType: Prefix, backend: { service: { name: s3, port: { number: 7480 } } } }]
+    - host: s3.jit-creatives.de
+      http:
+        paths: [{ path: /, pathType: Prefix, backend: { service: { name: s3, port: { number: 7480 } } } }]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: jitcloud
+  namespace: legacy-proxy
+  annotations:
+    nginx.org/ssl-redirect: "false"
+    nginx.org/redirect-to-https: "false"
+    # Backend spricht selbst HTTPS (.217:443) -> re-encrypt zum Upstream
+    nginx.org/ssl-services: "jitcloud"
+    # Nextcloud: grosse Uploads + Sync-Clients mit langen Requests
+    nginx.org/client-max-body-size: "0"
+    nginx.org/proxy-read-timeout: "3600s"
+    nginx.org/proxy-send-timeout: "3600s"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: cloud.savar.de
+      http:
+        paths: [{ path: /, pathType: Prefix, backend: { service: { name: jitcloud, port: { number: 443 } } } }]
+    - host: jit.cloud
+      http:
+        paths: [{ path: /, pathType: Prefix, backend: { service: { name: jitcloud, port: { number: 443 } } } }]
+    - host: cloud.naturkindergarten-moehringen.de
+      http:
+        paths: [{ path: /, pathType: Prefix, backend: { service: { name: jitcloud, port: { number: 443 } } } }]
+    - host: cloud.steinba.ch
+      http:
+        paths: [{ path: /, pathType: Prefix, backend: { service: { name: jitcloud, port: { number: 443 } } } }]
+    - host: cloud.daec-berlin.de
+      http:
+        paths: [{ path: /, pathType: Prefix, backend: { service: { name: jitcloud, port: { number: 443 } } } }]
