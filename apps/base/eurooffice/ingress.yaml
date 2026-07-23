@@ -1,0 +1,33 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: eurooffice
+  namespace: eurooffice
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.org/ssl-redirect: "false"
+    nginx.org/redirect-to-https: "true"
+    nginx.org/websocket-services: eurooffice # MUSS dem Service-Namen entsprechen, sonst verwirft NGINX den ganzen Ingress
+    nginx.org/client-max-body-size: "100m"
+    # Editor-Sessions sind langlebige WebSockets — Timeouts als Annotationen setzen,
+    # NICHT als location-snippet (Snippet dupliziert proxy_read_timeout → nginx-[emerg]).
+    nginx.org/proxy-read-timeout: "3600s"
+    nginx.org/proxy-send-timeout: "3600s"
+spec:
+  ingressClassName: nginx
+  # Neue Domain, hängt NICHT hinter dem .15-Traefik → volles Cluster-TLS erlaubt
+  # (Wildcard *.jit.services zeigt bereits auf die LB-IP .246).
+  tls:
+    - hosts: [eurooffice.jit.services] # CHANGE ME
+      secretName: eurooffice-tls
+  rules:
+    - host: eurooffice.jit.services # CHANGE ME
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: eurooffice
+                port:
+                  number: 80

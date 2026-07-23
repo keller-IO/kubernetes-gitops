@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: eurooffice
+# Euro-Office Document Server als All-in-One-Image (PostgreSQL, RabbitMQ und Redis
+# laufen gebündelt im Container). Bewusst NICHT das offizielle Kubernetes-Docs-Chart:
+# das erwartet externe PG/RabbitMQ/Redis plus RWX-Storage (CephFS fehlt im Cluster noch)
+# und lohnt erst, wenn mehr als die Dev-Nextcloud dranhängt.
+# Konsument: Dev-Nextcloud cloud-dev.savar.de (Connector-App "eurooffice", JWT-Auth).
+resources:
+  - deployment.yaml
+  - service.yaml
+  - ingress.yaml
+
+generators:
+  - ./secret-generator.yaml

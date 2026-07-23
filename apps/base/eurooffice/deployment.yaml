@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: eurooffice
+  namespace: eurooffice
+  labels:
+    app.kubernetes.io/name: eurooffice
+spec:
+  replicas: 1 # All-in-One (interne PG/RabbitMQ/Redis) ist nicht horizontal skalierbar
+  strategy:
+    type: Recreate # RWO-PVC: RollingUpdate verklemmt, wenn alter+neuer Pod auf verschiedenen Nodes landen
+    rollingUpdate: null # Altwert im Live-Objekt muss beim Apply explizit gelöscht werden
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: eurooffice
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: eurooffice
+    spec:
+      containers:
+        - name: documentserver
+          # renovate: image=ghcr.io/euro-office/documentserver
+          image: ghcr.io/euro-office/documentserver:9.3.2
+          ports:
+            - containerPort: 80
+          env:
+            - name: JWT_ENABLED
+              value: "true"
+            - name: JWT_SECRET # identischer Wert gehört in die Nextcloud-Connector-Config
+              valueFrom:
+                secretKeyRef: { name: eurooffice-secret, key: jwt-secret }
+            # Die Dev-Nextcloud (cloud-dev.savar.de) löst intern auf 192.168.2.x auf —
+            # ohne das Flag blockt der Request-Filter den Dokumenten-Abruf.
+            - name: ALLOW_PRIVATE_IP_ADDRESS
+              value: "true"
+          readinessProbe:
+            httpGet:
+              path: /healthcheck
+              port: 80
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthcheck
+              port: 80
+            initialDelaySeconds: 180 # Erststart: interner Stack + Font-Cache-Generierung dauern
+            periodSeconds: 30
+          resources:
+            requests: { cpu: 250m, memory: 1Gi }
+            limits: { memory: 4Gi } # Doku-Minimum 4 GB RAM
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/euro-office/documentserver }
+            - { name: logs, mountPath: /var/log/euro-office/documentserver }
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: eurooffice-data
+        - name: logs
+          emptyDir: {}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: eurooffice-data
+  namespace: eurooffice
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: ceph-rbd # CHANGE ME
+  resources:
+    requests:
+      storage: 10Gi
