@@ -6,3 +6,9 @@ global:
 replicaCount: 1
 prometheus:
   enabled: true
+# DNS-01-Self-Check direkt gegen öffentliche Resolver: die lokale Kette
+# (CoreDNS → FritzBox) cacht NXDOMAIN bis zu 3600 s (SOA-Minimum der Zone)
+# und blockierte so frische _acme-challenge-TXT-Records (eurooffice, 23.07.).
+extraArgs:
+  - --dns01-recursive-nameservers=1.1.1.1:53,8.8.8.8:53
+  - --dns01-recursive-nameservers-only
