@@ -18,6 +18,8 @@ spec:
       labels:
         app.kubernetes.io/name: eurooffice
     spec:
+      securityContext:
+        fsGroup: 107 # gid des "ds"-Users im Image — PVC ist sonst root-owned (EACCES auf App_Data)
       containers:
         - name: documentserver
           # renovate: image=ghcr.io/euro-office/documentserver
