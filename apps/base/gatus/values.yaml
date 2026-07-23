@@ -46,8 +46,8 @@ config:
       interval: 60s
       conditions: ["[STATUS] == 200"]
     - name: paperless
-      group: intern (jit.services)
-      url: https://paperless.jit.services
+      group: extern (via Legacy-Traefik)
+      url: https://paperless.savar.de
       interval: 60s
       conditions: ["[STATUS] == 302", "[STATUS] < 400"]
     - name: phpmyadmin
@@ -65,11 +65,56 @@ config:
       url: https://metrics.jit.services/health
       interval: 60s
       conditions: ["[STATUS] == 401", "[STATUS] < 500"] # BasicAuth erwartet
+    - name: forgejo
+      group: intern (jit.services)
+      url: https://git.jit.services/api/healthz
+      interval: 60s
+      conditions: ["[STATUS] == 200"]
+    - name: mastodon
+      group: intern (jit.services)
+      url: https://social.jit.services/health
+      interval: 60s
+      conditions: ["[STATUS] == 200"]
+    - name: eurooffice
+      group: intern (jit.services)
+      url: https://eurooffice.jit.services/healthcheck
+      interval: 60s
+      conditions: ["[STATUS] == 200"]
+    - name: icecast
+      group: intern (jit.services)
+      url: https://radio.jit.services/status.xsl
+      interval: 60s
+      conditions: ["[STATUS] == 200"]
+    - name: wordpress-3
+      group: intern (jit.services)
+      url: https://site3.jit.services
+      interval: 60s
+      conditions: ["[STATUS] == 200"]
+    - name: kite
+      group: intern (jit.services)
+      url: https://kite.jit.services/healthz
+      interval: 60s
+      conditions: ["[STATUS] == 200"]
+    - name: kubernetes-mcp
+      group: intern (jit.services)
+      url: https://mcp.jit.services/healthz
+      interval: 60s
+      conditions: ["[STATUS] == 401", "[STATUS] < 500"] # BasicAuth erwartet
     - name: kimai
       group: extern (via Legacy-Traefik)
       url: https://kimai.savar.de
       interval: 60s
       conditions: ["[STATUS] < 400"]
+    - name: mailman
+      group: extern (via Legacy-Traefik)
+      url: https://lists.jitmail.de/postorius/lists/
+      interval: 60s
+      conditions: ["[STATUS] == 200"]
+    - name: jugendbeauftragter-halbe
+      group: extern (via Legacy-Traefik)
+      url: https://jugendbeauftragter-halbe.de
+      interval: 60s
+      conditions: ["[STATUS] == 200"]
     - name: gemeinsam-fuer-halbe
       group: extern (via Legacy-Traefik)
       url: https://www.gemeinsam-fuer-halbe.de
