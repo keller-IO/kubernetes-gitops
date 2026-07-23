@@ -49,7 +49,7 @@ config:
       group: extern (via Legacy-Traefik)
       url: https://paperless.savar.de
       interval: 60s
-      conditions: ["[STATUS] == 302", "[STATUS] < 400"]
+      conditions: ["[STATUS] == 200"]
     - name: phpmyadmin
       group: intern (jit.services)
       url: https://dbadmin.jit.services
