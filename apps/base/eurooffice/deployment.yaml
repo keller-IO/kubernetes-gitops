@@ -50,14 +50,14 @@ spec:
             requests: { cpu: 250m, memory: 1Gi }
             limits: { memory: 4Gi } # Doku-Minimum 4 GB RAM
           volumeMounts:
+            # KEIN Mount über /var/log/euro-office/documentserver: das Image bringt dort
+            # vorangelegte Unterverzeichnisse (adminpanel/ …) mit — ein emptyDir verdeckt
+            # sie und supervisord bricht beim Start ab.
             - { name: data, mountPath: /var/lib/euro-office/documentserver }
-            - { name: logs, mountPath: /var/log/euro-office/documentserver }
       volumes:
         - name: data
           persistentVolumeClaim:
             claimName: eurooffice-data
-        - name: logs
-          emptyDir: {}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
