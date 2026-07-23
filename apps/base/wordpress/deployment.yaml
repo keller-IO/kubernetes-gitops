@@ -45,8 +45,10 @@ spec:
             # aber nginx-inc ueberschreibt X-Forwarded-Proto mit $scheme (http)
             # -> WP saehe http und wp-admin loopt (301 auf https). Alle Sites
             # sind oeffentlich https-only, daher HTTPS fest setzen.
+            # DISALLOW_FILE_EDIT: deaktiviert den Theme/Plugin-Code-Editor im
+            # Admin (potenzielles Webshell-Einfallstor).
             - name: WORDPRESS_CONFIG_EXTRA
-              value: "$_SERVER['HTTPS'] = 'on';"
+              value: "$_SERVER['HTTPS'] = 'on'; define('DISALLOW_FILE_EDIT', true);"
           readinessProbe:
             httpGet: { path: /wp-login.php, port: 80 }
             initialDelaySeconds: 10
@@ -59,10 +61,17 @@ spec:
             limits: { memory: 768Mi }
           volumeMounts:
             - { name: wordpress, mountPath: /var/www/html }
+            - name: hardening
+              mountPath: /etc/apache2/conf-enabled/hardening.conf
+              subPath: hardening.conf
+              readOnly: true
       volumes:
         - name: wordpress
           persistentVolumeClaim:
             claimName: wordpress
+        - name: hardening
+          configMap:
+            name: wordpress-hardening
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim

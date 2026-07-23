@@ -10,6 +10,7 @@ resources:
   - database.yaml
   - cache.yaml
   - backup.yaml
+  - hardening.yaml
 
 generators:
   - ./secret-generator.yaml
