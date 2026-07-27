@@ -1,0 +1,83 @@
+# Detection-only rollout: LAPI + agent raise alerts/decisions (visible via
+# `cscli alerts list` / `cscli decisions list`), but nothing is enforced yet —
+# no bouncer is wired up. Add one once decision accuracy has been reviewed;
+# see docs/PRODUCTION-READINESS.md for the enforcement options considered.
+container_runtime: containerd # Talos nodes run containerd, not docker (chart default)
+
+# config.yaml.local is a plain string in the chart (not a deep-merged map), so
+# overriding it here REPLACES the chart default wholesale — the auto_registration
+# block below is copied from the chart default and must stay, or agents can't
+# register with the LAPI. db_config switches from the chart's embedded SQLite to
+# our CNPG Postgres (postgres.yaml), consistent with every other stateful
+# component in this repo.
+config:
+  config.yaml.local: |
+    api:
+      server:
+        auto_registration:
+          enabled: true
+          token: "${REGISTRATION_TOKEN}" # /!\ Do not modify this variable (auto-generated and handled by the chart)
+          allowed_ranges:
+            - "127.0.0.1/32"
+            - "192.168.0.0/16"
+            - "10.0.0.0/8"
+            - "172.16.0.0/12"
+    db_config:
+      type: postgresql
+      user: crowdsec
+      password: ${DB_PASSWORD}
+      db_name: crowdsec
+      host: crowdsec-pg-rw
+      port: 5432
+      sslmode: prefer
+
+lapi:
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { memory: 512Mi }
+  persistentVolume:
+    data:
+      storageClassName: ceph-rbd # CHANGE ME — stores registered bouncer/machine API keys
+    config:
+      storageClassName: ceph-rbd # CHANGE ME
+  metrics:
+    podMonitor:
+      enabled: true
+  env:
+    - name: DB_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: crowdsec-db-app
+          key: password
+
+agent:
+  hostVarLog: true
+  resources:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits: { memory: 256Mi }
+  metrics:
+    podMonitor:
+      enabled: true
+  env:
+    # nginx/http-cve/base-http-scenarios cover every app uniformly via the shared
+    # ingress-nginx access logs (all apps sit behind the same nginx-inc controller).
+    # apache2+wordpress additionally cover the WordPress instances directly (see
+    # docs/learnings/ — wordpress-2 was compromised via a webshell in wp-content/uploads).
+    # whitelist-good-actors trims false positives from known crawlers (Googlebot etc.).
+    - name: COLLECTIONS
+      value: "crowdsecurity/linux crowdsecurity/nginx crowdsecurity/apache2 crowdsecurity/http-cve crowdsecurity/base-http-scenarios crowdsecurity/wordpress crowdsecurity/whitelist-good-actors"
+  acquisition:
+    # releaseName is nginx-ingress (infrastructure/base/ingress-nginx) — verify the
+    # exact pod name prefix after first deploy: `kubectl -n ingress-nginx get pods`.
+    - namespace: ingress-nginx
+      podName: "nginx-ingress-nginx-ingress-controller-*"
+      program: nginx
+    - namespace: wordpress-1
+      podName: "wordpress-*"
+      program: apache2
+    - namespace: wordpress-2
+      podName: "wordpress-*"
+      program: apache2
+    - namespace: wordpress-3
+      podName: "wordpress-*"
+      program: apache2
