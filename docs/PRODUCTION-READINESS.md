@@ -28,8 +28,8 @@ Schnellstart-Checkliste (Reihenfolge):
 
 **Offen:**
 - [ ] Talos-Cluster provisionieren (control-plane + worker), `kubeconfig` exportieren.
-- [ ] Nix Dev-Shell bereitstellen (`flake.nix`/`shell.nix`) mit `kubectl, kustomize,
-      helm, sops, age, kubeconform, just, argocd` — wird in AGENTS.md vorausgesetzt, fehlt noch.
+- [x] Nix Dev-Shell bereitstellen (`flake.nix`) mit `kubectl, kustomize, helm, sops,
+      age, kubeconform, just, argocd`.
 - [ ] `k8sServiceHost`/`k8sServicePort` in Cilium auf KubePrism/VIP setzen.
 
 **Beispiel** (`infrastructure/base/cilium/values.yaml`):
@@ -75,7 +75,8 @@ Build der App fehl (`sops metadata not found`).
       --from-file=keys.txt=age.agekey`.
 - [ ] **Alle** `*.sops.yaml` mit echten Werten füllen und verschlüsseln:
       `just encrypt path/to/secret.sops.yaml` (oder `sops --encrypt --in-place`).
-- [ ] CI-Gate aktiv halten (`just secrets-check`) — verhindert Klartext-Commits.
+- [ ] CI-Gate aktiv halten (`just secrets-check`) — warnt bei Blueprint-Platzhaltern
+      und blockiert echte unverschluesselte Secret-Dateien.
 
 **Beispiel:**
 ```bash
@@ -268,6 +269,8 @@ alertmanager:
 - [ ] `htpasswd`-Wert in `secret.sops.yaml` generieren + verschlüsseln:
       `htpasswd -nb mcp <starkes-passwort>` → in `stringData.htpasswd` eintragen.
 - [ ] Claude Code konfigurieren: `Authorization: Basic base64(mcp:<passwort>)` als Header setzen.
+- [x] RBAC read-only halten: keine Write-Verben, kein Secret-Zugriff. CI prüft das über
+      `just guardrails`.
 
 ---
 
@@ -320,7 +323,8 @@ spec: { schedule: "0 0 2 * * *", cluster: { name: forgejo-pg } }
 
 ## 13. CI & Renovate
 
-**Dateien:** `.forgejo/workflows/ci.yaml`, `renovate.json`, `apps/base/renovate/*`
+**Dateien:** `.forgejo/workflows/ci.yaml`, `.github/workflows/ci.yml`, `renovate.json`,
+`apps/base/renovate/*`, `scripts/ci/guardrails.sh`
 
 **Offen:**
 - [ ] Forgejo-Actions-Runner registrieren (Token via `get_runner_registration_token`).
@@ -329,6 +333,11 @@ spec: { schedule: "0 0 2 * * *", cluster: { name: forgejo-pg } }
 - [ ] Renovate-Token (Forgejo) in `apps/base/renovate/secret.sops.yaml` setzen.
 - [ ] `endpoint`/`gitAuthor` in `apps/base/renovate/config.js` anpassen.
 - [ ] `# renovate:`-Kommentare an Helm-Versionen prüfen (datasource helm/docker).
+- [x] CI führt `scripts/ci/guardrails.sh` aus; lokal bündelt `just validate`
+      Guardrails, Lint, Secret-Check, Kustomize-Build und kubeconform.
+- [x] Guardrails blockieren `:latest`, `imagePullPolicy: Always`, verdächtige
+      Klartext-Secrets, mutierende Cluster-Kommandos in Automation und Write-RBAC
+      für den Kubernetes MCP Server.
 
 **Beispiel** — Renovate gegen Forgejo (`apps/base/renovate/config.js`):
 ```js
@@ -398,5 +407,7 @@ apps/overlays/main/<app>/kustomization.yaml   # -> wird von appset-apps automati
 just build   # kustomize build --enable-helm über alle overlays
 just test    # + kubeconform Schema-Validierung
 just lint    # yamllint
-just secrets-check   # keine Klartext-*.sops.yaml
+just secrets-check   # echte Secrets verschluesselt, Blueprint-Platzhalter warnen
+just guardrails      # Agent-/GitOps-Sicherheitschecks
+just validate        # gesamtes CI-Gate
 ```
