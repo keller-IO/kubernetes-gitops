@@ -3,3 +3,17 @@ kind: Kustomization
 namespace: forgejo
 resources:
   - ../../../base/forgejo
+patches:
+  # DEAKTIVIERT (27.07.2026). Der Init-Container "configure-gitea" scheiterte seit
+  # 15 Tagen in CrashLoopBackOff (4314 Restarts) an
+  #   pq: password authentication failed for user "forgejo"
+  # -> App-Passwort und das von CNPG erzeugte Secret forgejo-db-app weichen ab.
+  # Bewusst nur auf replicas: 0 gesetzt statt das Overlay zu entfernen — die
+  # AppSet-Apps laufen mit prune: true, ein Entfernen wuerde PVC, CNPG-Cluster und
+  # Backups mitloeschen. Datenbank (forgejo-pg) und Repos bleiben unangetastet.
+  # Reaktivieren: Passwort angleichen, dann diesen Patch entfernen.
+  - target: { kind: Deployment, name: forgejo }
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 0

@@ -4,6 +4,18 @@ namespace: wordpress-3
 resources:
   - ../../../base/wordpress
 patches:
+  # DEAKTIVIERT (27.07.2026). Die Instanz lief seit 16 Tagen nicht: das Deployment
+  # verlangt ServiceAccount "wordpress", der im Namespace nicht existiert
+  # -> FailedCreate, nie ein Pod, site3.jit.services antwortete mit 502.
+  # Bewusst nur auf replicas: 0 gesetzt statt das Overlay zu entfernen — die
+  # AppSet-Apps laufen mit prune: true, ein Entfernen wuerde PVC, MariaDB und
+  # Backups mitloeschen. So bleiben alle Daten erhalten.
+  # Reaktivieren: diesen Patch entfernen UND den fehlenden ServiceAccount anlegen.
+  - target: { kind: Deployment, name: wordpress }
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 0
   - target: { kind: Ingress }
     patch: |
       - op: replace
