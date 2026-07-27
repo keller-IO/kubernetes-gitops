@@ -1,0 +1,187 @@
+# Identitäts-Mapping für den kube-API-Proxy.
+#
+# Der Proxy authentifiziert den NetBird-Nutzer und impersoniert ihn gegenüber der
+# API — die NetBird-Gruppennamen kommen dabei als Kubernetes-Groups an. Deshalb
+# stehen die Gruppennamen hier zwangsläufig im Klartext: ein ClusterRoleBinding
+# kann seine subjects nicht aus einem Secret beziehen.
+---
+# Impersonation-Rechte für den Proxy.
+#
+# Der Operator legt das NICHT an (v0.8.0 erzeugt nur SetupKey, Secret und das
+# Proxy-Deployment; sein eigenes ClusterRole enthält keine einzige
+# impersonate-Regel). Upstream liefert das als Beispiel-Manifest zum Selbstbauen.
+#
+# WICHTIG — resourceNames ist hier die eigentliche Sicherheitsgrenze: der Proxy
+# reicht Gruppennamen ungefiltert an die API weiter. Ohne Allowlist würde eine
+# NetBird-Gruppe namens `system:masters` unmittelbar Cluster-Admin bedeuten,
+# ohne dass irgendein ClusterRoleBinding in diesem Repo das zeigt.
+# `All` muss mit in die Liste: NetBird steckt jeden Peer in diese Gruppe, der
+# Proxy sendet sie also immer mit — fehlt sie, scheitert jeder Request.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: netbird-clusterproxy
+rules:
+  - apiGroups: [""]
+    resources: [users]
+    verbs: [impersonate]
+  - apiGroups: [""]
+    resources: [groups]
+    verbs: [impersonate]
+    resourceNames: [k8s_admin, k8s_readonly, All]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: netbird-clusterproxy
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: netbird-clusterproxy
+subjects:
+  - kind: ServiceAccount
+    name: netbird-clusterproxy
+    namespace: netbird
+---
+# k8s_admin -> volle Rechte.
+# Bewusst cluster-admin, weil "Admin-Gruppe" genau das meint. Zu bedenken: damit
+# hängt Cluster-Admin an einer VPN-behaupteten Gruppenzugehörigkeit, die in
+# NetBird (nicht in Git) verwaltet wird. Wer dort Gruppen ändern darf, kann sich
+# selbst zum Cluster-Admin machen — ohne Spur im Kubernetes-Audit-Log.
+# Engere Alternative siehe docs/PRODUCTION-READINESS.md, Abschnitt 17.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: netbird-k8s-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: Group
+    name: k8s_admin
+---
+# k8s_readonly, Teil 1: der eingebaute `view`.
+# `view` enthält upstream KEINE Secrets, kein pods/exec|attach|portforward, kein
+# serviceaccounts/token. Er aggregiert zusätzlich alle ClusterRoles mit dem Label
+# rbac.authorization.k8s.io/aggregate-to-view=true.
+# ACHTUNG: diese Aggregation ist ein ungeprüfter Fremdkanal — jedes Chart kann
+# darüber Rechte in `view` schieben (mariadb-operator aggregiert z.B. k8s.mariadb.com/*
+# als Wildcard). Bei Chart-Updates im Blick behalten.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: netbird-k8s-readonly-view
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: Group
+    name: k8s_readonly
+---
+# k8s_readonly, Teil 2: alles, was `view` nicht abdeckt.
+# RBAC kennt kein "deny" — "alles außer Credentials" ist nur als Positivliste
+# baubar. Bewusst NICHT enthalten: `secrets` und `certificatesigningrequests`
+# (deren status.certificate ist zwar nur öffentliches Zertifikatsmaterial, aber
+# der Ausstellungs-Verlauf ist gute Aufklärung für Angreifer — bleibt draußen).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: netbird-cluster-reader
+rules:
+  # --- cluster-weite Kern-Objekte ---
+  - apiGroups: [""]
+    resources: [nodes, persistentvolumes]
+    verbs: [get, list, watch]
+  - apiGroups: [events.k8s.io]
+    resources: [events] # `kubectl events` nutzt diese Gruppe, nicht core/v1
+    verbs: [get, list, watch]
+  - apiGroups: [storage.k8s.io]
+    resources: [storageclasses, csidrivers, csinodes, csistoragecapacities, volumeattachments, volumeattributesclasses]
+    verbs: [get, list, watch]
+  - apiGroups: [apiextensions.k8s.io]
+    resources: [customresourcedefinitions]
+    verbs: [get, list, watch]
+  - apiGroups: [apiregistration.k8s.io]
+    resources: [apiservices]
+    verbs: [get, list, watch]
+  - apiGroups: [admissionregistration.k8s.io]
+    resources:
+      [
+        mutatingwebhookconfigurations,
+        validatingwebhookconfigurations,
+        validatingadmissionpolicies,
+        validatingadmissionpolicybindings,
+        mutatingadmissionpolicies,
+        mutatingadmissionpolicybindings,
+      ]
+    verbs: [get, list, watch]
+  - apiGroups: [networking.k8s.io]
+    resources: [ingressclasses, servicecidrs, ipaddresses]
+    verbs: [get, list, watch]
+  - apiGroups: [scheduling.k8s.io]
+    resources: [priorityclasses]
+    verbs: [get, list, watch]
+  - apiGroups: [node.k8s.io]
+    resources: [runtimeclasses]
+    verbs: [get, list, watch]
+  - apiGroups: [flowcontrol.apiserver.k8s.io]
+    resources: [flowschemas, prioritylevelconfigurations]
+    verbs: [get, list, watch]
+  - apiGroups: [coordination.k8s.io]
+    resources: [leases]
+    verbs: [get, list, watch]
+  - apiGroups: [certificates.k8s.io]
+    resources: [clustertrustbundles]
+    verbs: [get, list, watch]
+  - apiGroups: [metrics.k8s.io]
+    resources: [nodes, pods]
+    verbs: [get, list, watch]
+  # Wer darf was — verrät die Rechtestruktur (und damit lohnende Ziele), aber
+  # keine Credentials. Für eine Ops-Rolle vertretbar; Mitgliedschaft in
+  # k8s_readonly ist deshalb trotzdem kein Selbstbedienungsladen.
+  - apiGroups: [rbac.authorization.k8s.io]
+    resources: [clusterroles, clusterrolebindings, roles, rolebindings]
+    verbs: [get, list, watch]
+  # --- CRDs dieses Clusters, die NICHT aggregate-to-view mitbringen ---
+  # Ohne diese Regeln sieht k8s_readonly weder Postgres-Cluster noch ArgoCD-Apps
+  # noch Cilium-Policies — also genau das, was man üblicherweise nachschauen will.
+  - apiGroups: [postgresql.cnpg.io]
+    resources: ["*"]
+    verbs: [get, list, watch]
+  - apiGroups: [argoproj.io]
+    resources: ["*"]
+    verbs: [get, list, watch]
+  - apiGroups: [cilium.io]
+    resources: ["*"]
+    verbs: [get, list, watch]
+  - apiGroups: [k8s.nginx.org, externaldns.nginx.org]
+    resources: ["*"]
+    verbs: [get, list, watch]
+  - apiGroups: [netbird.io]
+    resources: ["*"]
+    verbs: [get, list, watch]
+  - apiGroups: [objectbucket.io]
+    resources: ["*"]
+    verbs: [get, list, watch]
+  # cert-manager aggregiert Certificates/Issuers selbst, ClusterIssuer aber nicht
+  # (dessen Label zielt auf OpenShifts cluster-reader).
+  - apiGroups: [cert-manager.io]
+    resources: [clusterissuers]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: netbird-k8s-readonly-cluster
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: netbird-cluster-reader
+subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: Group
+    name: k8s_readonly
