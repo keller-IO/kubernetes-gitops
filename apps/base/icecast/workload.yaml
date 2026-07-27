@@ -67,7 +67,9 @@ metadata:
     nginx.org/redirect-to-https: "true"
     # Live audio: buffering adds latency and can stall the stream; listeners/sources
     # hold the connection open far longer than the default 60s proxy timeout.
-    nginx.org/proxy-buffering: "off"
+    # Muss ein Boolean sein ("false", nicht "off"): NIC 5.x validiert die Annotation
+    # strikt und verwirft sonst den GESAMTEN Ingress ("Rejected" -> Host liefert 404).
+    nginx.org/proxy-buffering: "false"
     nginx.org/proxy-read-timeout: "3600s"
     nginx.org/proxy-send-timeout: "3600s"
 spec:
