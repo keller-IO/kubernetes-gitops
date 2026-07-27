@@ -3,10 +3,11 @@ kind: Namespace
 metadata:
   name: netbird
   labels:
-    # Ohne Agent-DaemonSet läuft hier nichts Privilegiertes mehr: Operator und die
-    # vom Operator erzeugten ClusterProxy-Pods sind restricted-konform
-    # (runAsNonRoot, readOnlyRootFilesystem, drop ALL).
-    pod-security.kubernetes.io/enforce: restricted
+    # Der NetBird-Operator rendert ClusterProxy-Pods ohne seccompProfile und die
+    # ClusterProxy-CRD bietet dafür keinen PodTemplate-Hook. Baseline ist der
+    # kleinste GitOps-Workaround; warn/audit bleiben auf restricted, damit ein
+    # upstream-fähiger Fix sichtbar bleibt.
+    pod-security.kubernetes.io/enforce: baseline
     pod-security.kubernetes.io/audit: restricted
     pod-security.kubernetes.io/warn: restricted
 # Bewusst KEIN netbird.io/webhook=enabled (siehe values.yaml): das Chart rendert nur
