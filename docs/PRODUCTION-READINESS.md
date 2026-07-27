@@ -101,6 +101,8 @@ alle `**/ingress.yaml` & Chart-`values.yaml` (`hosts:`), `apps/overlays/main/clu
 
 **Offen:**
 - [x] **Domain festgelegt**: `jit.services` — `cluster-config.yaml` + alle Manifeste aktualisiert.
+- [x] **Globale NGINX-Defaults**: `client-max-body-size: 10m` (Fallback, App-Ingresses überschreiben
+      bei Bedarf höher) + `hsts: "True"` in `infrastructure/base/ingress-nginx/values.yaml`.
 - [ ] LoadBalancer-IP-Quelle wählen: Cilium LB-IPAM **oder** MetalLB-Pool → Ingress-Service
       bekommt externe IP.
 - [ ] DNS-Records (A/AAAA bzw. CNAME) für alle Hosts aus `cluster-config.yaml` auf die LB-IP.
@@ -380,7 +382,7 @@ Jede App liegt unter `apps/base/<app>/` (Basis) + `apps/overlays/main/<app>/` (C
 | **gatus** | `apps/base/gatus/` | `gatus-oidc`-Secret füllen (== Blueprint-`client_secret`); `issuer-url`/`redirect-url`/`client-id` auf reale Domain; echte `endpoints` statt Samples eintragen. |
 | **kite** | `apps/base/kite/` | `kite-secrets` füllen (`JWT_SECRET`/`KITE_ENCRYPT_KEY` via `openssl rand -hex 32`, `OAUTH_CLIENT_SECRET` == Blueprint); `issuer`/`clientId` setzen; RBAC-Rollen-Mapping für OIDC-User; PVC-StorageClass prüfen. |
 | **mailman** | `apps/base/mailman/` | Secrets füllen (`HYPERKITTY_API_KEY`, `SECRET_KEY`, REST-Passwort, `MAILMAN_ADMIN_EMAIL`, `SMTP_HOST_USER`); externes MTA auf LMTP-Service routen; CNPG-Bucket `cnpg-mailman`/S3-Creds anlegen; PVC- und DB-Größen prüfen; erste Admin-Initialisierung testen. |
-| **icecast** | `apps/base/icecast/` | Source/Admin/Relay-Passwörter setzen; Source-Clients auf HTTPS-URL und Source-Passwort umstellen; Listener-Limit und Ingress-Timeouts nach Stream-Profil prüfen. |
+| **icecast** | `apps/base/icecast/` | Source/Admin/Relay-Passwörter setzen; Source-Clients auf HTTPS-URL und Source-Passwort umstellen; Listener-Limit nach Stream-Profil prüfen (Ingress-Timeouts/Buffering für Live-Streaming sind gesetzt: `proxy-buffering off`, 3600s Read/Send-Timeout). |
 | **phpmyadmin** | `apps/base/phpmyadmin/` | Zugriff absichern (Authentik Forward-Auth oder IP-Allowlist); nur dedizierte DB-User statt Root verwenden; Default-DB-Host `kimai-mariadb.kimai.svc.cluster.local` prüfen; weitere Ziele als FQDN eintragen. |
 
 **Beispiel** — neue App hinzufügen (Kurzform, Details in AGENTS.md):

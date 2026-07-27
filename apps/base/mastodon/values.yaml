@@ -33,8 +33,19 @@ mastodon:
 
   web:
     replicas: 1
+    resources:
+      requests: { cpu: 200m, memory: 512Mi }
+      limits: { memory: 1Gi }
+  sidekiq:
+    replicas: 1
+    resources:
+      requests: { cpu: 200m, memory: 512Mi }
+      limits: { memory: 1Gi }
   streaming:
     replicas: 1
+    resources:
+      requests: { cpu: 100m, memory: 256Mi }
+      limits: { memory: 512Mi }
 
 postgresql:
   hostname: mastodon-pg-rw # CNPG read-write service

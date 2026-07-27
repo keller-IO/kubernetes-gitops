@@ -7,6 +7,11 @@ controller:
     # Global tuning; per-app overrides via nginx.org/* annotations on each Ingress.
     proxy-protocol: "False"
     redirect-to-https: "True"
+    # Defense-in-depth default so an Ingress that forgets client-max-body-size
+    # doesn't silently fall back to NGINX' built-in 1m cap. Heavier apps
+    # (forgejo, collabora, mastodon, ...) still override per-Ingress.
+    client-max-body-size: "10m"
+    hsts: "True"
   enableSnippets: true
   ingressClass:
     name: nginx

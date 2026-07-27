@@ -21,6 +21,11 @@ ingress:
     nginx.org/ssl-redirect: "false"
     nginx.org/redirect-to-https: "true"
     nginx.org/websocket-services: collabora # WOPI/editor needs WebSocket
+    nginx.org/client-max-body-size: "100m" # large documents via WOPI PutFile
+    # WOPI editing session is a long-lived idle WebSocket — default 60s proxy
+    # timeout drops it ("connection lost, please reload"). Match upstream Collabora/Nextcloud docs.
+    nginx.org/proxy-read-timeout: "3600s"
+    nginx.org/proxy-send-timeout: "3600s"
   hosts:
     - host: office.jit.services # CHANGE ME
       paths:

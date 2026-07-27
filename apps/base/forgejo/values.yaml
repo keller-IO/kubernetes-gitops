@@ -13,6 +13,10 @@ persistence:
   storageClass: ceph-rbd # CHANGE ME
   size: 20Gi
 
+resources:
+  requests: { cpu: 200m, memory: 512Mi }
+  limits: { memory: 1Gi }
+
 service:
   ssh:
     type: ClusterIP # expose via LoadBalancer or NodePort for git-over-SSH (production TODO)
