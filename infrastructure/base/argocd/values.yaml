@@ -5,6 +5,9 @@ configs:
     # otherwise ArgoCD self-management drifts from the initial install.
     kustomize.buildOptions: "--enable-helm --enable-alpha-plugins --enable-exec"
     timeout.reconciliation: 180s
+    users.anonymous.enabled: "true"
+  rbac:
+    policy.default: role:readonly
   params:
     server.insecure: true # TLS terminated at NGINX Ingress
 repoServer:
