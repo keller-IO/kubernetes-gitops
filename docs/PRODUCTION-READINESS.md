@@ -401,6 +401,52 @@ apps/overlays/main/<app>/kustomization.yaml   # -> wird von appset-apps automati
 
 ---
 
+## 16. CrowdSec (Intrusion Detection)
+
+**Dateien:** `infrastructure/base/crowdsec/*`
+
+**Status: Detection-only.** LAPI + Agent-DaemonSet laufen und erzeugen Alerts/Decisions
+(`cscli alerts list`, `cscli decisions list`), aber es wird noch **nichts aktiv geblockt** —
+es ist bewusst noch kein Bouncer verdrahtet.
+
+**Warum kein Bouncer im ersten Wurf:** Es gibt kein offizielles CrowdSec-Produkt, das
+Kubernetes-NetworkPolicies durchsetzt. Die real existierenden Optionen:
+- `cs-firewall-bouncer` (offiziell, gepflegt) — braucht ein privilegiertes DaemonSet
+  (`NET_ADMIN` + `hostNetwork`) auf jedem Talos-Node, das nftables direkt manipuliert.
+- `cs-netpol-bouncer` (Community, genau das NetworkPolicy-Konzept) — 0 GitHub-Stars,
+  wirkt unmaintained, nicht für produktives Enforcement empfohlen.
+- `cs-wordpress-bouncer` (offiziell) — blockt direkt in WordPress/PHP, passt zum
+  konkreten Vorfall (`docs/learnings/` — wordpress-2 Webshell-Kompromittierung).
+- Detection-only (aktueller Stand) — erst beobachten, dann in einem Folge-PR
+  einen Bouncer scharfschalten, sobald die Trefferquote geprüft ist.
+
+**Architektur:**
+- **LAPI**: eigene Postgres-Instanz via CNPG (`postgres.yaml`, `crowdsec-pg`) statt der
+  eingebauten SQLite — konsistent mit jeder anderen zustandsbehafteten Komponente hier.
+- **Agent**: DaemonSet, liest Pod-Logs via `agent.acquisition` (namespace/podName/program).
+  Aktuell verdrahtet: `ingress-nginx` (deckt über den gemeinsamen nginx-inc-Ingress
+  praktisch jede App ab) + `wordpress-1/2/3` (Apache-Logs direkt, ergänzend).
+- **Kein Console-Enrollment**: läuft rein lokal, keine Daten gehen an crowdsec.net,
+  kein Community-Blocklist-Sharing.
+- `container_runtime: containerd` gesetzt (Talos-Nodes, Chart-Default ist `docker`).
+
+**Offen:**
+- [ ] `secret.sops.yaml` ist noch **unverschlüsselt** (Platzhalter, kein sops/age in der
+      Umgebung verfügbar, die diesen PR erzeugt hat) — echte Werte eintragen und
+      `just encrypt infrastructure/base/crowdsec/secret.sops.yaml`.
+- [ ] Garage-S3-Bucket `cnpg-crowdsec` anlegen, `crowdsec-backup-s3`-Credentials setzen.
+- [ ] Nach erstem Deploy den echten Pod-Namen des nginx-inc-Controllers prüfen
+      (`kubectl -n ingress-nginx get pods`) und `agent.acquisition[0].podName` in
+      `values.yaml` ggf. anpassen (Annahme: `nginx-ingress-nginx-ingress-controller-*`,
+      abgeleitet vom `releaseName: nginx-ingress`).
+- [ ] Nach ein paar Tagen Laufzeit `cscli alerts list` / `cscli metrics` prüfen —
+      False-Positives? Fehlende Collections für weitere Apps (forgejo, roundcube, ...)?
+- [ ] Enforcement-Entscheidung treffen (siehe oben) und in einem Folge-PR umsetzen.
+- [ ] Optional: CrowdSec Console/Community-Blocklist aktivieren, falls das
+      Datenteilen mit crowdsec.net gewünscht ist (aktuell bewusst deaktiviert).
+
+---
+
 ## Vor dem ersten `argocd app sync` lokal prüfen
 
 ```bash
