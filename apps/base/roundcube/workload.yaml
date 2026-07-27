@@ -14,7 +14,7 @@ spec:
       containers:
         - name: roundcube
           # renovate: image=roundcube/roundcubemail
-          image: roundcube/roundcubemail:1.6.9-apache
+          image: roundcube/roundcubemail:1.7.1-apache
           ports: [{ containerPort: 80 }]
           env:
             # Ohne dies deaktiviert Composer (läuft als root) den roundcube/
