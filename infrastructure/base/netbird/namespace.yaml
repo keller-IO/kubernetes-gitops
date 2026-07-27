@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: netbird
+  labels:
+    # Ohne Agent-DaemonSet läuft hier nichts Privilegiertes mehr: Operator und die
+    # vom Operator erzeugten ClusterProxy-Pods sind restricted-konform
+    # (runAsNonRoot, readOnlyRootFilesystem, drop ALL).
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+# Bewusst KEIN netbird.io/webhook=enabled (siehe values.yaml): das Chart rendert nur
+# den Sidecar-Injection-Webhook für Pods, den brauchen wir nicht — und mit
+# failurePolicy: Fail würde das Label einen ausgefallenen Operator zum Blocker für
+# Pod-Creates in genau diesem Namespace machen.
