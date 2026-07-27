@@ -65,6 +65,11 @@ metadata:
     cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.org/ssl-redirect: "false"
     nginx.org/redirect-to-https: "true"
+    # Live audio: buffering adds latency and can stall the stream; listeners/sources
+    # hold the connection open far longer than the default 60s proxy timeout.
+    nginx.org/proxy-buffering: "off"
+    nginx.org/proxy-read-timeout: "3600s"
+    nginx.org/proxy-send-timeout: "3600s"
 spec:
   ingressClassName: nginx
   tls:

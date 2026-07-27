@@ -5,7 +5,7 @@ namespace: mastodon
 helmCharts:
   - name: mastodon
     repo: https://mastodon.github.io/helm-charts
-    version: 0.5.8 # renovate: helm  (official chart; appVersion = Mastodon release)
+    version: 1.0.3 # renovate: helm  (official chart; appVersion = Mastodon release)
     releaseName: mastodon
     namespace: mastodon
     valuesFile: values.yaml

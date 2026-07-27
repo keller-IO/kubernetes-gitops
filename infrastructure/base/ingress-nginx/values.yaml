@@ -18,6 +18,10 @@ controller:
       # Upstream 127.0.0.1:8181 -> 502.
       resolver-addresses: "10.96.0.10"
       resolver-valid: "30s"
+      # Defense-in-depth default so an Ingress that forgets client-max-body-size
+      # doesn't silently fall back to NGINX' built-in 1m cap. Heavier apps
+      # (forgejo, collabora, mastodon, ...) still override per-Ingress.
+      client-max-body-size: "10m"
   enableSnippets: true
   ingressClass:
     name: nginx
