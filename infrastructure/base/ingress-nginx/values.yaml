@@ -22,6 +22,19 @@ controller:
       # doesn't silently fall back to NGINX' built-in 1m cap. Heavier apps
       # (forgejo, collabora, mastodon, ...) still override per-Ingress.
       client-max-body-size: "10m"
+      # Echte Client-IP wiederherstellen. Ohne das loggt nginx für JEDEN Request
+      # eine Proxy-/Node-Adresse, weil (a) der .15-Traefik davor terminiert und
+      # (b) externalTrafficPolicy: Cluster die Source-IP SNAT'ed (s. o.).
+      # Folge bisher: Access-Logs, Rate-Limits und CrowdSec sehen praktisch nur
+      # eine einzige IP.
+      # set-real-ip-from = die Peers, denen wir den XFF-Header glauben. Wegen des
+      # SNAT ist der TCP-Peer NICHT .15, sondern die announcende Node — daher das
+      # ganze LAN-/24 (Traefik .15, Nodes und LB-Pool .246-.249 liegen alle darin,
+      # siehe infrastructure/base/cilium/lb-ipam.yaml). Bewusst kein Pod-CIDR:
+      # erst verifizieren, ob nginx überhaupt Pod-Adressen als Peer sieht.
+      set-real-ip-from: "192.168.2.0/24"
+      real-ip-header: "X-Forwarded-For"
+      real-ip-recursive: "True"
   enableSnippets: true
   ingressClass:
     name: nginx

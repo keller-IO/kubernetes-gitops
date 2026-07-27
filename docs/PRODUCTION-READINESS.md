@@ -98,6 +98,15 @@ alle `**/ingress.yaml` & Chart-`values.yaml` (`hosts:`), `apps/overlays/main/clu
       bei Bedarf höher) in `infrastructure/base/ingress-nginx/values.yaml`. HSTS bewusst noch nicht
       global aktiviert, solange TLS teils extern am Legacy-Traefik terminiert (HTTP-only-Ingresses,
       s. o.) — erst nach Cluster-direktem-TLS-Cutover nachziehen.
+- [x] **Echte Client-IP**: `set-real-ip-from: 192.168.2.0/24` + `real-ip-header: X-Forwarded-For`
+      + `real-ip-recursive: True`. Vorher loggte nginx für jeden Request eine Proxy-/Node-Adresse
+      (`.15`-Traefik davor + `externalTrafficPolicy: Cluster` SNAT'ed) — Access-Logs, Rate-Limits
+      und CrowdSec sahen praktisch nur eine IP.
+      **Nach dem Rollout verifizieren:** externe Test-Anfrage absetzen und im nginx-Access-Log
+      prüfen, dass die echte Client-IP erscheint. Falls nicht, sieht nginx vermutlich eine
+      Pod-Adresse als Peer → Pod-CIDR zu `set-real-ip-from` ergänzen.
+      *Nicht* mit erledigt: die WordPress-Apache-Logs — Apache loggt weiterhin die nginx-Pod-IP,
+      dafür bräuchte es `mod_remoteip` im WordPress-Image.
 - [ ] LoadBalancer-IP-Quelle wählen: Cilium LB-IPAM **oder** MetalLB-Pool → Ingress-Service
       bekommt externe IP.
 - [ ] DNS-Records (A/AAAA bzw. CNAME) für alle Hosts aus `cluster-config.yaml` auf die LB-IP.
