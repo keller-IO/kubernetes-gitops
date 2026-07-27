@@ -38,9 +38,11 @@ jobs:
       - uses: azure/setup-helm@v5
 
       - name: Install kustomize + kubeconform
+        env:
+          KUSTOMIZE_VERSION: 5.8.1
         run: |
           set -euo pipefail
-          curl -sSfL https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh | bash
+          curl -sSfL "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v${KUSTOMIZE_VERSION}/kustomize_v${KUSTOMIZE_VERSION}_linux_amd64.tar.gz" | tar xz kustomize
           curl -sSfL https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz | tar xz
           sudo mv kustomize kubeconform /usr/local/bin/
           # KSOPS-Stub: CI hat keinen age-Key, Secrets werden nicht gerendert.
@@ -80,11 +82,14 @@ jobs:
 
       - name: Install kustomize + Trivy
         env:
+          KUSTOMIZE_VERSION: 5.8.1
           # renovate: datasource=github-releases depName=aquasecurity/trivy
           TRIVY_VERSION: 0.72.0
         run: |
           set -euo pipefail
-          curl -sSfL https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh | bash
+          # Gepinnter Direkt-Download statt install_kustomize.sh: das Script fragt
+          # die GitHub-API nach "latest" und läuft auf Shared-Runnern ins Rate-Limit.
+          curl -sSfL "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v${KUSTOMIZE_VERSION}/kustomize_v${KUSTOMIZE_VERSION}_linux_amd64.tar.gz" | tar xz kustomize
           sudo mv kustomize /usr/local/bin/
           # Gepinnter Direkt-Download statt install.sh: das godownloader-Script
           # fragt die GitHub-API nach "latest" und läuft auf Shared-Runnern
