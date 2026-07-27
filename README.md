@@ -79,7 +79,7 @@ Git push ──▶ ArgoCD (root-app) ──▶ ApplicationSets ──▶ Kustomi
 | `flake.nix` / `.envrc` | Reproduzierbare Entwicklungsumgebung (siehe unten) |
 | `renovate.json` | Automatische Dependency-Updates (Helm-Charts, Container-Images) |
 | `.sops.yaml` | Verschlüsselungsregeln für Secrets |
-| `.forgejo/workflows/` | CI-Pipeline (Render-, Schema- und Secret-Checks) |
+| `.github/workflows/` | Führende CI-Pipeline (Render-, Schema-, Secret- und Guardrail-Checks) |
 
 ---
 

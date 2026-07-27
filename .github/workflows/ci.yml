@@ -1,5 +1,5 @@
 # CI: lint + validate every manifest renders & passes schema, plus a security scan.
-# GitHub Actions. Mirrors .forgejo/workflows/ci.yaml (Forgejo) and adds Trivy.
+# GitHub Actions is the leading CI path.
 name: ci
 
 on:

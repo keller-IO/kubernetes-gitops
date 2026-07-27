@@ -323,25 +323,25 @@ spec: { schedule: "0 0 2 * * *", cluster: { name: forgejo-pg } }
 
 ## 13. CI & Renovate
 
-**Dateien:** `.forgejo/workflows/ci.yaml`, `.github/workflows/ci.yml`, `renovate.json`,
+**Dateien:** `.github/workflows/ci.yml`, `renovate.json`,
 `apps/base/renovate/*`, `scripts/ci/guardrails.sh`
 
 **Offen:**
-- [ ] Forgejo-Actions-Runner registrieren (Token via `get_runner_registration_token`).
-- [ ] Entscheiden: GitHub *leading* (AGENTS.md) vs. Forgejo (Repo-Host) — Workflows entsprechend
-      spiegeln. Aktuell `.forgejo/workflows/`.
-- [ ] Renovate-Token (Forgejo) in `apps/base/renovate/secret.sops.yaml` setzen.
-- [ ] `endpoint`/`gitAuthor` in `apps/base/renovate/config.js` anpassen.
-- [ ] `# renovate:`-Kommentare an Helm-Versionen prüfen (datasource helm/docker).
+- [ ] GitHub-Token in `apps/base/renovate/secret.sops.yaml` setzen.
+- [ ] `gitAuthor` in `apps/base/renovate/config.js` anpassen.
+- [x] Renovate läuft gegen GitHub (`keller-IO/kubernetes-gitops`) und ignoriert
+      `.forgejo/**`.
+- [x] `# renovate:`-Kommentare an Helm-, Docker- und Workflow-Versionen werden
+      durch `customManagers` abgedeckt.
 - [x] CI führt `scripts/ci/guardrails.sh` aus; lokal bündelt `just validate`
       Guardrails, Lint, Secret-Check, Kustomize-Build und kubeconform.
 - [x] Guardrails blockieren `:latest`, `imagePullPolicy: Always`, verdächtige
       Klartext-Secrets, mutierende Cluster-Kommandos in Automation und Write-RBAC
       für den Kubernetes MCP Server.
 
-**Beispiel** — Renovate gegen Forgejo (`apps/base/renovate/config.js`):
+**Beispiel** — Renovate gegen GitHub (`apps/base/renovate/config.js`):
 ```js
-module.exports = { platform: 'gitea', endpoint: 'https://git.DEINE-DOMAIN.tld/api/v1', autodiscover: true };
+module.exports = { platform: 'github', repositories: ['keller-IO/kubernetes-gitops'] };
 ```
 
 ---

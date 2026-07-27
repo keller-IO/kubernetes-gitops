@@ -202,8 +202,8 @@ Betroffen u.a.: `infrastructure/base/cert-manager/cluster-issuer.sops.yaml`,
 
 ## 10. CI, Renovate & Mail
 
-- [ ] Forgejo-Actions-Runner registrieren (`get_runner_registration_token`).
-- [ ] Renovate-Token + `endpoint`/`gitAuthor` (`apps/base/renovate/{secret.sops.yaml,config.js}`).
+- [ ] GitHub Actions für PRs prüfen.
+- [ ] Renovate-GitHub-Token + `gitAuthor` (`apps/base/renovate/{secret.sops.yaml,config.js}`).
 - [ ] Externen IMAP/SMTP für roundcube/mastodon/paperless setzen (kein Mailserver im Cluster).
 
 ---

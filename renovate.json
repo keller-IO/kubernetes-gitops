@@ -6,39 +6,185 @@
     ":semanticCommits"
   ],
   "timezone": "Europe/Berlin",
-  "schedule": ["before 6am on monday"],
-  "labels": ["dependencies"],
-  "kubernetes": {
+  "schedule": [
+    "before 6am on monday"
+  ],
+  "labels": [
+    "dependencies"
+  ],
+  "ignorePaths": [
+    ".forgejo/**"
+  ],
+  "rebaseWhen": "behind-base-branch",
+  "minimumReleaseAge": "7 days",
+  "prHourlyLimit": 2,
+  "prConcurrentLimit": 10,
+  "nix": {
+    "enabled": true
+  },
+  "lockFileMaintenance": {
+    "enabled": true,
+    "automerge": true
+  },
+  "kustomize": {
     "managerFilePatterns": [
-      "/infrastructure/.+\\.ya?ml$/",
-      "/apps/.+\\.ya?ml$/"
+      "/(^|/)(apps|infrastructure|clusters)/.+/kustomization\\.ya?ml$/"
     ]
   },
-  "helmv3": {
-    "managerFilePatterns": ["/.+/kustomization\\.ya?ml$/"]
+  "kubernetes": {
+    "managerFilePatterns": [
+      "/(^|/)(apps|infrastructure)/.+(deployment|daemonset|statefulset|job|cronjob|workload|cache|database)\\.ya?ml$/"
+    ]
   },
-  "packageRules": [
-    {
-      "description": "Auto-merge digest + patch for low-risk apps after CI",
-      "matchPackageNames": ["collabora/code", "roundcube/roundcubemail"],
-      "matchUpdateTypes": ["patch", "digest"],
-      "automerge": true
-    },
-    {
-      "description": "Group monitoring stack bumps",
-      "matchPackageNames": ["/victoria-metrics/"],
-      "groupName": "victoria-metrics"
-    }
-  ],
+  "github-actions": {
+    "managerFilePatterns": [
+      "/(^|/)\\.github/workflows/.+\\.ya?ml$/"
+    ]
+  },
   "customManagers": [
     {
-      "description": "Parse appVersion / image tags pinned inside kustomize helmCharts values",
       "customType": "regex",
-      "managerFilePatterns": ["/apps/base/.+/values\\.ya?ml$/"],
-      "matchStrings": [
-        "#\\s*renovate:\\s*image=(?<depName>.*?)\\s*\\n\\s*tag:\\s*[\"']?(?<currentValue>[\\w.+-]+)"
+      "description": "Generic marker '# renovate: datasource=X depName=Y [versioning=Z]' for fields without native manager support.",
+      "managerFilePatterns": [
+        "/(^|/)(apps|infrastructure|clusters)/.+\\.ya?ml$/"
       ],
-      "datasourceTemplate": "docker"
+      "matchStrings": [
+        "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+packageName=(?<packageName>\\S+))?(?:\\s+versioning=(?<versioning>\\S+))?\\s*\\n(?:[^\\n]*\\n)*?\\s*tag:\\s*[\"']?(?<currentValue>[^\\s\"'#]+)[\"']?",
+        "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+packageName=(?<packageName>\\S+))?(?:\\s+versioning=(?<versioning>\\S+))?\\s*\\n\\s*imageName:\\s*[\"']?[^:@\\s\"']+:(?<currentValue>[^\"'@\\s]+)[\"']?",
+        "\\sversion:\\s*[\"']?(?<currentValue>[^\\s\"'#]+)[\"']?\\s*#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+packageName=(?<packageName>\\S+))?(?:\\s+versioning=(?<versioning>\\S+))?"
+      ],
+      "versioningTemplate": "{{#if versioning}}{{{versioning}}}{{else}}semver{{/if}}"
+    },
+    {
+      "customType": "regex",
+      "description": "Legacy repo marker '# renovate: image=repo/name' for inline images and tag-only values.",
+      "managerFilePatterns": [
+        "/(^|/)(apps|infrastructure|clusters)/.+\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "tag:\\s*[\"']?(?<currentValue>[^\\s\"'#]+)[\"']?\\s*#\\s*renovate:\\s*image=(?<depName>\\S+)"
+      ],
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "loose"
+    },
+    {
+      "customType": "regex",
+      "description": "Legacy digest-only image markers keep manifests non-floating while allowing digest refreshes.",
+      "managerFilePatterns": [
+        "/(^|/)(apps|infrastructure|clusters)/.+\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "#\\s*renovate:\\s*image=(?<depName>\\S+)\\s*\\n\\s*(?:-\\s+)?image:\\s*[\"']?[^@\\s\"']+@(?<currentDigest>sha256:[a-f0-9]+)[\"']?"
+      ],
+      "datasourceTemplate": "docker",
+      "currentValueTemplate": "latest"
+    },
+    {
+      "customType": "regex",
+      "description": "Workflow env-var marker '# renovate: datasource=X depName=Y' followed by VERSION: X.",
+      "managerFilePatterns": [
+        "/(^|/)\\.github/workflows/.+\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+packageName=(?<packageName>\\S+))?(?:\\s+versioning=(?<versioning>\\S+))?\\s*\\n\\s*[A-Z0-9_]+:\\s*[\"']?(?<currentValue>[^\"'\\s]+)[\"']?"
+      ],
+      "versioningTemplate": "{{#if versioning}}{{{versioning}}}{{else}}semver{{/if}}"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "Group each app or infrastructure directory so chart, image and marker updates stay in lockstep.",
+      "matchFileNames": [
+        "apps/**",
+        "infrastructure/**",
+        "clusters/**"
+      ],
+      "groupName": "{{parentDir}}"
+    },
+    {
+      "description": "CNPG Postgres major upgrades are manual migrations.",
+      "matchPackageNames": [
+        "ghcr.io/cloudnative-pg/postgresql"
+      ],
+      "allowedVersions": "/^16\\.\\d+$/"
+    },
+    {
+      "description": "Nix flake inputs are grouped and automerged after the global soak period.",
+      "matchManagers": [
+        "nix"
+      ],
+      "groupName": "nix packages",
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": true
+    },
+    {
+      "description": "Automerge low-risk digest, pin and patch updates after CI.",
+      "matchUpdateTypes": [
+        "digest",
+        "pin",
+        "patch"
+      ],
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": true
+    },
+    {
+      "description": "Automerge minor updates only for stateless leaf apps.",
+      "matchFileNames": [
+        "apps/base/collabora/**",
+        "apps/base/gatus/**",
+        "apps/base/icecast/**",
+        "apps/base/phpmyadmin/**",
+        "infrastructure/base/kite/**",
+        "infrastructure/base/kubernetes-mcp/**"
+      ],
+      "matchUpdateTypes": [
+        "minor"
+      ],
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": true
+    },
+    {
+      "description": "Renovate self-updates get a shorter soak to keep the updater current.",
+      "matchFileNames": [
+        "apps/base/renovate/**"
+      ],
+      "minimumReleaseAge": "2 days",
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": true
+    },
+    {
+      "description": "Infrastructure controllers and stateful applications need manual review.",
+      "matchFileNames": [
+        "apps/base/forgejo/**",
+        "apps/base/kimai/**",
+        "apps/base/mailman/**",
+        "apps/base/mastodon/**",
+        "apps/base/paperless-ngx/**",
+        "apps/base/roundcube/**",
+        "apps/base/wordpress/**",
+        "infrastructure/base/argocd/**",
+        "infrastructure/base/authentik/**",
+        "infrastructure/base/ceph-csi/**",
+        "infrastructure/base/cert-manager/**",
+        "infrastructure/base/cilium/**",
+        "infrastructure/base/cnpg/**",
+        "infrastructure/base/ingress-nginx/**",
+        "infrastructure/base/mariadb-operator/**",
+        "infrastructure/base/monitoring/**"
+      ],
+      "automerge": false
+    },
+    {
+      "description": "0.x minor updates can be breaking; keep them manual.",
+      "matchUpdateTypes": [
+        "minor"
+      ],
+      "matchCurrentVersion": "/^0\\./",
+      "automerge": false
     }
   ]
 }
