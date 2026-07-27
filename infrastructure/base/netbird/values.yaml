@@ -19,6 +19,8 @@ operator:
   # gesetzt, aktiv ist also immer nur einer. (Der Webhook ist durch den Selector
   # unten ohnehin inert — er ist NICHT der Grund für die zweite Replica.)
   replicaCount: 2
+  podAnnotations:
+    keller.io/netbird-token-revision: "2026-07-27-1"
   resources:
     requests: { cpu: 10m, memory: 64Mi }
     limits: { memory: 256Mi }
