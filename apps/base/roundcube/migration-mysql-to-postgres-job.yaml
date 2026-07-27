@@ -1,6 +1,7 @@
-# Manual one-shot migration helper; intentionally not listed in kustomization.yaml.
-# Run only after roundcube-pg exists and while the roundcube Deployment is scaled
-# to 0. The job replaces target tables.
+# Historical one-shot migration helper; intentionally not listed in
+# kustomization.yaml. Do not rerun it: pgloader's automatic MySQL tinyint(1) to
+# PostgreSQL boolean mapping is incompatible with Roundcube's native PostgreSQL
+# schema. See postgres-schema-repair-20260727.sql and the operational learning.
 apiVersion: batch/v1
 kind: Job
 metadata:
