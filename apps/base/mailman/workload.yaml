@@ -31,8 +31,12 @@ spec:
               value: postgres
             - name: DATABASE_CLASS
               value: mailman.database.postgresql.PostgreSQLDatabase
+            # LMTP/REST an alle Interfaces binden. NICHT den Service-Namen nehmen:
+            # der löst in k8s auf die (nicht bindbare) ClusterIP auf -> core crasht
+            # mit "could not bind on 8024". Erreichbarkeit läuft über die Services
+            # (mailman-core:8001 REST, mailman-lmtp:8024 LoadBalancer).
             - name: MM_HOSTNAME
-              value: mailman-core
+              value: 0.0.0.0
             - name: MAILMAN_REST_PORT
               value: "8001"
             - name: MAILMAN_REST_USER
@@ -45,19 +49,19 @@ spec:
               value: http://mailman-web:8000/hyperkitty
             - name: MTA
               value: postfix
+            # Outbound wie im Alt-Setup: mx02 relayt IP-basiert (mynetworks),
+            # kein Auth/TLS auf dem internen Hop.
             - name: SMTP_HOST
-              value: smtp.jit.services # CHANGE ME
+              value: 192.168.2.209 # mx02.jitcreatives.de
             - name: SMTP_PORT
-              value: "587"
-            - name: SMTP_SECURE_MODE
-              value: starttls
-            - name: SMTP_HOST_USER
-              valueFrom: { secretKeyRef: { name: mailman-secret, key: SMTP_HOST_USER } }
-            - name: SMTP_HOST_PASSWORD
-              valueFrom: { secretKeyRef: { name: mailman-secret, key: SMTP_HOST_PASSWORD } }
+              value: "25"
+            - name: DEFAULT_FROM_EMAIL
+              value: postmaster@lists.jitmail.de
+            - name: SERVER_EMAIL
+              value: postmaster@lists.jitmail.de
           resources:
-            requests: { cpu: 150m, memory: 256Mi }
-            limits: { memory: 768Mi }
+            requests: { cpu: 150m, memory: 512Mi }
+            limits: { memory: 1536Mi } # 768Mi war zu knapp -> OOMKilled beim Start (13.07.)
           volumeMounts:
             - name: core-data
               mountPath: /opt/mailman
@@ -106,9 +110,9 @@ spec:
             - name: DATABASE_TYPE
               value: postgres
             - name: SERVE_FROM_DOMAIN
-              value: lists.jit.services # CHANGE ME
+              value: lists.jitmail.de
             - name: DJANGO_ALLOWED_HOSTS
-              value: lists.jit.services,localhost,127.0.0.1 # CHANGE ME
+              value: lists.jitmail.de,lists.jit.services,localhost,127.0.0.1
             - name: MAILMAN_REST_URL
               value: http://mailman-core:8001
             - name: MAILMAN_REST_USER
@@ -128,20 +132,16 @@ spec:
             - name: MAILMAN_ADMIN_EMAIL
               valueFrom: { secretKeyRef: { name: mailman-secret, key: MAILMAN_ADMIN_EMAIL } }
             - name: SMTP_HOST
-              value: smtp.jit.services # CHANGE ME
+              value: 192.168.2.209 # mx02.jitcreatives.de (IP-basiertes Relay via mynetworks)
             - name: SMTP_PORT
-              value: "587"
-            - name: SMTP_HOST_USER
-              valueFrom: { secretKeyRef: { name: mailman-secret, key: SMTP_HOST_USER } }
-            - name: SMTP_HOST_PASSWORD
-              valueFrom: { secretKeyRef: { name: mailman-secret, key: SMTP_HOST_PASSWORD } }
+              value: "25"
             - name: SMTP_USE_TLS
-              value: "True"
+              value: "False"
             - name: UWSGI_STATIC_MAP
               value: /static=/opt/mailman-web-data/static
           resources:
-            requests: { cpu: 200m, memory: 384Mi }
-            limits: { memory: 1Gi }
+            requests: { cpu: 200m, memory: 512Mi }
+            limits: { memory: 1536Mi } # Django-Migrations/collectstatic spiken beim Start
           volumeMounts:
             - name: web-data
               mountPath: /opt/mailman-web-data
@@ -149,11 +149,15 @@ spec:
             httpGet:
               path: /
               port: http
+              httpHeaders: # kube-probe sendet sonst die Pod-IP als Host -> Django 400 (ALLOWED_HOSTS)
+                - { name: Host, value: localhost }
             initialDelaySeconds: 30
           livenessProbe:
             httpGet:
               path: /
               port: http
+              httpHeaders:
+                - { name: Host, value: localhost }
             initialDelaySeconds: 90
       volumes:
         - name: web-data
@@ -195,6 +199,23 @@ spec:
     - name: api
       port: 8001
       targetPort: api
+    - name: lmtp
+      port: 8024
+      targetPort: lmtp
+---
+# LMTP-Eingang für die externen Annahme-MTAs (mail04/mail05/.15-Postfix):
+# feste LB-IP aus dem Cilium-Pool, Transport dort = lmtp:[192.168.2.247]:8024
+apiVersion: v1
+kind: Service
+metadata:
+  name: mailman-lmtp
+  namespace: mailman
+  annotations:
+    lbipam.cilium.io/ips: 192.168.2.247
+spec:
+  type: LoadBalancer
+  selector: { app.kubernetes.io/name: mailman-core }
+  ports:
     - name: lmtp
       port: 8024
       targetPort: lmtp

@@ -1,0 +1,16 @@
+# Härtung nach Kompromittierung wordpress-2 (23.07.2026, Fake-Plugin-Webshell via
+# veraltetes Plugin). Apache-Snippet nach /etc/apache2/conf-enabled/ gemountet:
+# verweigert das Ausliefern/Ausführen von PHP unterhalb wp-content/uploads —
+# der klassische Ablageort für hochgeladene Webshells. Legitime Uploads (Medien)
+# sind davon nicht betroffen; Plugins/Themes bleiben ausführbar.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wordpress-hardening
+data:
+  hardening.conf: |
+    <Directory /var/www/html/wp-content/uploads>
+        <FilesMatch "\.(?:php|phtml|phps|php[0-9]|phar|pht)$">
+            Require all denied
+        </FilesMatch>
+    </Directory>

@@ -1,0 +1,68 @@
+# Reverse-Proxy für die binaergewitter-Subdomains -> savarcast (192.168.2.66),
+# nachgebaut aus dem .15-Traefik (binaergewitter_service/binaergewitter2_service).
+# HTTP-only: TLS wird upstream terminiert (Cloudflare bzw. .15/Router), genau wie
+# bisher. Für Cluster-direktes TLS: cert-manager-Issuer + tls-Block ergänzen,
+# sobald die Domains öffentlich auf .246 zeigen.
+# CORS aus der Traefik cors-headers-Middleware als location-snippet nachgebaut.
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: binaergewitter
+  namespace: binaergewitter
+  annotations:
+    nginx.org/ssl-redirect: "false"
+    nginx.org/redirect-to-https: "false"
+    # CORS aus der Traefik cors-headers-Middleware, mit Standard-nginx add_header
+    # (nginx-inc hat kein headers-more-Modul). $http_origin reflektiert den
+    # Origin (nötig, weil Allow-Credentials:true kein "*" erlaubt).
+    nginx.org/location-snippets: |
+      add_header 'Access-Control-Allow-Origin' "$http_origin" always;
+      add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;
+      add_header 'Access-Control-Allow-Headers' 'Content-Type, Authorization' always;
+      add_header 'Access-Control-Allow-Credentials' 'true' always;
+      add_header 'Access-Control-Max-Age' '100' always;
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: comments.binaergewitter.de
+      http:
+        paths:
+          - { path: /, pathType: Prefix, backend: { service: { name: savarcast-web, port: { number: 80 } } } }
+    - host: search.binaergewitter.de
+      http:
+        paths:
+          - { path: /, pathType: Prefix, backend: { service: { name: savarcast-web, port: { number: 80 } } } }
+    - host: download.binaergewitter.de
+      http:
+        paths:
+          - { path: /, pathType: Prefix, backend: { service: { name: savarcast-web, port: { number: 80 } } } }
+    - host: pad.binaergewitter.de
+      http:
+        paths:
+          - { path: /, pathType: Prefix, backend: { service: { name: savarcast-web, port: { number: 80 } } } }
+    - host: plan.binaergewitter.de
+      http:
+        paths:
+          - { path: /, pathType: Prefix, backend: { service: { name: savarcast-web, port: { number: 80 } } } }
+    - host: podcast.savar.de
+      http:
+        paths:
+          - { path: /, pathType: Prefix, backend: { service: { name: savarcast-web, port: { number: 80 } } } }
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: binaergewitter-etherpad
+  namespace: binaergewitter
+  annotations:
+    nginx.org/ssl-redirect: "false"
+    nginx.org/redirect-to-https: "false"
+    nginx.org/websocket-services: savarcast-etherpad # Etherpad braucht WebSockets
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: etherpad.binaergewitter.de
+      http:
+        paths:
+          - { path: /, pathType: Prefix, backend: { service: { name: savarcast-etherpad, port: { number: 9001 } } } }

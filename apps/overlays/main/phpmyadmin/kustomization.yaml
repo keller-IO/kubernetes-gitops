@@ -3,3 +3,32 @@ kind: Kustomization
 namespace: phpmyadmin
 resources:
   - ../../../base/phpmyadmin
+patches:
+  - target: { kind: Ingress, name: phpmyadmin }
+    patch: |
+      - op: add
+        path: /spec/rules/-
+        value:
+          host: phpmyadmin.savar.de
+          http:
+            paths:
+              - path: /
+                pathType: Prefix
+                backend:
+                  service:
+                    name: phpmyadmin
+                    port:
+                      number: 80
+      - op: add
+        path: /spec/rules/-
+        value:
+          host: phpmyadmin.jit-creatives.de
+          http:
+            paths:
+              - path: /
+                pathType: Prefix
+                backend:
+                  service:
+                    name: phpmyadmin
+                    port:
+                      number: 80

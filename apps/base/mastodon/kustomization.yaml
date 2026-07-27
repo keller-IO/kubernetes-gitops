@@ -5,7 +5,7 @@ namespace: mastodon
 helmCharts:
   - name: mastodon
     repo: https://mastodon.github.io/helm-charts
-    version: 0.5.1 # renovate: helm  (official chart; appVersion = Mastodon release)
+    version: 0.5.8 # renovate: helm  (official chart; appVersion = Mastodon release)
     releaseName: mastodon
     namespace: mastodon
     valuesFile: values.yaml
@@ -13,5 +13,7 @@ resources:
   - database.yaml
   - cache.yaml
   - objectbucket.yaml
-  - secret.sops.yaml
   - backup.yaml
+
+generators:
+  - ./secret-generator.yaml

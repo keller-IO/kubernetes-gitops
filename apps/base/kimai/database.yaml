@@ -4,11 +4,11 @@ metadata:
   name: kimai-mariadb
   namespace: kimai
 spec:
-  rootPasswordSecretRef:
+  rootPasswordSecretKeyRef: # CRD-Feldname: *SecretKeyRef, nicht *SecretRef
     name: kimai-secret
     key: mariadb-root-password
   username: kimai
-  passwordSecretRef:
+  passwordSecretKeyRef:
     name: kimai-secret
     key: mariadb-password
   database: kimai

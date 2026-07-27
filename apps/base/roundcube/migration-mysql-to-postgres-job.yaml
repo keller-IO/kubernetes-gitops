@@ -1,0 +1,36 @@
+# Historical one-shot migration helper; intentionally not listed in
+# kustomization.yaml. Do not rerun it: pgloader's automatic MySQL tinyint(1) to
+# PostgreSQL boolean mapping is incompatible with Roundcube's native PostgreSQL
+# schema. See postgres-schema-repair-20260727.sql and the operational learning.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: roundcube-mysql-to-postgres
+  namespace: roundcube
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 86400
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: pgloader
+          # renovate: datasource=docker depName=dimitri/pgloader
+          image: dimitri/pgloader:3.6.10
+          env:
+            - name: ROUNDCUBE_LEGACY_MYSQL_DSN
+              valueFrom: { secretKeyRef: { name: roundcube-legacy-app, key: roundcube_mysql_dsn } }
+            - name: PGUSER
+              valueFrom: { secretKeyRef: { name: roundcube-db-app, key: username } }
+            - name: PGPASSWORD
+              valueFrom: { secretKeyRef: { name: roundcube-db-app, key: password } }
+          command: ["/bin/sh", "-ec"]
+          args:
+            - |
+              pgloader \
+                --with "include drop" \
+                --with "create tables" \
+                --with "create indexes" \
+                --with "reset sequences" \
+                "$ROUNDCUBE_LEGACY_MYSQL_DSN" \
+                "postgresql://$PGUSER@roundcube-pg-rw:5432/roundcube"

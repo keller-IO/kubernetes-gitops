@@ -1,0 +1,110 @@
+# Roundcube-Anpassungen aus dem Docker-Swarm (dockerswarm03): J.I.T.-Logo +
+# showpassword-Plugin (Auge-Icon zum Passwort-Einblenden im Login). Die drei
+# Plugin-Dateien werden per subPath nach /var/www/html/plugins/showpassword/
+# gemountet, das Logo (binär) nach /var/www/html/skins/jit-logo.png.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: roundcube-customizations
+  namespace: roundcube
+data:
+  showpassword.php: |
+    <?php
+    class showpassword extends rcube_plugin
+    {
+        public $task = 'login';
+
+        function init()
+        {
+            // CSS und JS einbinden
+            $this->include_stylesheet('style.css');
+            $this->include_script('init.js');
+        }
+    }
+  init.js: |
+    document.addEventListener("DOMContentLoaded", function() {
+        const pwdInput = document.getElementById('rcmloginpwd');
+        if (!pwdInput) return;
+
+        // Eltern-Container relativ positionieren
+        const container = pwdInput.parentNode;
+        container.style.position = 'relative'; // Icon relativ zum Input
+
+        // Toggle-Icon erstellen
+        const toggle = document.createElement('span');
+        toggle.className = 'toggle-icon';
+        toggle.textContent = '👁️';
+
+        // Style für Icon
+        toggle.style.position = 'absolute';
+        toggle.style.right = '10px';
+        toggle.style.top = '50%';
+        toggle.style.transform = 'translateY(-50%)';
+        toggle.style.cursor = 'pointer';
+        toggle.style.userSelect = 'none';
+        toggle.style.fontSize = '16px';
+        toggle.style.width = '24px';
+        toggle.style.height = '24px';
+        toggle.style.display = 'flex';
+        toggle.style.alignItems = 'center';
+        toggle.style.justifyContent = 'center';
+        toggle.style.borderRadius = '50%';
+        toggle.style.background = '#f0f0f0';
+        toggle.style.opacity = '0.6';
+        toggle.style.transition = 'opacity 0.2s, background 0.2s';
+
+        toggle.addEventListener('mouseover', () => {
+            toggle.style.opacity = 1;
+            toggle.style.background = '#e0e0e0';
+        });
+        toggle.addEventListener('mouseout', () => {
+            toggle.style.opacity = 0.6;
+            toggle.style.background = '#f0f0f0';
+        });
+
+        // Passwort anzeigen/ausblenden
+        toggle.addEventListener('click', function() {
+            if (pwdInput.type === 'password') {
+                pwdInput.type = 'text';
+                toggle.textContent = '🙈';
+            } else {
+                pwdInput.type = 'password';
+                toggle.textContent = '👁️';
+            }
+        });
+
+        container.appendChild(toggle);
+    });
+  style.css: |
+    /* Wrapper um Input */
+    .password-wrapper {
+        position: relative;
+        display: inline-block; /* verhindert Zeilenumbruch */
+    }
+
+    /* Toggle Icon */
+    .password-wrapper .toggle-icon {
+        position: absolute;
+        right: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        cursor: pointer;
+        user-select: none;
+        opacity: 0.6;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        background: #f0f0f0;
+        transition: opacity 0.2s, background 0.2s;
+    }
+
+    .password-wrapper .toggle-icon:hover {
+        opacity: 1;
+        background: #e0e0e0;
+    }
+binaryData:
+  jit-logo.png: iVBORw0KGgoAAAANSUhEUgAAAI4AAAAoCAYAAAAouML7AAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAABWhJREFUeNrsW71u20gQZg4B0vLKVGbaFLHcXmPqCSI9gag2xSnqA1AG0ku6Iq2oJwj9BKKbtCZSXHu8Kq3aVHc7yjfOeLLUj/UDh5kBCJrkcnd2Z+abb5ZyEJiYNFhGtgSPS36zJTB5iDw99gCf/u7E6lb1x8u8sqU3x9kkC3V9ZanHUpWJOY6JiTmOSQM4jpaeI8yX6t7QEebSzGGOs04iHFJCM0VDHOfLu2djd2rJe8/ff23L6w+vYl0xlW8+F8MNYxbuuNEl+qEnNvhzyNsAy+lfY0OzEyIOOU284f34AWPeuLR0tHLcOQz1PZAo5u4t3SmnrQDnRNVjM4LTj1G4dPotxX0KzNjde2Lk+LgGoIVOcZkF3/aM6EzGSNxx69q0HqHqpNtCI7xxnNM4zRgISGmpq5HFPZ+xgdzfL2RkP1ZxOratHD8+1L/FZd+Xjty9PvhVCAcyMcS5S0+TDUR4ivOZQipKEV13ECp1QKh/V46Z4lkIMk9OOPQhl6c9c6yp1A9pcyyqzDH4GPVbsm6EPKJthSCoC6AZ9O+K+yECq4exltD/yrdeKCwG0D8Q7Un/okkch0n6fAP052QEdww9RcACC1XKKg8GuwVK5eBNleBMkVp0X/scfVP7zg7zuitQYGAaK9FjCumg/VI5DXO/Sumz0PrAaXgtMtE+lu1/esTBwkQHKLupnwuFCHTvIy71M+ZM9PxC9FPX/goONYMh2BnaqARTIE2xRsccyEHGm3ie9xSyBhivhRSeCX1u8Gzm/i5Feh/g3Ja6uDZT6E965k1AHK5E9t2r6XscrwOn/AHSkS5osVschYhWap952leI4FDsMe0qc+UgOk21kMpKcY90y6XTQJ+M9RHOEohtDK1/CfS5blw5vmcFU9RFsHs2qXntCufX3AftuahUKA0b76ljCYO2POmq40GbxHPPp79MV9c4L/QYbvwRHY0qx4+IZhVSiU+YZEc1aZQMcimQ6xAyh16EEtJBByKdsZwzB9yAcpFwjolre4aU+I/7O9OkvimOUyqCfEgJcaRbknNZwQxERVUgus/FtsFDJUd11WHHASEn4xdqKyJUVec6rhgz6hJiuutrzCEBIecqrGiE41A5jBKWuENrHUEG9CbgAdmWQxTbbsSJCqYlytdcPB8dYL6EgKuqSMy3t66qfMgnCzhIgTUbwOEJuVYkuykcJ1dwXWtbRN/5Dmi2C5K9hdMMUfbnR5rvtSLJHU+aukPjPcj4ylHB2S6AnlSFRU1xHI60pO5bFNAgUQu/EW3wblLT58gd/7mD08/lBjJ9diCUzWDERKSpzLMZeVNXhbFDQf+P6npUQ8yZZDfDcQCrHG0zz6Ycp5AQqafYtmvmCOhDb/QNYEBOe5V4po2UBIf91JFjPrO6YADiVb6AwnzGap4l5tPT85WBQX02qarqI/JWO7fgAf8iynnrf/UBdEc+0YdxbrGJV2GMFH12RaRPg+8fUodoGyHiYzgYPadPC3OBTPz+GGOUW/z8Y46+eO+mLi12ETQLbOIV0GmAdyeCFC/RJlXzvTcH0q0x+zgwHpHYidjDSEWU0yK0d/0qjrTAzjaDEcYw9j0eAzjvMhdA2xkcrI0qaAmDvRbDZLw/E3zbeU62RNmqhtvoFNNG/6nQKQIXG+q9GqxVqObATrb6TlbLtr+8e7bQxPD5+6/32n94FWvStXzzubhX1RzoH/JGwY7/i3WMXwAC7kNEeLXl+PrHWVHg+dHWuncOJWLsrdZEzPeH9ns5zgllZ8cxOa7YJwcTcxyT08lTpKXIQ8giWx6TtY4DJ0ltOUx2dRz+EGdi0iixisrIsYnJ6SSxJTAxMTH5VeV/AQYAedOcKeDsvqsAAAAASUVORK5CYII=

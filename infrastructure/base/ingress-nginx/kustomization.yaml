@@ -9,3 +9,4 @@ helmCharts:
     releaseName: nginx-ingress
     namespace: ingress-nginx
     valuesFile: values.yaml
+    includeCRDs: true # CRDs (VirtualServer etc.) liegen im crds/-Ordner des Charts

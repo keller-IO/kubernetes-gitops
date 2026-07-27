@@ -12,3 +12,8 @@ patches:
       - op: replace
         path: /spec/tls/0/hosts/0
         value: site3.jit.services
+  - target: { kind: Backup, name: wordpress-mariadb }
+    patch: |
+      - op: replace
+        path: /spec/storage/s3/prefix
+        value: mariadb-wordpress-3

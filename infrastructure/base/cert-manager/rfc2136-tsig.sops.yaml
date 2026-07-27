@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Secret
+metadata:
+    name: rfc2136-tsig
+    namespace: cert-manager
+stringData:
+    secret: ENC[AES256_GCM,data:hBYzL2ieRU3lSjZeOnOIUyoGyVe3o2B5R0+jupubvghFr7iqM+3B0AMxkiw=,iv:0mrHE3sbE5XpzFYnWiwCrzSldhYGTVBa/2hKs6ON9r0=,tag:C6//Shx6jqq2yWni0KUhZg==,type:str]
+type: Opaque
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBFVlZ5czVEMWZhZmcyRXdC
+            MkZCY3dwaFBHU0N0RmQyam9rZkEyTXYxQ0VFCmh1T2VOQm1OMTdPUi9jR01ZODhB
+            S1NQSjNGSGFEZU1wYnpkTkhJM0ZVSWsKLS0tIGc4RXkxRzRnejY3d1VvTzFQa2Zs
+            elFWUTVqTXFBSlNCaXJGZTBPL1RmQmsKtZwXT3KxO4zHbZ1Ycf5SZJzf27JH15UX
+            qQEs4ysNDitJKTXVteJvMrOvmmEOJ42MU/yzd0mRwvqWR8cOaLK0ug==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age17x04ga87qyu9lzcuja9k83z90veew9cez7jusul4y5xyr09xaejs9rq755
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-07-13T04:50:50Z"
+    mac: ENC[AES256_GCM,data:U/cmnQww+xYjRLES8XpCK5tKtWZ4QDhib0jcddVqnWbOtK+hyUHFl9VEV2+yNyCB9tmAWn6bZteLLxWsbpEl32nhN1arsNJzHsaL4ymFgOAxpIzRMAfP1O30f9+XisVkIE6tptGrwhskNkajOwIuMLg9TKdSNC64Uoot620ZZmU=,iv:/u/RWnnM5Y3z5+9CdQmy5c1nsdSO5IWPplv7UkS2aPM=,tag:notcHpjl4TmOAMadjGifGw==,type:str]
+    version: 3.13.1

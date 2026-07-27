@@ -6,5 +6,7 @@ namespace: mailman
 resources:
   - database.yaml
   - workload.yaml
-  - secret.sops.yaml
   - backup.yaml
+
+generators:
+  - ./secret-generator.yaml

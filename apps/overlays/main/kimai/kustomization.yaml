@@ -1,13 +1,31 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: kimai
+# kimai.savar.de wird öffentlich über den .15-Traefik erreicht, der TLS
+# terminiert und HTTP zum Cluster proxied. Deshalb HTTP-only (kein TLS/kein
+# Redirect) — sonst 301-Loop (nginx würde HTTP->HTTPS umleiten, Traefik wieder
+# HTTP proxien ...). Für Cluster-direktes TLS: Router 443 -> .246 + tls/issuer
+# wieder ergänzen.
 resources:
   - ../../../base/kimai
-# Cluster-specific patches go here (host already set to the main placeholder in base).
-# Example — override the Ingress host for a different cluster:
-# patches:
-#   - target: { kind: Ingress, name: kimai }
-#     patch: |
-#       - op: replace
-#         path: /spec/rules/0/host
-#         value: kimai.example.com
+patches:
+  - target: { kind: Ingress, name: kimai }
+    patch: |
+      - op: remove
+        path: /metadata/annotations/cert-manager.io~1cluster-issuer
+      - op: replace
+        path: /metadata/annotations/nginx.org~1redirect-to-https
+        value: "false"
+      - op: remove
+        path: /spec/tls
+      - op: replace
+        path: /spec/rules/0/host
+        value: kimai.savar.de
+  - target: { kind: Deployment, name: kimai }
+    patch: |
+      - op: replace
+        path: /spec/template/spec/containers/0/env/4/value
+        value: kimai.savar.de|kimai.jit.services|localhost|127.0.0.1|kimai|nginx|traefik
+      - op: replace
+        path: /spec/template/spec/containers/0/readinessProbe/httpGet/httpHeaders/0/value
+        value: kimai.savar.de

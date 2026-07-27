@@ -7,15 +7,17 @@ spec:
   mariaDbRef:
     name: kimai-mariadb
   schedule:
-    cron: "0 2 * * *" # daily 02:00 (5-field cron)
+    cron: "0 2 * * *" # täglich 02:00 (5-Feld-Cron)
   maxRetention: 720h # 30d
-  # Logical dump (mariadb-dump). TODO prod: for PITR use the PhysicalBackup CRD + binlog.
+  compression: gzip
+  # Logischer Dump (mariadb-dump) nach Garage-S3 (192.168.23.21).
   storage:
     s3:
-      bucket: mariadb-kimai # CHANGE ME (bucket must exist)
-      endpoint: s3.jit.services # CHANGE ME (Ceph RGW, no scheme)
-      region: default
+      bucket: backups
+      prefix: mariadb-kimai
+      endpoint: 192.168.23.21:3900 # Garage, ohne Schema
+      region: garage-potsdam
       accessKeyIdSecretKeyRef: { name: kimai-backup-s3, key: ACCESS_KEY_ID }
       secretAccessKeySecretKeyRef: { name: kimai-backup-s3, key: SECRET_ACCESS_KEY }
       tls:
-        enabled: true
+        enabled: false # Garage spricht HTTP, kein TLS

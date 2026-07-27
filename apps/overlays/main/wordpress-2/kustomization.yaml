@@ -1,14 +1,39 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: wordpress-2
+# Instanz "halbe". Öffentlich über den .15-Traefik (TLS dort, HTTP zum Cluster)
+# -> HTTP-only, sonst 301-Loop. Für Cluster-direktes TLS: Router 443 -> .246 +
+# tls/issuer wieder ergänzen.
 resources:
   - ../../../base/wordpress
 patches:
   - target: { kind: Ingress }
     patch: |
+      - op: remove
+        path: /metadata/annotations/cert-manager.io~1cluster-issuer
+      - op: replace
+        path: /metadata/annotations/nginx.org~1redirect-to-https
+        value: "false"
+      - op: remove
+        path: /spec/tls
       - op: replace
         path: /spec/rules/0/host
-        value: site2.jit.services
+        value: www.gemeinsam-fuer-halbe.de
+      - op: add
+        path: /spec/rules/-
+        value:
+          host: gemeinsam-fuer-halbe.de
+          http:
+            paths:
+              - path: /
+                pathType: Prefix
+                backend:
+                  service:
+                    name: wordpress
+                    port:
+                      number: 80
+  - target: { kind: Backup, name: wordpress-mariadb }
+    patch: |
       - op: replace
-        path: /spec/tls/0/hosts/0
-        value: site2.jit.services
+        path: /spec/storage/s3/prefix
+        value: mariadb-wordpress-2

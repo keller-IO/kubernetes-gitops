@@ -3,3 +3,21 @@ kind: Kustomization
 namespace: paperless-ngx
 resources:
   - ../../../base/paperless-ngx
+patches:
+  - target: { kind: Ingress, name: paperless-paperless-ngx }
+    patch: |
+      - op: remove
+        path: /metadata/annotations/cert-manager.io~1cluster-issuer
+      - op: replace
+        path: /metadata/annotations/nginx.org~1redirect-to-https
+        value: "false"
+      - op: remove
+        path: /spec/tls
+      - op: replace
+        path: /spec/rules/0/host
+        value: paperless.savar.de
+  - target: { kind: Deployment, name: paperless-paperless-ngx }
+    patch: |
+      - op: replace
+        path: /spec/template/spec/containers/0/env/13/value
+        value: https://paperless.savar.de

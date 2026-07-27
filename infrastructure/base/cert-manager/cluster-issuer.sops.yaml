@@ -1,31 +1,72 @@
-# ENCRYPT BEFORE COMMIT:  sops --encrypt --in-place cluster-issuer.sops.yaml
-# Only the Secret's stringData is encrypted (see .sops.yaml encrypted_regex).
-# Example uses Let's Encrypt + DNS-01 (Cloudflare). Swap solver for your DNS provider.
 apiVersion: v1
 kind: Secret
 metadata:
-  name: acme-dns-token
-  namespace: cert-manager
-type: Opaque
+    name: cloudns-credentials
+    namespace: cert-manager
 stringData:
-  api-token: REPLACE_WITH_DNS_PROVIDER_TOKEN
+    auth_id: ENC[AES256_GCM,data:epi3kDw=,iv:5fkSigf2YvN3lPY0pP084nmhTxxbEdBhjyXp+jbNGz0=,tag:7OrV60MhfCQ9BLkjHIeCEw==,type:str]
+    auth_password: ENC[AES256_GCM,data:OYtkEtnfOyWGCWh3,iv:V5esQI5PSntqUMS5P0DkpcRzgLlYD4rXvSc5/IRqlgg=,tag:0SU77HAJe15/muO26De0uw==,type:str]
+type: Opaque
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBnem5DaFArRDhqSTRpZ2pZ
+            eTNwcm1VMnVqQTJRN25hcVlPWHdVeXFRa3o0Cmo1UHVRSVgvTVVrZ0hnNTduWFVW
+            Q2ozVkk0VFF1UXhvVkgxMGwzWUxOTVEKLS0tIFFaSDlTamt4OFhYd01idUdXN3pP
+            SDFYZFFlcHBNcDVwdURRdlNnR2pIc28K/jXnPkrzPC2hFEuT3XD7RNXWCbdJXSmL
+            jIIgvSyilTVtnPZKebC1bs9rcIWsGs2l0YokalGowU4qQ1Xn7fDFXw==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age17x04ga87qyu9lzcuja9k83z90veew9cez7jusul4y5xyr09xaejs9rq755
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-07-13T04:51:44Z"
+    mac: ENC[AES256_GCM,data:TXOZ1jy0f7X+D8+jjWvP2qV7rx9hi74UdHgFBZ56ELnj8zv0YMNy2a1c5OSWhXPB2EcudfSoAN2h4bsqU9HR7Xc5NjGYblBUPYby0GehdJ8dAZLS0hvASlA5Gu3YRqy/bw5kVHzz1ty7WBn5lEa1brRk97+HGKFTRFt5kFXceMk=,iv:EqzLgS7EHv72TCzjBX3OqsKFUONgc6qkJj8qV0cQbJ0=,tag:6gxIiPcyRpZITW5TIHcTnA==,type:str]
+    version: 3.13.1
 ---
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
 metadata:
-  name: letsencrypt-prod
+    name: letsencrypt-prod
 spec:
-  acme:
-    server: https://acme-v02.api.letsencrypt.org/directory
-    email: admin@jit.services # CHANGE ME
-    privateKeySecretRef:
-      name: letsencrypt-prod-account
-    solvers:
-      - dns01:
-          cloudflare:
-            apiTokenSecretRef:
-              name: acme-dns-token
-              key: api-token
-        selector:
-          dnsZones:
-            - jit.services # CHANGE ME
+    acme:
+        email: admin@jit.services
+        privateKeySecretRef:
+            name: letsencrypt-prod-account
+        server: https://acme-v02.api.letsencrypt.org/directory
+        solvers:
+            - dns01:
+                webhook:
+                    groupName: acme.jit.services
+                    solverName: cloudns
+              selector:
+                dnsZones:
+                    - jit.services
+            - dns01:
+                rfc2136:
+                    nameserver: dns01.jit-creatives.de:53
+                    tsigAlgorithm: HMACSHA256
+                    tsigKeyName: cert-manager.
+                    tsigSecretSecretRef:
+                        name: rfc2136-tsig
+                        key: secret
+              selector:
+                dnsZones:
+                    - savar.de
+            - http01:
+                ingress:
+                    ingressClassName: nginx
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBnem5DaFArRDhqSTRpZ2pZ
+            eTNwcm1VMnVqQTJRN25hcVlPWHdVeXFRa3o0Cmo1UHVRSVgvTVVrZ0hnNTduWFVW
+            Q2ozVkk0VFF1UXhvVkgxMGwzWUxOTVEKLS0tIFFaSDlTamt4OFhYd01idUdXN3pP
+            SDFYZFFlcHBNcDVwdURRdlNnR2pIc28K/jXnPkrzPC2hFEuT3XD7RNXWCbdJXSmL
+            jIIgvSyilTVtnPZKebC1bs9rcIWsGs2l0YokalGowU4qQ1Xn7fDFXw==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age17x04ga87qyu9lzcuja9k83z90veew9cez7jusul4y5xyr09xaejs9rq755
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-07-13T04:51:44Z"
+    mac: ENC[AES256_GCM,data:TXOZ1jy0f7X+D8+jjWvP2qV7rx9hi74UdHgFBZ56ELnj8zv0YMNy2a1c5OSWhXPB2EcudfSoAN2h4bsqU9HR7Xc5NjGYblBUPYby0GehdJ8dAZLS0hvASlA5Gu3YRqy/bw5kVHzz1ty7WBn5lEa1brRk97+HGKFTRFt5kFXceMk=,iv:EqzLgS7EHv72TCzjBX3OqsKFUONgc6qkJj8qV0cQbJ0=,tag:6gxIiPcyRpZITW5TIHcTnA==,type:str]
+    version: 3.13.1

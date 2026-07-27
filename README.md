@@ -30,7 +30,7 @@ Der gesamte Cluster-Zustand ist in diesem Repository beschrieben — Änderungen
 ausschließlich über Git-Commits, nicht per `kubectl edit`.
 
 > **Hinweis — Blaupausen-Phase:** Alle Manifeste sind funktionsbereite Vorlagen mit
-> Platzhaltern (`*.jit.platzhalter`, `CHANGE ME`, `REPLACE_ME`). Was bis zum
+> Platzhaltern (`*.jit.services`, `CHANGE ME`, `REPLACE_ME`). Was bis zum
 > Produktivbetrieb noch fehlt, steht in [`docs/PRODUCTION-READINESS.md`](docs/PRODUCTION-READINESS.md).
 
 ---
@@ -69,7 +69,7 @@ Git push ──▶ ArgoCD (root-app) ──▶ ApplicationSets ──▶ Kustomi
 | Pfad | Inhalt |
 |------|--------|
 | `clusters/main/` | ArgoCD-Einstiegspunkte: `root-app.yaml`, `projects.yaml`, ApplicationSets für Infrastruktur und Apps |
-| `infrastructure/base/` | Plattform-Services (CNI, Ingress, Operatoren, Authentik, Monitoring) als Kustomize-Bases mit Helm-Inflation |
+| `infrastructure/base/` | Plattform-Services (CNI, Ingress, Operatoren, Monitoring) als Kustomize-Bases mit Helm-Inflation; Authentik ist Legacy-Migrationsbestand und in der Infrastructure-ApplicationSet ausgeschlossen |
 | `infrastructure/overlays/main/` | Cluster-spezifische Patches der Infrastruktur |
 | `apps/base/` | Anwendungs-Blaupausen (je App: Workload, Datenbank, Cache, Backup, Secret-Vorlage) |
 | `apps/overlays/main/` | Cluster-spezifische Patches (Hostnamen etc.) — von der ApplicationSet automatisch ausgerollt |
@@ -79,7 +79,7 @@ Git push ──▶ ArgoCD (root-app) ──▶ ApplicationSets ──▶ Kustomi
 | `flake.nix` / `.envrc` | Reproduzierbare Entwicklungsumgebung (siehe unten) |
 | `renovate.json` | Automatische Dependency-Updates (Helm-Charts, Container-Images) |
 | `.sops.yaml` | Verschlüsselungsregeln für Secrets |
-| `.forgejo/workflows/` | CI-Pipeline (Render-, Schema- und Secret-Checks) |
+| `.github/workflows/` | Führende CI-Pipeline (Render-, Schema-, Secret- und Guardrail-Checks) |
 
 ---
 
@@ -93,7 +93,7 @@ Diese Dienste bilden das Fundament des Clusters und liegen unter `infrastructure
 | **Cilium** | CNI / Netzwerk-Layer (eBPF-basiertes Pod-Networking & Policies) |
 | **NGINX Ingress** | Ingress-Controller — externer HTTP(S)-Zugang zu den Anwendungen |
 | **cert-manager** | Automatische TLS-Zertifikate (Let's Encrypt via DNS-01) |
-| **Authentik** | Identity-Provider / OIDC — Single Sign-On, mit Blueprints pro App |
+| **Keycloak (extern)** | Identity-Provider / OIDC — bestehender Realm `bgt` unter `auth.savar.de` |
 | **CloudNativePG (CNPG)** | PostgreSQL-Operator inkl. Backups (Barman → S3) |
 | **mariadb-operator** | MySQL/MariaDB-Operator (z. B. für WordPress) |
 | **Valkey** | Redis-kompatibler Cache — eine kleine, eigenständige Instanz pro App (`apps/base/*/cache.yaml`) |
@@ -151,13 +151,26 @@ Enthaltene Werkzeuge: `just`, `kustomize`, `kubeconform`, `helm`, `sops`, `age`,
 Vor jedem Commit lassen sich alle Manifeste lokal prüfen — identisch zur CI:
 
 ```bash
+just validate        # gesamtes CI-Gate: lint, secrets, guardrails, build, schema
 just build          # rendert jede Overlay mit kustomize (Helm-Inflation)
 just test           # rendert + validiert gegen Kubernetes-/CRD-Schemas
 just lint           # YAML-Linting
-just secrets-check  # stellt sicher, dass kein *.sops.yaml unverschlüsselt ist
+just secrets-check  # echte Secrets muessen verschluesselt sein; Platzhalter warnen
+just guardrails      # Agent-/GitOps-Sicherheitschecks
 ```
 
 `just` ohne Argument listet alle verfügbaren Recipes auf.
+
+## KI-Agenten sicher nutzen
+
+Agenten arbeiten in diesem Repo wie Menschen: Branch ab aktuellem `main`, Änderung als
+GitOps-Patch, `just validate`, Pull Request. Live-Cluster-Zugriff ist nur zur Diagnose
+gedacht und sollte mit read-only Kubeconfig erfolgen. Mutierende Befehle wie
+`kubectl apply/delete/patch` oder `talosctl apply-config/reset/upgrade` gehören nicht in
+Agent-Automation; ArgoCD setzt freigegebene Änderungen nach Merge um.
+
+Der Kubernetes MCP Server ist absichtlich read-only konfiguriert. CI prüft diese
+Eigenschaft und blockiert Write-Verben oder Secret-Zugriff in dessen RBAC.
 
 ---
 

@@ -8,3 +8,5 @@ helmCharts:
     releaseName: cilium
     namespace: kube-system
     valuesFile: values.yaml
+resources:
+  - lb-ipam.yaml

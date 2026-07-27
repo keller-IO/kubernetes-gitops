@@ -14,7 +14,7 @@ spec:
       containers:
         - name: icecast
           # renovate: image=infiniteproject/icecast
-          image: infiniteproject/icecast:latest@sha256:cd506cf3dfe31ce05fd37d7e672dbd1213e7255cc93d28ecf5a3b547af4e162c
+          image: infiniteproject/icecast@sha256:cd506cf3dfe31ce05fd37d7e672dbd1213e7255cc93d28ecf5a3b547af4e162c
           ports:
             - name: http
               containerPort: 8000

@@ -9,5 +9,7 @@ resources:
   - deployment.yaml
   - service.yaml
   - ingress.yaml
-  - secret.sops.yaml
   - backup.yaml
+
+generators:
+  - ./secret-generator.yaml

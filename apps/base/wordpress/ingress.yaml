@@ -1,25 +1,26 @@
+# Host wird pro Instanz vom Overlay gepatcht (rules/0/host + tls/0/hosts/0).
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: grafana
-  namespace: monitoring
+  name: wordpress
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.org/ssl-redirect: "false"
     nginx.org/redirect-to-https: "true"
+    nginx.org/client-max-body-size: "64m"
 spec:
   ingressClassName: nginx
   tls:
-    - hosts: [grafana.jit.services] # CHANGE ME
-      secretName: grafana-tls
+    - hosts: [site1.jit.services]
+      secretName: wordpress-tls
   rules:
-    - host: grafana.jit.services # CHANGE ME
+    - host: site1.jit.services
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: vm-k8s-stack-grafana
+                name: wordpress
                 port:
                   number: 80

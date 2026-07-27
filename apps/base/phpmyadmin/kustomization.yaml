@@ -1,12 +1,9 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: phpmyadmin
-# Stateless MySQL/MariaDB admin UI. No database/cache/backup CRs: phpMyAdmin
-# connects to existing MariaDB operator instances entered at login.
-helmCharts:
-  - name: phpmyadmin
-    repo: https://charts.bitnami.com/bitnami
-    version: 20.0.0 # renovate: helm
-    releaseName: phpmyadmin
-    namespace: phpmyadmin
-    valuesFile: values.yaml
+# Stateless MySQL/MariaDB admin UI — offizielles phpMyAdmin-Image, KEIN
+# Bitnami-Chart mehr (freier Bitnami-Katalog seit Broadcom-Move eingefroren,
+# Images von docker.io/bitnami nicht mehr ziehbar).
+resources:
+  - deployment.yaml
+  - ingress.yaml

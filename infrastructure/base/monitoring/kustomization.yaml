@@ -8,5 +8,9 @@ helmCharts:
     releaseName: vm-k8s-stack
     namespace: monitoring
     valuesFile: values.yaml
+    includeCRDs: true # operator.victoriametrics.com-CRDs (VMRule etc.) liegen im crds/-Ordner
 resources:
-  - grafana-ingress.yaml
+  - vmsingle-ingress.yaml
+
+generators:
+  - ./secret-generator.yaml

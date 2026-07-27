@@ -1,8 +1,10 @@
 replicaCount: 1
 collabora:
-  # WOPI hosts allowed to embed the editor. Add your document app domains here.
+  # WOPI hosts allowed to embed the editor (aus dem Swarm-Setup übernommen:
+  # jit.cloud ist die Nextcloud, die Collabora einbindet).
   aliasgroups:
-    - host: "https://.*\\.jit\\.platzhalter" # CHANGE ME (regex of WOPI client hosts)
+    - host: "https://jit\\.cloud"
+    - host: "https://.*\\.jit\\.services"
   extra_params: --o:ssl.enable=false --o:ssl.termination=true
   # admin console credentials come from env (see existingSecret below)
 existingSecret:
@@ -20,7 +22,7 @@ ingress:
     cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.org/ssl-redirect: "false"
     nginx.org/redirect-to-https: "true"
-    nginx.org/websocket-services: collabora # WOPI/editor needs WebSocket
+    nginx.org/websocket-services: collabora-collabora-online # MUSS dem Service-Namen entsprechen, sonst verwirft NGINX den ganzen Ingress
     nginx.org/client-max-body-size: "100m" # large documents via WOPI PutFile
     # WOPI editing session is a long-lived idle WebSocket — default 60s proxy
     # timeout drops it ("connection lost, please reload"). Match upstream Collabora/Nextcloud docs.

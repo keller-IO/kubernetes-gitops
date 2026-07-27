@@ -1,0 +1,5 @@
+# Analog zu cnpg: Destination "mariadb-operator" != Ressourcen-Namespace mariadb-system.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mariadb-system

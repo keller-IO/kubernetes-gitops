@@ -3,11 +3,11 @@ kind: MariaDB
 metadata:
   name: wordpress-mariadb
 spec:
-  rootPasswordSecretRef:
+  rootPasswordSecretKeyRef: # CRD-Feldname: *SecretKeyRef, nicht *SecretRef
     name: wordpress-db
     key: mariadb-root-password
   username: wordpress
-  passwordSecretRef:
+  passwordSecretKeyRef:
     name: wordpress-db
     key: mariadb-password
   database: wordpress

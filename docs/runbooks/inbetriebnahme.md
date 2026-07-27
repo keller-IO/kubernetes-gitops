@@ -99,8 +99,7 @@ grep -rn --exclude-dir=.git --exclude-dir=.terraform --exclude-dir=charts \
       find . -name '*.sops.yaml'
       ```
 
-Betroffen u.a.: `infrastructure/base/authentik/secret.sops.yaml`,
-`infrastructure/base/cert-manager/cluster-issuer.sops.yaml`,
+Betroffen u.a.: `infrastructure/base/cert-manager/cluster-issuer.sops.yaml`,
 `apps/base/{kimai,roundcube,paperless-ngx,forgejo,mastodon,wordpress,gatus,kite,collabora,renovate}/secret.sops.yaml`.
 
 ---
@@ -112,7 +111,7 @@ Betroffen u.a.: `infrastructure/base/authentik/secret.sops.yaml`,
 
 - [ ] Domain global ersetzen (vorher Diff reviewen!):
       ```bash
-      grep -rl jit.platzhalter . | xargs sed -i 's/jit.platzhalter/DEINE-DOMAIN.tld/g'
+      grep -rl jit.services . | xargs sed -i 's/jit.services/DEINE-DOMAIN.tld/g'
       ```
 - [ ] LoadBalancer-IP-Quelle: Cilium LB-IPAM **oder** MetalLB-Pool.
 - [ ] Cilium `k8sServiceHost/Port` auf KubePrism (127.0.0.1:7445), `kubeProxyReplacement: true`.
@@ -175,14 +174,15 @@ Betroffen u.a.: `infrastructure/base/authentik/secret.sops.yaml`,
 
 ---
 
-## 8. Identity / OIDC (Authentik)
+## 8. Identity / OIDC (External Keycloak)
 
-**Dateien:** `infrastructure/base/authentik/*`, `.../blueprints/*`
+**Dateien:** App-spezifische `values.yaml` und `secret.sops.yaml`; externer Keycloak auf `auth.savar.de`, Realm `bgt`
 
-- [ ] `authentik-secret` (SECRET_KEY, Bootstrap-Creds) füllen.
-- [ ] Pro App `client_id`/`client_secret` in Blueprint **und** App-Secret identisch.
-- [ ] `redirect_uris` auf reale Domain.
-- [ ] Login + ein OIDC-Flow (z.B. forgejo) manuell testen.
+- [ ] Keycloak-Client pro App im Realm `bgt` anlegen.
+- [ ] Redirect-URIs auf reale App-Domain setzen.
+- [ ] `client_id`/`client_secret` in Keycloak und SOPS-App-Secret abgleichen.
+- [ ] App-OIDC aktivieren.
+- [ ] Login + ein OIDC-Flow (z.B. Paperless) manuell testen.
 
 ---
 
@@ -194,7 +194,7 @@ Betroffen u.a.: `infrastructure/base/authentik/secret.sops.yaml`,
 - [ ] Grafana-Admin-Passwort aus SOPS statt Klartext.
 - [ ] **Alertmanager-Receiver** konfigurieren (aktuell `"null"`).
 - [ ] S3-Buckets (`cnpg-<app>`, `mariadb-<app>`) anlegen, `<app>-backup-s3`-Secrets füllen,
-      `endpointURL` (`s3.jit.platzhalter`) auf reale RGW-URL.
+      `endpointURL` (`s3.jit.services`) auf reale RGW-URL.
 - [ ] PVC-Daten-Backup (Ceph-Snapshots/Velero) — DB-Backup deckt nur die DB.
 - [ ] **Restore einmal testen** und Runbook hier in `docs/runbooks/` ablegen.
 
@@ -202,8 +202,8 @@ Betroffen u.a.: `infrastructure/base/authentik/secret.sops.yaml`,
 
 ## 10. CI, Renovate & Mail
 
-- [ ] Forgejo-Actions-Runner registrieren (`get_runner_registration_token`).
-- [ ] Renovate-Token + `endpoint`/`gitAuthor` (`apps/base/renovate/{secret.sops.yaml,config.js}`).
+- [ ] GitHub Actions für PRs prüfen.
+- [ ] Renovate-GitHub-Token + `gitAuthor` (`apps/base/renovate/{secret.sops.yaml,config.js}`).
 - [ ] Externen IMAP/SMTP für roundcube/mastodon/paperless setzen (kein Mailserver im Cluster).
 
 ---

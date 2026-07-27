@@ -1,5 +1,5 @@
 # CI: lint + validate every manifest renders & passes schema, plus a security scan.
-# GitHub Actions. Mirrors .forgejo/workflows/ci.yaml (Forgejo) and adds Trivy.
+# GitHub Actions is the leading CI path.
 name: ci
 
 on:
@@ -15,26 +15,39 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install yamllint
         run: pipx install yamllint
       - name: yamllint
         run: yamllint -s .
 
+  # Repository safety invariants for AI-assisted GitOps changes.
+  guardrails:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: guardrails
+        run: bash -n scripts/ci/guardrails.sh && scripts/ci/guardrails.sh
+
   # Render every overlay (helm inflation enabled) and validate against K8s/CRD schemas.
   validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: azure/setup-helm@v4
+      - uses: azure/setup-helm@v5
 
       - name: Install kustomize + kubeconform
+        env:
+          KUSTOMIZE_VERSION: 5.8.1
         run: |
           set -euo pipefail
-          curl -sSfL https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh | bash
+          curl -sSfL "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v${KUSTOMIZE_VERSION}/kustomize_v${KUSTOMIZE_VERSION}_linux_amd64.tar.gz" | tar xz kustomize
           curl -sSfL https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz | tar xz
           sudo mv kustomize kubeconform /usr/local/bin/
+          # KSOPS-Stub: CI hat keinen age-Key, Secrets werden nicht gerendert.
+          printf '#!/bin/sh\nexit 0\n' | sudo tee /usr/local/bin/ksops >/dev/null
+          sudo chmod +x /usr/local/bin/ksops
 
       - name: kustomize build + kubeconform
         run: |
@@ -42,7 +55,7 @@ jobs:
           for dir in apps/overlays/main/*/ infrastructure/base/*/; do
             [ -f "$dir/kustomization.yaml" ] || continue
             echo "== $dir"
-            kustomize build --enable-helm "$dir" \
+            kustomize build --enable-helm --enable-alpha-plugins --enable-exec "$dir" \
               | kubeconform -strict -ignore-missing-schemas -summary
           done
 
@@ -51,28 +64,41 @@ jobs:
   secrets-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Warn on unencrypted *.sops.yaml (non-blocking)
         run: |
           while IFS= read -r f; do
             grep -q "sops:" "$f" || echo "::warning file=$f::$f is not SOPS-encrypted"
-          done < <(find . -name '*.sops.yaml')
+          done < <(find . -name '*.sops.yaml' -not -name '.sops.yaml')
 
   # Static security scan of the rendered manifests (misconfig) + repo (secrets).
   # Reports findings; does NOT fail the build yet — add `--exit-code 1` to enforce.
   security:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: azure/setup-helm@v4
+      - uses: azure/setup-helm@v5
 
       - name: Install kustomize + Trivy
+        env:
+          KUSTOMIZE_VERSION: 5.8.1
+          # renovate: datasource=github-releases depName=aquasecurity/trivy
+          TRIVY_VERSION: 0.72.0
         run: |
           set -euo pipefail
-          curl -sSfL https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh | bash
+          # Gepinnter Direkt-Download statt install_kustomize.sh: das Script fragt
+          # die GitHub-API nach "latest" und läuft auf Shared-Runnern ins Rate-Limit.
+          curl -sSfL "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v${KUSTOMIZE_VERSION}/kustomize_v${KUSTOMIZE_VERSION}_linux_amd64.tar.gz" | tar xz kustomize
           sudo mv kustomize /usr/local/bin/
-          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin
+          # Gepinnter Direkt-Download statt install.sh: das godownloader-Script
+          # fragt die GitHub-API nach "latest" und läuft auf Shared-Runnern
+          # regelmäßig ins anonyme Rate-Limit.
+          curl -sSfL "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz" | tar xz trivy
+          sudo mv trivy /usr/local/bin/
+          # KSOPS-Stub: CI hat keinen age-Key, Secrets werden nicht gerendert.
+          printf '#!/bin/sh\nexit 0\n' | sudo tee /usr/local/bin/ksops >/dev/null
+          sudo chmod +x /usr/local/bin/ksops
 
       - name: Render manifests
         run: |
@@ -81,7 +107,7 @@ jobs:
           for dir in apps/overlays/main/*/ infrastructure/base/*/; do
             [ -f "$dir/kustomization.yaml" ] || continue
             name=$(echo "$dir" | tr '/' '_')
-            kustomize build --enable-helm "$dir" > "rendered/${name}.yaml"
+            kustomize build --enable-helm --enable-alpha-plugins --enable-exec "$dir" > "rendered/${name}.yaml"
           done
 
       - name: Trivy misconfiguration scan

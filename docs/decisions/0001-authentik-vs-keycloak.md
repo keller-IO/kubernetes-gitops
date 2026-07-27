@@ -1,6 +1,6 @@
 # ADR 0001 — Identity-Provider: Authentik vs. Keycloak
 
-- **Status:** Akzeptiert — Authentik bleibt
+- **Status:** Überholt durch [ADR 0002](0002-external-keycloak.md)
 - **Datum:** 2026-06-15
 - **Kontext:** Ressourcenoptimierter Homelab-Cluster (Talos), strikt GitOps via ArgoCD
 

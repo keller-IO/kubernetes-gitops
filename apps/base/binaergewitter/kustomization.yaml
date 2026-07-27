@@ -1,0 +1,9 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: binaergewitter
+# Reverse-Proxy für binaergewitter -> savarcast (192.168.2.66). Keine eigenen
+# Workloads im Cluster; nur Service/EndpointSlice (externes Backend) + Ingress.
+resources:
+  - namespace.yaml
+  - external-backend.yaml
+  - ingress.yaml

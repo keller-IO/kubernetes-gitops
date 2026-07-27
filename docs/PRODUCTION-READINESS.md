@@ -1,21 +1,21 @@
 # Production Readiness — Offene Schritte bis zum Go-Live
 
 Status: **Blaupausen-Phase.** Alle Manifeste sind funktionsbereite Vorlagen mit
-Platzhaltern (`CHANGE ME`, `REPLACE_ME`, Domain `*.jit.platzhalter`). Dieses Dokument
+Platzhaltern (`CHANGE ME`, `REPLACE_ME`, Domain `*.jit.services`). Dieses Dokument
 listet pro Bereich, was noch zu erledigen ist, **welche Dateien** betroffen sind und
 gibt **je Section ein Beispiel**.
 
 Konventionen:
 - `CHANGE ME`  → nicht-geheimer Platzhalter (Domain, StorageClass, ID).
 - `REPLACE_ME` → Geheimnis. Nur in `*.sops.yaml`, **vor Commit verschlüsseln**.
-- Suche global: `grep -rn "CHANGE ME\|REPLACE_ME\|jit.platzhalter" .`
+- Suche global: `grep -rn "CHANGE ME\|REPLACE_ME\|jit.services" .`
 
 Schnellstart-Checkliste (Reihenfolge):
 1. [Bootstrap & Talos](#1-bootstrap--talos) → 2. [GitOps / ArgoCD](#2-gitops--argocd) →
 3. [Secrets](#3-secrets-sops--age) → 4. [Netzwerk/Ingress/DNS](#4-netzwerk-ingress--dns) →
 5. [Storage](#5-storage-ceph) → 6. [TLS](#6-tls--cert-manager) →
 7. [Datenbanken](#7-datenbanken) → 8. [Cache](#8-cache-valkey) →
-9. [Identity/OIDC](#9-identity--oidc-authentik) → 10. [Observability](#10-observability--alerting) →
+9. [Identity/OIDC](#9-identity--oidc-external-keycloak) → 10. [Observability](#10-observability--alerting) →
 11. [Backup/DR](#11-backup--disaster-recovery) → 12. [CI & Renovate](#12-ci--renovate) →
 13. [Mail](#13-mail-extern) → 14. [Pro-App-TODOs](#14-pro-app-todos).
 
@@ -28,8 +28,8 @@ Schnellstart-Checkliste (Reihenfolge):
 
 **Offen:**
 - [ ] Talos-Cluster provisionieren (control-plane + worker), `kubeconfig` exportieren.
-- [ ] Nix Dev-Shell bereitstellen (`flake.nix`/`shell.nix`) mit `kubectl, kustomize,
-      helm, sops, age, kubeconform, just, argocd` — wird in AGENTS.md vorausgesetzt, fehlt noch.
+- [x] Nix Dev-Shell bereitstellen (`flake.nix`) mit `kubectl, kustomize, helm, sops,
+      age, kubeconform, just, argocd`.
 - [ ] `k8sServiceHost`/`k8sServicePort` in Cilium auf KubePrism/VIP setzen.
 
 **Beispiel** (`infrastructure/base/cilium/values.yaml`):
@@ -48,27 +48,19 @@ kubeProxyReplacement: true
 **Offen:**
 - [ ] `repoURL` in `clusters/main/root-app.yaml`, `appset-infrastructure.yaml`,
       `appset-apps.yaml` auf echte Repo-URL setzen (aktuell `git.f4mily.net/keller.io/keller.io.git`).
-- [ ] ArgoCD einmalig installieren, dann `kubectl apply -f clusters/main/root-app.yaml`.
-- [ ] `kustomize-helm` Config-Management-Plugin (CMP) im repo-server registrieren
-      (plugin.yaml unten) — nötig, weil ApplicationSets `plugin.name: kustomize-helm` nutzen.
+- [ ] ArgoCD wird per Terraform installiert (`infrastructure/tofu .../argocd.tf`), das den
+      Bootstrap-Root-App deployt. `clusters/main/root-app.yaml` ist die manuelle Alternative.
 - [ ] Intra-Infra-Reihenfolge prüfen: CNI/CRDs/Operatoren vor Apps (sync-waves grob gesetzt,
-      ggf. verfeinern: cilium → cert-manager/CRDs → operatoren → authentik/monitoring → apps).
+      ggf. verfeinern: cilium → cert-manager/CRDs → operatoren → monitoring → apps).
 
-**Beispiel** — CMP `plugin.yaml` ConfigMap (im argocd-Namespace), referenziert von
-`infrastructure/base/argocd/values.yaml`:
-```yaml
-apiVersion: v1
-kind: ConfigMap
-metadata: { name: cmp-plugin, namespace: argocd }
-data:
-  kustomize-helm.yaml: |
-    apiVersion: argoproj.io/v1alpha1
-    kind: ConfigManagementPlugin
-    metadata: { name: kustomize-helm }
-    spec:
-      generate:
-        command: [sh, -c, "kustomize build --enable-helm . | ksops"]
-```
+**Secret-Handling (KEIN CMP-Plugin):** ArgoCD nutzt **nativen kustomize** mit
+`kustomize.buildOptions: --enable-helm --enable-alpha-plugins --enable-exec` und dem
+**KSOPS-Exec-Generator**. Jede Komponente mit Secret hat ein `secret-generator.yaml`
+(`kind: ksops`), das die zugehörige `*.sops.yaml` beim Build entschlüsselt. Der repo-server
+bekommt `ksops`+`kustomize` (Init-Container) und den age-Key (`argocd-sops-age`). Die
+AppSets nutzen **kein** `plugin:` mehr. Konfiguration muss mit Terraform `argocd.tf`
+übereinstimmen. Wichtig: `*.sops.yaml` müssen **verschlüsselt** sein, sonst schlägt der
+Build der App fehl (`sops metadata not found`).
 
 ---
 
@@ -83,7 +75,8 @@ data:
       --from-file=keys.txt=age.agekey`.
 - [ ] **Alle** `*.sops.yaml` mit echten Werten füllen und verschlüsseln:
       `just encrypt path/to/secret.sops.yaml` (oder `sops --encrypt --in-place`).
-- [ ] CI-Gate aktiv halten (`just secrets-check`) — verhindert Klartext-Commits.
+- [ ] CI-Gate aktiv halten (`just secrets-check`) — warnt bei Blueprint-Platzhaltern
+      und blockiert echte unverschluesselte Secret-Dateien.
 
 **Beispiel:**
 ```bash
@@ -101,8 +94,10 @@ alle `**/ingress.yaml` & Chart-`values.yaml` (`hosts:`), `apps/overlays/main/clu
 
 **Offen:**
 - [x] **Domain festgelegt**: `jit.services` — `cluster-config.yaml` + alle Manifeste aktualisiert.
-- [x] **Globale NGINX-Defaults**: `client-max-body-size: 10m` (Fallback, App-Ingresses überschreiben
-      bei Bedarf höher) + `hsts: "True"` in `infrastructure/base/ingress-nginx/values.yaml`.
+- [x] **Globaler NGINX-Default**: `client-max-body-size: 10m` (Fallback, App-Ingresses überschreiben
+      bei Bedarf höher) in `infrastructure/base/ingress-nginx/values.yaml`. HSTS bewusst noch nicht
+      global aktiviert, solange TLS teils extern am Legacy-Traefik terminiert (HTTP-only-Ingresses,
+      s. o.) — erst nach Cluster-direktem-TLS-Cutover nachziehen.
 - [ ] LoadBalancer-IP-Quelle wählen: Cilium LB-IPAM **oder** MetalLB-Pool → Ingress-Service
       bekommt externe IP.
 - [ ] DNS-Records (A/AAAA bzw. CNAME) für alle Hosts aus `cluster-config.yaml` auf die LB-IP.
@@ -147,9 +142,20 @@ spec:
 
 **Dateien:** `infrastructure/base/cert-manager/*`, alle `cert-manager.io/cluster-issuer` Annotations
 
+DNS-01 läuft über **ClouDNS**. Da ClouDNS kein nativer cert-manager-Provider ist, wird der
+ACME-Webhook `cert-manager-webhook-cloudns` mitausgerollt (Chart in `kustomization.yaml`,
+Werte in `cloudns-webhook-values.yaml`).
+
+`savar.de` nutzt zusätzlich DNS-01 via RFC2136/TSIG gegen `dns01.jit-creatives.de`.
+Das Secret liegt in `infrastructure/base/cert-manager/rfc2136-tsig.sops.yaml`; der
+Solver ist im `letsencrypt-prod`-ClusterIssuer auf `dnsZones: [savar.de]` begrenzt.
+
 **Offen:**
-- [ ] DNS-Provider-Token in `cluster-issuer.sops.yaml` setzen + verschlüsseln (Beispiel Cloudflare;
-      Solver tauschen wenn anderer Provider).
+- [ ] ClouDNS-Credentials in `cluster-issuer.sops.yaml` setzen + verschlüsseln
+      (`auth_id`/`auth_password`). Empfohlen: zonen-beschränkter **sub-auth-id**-Nutzer.
+- [ ] `clouDNS.authIdType` in `cloudns-webhook-values.yaml` zum Credential passend setzen
+      (`sub-auth-id` oder `auth-id`).
+- [ ] `groupName` in Issuer **und** Webhook-Werten müssen identisch sein (`acme.jit.services`).
 - [ ] `email:` und `dnsZones:` auf echte Werte.
 - [ ] Optional Staging-Issuer für Testläufe (Let's-Encrypt-Ratelimits).
 
@@ -159,14 +165,14 @@ spec:
   acme:
     email: admin@DEINE-DOMAIN.tld
     solvers:
-      - dns01: { cloudflare: { apiTokenSecretRef: { name: acme-dns-token, key: api-token } } }
+      - dns01: { webhook: { groupName: acme.jit.services, solverName: cloudns } }
 ```
 
 ---
 
 ## 7. Datenbanken
 
-**Postgres (CNPG):** `infrastructure/base/cnpg/`, `apps/base/{roundcube,paperless-ngx,forgejo,mastodon,mailman}/database.yaml`, `infrastructure/base/authentik/postgres.yaml`
+**Postgres (CNPG):** `infrastructure/base/cnpg/`, `apps/base/{roundcube,paperless-ngx,forgejo,mastodon,mailman}/database.yaml`; legacy Authentik manifests remain in-tree but are excluded from ArgoCD
 **MariaDB (Operator):** `infrastructure/base/mariadb-operator/`, `apps/base/{kimai,wordpress}/database.yaml`
 
 **Offen:**
@@ -218,24 +224,20 @@ spec: { serviceName: forgejo-valkey, replicas: 1, ... } # + Service forgejo-valk
 
 ---
 
-## 9. Identity / OIDC (Authentik)
+## 9. Identity / OIDC (External Keycloak)
 
-**Dateien:** `infrastructure/base/authentik/*`, `infrastructure/base/authentik/blueprints/*`
+**Dateien:** App-spezifische `values.yaml` und `secret.sops.yaml`; externer Keycloak auf `auth.savar.de`, Realm `bgt`
 
 **Offen:**
-- [ ] `authentik-secret` füllen (SECRET_KEY, Bootstrap-Credentials) + verschlüsseln.
-- [ ] CNPG-Owner-Secret für Authentik-DB angleichen (siehe Hinweis in `postgres.yaml`).
-- [ ] Pro App `client_id`/`client_secret` in Blueprint **und** App-Secret identisch setzen.
-- [ ] redirect_uris an reale Domain anpassen; Flows/Scopes prüfen.
-- [ ] Weitere Apps (kimai web-login, roundcube, mastodon, wordpress) nach AGENTS.md-Checkliste onboarden.
+- [ ] Keycloak auf Zielversion aktualisieren und Custom SPI passend bauen.
+- [ ] Binärgewitter-Theme im Realm `bgt` aktivieren.
+- [ ] Pro App Keycloak-Client mit korrekter Redirect-URI anlegen.
+- [ ] Pro App `client_id`/`client_secret` im SOPS-Secret identisch zum Keycloak-Client setzen.
+- [ ] OIDC pro App erst nach Client-/Secret-Abgleich aktivieren und Login testen.
 
-**Beispiel** — Blueprint-Provider (`infrastructure/base/authentik/blueprints/forgejo-oauth.yaml`):
-```yaml
-- model: authentik_providers_oauth2.oauth2provider
-  attrs:
-    client_id: forgejo-client-id
-    client_secret: <gleich wie in forgejo-secret>
-    redirect_uris: [{ matching_mode: strict, url: https://git.DEINE-DOMAIN.tld/user/oauth2/authentik/callback }]
+**Issuer:**
+```text
+https://auth.savar.de/realms/bgt
 ```
 
 ---
@@ -271,6 +273,8 @@ alertmanager:
 - [ ] `htpasswd`-Wert in `secret.sops.yaml` generieren + verschlüsseln:
       `htpasswd -nb mcp <starkes-passwort>` → in `stringData.htpasswd` eintragen.
 - [ ] Claude Code konfigurieren: `Authorization: Basic base64(mcp:<passwort>)` als Header setzen.
+- [x] RBAC read-only halten: keine Write-Verben, kein Secret-Zugriff. CI prüft das über
+      `just guardrails`.
 
 ---
 
@@ -278,7 +282,7 @@ alertmanager:
 
 **Verdrahtet (Blaupause):** DB-Backups sind in den Manifesten aktiv — täglich 02:00 nach Ceph S3,
 30 Tage Retention.
-- **CNPG** (roundcube, paperless, forgejo, mastodon, mailman, authentik): `backup.barmanObjectStore` im
+- **CNPG** (roundcube, paperless, forgejo, mastodon, mailman): `backup.barmanObjectStore` im
   jeweiligen `database.yaml` (bzw. `postgres.yaml`) + `ScheduledBackup` in `backup.yaml`.
   Continuous WAL + base → PITR.
 - **MariaDB** (kimai, wordpress): `Backup` CR in `apps/base/<app>/backup.yaml` (logischer Dump).
@@ -286,7 +290,7 @@ alertmanager:
 - **Keine DB**: Icecast ist zustandsarm; Backup betrifft nur die GitOps-Konfiguration und externe
   Stream-Quellen/Clients.
 
-**Dateien:** `apps/base/*/backup.yaml`, `apps/base/*/database.yaml`, `infrastructure/base/authentik/{postgres,backup}.yaml`,
+**Dateien:** `apps/base/*/backup.yaml`, `apps/base/*/database.yaml`,
 `apps/base/*/secret.sops.yaml`, `infrastructure/overlays/main/` (DR-Overlay, anzulegen)
 
 **Offen:**
@@ -323,19 +327,25 @@ spec: { schedule: "0 0 2 * * *", cluster: { name: forgejo-pg } }
 
 ## 13. CI & Renovate
 
-**Dateien:** `.forgejo/workflows/ci.yaml`, `renovate.json`, `apps/base/renovate/*`
+**Dateien:** `.github/workflows/ci.yml`, `renovate.json`,
+`apps/base/renovate/*`, `scripts/ci/guardrails.sh`
 
 **Offen:**
-- [ ] Forgejo-Actions-Runner registrieren (Token via `get_runner_registration_token`).
-- [ ] Entscheiden: GitHub *leading* (AGENTS.md) vs. Forgejo (Repo-Host) — Workflows entsprechend
-      spiegeln. Aktuell `.forgejo/workflows/`.
-- [ ] Renovate-Token (Forgejo) in `apps/base/renovate/secret.sops.yaml` setzen.
-- [ ] `endpoint`/`gitAuthor` in `apps/base/renovate/config.js` anpassen.
-- [ ] `# renovate:`-Kommentare an Helm-Versionen prüfen (datasource helm/docker).
+- [ ] GitHub-Token in `apps/base/renovate/secret.sops.yaml` setzen.
+- [ ] `gitAuthor` in `apps/base/renovate/config.js` anpassen.
+- [x] Renovate läuft gegen GitHub (`keller-IO/kubernetes-gitops`) und ignoriert
+      `.forgejo/**`.
+- [x] `# renovate:`-Kommentare an Helm-, Docker- und Workflow-Versionen werden
+      durch `customManagers` abgedeckt.
+- [x] CI führt `scripts/ci/guardrails.sh` aus; lokal bündelt `just validate`
+      Guardrails, Lint, Secret-Check, Kustomize-Build und kubeconform.
+- [x] Guardrails blockieren `:latest`, `imagePullPolicy: Always`, verdächtige
+      Klartext-Secrets, mutierende Cluster-Kommandos in Automation und Write-RBAC
+      für den Kubernetes MCP Server.
 
-**Beispiel** — Renovate gegen Forgejo (`apps/base/renovate/config.js`):
+**Beispiel** — Renovate gegen GitHub (`apps/base/renovate/config.js`):
 ```js
-module.exports = { platform: 'gitea', endpoint: 'https://git.DEINE-DOMAIN.tld/api/v1', autodiscover: true };
+module.exports = { platform: 'github', repositories: ['keller-IO/kubernetes-gitops'] };
 ```
 
 ---
@@ -347,7 +357,7 @@ module.exports = { platform: 'gitea', endpoint: 'https://git.DEINE-DOMAIN.tld/ap
 
 **Offen:**
 - [ ] Externen IMAP/SMTP-Host in roundcube setzen (`ROUNDCUBEMAIL_DEFAULT_HOST`/`SMTP_SERVER`).
-- [ ] SMTP-Credentials für Mastodon (`mastodon-smtp`) + Paperless/Authentik (falls Mailversand).
+- [ ] SMTP-Credentials für Mastodon (`mastodon-smtp`) + Paperless (falls Mailversand).
 - [ ] Mailman: externes MTA/Gateway so konfigurieren, dass Listendomains an
       `mailman-core.mailman.svc.cluster.local:8024` (LMTP) geroutet werden; ausgehend nutzt Mailman
       `SMTP_HOST`/`SMTP_PORT` aus `workload.yaml`.
@@ -372,18 +382,19 @@ Jede App liegt unter `apps/base/<app>/` (Basis) + `apps/overlays/main/<app>/` (C
 | App | Pfad (Basis) | Offene App-spezifische Schritte |
 |-----|--------------|----------------------------------|
 | **kimai** | `apps/base/kimai/` | Secret füllen; `serverVersion` der MariaDB im `DATABASE_URL` angleichen; OIDC aktivieren (Web-Login). |
-| **roundcube** | `apps/base/roundcube/` | Externen IMAP/SMTP setzen; `managesieve`-Backend prüfen; Session-Cache auf Valkey umstellen (config). |
+| **roundcube** | `apps/base/roundcube/` | Legacy-Domains `roundcube.savar.de`, `mail.steinba.ch`, `webmail01.jit-creatives.de`, `jitmail.de`, `www.jitmail.de` und `webmail.daec-berlin.de` sind im Overlay als Übergangs-Ingress ergänzt; TLS endet dort am Legacy-Traefik. PostgreSQL-Schemafehler der historischen pgloader-Migration am 27.07. repariert (`postgres-schema-repair-20260727.sql`). Externen IMAP/SMTP setzen; `managesieve`-Backend prüfen; Session-Cache auf Valkey umstellen (config). |
 | **collabora** | `apps/base/collabora/` | `aliasgroups`-Regex auf reale WOPI-Hosts; Admin-Passwort; WOPI-Client (z.B. Nextcloud) anbinden. |
-| **paperless-ngx** | `apps/base/paperless-ngx/` | Admin + SECRET_KEY; OIDC-JSON `server_url`/`secret`; CephFS-RWX für media/consume bestätigen. |
+| **eurooffice** | `apps/base/eurooffice/` | JWT-Secret (`jwt-secret`, bereits generiert/verschlüsselt) in der Nextcloud-Connector-App spiegeln (`occ config:app:set eurooffice ...` auf nc01/nc02-dev, URL `https://eurooffice.jit.services`); All-in-One-Image (interne PG/RabbitMQ/Redis) — bei >1 Nextcloud auf offizielles Kubernetes-Docs-Chart + CNPG umstellen (braucht CephFS-RWX); Erststart dauert (Font-Cache), Healthcheck `/healthcheck`. |
+| **paperless-ngx** | `apps/base/paperless-ngx/` | Externe Domain `paperless.savar.de` ist im Overlay gesetzt; TLS endet während der Migration am Legacy-Traefik. Admin + SECRET_KEY; OIDC-JSON `server_url`/`secret`; CephFS-RWX für media/consume bestätigen. |
 | **forgejo** | `apps/base/forgejo/` | Admin-Secret; SSH-Service exponieren (LB/NodePort); OIDC-Provider in Forgejo anlegen; LFS→S3 optional. |
 | **renovate** | `apps/base/renovate/` | Forgejo-Token; `autodiscover` vs. feste Repo-Liste; Schedule abstimmen. |
 | **wordpress-1/2/3** | `apps/base/wordpress/` + `apps/overlays/main/wordpress-{1,2,3}/` | Pro Instanz Secret + Host (in Overlay gepatcht); „Redis Object Cache"-Plugin installieren; `mariadb.enabled:false` + externalDatabase final schalten. |
 | **mastodon** | `apps/base/mastodon/` | Chart migriert auf offizielles `mastodon/helm-charts` (0.5.1). Secret `mastodon-secret` (`secret-key-base`/VAPID/`are-*` Active-Record-Encryption-Keys) generieren; `mastodon-redis`-Passwort setzen (Valkey `requirepass`); S3 (OBC) verdrahten; SMTP; Streaming-WebSocket testen; ggf. Elasticsearch. ArgoCD: `mastodon.hooks` (dbPrepare/dbMigrate Helm-Hooks) für GitOps-Sync prüfen. |
-| **gatus** | `apps/base/gatus/` | `gatus-oidc`-Secret füllen (== Blueprint-`client_secret`); `issuer-url`/`redirect-url`/`client-id` auf reale Domain; echte `endpoints` statt Samples eintragen. |
-| **kite** | `apps/base/kite/` | `kite-secrets` füllen (`JWT_SECRET`/`KITE_ENCRYPT_KEY` via `openssl rand -hex 32`, `OAUTH_CLIENT_SECRET` == Blueprint); `issuer`/`clientId` setzen; RBAC-Rollen-Mapping für OIDC-User; PVC-StorageClass prüfen. |
+| **gatus** | `apps/base/gatus/` | `gatus-oidc`-Secret mit Keycloak-Client-Secret füllen; `issuer-url`/`redirect-url`/`client-id` auf reale Domain. Alle kanonischen Web-App-Endpunkte sind eingetragen; Paperless wird über `paperless.savar.de` geprüft und folgt dem Login-Redirect bis HTTP 200. Gewünschte Legacy- und Alias-Domains bei Bedarf als eigene Routengruppe ergänzen. |
+| **kite** | `apps/base/kite/` | `kite-secrets` füllen (`JWT_SECRET`/`KITE_ENCRYPT_KEY` via `openssl rand -hex 32`, `OAUTH_CLIENT_SECRET` == Keycloak-Client-Secret); `issuer`/`clientId` setzen; RBAC-Rollen-Mapping für OIDC-User; PVC-StorageClass prüfen. |
 | **mailman** | `apps/base/mailman/` | Secrets füllen (`HYPERKITTY_API_KEY`, `SECRET_KEY`, REST-Passwort, `MAILMAN_ADMIN_EMAIL`, `SMTP_HOST_USER`); externes MTA auf LMTP-Service routen; CNPG-Bucket `cnpg-mailman`/S3-Creds anlegen; PVC- und DB-Größen prüfen; erste Admin-Initialisierung testen. |
 | **icecast** | `apps/base/icecast/` | Source/Admin/Relay-Passwörter setzen; Source-Clients auf HTTPS-URL und Source-Passwort umstellen; Listener-Limit nach Stream-Profil prüfen (Ingress-Timeouts/Buffering für Live-Streaming sind gesetzt: `proxy-buffering off`, 3600s Read/Send-Timeout). |
-| **phpmyadmin** | `apps/base/phpmyadmin/` | Zugriff absichern (Authentik Forward-Auth oder IP-Allowlist); nur dedizierte DB-User statt Root verwenden; Default-DB-Host `kimai-mariadb.kimai.svc.cluster.local` prüfen; weitere Ziele als FQDN eintragen. |
+| **phpmyadmin** | `apps/base/phpmyadmin/` | Legacy-Domains `phpmyadmin.savar.de`/`phpmyadmin.jit-creatives.de` sind im Overlay ergänzt; TLS endet dort am Legacy-Traefik. Zugriff absichern (IP-Allowlist oder separater Auth-Proxy); nur dedizierte DB-User statt Root verwenden; Default-DB-Host `kimai-mariadb.kimai.svc.cluster.local` prüfen; weitere Ziele als FQDN eintragen. |
 
 **Beispiel** — neue App hinzufügen (Kurzform, Details in AGENTS.md):
 ```
@@ -400,5 +411,7 @@ apps/overlays/main/<app>/kustomization.yaml   # -> wird von appset-apps automati
 just build   # kustomize build --enable-helm über alle overlays
 just test    # + kubeconform Schema-Validierung
 just lint    # yamllint
-just secrets-check   # keine Klartext-*.sops.yaml
+just secrets-check   # echte Secrets verschluesselt, Blueprint-Platzhalter warnen
+just guardrails      # Agent-/GitOps-Sicherheitschecks
+just validate        # gesamtes CI-Gate
 ```

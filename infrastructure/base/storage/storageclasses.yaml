@@ -1,6 +1,7 @@
-# Example StorageClasses backed by an existing Ceph cluster (Rook CSI provisioners).
-# Adjust clusterID / pool / fsName / provisioner to match your deployment, or delete
-# if these classes already exist. App manifests reference: ceph-rbd, ceph-fs.
+# StorageClasses für das EXTERNE PVE-Ceph (fsid 74747628-…), provisioniert durch
+# ceph-csi (infrastructure/base/ceph-csi/). Apps referenzieren: ceph-rbd, ceph-fs.
+# Replace=true: provisioner/parameters sind immutable — Umstellung von den alten
+# Rook-Platzhaltern erfordert Delete+Recreate durch ArgoCD.
 ---
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
@@ -8,25 +9,42 @@ metadata:
   name: ceph-rbd
   annotations:
     storageclass.kubernetes.io/is-default-class: "true"
-provisioner: rook-ceph.rbd.csi.ceph.com # CHANGE ME if external-ceph CSI
+    argocd.argoproj.io/sync-options: Force=true,Replace=true
+provisioner: rbd.csi.ceph.com
 parameters:
-  clusterID: rook-ceph # CHANGE ME
-  pool: replicapool # CHANGE ME
+  clusterID: 74747628-63a3-440d-a3f6-f4681660b858
+  pool: kubernetes # dedizierter RBD-Pool, siehe docs: ceph osd pool create kubernetes
   imageFeatures: layering
   csi.storage.k8s.io/fstype: ext4
+  csi.storage.k8s.io/provisioner-secret-name: csi-rbd-secret
+  csi.storage.k8s.io/provisioner-secret-namespace: ceph-csi
+  csi.storage.k8s.io/controller-expand-secret-name: csi-rbd-secret
+  csi.storage.k8s.io/controller-expand-secret-namespace: ceph-csi
+  csi.storage.k8s.io/node-stage-secret-name: csi-rbd-secret
+  csi.storage.k8s.io/node-stage-secret-namespace: ceph-csi
 reclaimPolicy: Delete
 allowVolumeExpansion: true
 volumeBindingMode: Immediate
 ---
+# HINWEIS: Der CephFS-CSI-Treiber ist noch NICHT deployt (client.kubernetes hat
+# keine mds-Caps). PVCs auf ceph-fs bleiben Pending, bis ceph-csi-cephfs folgt.
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
   name: ceph-fs
-provisioner: rook-ceph.cephfs.csi.ceph.com # CHANGE ME
+  annotations:
+    argocd.argoproj.io/sync-options: Force=true,Replace=true
+provisioner: cephfs.csi.ceph.com
 parameters:
-  clusterID: rook-ceph # CHANGE ME
-  fsName: cephfs # CHANGE ME
-  pool: cephfs-data0 # CHANGE ME
+  clusterID: 74747628-63a3-440d-a3f6-f4681660b858
+  fsName: cephfs
+  pool: cephfs_data
+  csi.storage.k8s.io/provisioner-secret-name: csi-cephfs-secret
+  csi.storage.k8s.io/provisioner-secret-namespace: ceph-csi
+  csi.storage.k8s.io/controller-expand-secret-name: csi-cephfs-secret
+  csi.storage.k8s.io/controller-expand-secret-namespace: ceph-csi
+  csi.storage.k8s.io/node-stage-secret-name: csi-cephfs-secret
+  csi.storage.k8s.io/node-stage-secret-namespace: ceph-csi
 reclaimPolicy: Delete
 allowVolumeExpansion: true
 volumeBindingMode: Immediate
