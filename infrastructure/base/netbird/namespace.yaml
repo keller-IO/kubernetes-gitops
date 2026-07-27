@@ -3,12 +3,13 @@ kind: Namespace
 metadata:
   name: netbird
   labels:
-    # Der Agent-DaemonSet braucht hostNetwork + NET_ADMIN — PSA muss das zulassen.
-    pod-security.kubernetes.io/enforce: privileged
-    pod-security.kubernetes.io/audit: privileged
-    pod-security.kubernetes.io/warn: privileged
-# Bewusst KEIN netbird.io/webhook=enabled hier (siehe values.yaml): das Chart rendert nur den
-# Sidecar-Injection-Webhook für Pods (die Validating-Webhooks hängen an
-# ingress.enabled, das wir nicht nutzen). Sidecar-Injection brauchen wir nicht —
-# und mit failurePolicy: Fail würde das Label bedeuten, dass ein ausgefallener
-# Operator die Erzeugung der Agent-Pods in genau diesem Namespace blockiert.
+    # Ohne Agent-DaemonSet läuft hier nichts Privilegiertes mehr: Operator und die
+    # vom Operator erzeugten ClusterProxy-Pods sind restricted-konform
+    # (runAsNonRoot, readOnlyRootFilesystem, drop ALL).
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+# Bewusst KEIN netbird.io/webhook=enabled (siehe values.yaml): das Chart rendert nur
+# den Sidecar-Injection-Webhook für Pods, den brauchen wir nicht — und mit
+# failurePolicy: Fail würde das Label einen ausgefallenen Operator zum Blocker für
+# Pod-Creates in genau diesem Namespace machen.

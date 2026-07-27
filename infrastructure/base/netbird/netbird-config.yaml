@@ -1,50 +1,21 @@
-# NetBird-seitige Konfiguration, deklarativ. Der Operator legt diese Objekte über
-# die Management-API in netbird.jit.services an.
+# NetBird-seitige Konfiguration.
 #
-# sync-wave 1: erst nach Operator + CRDs (die auf Default-Wave 0 liegen), sonst
-# schlägt der erste Sync fehl, weil die netbird.io-CRDs noch nicht established sind.
+# BEWUSST KEINE `Group`-CRs. Die Gruppen (k8s_admin, k8s_readonly, k8s_api_proxy)
+# werden in NetBird selbst gepflegt, und der Operator kommt damit sauber klar:
+# `GetGroupIDs` löst eine Referenz per `name` über `Groups.GetByName` auf, adoptiert
+# also die vorhandene Gruppe.
 #
-# BEWUSST NICHT HIER: die Zugriffs-Policy (k8s_admin/k8s_readonly -> tcp/443 auf
-# die Proxy-Peers). Die NBPolicy-CRD sieht zwar passend aus, ihr Controller baut
-# Ports und Ziel-Gruppen aber ausschließlich aus NBResource-Objekten
-# (Service-Annotationen) — `spec.ports`/`spec.destinationGroups` werden ohne
-# NBResource nie ausgewertet, die CR liefe fehlerfrei ins Leere. Die Policy muss
-# daher in NetBird selbst angelegt werden, siehe docs/PRODUCTION-READINESS.md.
----
-# Nutzergruppe: volle Cluster-Rechte (RBAC-Bindung in rbac.yaml).
-apiVersion: netbird.io/v1alpha1
-kind: Group
-metadata:
-  name: k8s-admin
-  namespace: netbird
-  annotations:
-    argocd.argoproj.io/sync-wave: "1"
-spec:
-  name: k8s_admin
----
-# Nutzergruppe: lesend, ohne Secrets (RBAC-Bindung in rbac.yaml).
-apiVersion: netbird.io/v1alpha1
-kind: Group
-metadata:
-  name: k8s-readonly
-  namespace: netbird
-  annotations:
-    argocd.argoproj.io/sync-wave: "1"
-spec:
-  name: k8s_readonly
----
-# Peer-Gruppe: NUR die kube-API-Proxy-Pods. Bewusst getrennt von einer
-# "alle Cluster-Peers"-Gruppe — im Homelab zeigt die entsprechende Policy auf die
-# Gruppe mit den Control-Plane-Nodes und öffnet damit mehr als den Proxy.
-apiVersion: netbird.io/v1alpha1
-kind: Group
-metadata:
-  name: k8s-api-proxy
-  namespace: netbird
-  annotations:
-    argocd.argoproj.io/sync-wave: "1"
-spec:
-  name: k8s_api_proxy
+# Group-CRs wären hier sogar gefährlich: der Group-Controller sucht NIE nach Namen
+# (er kennt nur `status.GroupID`, beim ersten Reconcile leer) und ruft dann
+# unbedingt `Groups.Create` — es entstünden zweite Gruppen gleichen Namens neben
+# den echten. Und `reconcileDelete` ruft `Groups.Delete`: ein von ArgoCD geprunter
+# CR würde die Gruppe in NetBird löschen.
+#
+# Gruppe `k8s_api_proxy` und die Zugriffs-Policy (k8s_admin + k8s_readonly ->
+# k8s_api_proxy, tcp/443) sind in NetBird bereits angelegt. Die Policy gehört auch
+# dorthin: die NBPolicy-CRD sieht passend aus, ihr Controller baut Ports und
+# Ziel-Gruppen aber ausschließlich aus NBResource-Objekten — `spec.ports` allein
+# läuft fehlerfrei ins Leere. Siehe docs/PRODUCTION-READINESS.md §17.
 ---
 # ServiceAccount, in dessen Namen der Proxy impersoniert.
 # Die Rechte dazu vergibt NICHT der Operator, sondern rbac.yaml in dieser
@@ -58,6 +29,9 @@ metadata:
 # Der kube-API-Proxy: erscheint als NetBird-Peer und übersetzt die NetBird-Identität
 # in Kubernetes-User/-Group-Impersonation. Deployment, Secrets und SetupKey dazu
 # erzeugt der Operator — nicht hier verwalten.
+#
+# sync-wave 1: erst nach Operator + CRDs (Default-Wave 0), sonst schlägt der erste
+# Sync fehl, weil die netbird.io-CRDs noch nicht established sind.
 apiVersion: netbird.io/v1alpha1
 kind: ClusterProxy
 metadata:
@@ -69,7 +43,9 @@ spec:
   apiServer: https://kubernetes.default.svc.cluster.local/
   clusterName: keller-main
   serviceAccountName: netbird-clusterproxy
-  # Referenz per Name statt per opaker Group-ID (das Homelab hat die IDs
-  # hartkodiert — die sind tenant-spezifisch und brechen bei jedem Umzug).
+  # Eigene Peer-Gruppe nur für die Proxy-Pods — die Policy zeigt dorthin und
+  # nicht auf eine Gruppe, die auch die Control-Plane-Nodes enthält (so macht es
+  # das Homelab und öffnet damit mehr als den Proxy).
+  # Referenz per Name statt per opaker ID: die IDs sind tenant-spezifisch.
   groups:
     - name: k8s_api_proxy
