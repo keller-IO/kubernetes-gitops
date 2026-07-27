@@ -45,6 +45,7 @@
             age # age keys for SOPS (age + age-keygen)
             yamllint # YAML linting
             kubectl # cluster access
+            argocd # inspect ArgoCD state
           ];
 
           shellHook = ''

@@ -151,13 +151,26 @@ Enthaltene Werkzeuge: `just`, `kustomize`, `kubeconform`, `helm`, `sops`, `age`,
 Vor jedem Commit lassen sich alle Manifeste lokal prüfen — identisch zur CI:
 
 ```bash
+just validate        # gesamtes CI-Gate: lint, secrets, guardrails, build, schema
 just build          # rendert jede Overlay mit kustomize (Helm-Inflation)
 just test           # rendert + validiert gegen Kubernetes-/CRD-Schemas
 just lint           # YAML-Linting
-just secrets-check  # stellt sicher, dass kein *.sops.yaml unverschlüsselt ist
+just secrets-check  # echte Secrets muessen verschluesselt sein; Platzhalter warnen
+just guardrails      # Agent-/GitOps-Sicherheitschecks
 ```
 
 `just` ohne Argument listet alle verfügbaren Recipes auf.
+
+## KI-Agenten sicher nutzen
+
+Agenten arbeiten in diesem Repo wie Menschen: Branch ab aktuellem `main`, Änderung als
+GitOps-Patch, `just validate`, Pull Request. Live-Cluster-Zugriff ist nur zur Diagnose
+gedacht und sollte mit read-only Kubeconfig erfolgen. Mutierende Befehle wie
+`kubectl apply/delete/patch` oder `talosctl apply-config/reset/upgrade` gehören nicht in
+Agent-Automation; ArgoCD setzt freigegebene Änderungen nach Merge um.
+
+Der Kubernetes MCP Server ist absichtlich read-only konfiguriert. CI prüft diese
+Eigenschaft und blockiert Write-Verben oder Secret-Zugriff in dessen RBAC.
 
 ---
 

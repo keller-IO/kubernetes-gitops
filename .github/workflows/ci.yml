@@ -21,6 +21,14 @@ jobs:
       - name: yamllint
         run: yamllint -s .
 
+  # Repository safety invariants for AI-assisted GitOps changes.
+  guardrails:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: guardrails
+        run: bash -n scripts/ci/guardrails.sh && scripts/ci/guardrails.sh
+
   # Render every overlay (helm inflation enabled) and validate against K8s/CRD schemas.
   validate:
     runs-on: ubuntu-latest

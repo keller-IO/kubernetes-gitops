@@ -14,7 +14,8 @@ spec:
       restartPolicy: Never
       containers:
         - name: pgloader
-          image: dimitri/pgloader:latest
+          # renovate: datasource=docker depName=dimitri/pgloader
+          image: dimitri/pgloader:3.6.10
           env:
             - name: ROUNDCUBE_LEGACY_MYSQL_DSN
               valueFrom: { secretKeyRef: { name: roundcube-legacy-app, key: roundcube_mysql_dsn } }

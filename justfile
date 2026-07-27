@@ -38,15 +38,28 @@ encrypt FILE:
 decrypt FILE:
     sops --decrypt {{FILE}}
 
-# Verify every *.sops.yaml is actually encrypted (no plaintext data leaking to git).
+# Verify real *.sops.yaml secrets are encrypted. Blueprint placeholders warn only.
 secrets-check:
     #!/usr/bin/env bash
     set -euo pipefail
     fail=0
     while IFS= read -r f; do
-      if ! grep -q "sops:" "$f"; then echo "UNENCRYPTED: $f"; fail=1; fi
+      grep -q "sops:" "$f" && continue
+      if grep -Eq "REPLACE_ME|CHANGE ME|PLACEHOLDER|placeholder|age1placeholder" "$f"; then
+        echo "WARN placeholder secret not encrypted yet: $f"
+      else
+        echo "UNENCRYPTED: $f"
+        fail=1
+      fi
     done < <(find . -name '*.sops.yaml' -not -name '.sops.yaml')
     exit $fail
+
+# Check repo safety invariants before CI or PR review.
+guardrails:
+    ./scripts/ci/guardrails.sh
+
+# Run the full local gate used by CI.
+validate: lint secrets-check guardrails build test
 
 fmt:
     kustomize cfg fmt infrastructure apps clusters
