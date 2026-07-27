@@ -1,0 +1,44 @@
+# NetBird Kubernetes Operator. Sprechend gegen den externen NetBird-Server
+# netbird.jit.services (nicht im Cluster gehostet).
+managementURL: https://netbird.jit.services
+
+cluster:
+  # Geht in die Namen der von NetBird angelegten Netzwerke/Resources ein und in
+  # den DNS-Namen des kube-API-Proxy-Peers (<clusterName>.netbird-kubeapi-proxy.…).
+  name: keller-main
+  dns: svc.cluster.local
+
+netbirdAPI:
+  # Management-API-Token für den Operator. Secret kommt aus secret.sops.yaml.
+  keyFromSecret:
+    name: netbird-mgmt-api-key
+    key: NB_API_KEY
+
+operator:
+  # Zwei Replicas für Verfügbarkeit des Reconcilers; `--leader-elect` ist im Chart
+  # gesetzt, aktiv ist also immer nur einer. (Der Webhook ist durch den Selector
+  # unten ohnehin inert — er ist NICHT der Grund für die zweite Replica.)
+  replicaCount: 2
+  resources:
+    requests: { cpu: 10m, memory: 64Mi }
+    limits: { memory: 256Mi }
+
+webhook:
+  enableCertManager: true # Zertifikat via cert-manager (infrastructure/base/cert-manager)
+  failurePolicy: Fail
+  # Chart-Default wäre KEIN Selector -> der Pod-Mutating-Webhook (Sidecar-Injection)
+  # liefe bei JEDEM Pod-Create clusterweit, mit failurePolicy Fail. Wir schalten ihn
+  # auf Opt-in um. AKTUELL trägt KEIN Namespace dieses Label, der Webhook ist also
+  # bewusst wirkungslos — Sidecar-Injection brauchen wir nicht. Die Validating-
+  # Webhooks rendert das Chart nur bei ingress.enabled, das ist hier aus.
+  namespaceSelectors:
+    - key: netbird.io/webhook
+      operator: In
+      values: ["enabled"]
+
+clusterSecretsPermissions:
+  # ACHTUNG: entfernt die secrets-Regel NICHT vollständig — solange
+  # netbirdAPI.keyFromSecret gesetzt ist, behält der Operator laut Chart-RBAC
+  # clusterweit get/list/watch + create/patch/update/DELETE auf Secrets. Siehe
+  # docs/PRODUCTION-READINESS.md, Abschnitt NetBird.
+  allowAllSecrets: false

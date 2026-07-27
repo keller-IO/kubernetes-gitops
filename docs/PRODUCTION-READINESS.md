@@ -492,6 +492,83 @@ Dasselbe gilt für die Apache-Logs der WordPress-Pods (die sehen die nginx-Pod-I
 
 ---
 
+## 17. NetBird (VPN & Cluster-Zugriff)
+
+**Dateien:** `infrastructure/base/netbird/*`
+
+Externer NetBird-Server **`netbird.jit.services`** (nicht im Cluster gehostet). Drei Teile:
+
+1. **Agent-DaemonSet** — ein Peer pro Node, damit die Nodes im NetBird-Netz hängen.
+2. **Operator** (Helm `netbird-operator` 0.8.0, `oci://ghcr.io/netbirdio/helm-charts`).
+3. **ClusterProxy** — kube-API-Proxy-Peer, erreichbar unter
+   `keller-main.netbird-kubeapi-proxy.netbird.selfhosted`. Er impersoniert den
+   NetBird-Nutzer gegenüber der API; die NetBird-Gruppennamen kommen als K8s-Groups an.
+
+| NetBird-Gruppe | Kubernetes-RBAC |
+|---|---|
+| `k8s_admin` | `cluster-admin` |
+| `k8s_readonly` | `view` + `netbird-cluster-reader` |
+
+**NetBird kann kein „read-only" erzwingen** — Policies sind L3/L4. Der Unterschied
+entsteht ausschließlich über RBAC in `rbac.yaml`.
+
+**Die eigentliche Sicherheitsgrenze ist die `resourceNames`-Allowlist** in der
+ClusterRole `netbird-clusterproxy`. Der Proxy reicht Gruppennamen ungefiltert an die
+API weiter; ohne Allowlist wäre eine NetBird-Gruppe namens `system:masters` sofort
+Cluster-Admin, unsichtbar für jedes ClusterRoleBinding in diesem Repo. `All` muss in
+der Liste bleiben — NetBird steckt jeden Peer in diese Gruppe.
+
+**Offen:**
+- [ ] **Blocker: `NB_API_KEY` fehlt.** In `secret.sops.yaml` steht ein verschlüsseltes
+      `REPLACE_ME`. Ohne Management-API-Token für `netbird.jit.services` legt der Operator
+      weder Gruppen noch ClusterProxy an. Achtung: weil der Platzhalter *verschlüsselt* ist,
+      schlagen weder `just secrets-check` noch `guardrails` an — das fällt erst im Cluster auf.
+      Token erzeugen, dann `sops --decrypt --in-place …` → eintragen → `just encrypt …`.
+- [ ] **Zugriffs-Policy in NetBird anlegen** (`k8s_admin` + `k8s_readonly` → `k8s_api_proxy`,
+      tcp/443). Bewusst nicht als CR: der NBPolicy-Controller baut Ports und Ziel-Gruppen nur
+      aus `NBResource`-Objekten, `spec.ports`/`spec.destinationGroups` allein laufen fehlerfrei
+      ins Leere. Muss also im NetBird-UI/über die API passieren.
+- [ ] Gruppen-Mitgliedschaft vergeben — `k8s_admin`/`k8s_readonly` sind nur leere Hüllen.
+- [ ] `kubectl` je Gruppe testen. Erwartung readonly: `get pods -A` geht, `get secret -A` 403.
+- [ ] Agent-Privilegien: startet bewusst mit **nur `NET_ADMIN`** + `/dev/net/tun` (das Homelab
+      fährt ihn privilegiert). Kommt das WireGuard-Interface auf Talos nicht hoch, Leiter in
+      `daemonset.yaml` hochgehen: NET_RAW → SYS_ADMIN+SYS_RESOURCE → privileged.
+
+**Bekannte Lücken von `k8s_readonly`** (RBAC kennt kein `deny`, daher Positivliste):
+- [ ] **`pods/log` clusterweit.** In `view` enthalten und für „alles lesen" nötig — aber der
+      kube-API-Proxy loggt Werte verworfener Header, u. a. `Authorization`. Wer mit einem
+      echten Token gegen den Proxy geht, schreibt ihn in dessen Log, und `k8s_readonly` darf
+      das Log lesen. Upstream-Patch oder `pods/log` im netbird-Namespace ausnehmen.
+      Generell: CNPG/Renovate/Authentik-Logs können Credentials enthalten.
+- [ ] **`aggregate-to-view` ist ein Fremdkanal.** Jedes Chart kann Rechte in `view` schieben;
+      mariadb-operator aggregiert `k8s.mariadb.com/*` als Wildcard, victoria-metrics-operator
+      `VMUser` (mit Klartextfeldern `password`/`bearerToken`). Bei Chart-Bumps prüfen — ein
+      Guardrail dafür wäre sinnvoll.
+- **ConfigMaps und PodSpecs** sind lesbar (inhärent zu `view`). Credentials gehören in Secrets,
+  nicht in ConfigMaps oder inline-`env`.
+- `k8s_readonly` darf RBAC-Objekte lesen und ist damit auch eine **Aufklärungs-Rolle** —
+  Mitgliedschaft entsprechend behandeln.
+
+**Restrisiko (inhärent, dokumentiert statt behoben):**
+- Der Operator behält clusterweit `get/list/watch/create/patch/update/delete` auf **Secrets**
+  (Chart-RBAC, solange `netbirdAPI.keyFromSecret` gesetzt ist). Zusammen mit `deployments`-
+  und `serviceaccounts`-Vollzugriff ist das **ein** API-Call bis Cluster-Admin. Der
+  netbird-Namespace ist damit Tier-0.
+- Der ClusterProxy-Controller legt das NetBird-**Management-API-Token** als Secret im
+  Cluster ab. Wer es liest, hängt sich in NetBird selbst in `k8s_admin` — ohne jede Spur im
+  Kubernetes-Audit-Log.
+- [ ] Erwägen: `k8s_admin` statt auf `cluster-admin` auf eine Rolle binden, die RBAC-Objekte
+      und die Verben `escalate`/`bind`/`impersonate` ausspart. Verhindert keinen böswilligen
+      Admin (`pods/exec` bleibt), aber dass eine gestohlene VPN-Identität sich dauerhafte
+      Credentials außerhalb von Git anlegt.
+- [ ] Break-glass-Pfad **ohne** NetBird vorhalten (`talosctl kubeconfig`, offline).
+- [ ] API-Server-Audit-Logging mit Impersonation-Feldern aktivieren — bei Impersonation ist
+      das die einzige Stelle, an der die handelnde Identität auftaucht.
+- [ ] Peer-Hygiene: Agent-State liegt unter `/var/lib/netbird-agent` auf der Node. Node neu
+      aufgesetzt → verwaisten Peer in NetBird löschen.
+
+---
+
 ## Vor dem ersten `argocd app sync` lokal prüfen
 
 ```bash

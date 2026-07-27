@@ -1,0 +1,83 @@
+# NetBird-Agent: ein Peer pro Node, damit die Nodes selbst im NetBird-Netz hängen.
+# Für den reinen kube-API-Zugriff nicht nötig (das macht der ClusterProxy) — hier,
+# weil die Nodes wie im Homelab erreichbar sein sollen.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: netbird
+  namespace: netbird
+spec:
+  selector:
+    matchLabels: { app.kubernetes.io/name: netbird }
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate: { maxUnavailable: 1 }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: netbird }
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      # Der Agent spricht nur mit dem NetBird-Server, nie mit der K8s-API — ein
+      # gemounteter SA-Token wäre in einem hostNetwork-Container auf jeder Node
+      # nur unnötige Angriffsfläche.
+      automountServiceAccountToken: false
+      tolerations:
+        - operator: Exists # auch auf getainteten Control-Plane-Nodes
+      containers:
+        - name: netbird
+          # renovate: image=netbirdio/netbird
+          image: netbirdio/netbird:0.75.0
+          env:
+            - name: NB_SETUP_KEY
+              valueFrom:
+                secretKeyRef: { name: netbird-setup, key: setup-key }
+            - name: NB_MANAGEMENT_URL
+              value: https://netbird.jit.services
+            - name: NB_HOSTNAME
+              valueFrom:
+                fieldRef: { fieldPath: spec.nodeName }
+            - name: NB_LOG_LEVEL
+              value: info
+            - name: NB_ENABLE_LOCAL_FORWARDING
+              value: "true"
+          securityContext:
+            # Abweichung vom Homelab: dort läuft der Agent privileged.
+            # Bewusst die unterste Stufe zuerst — NET_ADMIN + /dev/net/tun ist das,
+            # was NetBird selbst für Container dokumentiert. SYS_ADMIN wäre nicht
+            # nennenswert besser als privileged (allein damit ist Container-Escape
+            # möglich), und dieser Pod läuft per tolerations auf JEDER Node.
+            # Eskalationsleiter, falls das WireGuard-Interface nicht hochkommt:
+            #   1. NET_RAW ergänzen
+            #   2. SYS_ADMIN + SYS_RESOURCE ergänzen (dann muss
+            #      allowPrivilegeEscalation auf true — das Kubelet lehnt false
+            #      zusammen mit SYS_ADMIN ab)
+            #   3. privileged: true (dann capabilities-Liste entfernen)
+            allowPrivilegeEscalation: false
+            capabilities:
+              add: [NET_ADMIN]
+          volumeMounts:
+            - { name: state, mountPath: /var/lib/netbird }
+            - { name: tun, mountPath: /dev/net/tun }
+          startupProbe:
+            exec: { command: [netbird, status, --check, startup] }
+            periodSeconds: 5
+            failureThreshold: 30
+          livenessProbe:
+            exec: { command: [netbird, status, --check, live] }
+            periodSeconds: 30
+          readinessProbe:
+            exec: { command: [netbird, status, --check, ready] }
+            periodSeconds: 10
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+            limits: { memory: 128Mi }
+      volumes:
+        - name: state
+          # Peer-Identität muss Pod-Neustarts überleben, sonst registriert jeder
+          # Restart einen neuen Peer. Kehrseite: der WireGuard-Private-Key liegt
+          # auf der Node-Disk, und ein neu aufgesetzter Node lässt einen
+          # verwaisten Peer in NetBird zurück (dort aufräumen).
+          hostPath: { path: /var/lib/netbird-agent, type: DirectoryOrCreate }
+        - name: tun
+          hostPath: { path: /dev/net/tun, type: CharDevice }

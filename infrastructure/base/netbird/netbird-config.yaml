@@ -1,0 +1,75 @@
+# NetBird-seitige Konfiguration, deklarativ. Der Operator legt diese Objekte über
+# die Management-API in netbird.jit.services an.
+#
+# sync-wave 1: erst nach Operator + CRDs (die auf Default-Wave 0 liegen), sonst
+# schlägt der erste Sync fehl, weil die netbird.io-CRDs noch nicht established sind.
+#
+# BEWUSST NICHT HIER: die Zugriffs-Policy (k8s_admin/k8s_readonly -> tcp/443 auf
+# die Proxy-Peers). Die NBPolicy-CRD sieht zwar passend aus, ihr Controller baut
+# Ports und Ziel-Gruppen aber ausschließlich aus NBResource-Objekten
+# (Service-Annotationen) — `spec.ports`/`spec.destinationGroups` werden ohne
+# NBResource nie ausgewertet, die CR liefe fehlerfrei ins Leere. Die Policy muss
+# daher in NetBird selbst angelegt werden, siehe docs/PRODUCTION-READINESS.md.
+---
+# Nutzergruppe: volle Cluster-Rechte (RBAC-Bindung in rbac.yaml).
+apiVersion: netbird.io/v1alpha1
+kind: Group
+metadata:
+  name: k8s-admin
+  namespace: netbird
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  name: k8s_admin
+---
+# Nutzergruppe: lesend, ohne Secrets (RBAC-Bindung in rbac.yaml).
+apiVersion: netbird.io/v1alpha1
+kind: Group
+metadata:
+  name: k8s-readonly
+  namespace: netbird
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  name: k8s_readonly
+---
+# Peer-Gruppe: NUR die kube-API-Proxy-Pods. Bewusst getrennt von einer
+# "alle Cluster-Peers"-Gruppe — im Homelab zeigt die entsprechende Policy auf die
+# Gruppe mit den Control-Plane-Nodes und öffnet damit mehr als den Proxy.
+apiVersion: netbird.io/v1alpha1
+kind: Group
+metadata:
+  name: k8s-api-proxy
+  namespace: netbird
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  name: k8s_api_proxy
+---
+# ServiceAccount, in dessen Namen der Proxy impersoniert.
+# Die Rechte dazu vergibt NICHT der Operator, sondern rbac.yaml in dieser
+# Komponente (ClusterRole netbird-clusterproxy).
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: netbird-clusterproxy
+  namespace: netbird
+---
+# Der kube-API-Proxy: erscheint als NetBird-Peer und übersetzt die NetBird-Identität
+# in Kubernetes-User/-Group-Impersonation. Deployment, Secrets und SetupKey dazu
+# erzeugt der Operator — nicht hier verwalten.
+apiVersion: netbird.io/v1alpha1
+kind: ClusterProxy
+metadata:
+  name: keller-main
+  namespace: netbird
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  apiServer: https://kubernetes.default.svc.cluster.local/
+  clusterName: keller-main
+  serviceAccountName: netbird-clusterproxy
+  # Referenz per Name statt per opaker Group-ID (das Homelab hat die IDs
+  # hartkodiert — die sind tenant-spezifisch und brechen bei jedem Umzug).
+  groups:
+    - name: k8s_api_proxy
