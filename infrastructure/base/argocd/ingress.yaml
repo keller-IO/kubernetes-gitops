@@ -8,6 +8,7 @@ metadata:
     nginx.org/ssl-redirect: "false"
     nginx.org/redirect-to-https: "true"
     nginx.org/websocket-services: argocd-server
+    nginx.org/client-max-body-size: "0" # unlimited — large Application manifests/UI diffs
 spec:
   ingressClassName: nginx
   tls:
