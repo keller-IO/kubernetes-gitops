@@ -2,6 +2,14 @@
 # `cscli alerts list` / `cscli decisions list`), but nothing is enforced yet —
 # no bouncer is wired up. Add one once decision accuracy has been reviewed;
 # see docs/PRODUCTION-READINESS.md for the enforcement options considered.
+#
+# ⚠️ PRECONDITION, NOT YET MET: the parsed access logs currently do NOT carry the
+# real client IP. Traffic arrives via the .15-Traefik and the ingress Service runs
+# externalTrafficPolicy: Cluster (SNAT), and ingress-nginx has no set-real-ip-from /
+# real-ip-header configured — so nginx logs a proxy/node address for every request.
+# Until that is fixed, alerts all point at one internal IP: detection is near-blind,
+# and enabling a bouncer later would ban the proxy and take the whole site down.
+# See docs/PRODUCTION-READINESS.md section 16.
 container_runtime: containerd # Talos nodes run containerd, not docker (chart default)
 
 # config.yaml.local is a plain string in the chart (not a deep-merged map), so
@@ -67,10 +75,12 @@ agent:
     - name: COLLECTIONS
       value: "crowdsecurity/linux crowdsecurity/nginx crowdsecurity/apache2 crowdsecurity/http-cve crowdsecurity/base-http-scenarios crowdsecurity/wordpress crowdsecurity/whitelist-good-actors"
   acquisition:
-    # releaseName is nginx-ingress (infrastructure/base/ingress-nginx) — verify the
-    # exact pod name prefix after first deploy: `kubectl -n ingress-nginx get pods`.
+    # Deployment is "nginx-ingress-controller" (verified via `kustomize build` on
+    # infrastructure/base/ingress-nginx): the chart's fullname helper collapses the
+    # prefix because releaseName "nginx-ingress" already contains the chart name.
+    # Pods are therefore nginx-ingress-controller-<rs>-<hash>.
     - namespace: ingress-nginx
-      podName: "nginx-ingress-nginx-ingress-controller-*"
+      podName: "nginx-ingress-controller-*"
       program: nginx
     - namespace: wordpress-1
       podName: "wordpress-*"
