@@ -4,6 +4,27 @@ configs:
     # decryption). This MUST stay in sync with the Terraform bootstrap (argocd.tf),
     # otherwise ArgoCD self-management drifts from the initial install.
     kustomize.buildOptions: "--enable-helm --enable-alpha-plugins --enable-exec"
+    resource.customizations.health.netbird.io_ClusterProxy: |
+      hs = {}
+      if obj.status == nil or obj.status.observedGeneration == nil then
+        hs.status = "Progressing"
+        hs.message = "Waiting for ClusterProxy status"
+        return hs
+      end
+      if obj.status.observedGeneration == -1 then
+        hs.status = "Degraded"
+        hs.message = "ClusterProxy reconcile failed; check netbird-operator logs"
+        return hs
+      end
+      if obj.metadata ~= nil and obj.metadata.generation ~= nil
+          and obj.status.observedGeneration < obj.metadata.generation then
+        hs.status = "Progressing"
+        hs.message = "Waiting for ClusterProxy generation " .. obj.metadata.generation
+        return hs
+      end
+      hs.status = "Healthy"
+      hs.message = "ClusterProxy reconciled"
+      return hs
     timeout.reconciliation: 180s
     users.anonymous.enabled: "true"
   rbac:
