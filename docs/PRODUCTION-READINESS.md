@@ -441,7 +441,12 @@ Der Weg ist Router → `.15`-Traefik → LB `192.168.2.246` → nginx-inc. Dabei
 - Der Ingress-Service läuft mit `externalTrafficPolicy: Cluster`, SNAT'ed also die
   Source-IP (bewusst so, siehe Kommentar in `infrastructure/base/ingress-nginx/values.yaml`
   — `Local` verursachte am 22.07. einen Ausfall).
-- In `config.entries` ist **kein** `set-real-ip-from` / `real-ip-header` gesetzt.
+- In `config.entries` war **kein** `set-real-ip-from` / `real-ip-header` gesetzt.
+
+**Fix liegt als eigener PR vor** (`fix/ingress-real-client-ip`): setzt
+`set-real-ip-from: 192.168.2.0/24` + `real-ip-header: X-Forwarded-For` +
+`real-ip-recursive: True`. Dieser PR hier bringt erst Nutzen, wenn jener gemergt
+**und** die Post-Deploy-Prüfung unten bestanden ist.
 
 Folge: nginx loggt für *jeden* Request eine Proxy- bzw. Node-Adresse. CrowdSec sieht
 damit praktisch nur eine einzige IP, Alerts sind wertlos — und ein später aktivierter
