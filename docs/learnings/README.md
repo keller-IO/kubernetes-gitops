@@ -3,9 +3,11 @@
 Destillierte Erkenntnisse aus Operationen, die nicht beim ersten Versuch funktioniert haben.
 Format und Kriterien: siehe AGENTS.md → „Operational Learnings".
 
-- [agent-command-guardrails.md](agent-command-guardrails.md) — Agenten arbeiten via
-  GitOps/PR; Live-Cluster-Zugriff bleibt read-only und CI blockiert gefaehrliche
-  Automationsmuster.
-Format und Kriterien: siehe AGENTS.md → „Operational Learnings".
-
+- [Agent-Guardrails](agent-command-guardrails.md) — Agenten arbeiten via GitOps/PR;
+  Live-Cluster-Zugriff bleibt read-only und CI blockiert gefaehrliche Automationsmuster.
+- [ArgoCD dauerhaft OutOfSync](argocd-dauerhaft-outofsync.md) — nicht Drift, sondern
+  vom API-Server/Operator ergaenzte Default-Felder (`volumeMode`, `nodePort`, `caBundle`).
 - [EuroOffice-Connector behält transiente Verbindungsfehler](eurooffice-stale-settings-error.md)
+- [NIC 5.x verwirft Ingress bei ungueltiger Annotation](nginx-ingress-5x-annotation-strictness.md)
+  — `proxy-buffering: "off"` statt `"false"` legte radio.jit.services still auf 404.
+- [Roundcube: pgloader-Schema-Typen](roundcube-pgloader-schema-types.md)

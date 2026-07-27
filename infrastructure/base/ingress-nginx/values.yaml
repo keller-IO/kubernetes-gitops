@@ -13,11 +13,13 @@ controller:
     # Keys hier werden ignoriert (ConfigMap bleibt leer, nginx nutzt Defaults).
     entries:
       proxy-protocol: "False"
-      # Resolver (CoreDNS), damit nginx-inc ExternalName-Services zur Laufzeit
-      # auflöst (binaergewitter -> savarcast.jit.land). Ohne -> Platzhalter-
-      # Upstream 127.0.0.1:8181 -> 502.
-      resolver-addresses: "10.96.0.10"
-      resolver-valid: "30s"
+      # Kein resolver-* mehr: seit NIC 5.x sind resolver-addresses/resolver-valid
+      # NGINX-Plus-only — die OSS-Version verwarf sie beim Start mit
+      # "requires NGINX Plus" (InvalidValue), die Keys waren also wirkungslos.
+      # Wird auch nicht mehr gebraucht: binaergewitter nutzt keinen ExternalName-
+      # Service, sondern einen selector-losen Service + manuelle EndpointSlice mit
+      # fester IP (apps/base/binaergewitter/external-backend.yaml) — dafür ist zur
+      # Laufzeit keine DNS-Auflösung nötig.
       # Defense-in-depth default so an Ingress that forgets client-max-body-size
       # doesn't silently fall back to NGINX' built-in 1m cap. Heavier apps
       # (forgejo, collabora, mastodon, ...) still override per-Ingress.
