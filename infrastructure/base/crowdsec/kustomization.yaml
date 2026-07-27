@@ -15,5 +15,24 @@ resources:
   - postgres.yaml
   - backup.yaml
 
+# The chart ships two `helm.sh/hook: test` Pods. We inflate with native kustomize,
+# not Helm, so that annotation carries no weight here and ArgoCD would otherwise
+# reconcile them as ordinary Pods. Drop them.
+patches:
+  - target: { kind: Pod, name: crowdsec-test-agent }
+    patch: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: crowdsec-test-agent
+      $patch: delete
+  - target: { kind: Pod, name: crowdsec-test-lapi-up }
+    patch: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: crowdsec-test-lapi-up
+      $patch: delete
+
 generators:
   - ./secret-generator.yaml

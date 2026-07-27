@@ -434,20 +434,52 @@ Kubernetes-NetworkPolicies durchsetzt. Die real existierenden Optionen:
   kein Community-Blocklist-Sharing.
 - `container_runtime: containerd` gesetzt (Talos-Nodes, Chart-Default ist `docker`).
 
-**Offen:**
+### ⚠️ Blocker: echte Client-IP fehlt in den Logs
+
+CrowdSec ist nur so gut wie die IP-Adresse in der Logzeile — und die stimmt aktuell nicht.
+Der Weg ist Router → `.15`-Traefik → LB `192.168.2.246` → nginx-inc. Dabei gilt:
+- Der Ingress-Service läuft mit `externalTrafficPolicy: Cluster`, SNAT'ed also die
+  Source-IP (bewusst so, siehe Kommentar in `infrastructure/base/ingress-nginx/values.yaml`
+  — `Local` verursachte am 22.07. einen Ausfall).
+- In `config.entries` war **kein** `set-real-ip-from` / `real-ip-header` gesetzt.
+
+**Fix liegt als eigener PR vor** (`fix/ingress-real-client-ip`): setzt
+`set-real-ip-from: 192.168.2.0/24` + `real-ip-header: X-Forwarded-For` +
+`real-ip-recursive: True`. Dieser PR hier bringt erst Nutzen, wenn jener gemergt
+**und** die Post-Deploy-Prüfung unten bestanden ist.
+
+Folge: nginx loggt für *jeden* Request eine Proxy- bzw. Node-Adresse. CrowdSec sieht
+damit praktisch nur eine einzige IP, Alerts sind wertlos — und ein später aktivierter
+Bouncer würde genau diese Proxy-IP bannen und **die komplette Site abschalten**.
+Dasselbe gilt für die Apache-Logs der WordPress-Pods (die sehen die nginx-Pod-IP).
+
+**Zu tun, bevor CrowdSec Nutzen bringt (und zwingend vor jedem Bouncer):**
+- [ ] Prüfen, ob der `.15`-Traefik `X-Forwarded-For` sauber setzt (Default: ja).
+- [ ] In `infrastructure/base/ingress-nginx/values.yaml` unter `config.entries` ergänzen:
+      ```yaml
+      real-ip-header: "X-Forwarded-For"
+      real-ip-recursive: "True"
+      set-real-ip-from: "<Traefik-IP + Node-/Pod-CIDR>" # z.B. 192.168.2.15, 192.168.2.0/24
+      ```
+      Wichtig: wegen des SNAT ist der TCP-Peer, den nginx sieht, **nicht** `192.168.2.15`,
+      sondern eine Node-Adresse — `set-real-ip-from` muss daher auch das Node-/Pod-CIDR
+      abdecken, sonst greift die Auswertung nicht. Exakte CIDRs vor dem Setzen verifizieren.
+- [ ] Danach in einem nginx-Access-Log gegenprüfen, dass eine externe Test-Anfrage mit
+      der echten Client-IP auftaucht.
+
+**Offen (Rest):**
 - [ ] `secret.sops.yaml` ist noch **unverschlüsselt** (Platzhalter, kein sops/age in der
       Umgebung verfügbar, die diesen PR erzeugt hat) — echte Werte eintragen und
       `just encrypt infrastructure/base/crowdsec/secret.sops.yaml`.
 - [ ] Garage-S3-Bucket `cnpg-crowdsec` anlegen, `crowdsec-backup-s3`-Credentials setzen.
-- [ ] Nach erstem Deploy den echten Pod-Namen des nginx-inc-Controllers prüfen
-      (`kubectl -n ingress-nginx get pods`) und `agent.acquisition[0].podName` in
-      `values.yaml` ggf. anpassen (Annahme: `nginx-ingress-nginx-ingress-controller-*`,
-      abgeleitet vom `releaseName: nginx-ingress`).
 - [ ] Nach ein paar Tagen Laufzeit `cscli alerts list` / `cscli metrics` prüfen —
       False-Positives? Fehlende Collections für weitere Apps (forgejo, roundcube, ...)?
 - [ ] Enforcement-Entscheidung treffen (siehe oben) und in einem Folge-PR umsetzen.
 - [ ] Optional: CrowdSec Console/Community-Blocklist aktivieren, falls das
       Datenteilen mit crowdsec.net gewünscht ist (aktuell bewusst deaktiviert).
+- [ ] Sync-Reihenfolge beobachten: der CNPG-Operator (`infrastructure/base/cnpg`) und der
+      `Cluster`-CR hier liegen beide auf sync-wave `-5`. Beim Erst-Bootstrap kann der CR
+      vor der CRD landen; ArgoCD retried, konvergiert also, meldet aber kurzzeitig Fehler.
 
 ---
 
