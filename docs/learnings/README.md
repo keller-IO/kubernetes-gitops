@@ -13,3 +13,5 @@ Format und Kriterien: siehe AGENTS.md → „Operational Learnings".
 - [NIC 5.x verwirft Ingress bei ungueltiger Annotation](nginx-ingress-5x-annotation-strictness.md)
   — `proxy-buffering: "off"` statt `"false"` legte radio.jit.services still auf 404.
 - [Roundcube: pgloader-Schema-Typen](roundcube-pgloader-schema-types.md)
+- [Yealink T46S: OEM-Firmware blockiert Remote Phone Book](yealink-t46s-oem-phonebook.md)
+  — funktionierender Fallback ist der einmalige Import ins lokale Telefonbuch.
