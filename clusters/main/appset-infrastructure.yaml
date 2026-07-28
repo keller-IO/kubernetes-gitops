@@ -39,6 +39,17 @@ spec:
         - group: ""
           kind: Service
           jqPathExpressions: [".spec.ports[]?.nodePort"]
+        # Der API-Server materialisiert in JEDEM eingebetteten PVC-Template eines
+        # StatefulSets apiVersion, kind und status — unabhaengig von volumeMode,
+        # das seit #48 explizit in Git steht. Betrifft hier authentik-valkey.
+        # Bewusst NICHT /spec/volumeClaimTemplates als Ganzes: das wuerde echte
+        # Drift an Groesse und StorageClass mitverstecken.
+        - group: apps
+          kind: StatefulSet
+          jqPathExpressions:
+            - ".spec.volumeClaimTemplates[]?.apiVersion"
+            - ".spec.volumeClaimTemplates[]?.kind"
+            - ".spec.volumeClaimTemplates[]?.status"
       syncPolicy:
         automated:
           prune: true

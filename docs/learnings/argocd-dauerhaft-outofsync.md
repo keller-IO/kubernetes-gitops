@@ -22,7 +22,7 @@ Nachgewiesene Fälle in diesem Repo:
 
 | Ressource | In Git | Live zusätzlich | Quelle |
 |---|---|---|---|
-| `StatefulSet/*-valkey` | `volumeClaimTemplates[].spec` ohne `volumeMode` | `volumeMode: Filesystem` | API-Server-Default |
+| `StatefulSet/*-valkey` | `volumeClaimTemplates[]` schlank | `volumeMode` **und** `apiVersion`/`kind`/`status` | API-Server-Default (zwei getrennte Effekte, siehe unten) |
 | `Service/nginx-ingress-controller` | `nodePort: null` | `nodePort: 32344` / `30241` | API-Server vergibt NodePorts |
 | `MariaDB/*-mariadb` | schlanke CR | vom Operator gefüllte Felder | mariadb-operator |
 | `ValidatingWebhookConfiguration` + `Secret` (monitoring) | ohne CA | `caBundle` injiziert | VictoriaMetrics-Operator |
@@ -32,8 +32,45 @@ Der Klassiker ist `volumeMode` in `volumeClaimTemplates`: ArgoCD normalisiert di
 Feld bei StatefulSets nicht, deshalb sind **alle** Valkey-Caches betroffen. Das
 erklärt die auffällige Häufung.
 
-`root` ist ein Sonderfall: die App verwaltet die beiden ApplicationSets und
-AppProjects, die ihrerseits laufend vom ApplicationSet-Controller angefasst werden.
+### Nachtrag 28.07.2026: ein Pfad, zwei Ursachen
+
+Die erste Fassung dieses Dokuments hat die Drift an `volumeClaimTemplates`
+vollständig `volumeMode` zugeschrieben. Das war unvollständig und hat einen Fix
+(PR #48) in die Irre geführt, der zwar korrekt war, aber wirkungslos blieb:
+
+1. **`volumeMode`** — fehlte in Git, ist seit #48 explizit gesetzt und stimmt.
+2. **`apiVersion`, `kind`, `status`** — der API-Server materialisiert diese Felder in
+   *jedem* eingebetteten PVC-Template. Das passiert unabhängig von `volumeMode` und
+   blieb deshalb nach #48 als Rest-Drift stehen.
+
+Wer hier debuggt: nicht bei der ersten plausiblen Ursache aufhören. Immer den
+vollständigen Feld-Diff bilden (gerendertes Git gegen Live-Objekt), sonst hält man
+einen Teilfix für einen Fix.
+
+Dasselbe Muster bei `MariaDB`: nach den ersten acht ignorierten Feldern kam eine
+zweite Welle vom Operator geschriebener Felder zum Vorschein
+(`metrics.exporter.*`, `metrics.username`, `storage.volumeClaimTemplate`,
+`storage.resizeInUseVolumes`, …) plus drei reine CRD-Schema-Defaults
+(`metrics.serviceMonitor`, `*PasswordSecretKeyRef.generate`).
+
+### `root`: keine Normalisierungsfrage, sondern doppelter Besitz
+
+`root` stand aus einem völlig anderen Grund auf `OutOfSync` — nicht wegen Defaulting.
+Neben `root` existiert im Cluster eine zweite Application **`bootstrap`**, die
+*nicht in Git definiert ist*: `project: default`, `path: clusters/main` **ohne**
+`directory.include`-Filter, dazu `prune: true` und `selfHeal: true`. Sie greift damit
+auf alle Dateien in `clusters/main` zu — einschließlich `root-app.yaml`, also der
+Application `root` selbst.
+
+Beide Applications beanspruchen dieselben Objekte. Da ArgoCD Besitz über die
+Annotation `argocd.argoproj.io/tracking-id` bestimmt, gewinnt die zuletzt
+anwendende App, und die andere sieht dauerhaft einen Metadaten-Unterschied. Der
+Inhalt ist identisch, es driftet also nichts — es streiten sich nur zwei Besitzer.
+Sichtbar wird das an `SharedResourceWarning` in `status.conditions` von `root`.
+
+`prune: true` ohne `include`-Filter auf einem Verzeichnis, das die eigene
+Parent-Application enthält, ist dabei die eigentliche Gefahr, nicht der kosmetische
+Status.
 
 ## Diagnose
 

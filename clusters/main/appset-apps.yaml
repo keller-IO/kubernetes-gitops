@@ -36,8 +36,28 @@ spec:
         - group: ""
           kind: Service
           jqPathExpressions: [".spec.ports[]?.nodePort"]
-        # Felder, die der mariadb-operator in die CR zurueckschreibt. /spec/image
-        # steht bewusst NICHT hier — das pinnen wir in Git (siehe database.yaml).
+        # Der API-Server materialisiert in JEDEM eingebetteten PVC-Template eines
+        # StatefulSets apiVersion, kind und status. Das ist unabhaengig von
+        # volumeMode (das steht seit #48 explizit in Git und stimmt auch) — die
+        # Learnings-Tabelle hat beide Effekte auf denselben Pfad vermischt.
+        # Bewusst NICHT /spec/volumeClaimTemplates als Ganzes ignorieren: das
+        # wuerde echte Drift an Groesse und StorageClass mitverstecken und damit
+        # genau den Signalwert zerstoeren, um den es hier geht.
+        - group: apps
+          kind: StatefulSet
+          jqPathExpressions:
+            - ".spec.volumeClaimTemplates[]?.apiVersion"
+            - ".spec.volumeClaimTemplates[]?.kind"
+            - ".spec.volumeClaimTemplates[]?.status"
+        # Felder, die der mariadb-operator in die CR zurueckschreibt, plus einige
+        # reine CRD-Schema-Defaults, die der API-Server setzt.
+        #
+        # /spec/image steht bewusst NICHT hier — das pinnen wir in Git (siehe
+        # database.yaml), damit ein ungefragter Versionswechsel sichtbar bleibt.
+        # Aus demselben Grund NICHT managedFieldsManagers: [mariadb-operator]:
+        # der Operator beansprucht in managedFields auch f:image, ein Ignore per
+        # Manager wuerde das Feld also wieder mitverstecken. Explizite Pointer
+        # sind laenger, aber sie treffen nur, was sie treffen sollen.
         - group: k8s.mariadb.com
           kind: MariaDB
           jsonPointers:
@@ -49,6 +69,17 @@ spec:
             - /spec/rootEmptyPassword
             - /spec/replicasAllowEvenNumber
             - /spec/myCnfConfigMapKeyRef
+            - /spec/metrics/exporter/image
+            - /spec/metrics/exporter/port
+            - /spec/metrics/passwordSecretKeyRef
+            - /spec/metrics/username
+            - /spec/metrics/serviceMonitor
+            - /spec/storage/ephemeral
+            - /spec/storage/resizeInUseVolumes
+            - /spec/storage/volumeClaimTemplate
+            - /spec/storage/waitForVolumeResize
+            - /spec/passwordSecretKeyRef/generate
+            - /spec/rootPasswordSecretKeyRef/generate
       syncPolicy:
         automated:
           prune: true
