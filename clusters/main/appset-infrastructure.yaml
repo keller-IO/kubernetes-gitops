@@ -31,6 +31,14 @@ spec:
       destination:
         server: https://kubernetes.default.svc
         namespace: "{{.path.basename}}"
+      # Defaulting-Rauschen unterdruecken. Ohne das stehen Apps dauerhaft auf
+      # OutOfSync, obwohl nichts driftet — und echte Drift geht darin unter.
+      # Siehe docs/learnings/argocd-dauerhaft-outofsync.md.
+      ignoreDifferences:
+        # nodePort vergibt der API-Server bei type NodePort/LoadBalancer selbst.
+        - group: ""
+          kind: Service
+          jqPathExpressions: [".spec.ports[]?.nodePort"]
       syncPolicy:
         automated:
           prune: true
