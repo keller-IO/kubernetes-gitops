@@ -12,6 +12,7 @@ helmCharts:
     namespace: crowdsec
     valuesFile: values.yaml
 resources:
+  - namespace.yaml
   - postgres.yaml
 
 # The chart ships two `helm.sh/hook: test` Pods. We inflate with native kustomize,
