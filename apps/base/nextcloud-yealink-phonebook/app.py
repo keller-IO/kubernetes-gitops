@@ -33,6 +33,7 @@ class PhonebookState:
     def __init__(self):
         self.lock = threading.Lock()
         self.xml = None
+        self.local_directory_xml = None
         self.contact_count = 0
         self.last_success = None
         self.last_success_monotonic = None
@@ -245,12 +246,46 @@ def render_phonebook(contacts):
     return ET.tostring(root, encoding="utf-8", xml_declaration=True)
 
 
+def render_local_directory(contacts):
+    groups = ET.Element("root_group")
+    ET.SubElement(groups, "group", display_name="All Contacts", ring="")
+    ET.SubElement(groups, "group", display_name="Blocklist", ring="")
+
+    root = ET.Element("root_contact")
+    for contact in contacts:
+        numbers = list(contact.numbers) + [""] * (3 - len(contact.numbers))
+        ET.SubElement(
+            root,
+            "contact",
+            display_name=contact.name,
+            office_number=numbers[0],
+            mobile_number=numbers[1],
+            other_number=numbers[2],
+            line="-1",
+            ring="",
+            group_id_name="All Contacts",
+            default_photo="",
+            auto_divert="",
+        )
+
+    declaration = b'<?xml version="1.0" encoding="UTF-8"?>\n'
+    return (
+        declaration
+        + ET.tostring(groups, encoding="utf-8")
+        + b"\n"
+        + ET.tostring(root, encoding="utf-8")
+        + b"\n"
+    )
+
+
 def refresh_phonebook():
     try:
         contacts = fetch_contacts()
         xml = render_phonebook(contacts)
+        local_directory_xml = render_local_directory(contacts)
         with state.lock:
             state.xml = xml
+            state.local_directory_xml = local_directory_xml
             state.contact_count = len(contacts)
             state.last_success = datetime.now(timezone.utc).isoformat()
             state.last_success_monotonic = time.monotonic()
@@ -298,12 +333,20 @@ class RequestHandler(BaseHTTPRequestHandler):
             return
 
         token = secret_value("phonebook-token", "PHONEBOOK_TOKEN")
-        expected_path = f"/{token}/phonebook.xml"
-        if not hmac.compare_digest(path, expected_path):
+        phonebook_path = f"/{token}/phonebook.xml"
+        local_directory_path = f"/{token}/local-directory.xml"
+        matched = True
+        with state.lock:
+            if hmac.compare_digest(path, phonebook_path):
+                xml = state.xml
+            elif hmac.compare_digest(path, local_directory_path):
+                xml = state.local_directory_xml
+            else:
+                xml = None
+                matched = False
+        if not matched:
             self.respond(b"not found\n", "text/plain", 404)
             return
-        with state.lock:
-            xml = state.xml
         if xml is None:
             self.respond(b"phonebook unavailable\n", "text/plain", 503)
             return
