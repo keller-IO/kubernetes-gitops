@@ -512,8 +512,9 @@ ein Agent-DaemonSet ist deshalb bewusst nicht Teil davon.
 |---|---|
 | Gruppe `k8s_admin` | Nutzergruppe, bestand schon |
 | Gruppe `k8s_readonly` | Nutzergruppe, bestand schon |
+| Gruppe `k8s_ops` | Nutzergruppe, vor dem Merge in NetBird anlegen |
 | Gruppe `k8s_api_proxy` | Peer-Gruppe, nur die Proxy-Pods |
-| Policy „Kubernetes API access" | `k8s_admin` + `k8s_readonly` → `k8s_api_proxy`, tcp/443 |
+| Policy „Kubernetes API access" | `k8s_admin` + `k8s_readonly` + `k8s_ops` → `k8s_api_proxy`, tcp/443 |
 
 **Warum keine `Group`-/`NBPolicy`-CRs**, obwohl es die CRDs gibt:
 - Der Group-Controller sucht **nie nach Namen** (nur `status.GroupID`, initial leer) und
@@ -530,15 +531,17 @@ ein Agent-DaemonSet ist deshalb bewusst nicht Teil davon.
 |---|---|
 | `k8s_admin` | `cluster-admin` |
 | `k8s_readonly` | `view` + `netbird-cluster-reader` |
+| `k8s_ops` | `view` + `netbird-cluster-reader` + `netbird-k8s-ops-maintainer` |
 
 NetBird kann kein „read-only" erzwingen — Policies sind L3/L4, beide Gruppen bekommen
 identisch tcp/443. Der Unterschied entsteht ausschließlich über RBAC in `rbac.yaml`.
 
-**Die eigentliche Sicherheitsgrenze ist die `resourceNames`-Allowlist** in der ClusterRole
-`netbird-clusterproxy`. Der Proxy reicht Gruppennamen ungefiltert an die API weiter; ohne
-Allowlist wäre eine NetBird-Gruppe namens `system:masters` sofort Cluster-Admin, unsichtbar
-für jedes ClusterRoleBinding in diesem Repo. `All` muss in der Liste bleiben — NetBird steckt
-jeden Peer in diese Gruppe.
+Die ClusterRole `netbird-clusterproxy` hat bewusst **keine** `resourceNames`-Allowlist.
+Der Proxy reicht alle NetBird-Gruppen als Impersonation-Groups weiter, und die API verlangt
+Impersonation-Recht für jede davon. Eine Allowlist müsste deshalb auch unbeteiligte Gruppen
+wie `All`, `bgt` oder `admin` enthalten und laufend nachgezogen werden. Die eigentliche
+Sicherheitsgrenze ist die NetBird-Gruppenverwaltung plus die ClusterRoleBindings in
+`rbac.yaml`: erst `k8s_admin`, `k8s_readonly` und `k8s_ops` bekommen Kubernetes-Rechte.
 
 **„Alles außer Credentials"** ist eine Positivliste (RBAC kennt kein `deny`): `view` (enthält
 upstream keine Secrets, aggregiert Operator-view-Rollen mit) plus `netbird-cluster-reader`
@@ -547,9 +550,19 @@ sind explizit ergänzt — diese Charts liefern **keine** `aggregate-to-view`-Ro
 Regeln sähe die Rolle weder Postgres-Cluster noch ArgoCD-Apps noch Cilium-Policies.
 Bewusst draußen: `secrets`, `certificatesigningrequests`.
 
+**`k8s_ops`** darf zusätzlich eng begrenzt mutieren, um stale/stalled Workloads zu
+reparieren: Pods löschen oder evicten, Deployments/StatefulSets/DaemonSets/ReplicaSets
+patchen/updaten (inkl. Scale-Subresources), Jobs/CronJobs für Reruns/Suspend
+create/delete/patch/update, ArgoCD-Applications patchen/updaten und Events schreiben.
+Bewusst ausgeschlossen: Secrets/Credentials, `serviceaccounts/token`, RBAC-Schreibrechte,
+`escalate`/`bind`/`impersonate` sowie `pods/exec`, `pods/attach` und `pods/portforward`.
+
 **Nach dem Merge zu tun:**
 - [ ] `kubectl` je Gruppe testen. Erwartung readonly: `get pods -A` geht, `get secret -A` 403.
       Kubeconfig zeigt auf `https://keller-main.netbird-kubeapi-proxy.netbird.selfhosted`.
+- [ ] Erwartung ops: `delete pod`, `create pods/eviction`, `patch deployment`, `patch cronjob`
+      und `patch application.argoproj.io` gehen; `get secret -A`, `create serviceaccounts/token`,
+      `patch clusterrole`, `kubectl exec`, `kubectl attach` und `kubectl port-forward` bleiben 403.
 - [ ] Prüfen, dass der Proxy-Peer in NetBird auftaucht und in Gruppe `k8s_api_proxy` landet.
 
 **Bekannte Lücken von `k8s_readonly`:**
