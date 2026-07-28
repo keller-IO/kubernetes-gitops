@@ -57,6 +57,23 @@ END:VCARD
             ["+4930123", "42"],
         )
 
+    def test_renders_t46s_local_directory_format(self):
+        xml = app.render_local_directory(
+            [app.Contact("Müller & Partner", ("+4930123", "42"))]
+        )
+        body = xml.split(b"?>", 1)[1]
+        root = ET.fromstring(b"<document>" + body + b"</document>")
+
+        self.assertEqual(
+            [group.get("display_name") for group in root.findall("root_group/group")],
+            ["All Contacts", "Blocklist"],
+        )
+        contact = root.find("root_contact/contact")
+        self.assertEqual(contact.get("display_name"), "Müller & Partner")
+        self.assertEqual(contact.get("office_number"), "+4930123")
+        self.assertEqual(contact.get("mobile_number"), "42")
+        self.assertEqual(contact.get("group_id_name"), "All Contacts")
+
 
 if __name__ == "__main__":
     unittest.main()
