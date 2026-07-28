@@ -11,24 +11,28 @@
 # Proxy-Deployment; sein eigenes ClusterRole enthält keine einzige
 # impersonate-Regel). Upstream liefert das als Beispiel-Manifest zum Selbstbauen.
 #
-# WICHTIG — resourceNames ist hier die eigentliche Sicherheitsgrenze: der Proxy
-# reicht Gruppennamen ungefiltert an die API weiter. Ohne Allowlist würde eine
-# NetBird-Gruppe namens `system:masters` unmittelbar Cluster-Admin bedeuten,
-# ohne dass irgendein ClusterRoleBinding in diesem Repo das zeigt.
-# `All` muss mit in die Liste: NetBird steckt jeden Peer in diese Gruppe, der
-# Proxy sendet sie also immer mit — fehlt sie, scheitert jeder Request.
+# Der Proxy reicht ALLE Gruppen eines Peers als Impersonate-Group-Header weiter,
+# und die API verlangt impersonate-Recht für JEDE davon — fehlt eine, fliegt die
+# ganze Anfrage. Peers tragen aber neben k8s_admin/k8s_readonly noch beliebige
+# andere NetBird-Gruppen (All, bgt, admin, …). Eine resourceNames-Allowlist müsste
+# die alle enthalten und bei jeder neuen Gruppe nachgezogen werden — fragil, und
+# sie koppelt unbeteiligte NetBird-Gruppen an dieses RBAC.
+#
+# Daher bewusst KEIN resourceNames: impersonate auf beliebige User/Gruppen. Der
+# Sicherheitsgewinn einer Allowlist wäre hier ohnehin gering — ihr einziger Zweck
+# wäre, eine Gruppe namens `system:masters` (umgeht RBAC) abzufangen; wer aber in
+# NetBird Gruppen verwalten kann, setzt sich genauso in k8s_admin (-> cluster-admin).
+# Die echte Vertrauensgrenze ist die NetBird-Gruppenverwaltung, nicht diese Regel.
+# Rechte bekommt eine Gruppe erst durch ein ClusterRoleBinding unten (k8s_admin,
+# k8s_readonly) — All/bgt/admin sind an nichts gebunden und damit wirkungslos.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: netbird-clusterproxy
 rules:
   - apiGroups: [""]
-    resources: [users]
+    resources: [users, groups]
     verbs: [impersonate]
-  - apiGroups: [""]
-    resources: [groups]
-    verbs: [impersonate]
-    resourceNames: [k8s_admin, k8s_readonly, All]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
