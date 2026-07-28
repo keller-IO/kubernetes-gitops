@@ -31,7 +31,27 @@ configs:
     policy.default: role:readonly
   params:
     server.insecure: true # TLS terminated at NGINX Ingress
+# Requests/limits per component. Sized from measured usage on keller-main
+# (kubectl top pods -n argocd, several samples, 2026-07-28) plus headroom —
+# application-controller and repo-server are the components that grow with
+# app/cluster count and do real work (reconcile loop / git+helm+kustomize
+# render per sync), so they get the most headroom of the bunch.
+controller:
+  resources:
+    requests: { cpu: 200m, memory: 512Mi }
+    limits: { memory: 1Gi }
+server:
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+    limits: { memory: 128Mi }
+redis:
+  resources:
+    requests: { cpu: 10m, memory: 32Mi }
+    limits: { memory: 64Mi }
 repoServer:
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { memory: 512Mi }
   # KSOPS + a matching kustomize installed into a shared volume, plus the age key
   # for SOPS decryption. Mirrors Terraform argocd.tf (secret name: argocd-sops-age).
   env:
@@ -64,5 +84,11 @@ dex:
   enabled: false
 applicationSet:
   enabled: true
+  resources:
+    requests: { cpu: 20m, memory: 64Mi }
+    limits: { memory: 128Mi }
 notifications:
   enabled: false
+  resources:
+    requests: { cpu: 20m, memory: 64Mi }
+    limits: { memory: 128Mi }

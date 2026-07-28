@@ -15,10 +15,26 @@ server:
         name: authentik-secret
   ingress:
     enabled: false # we provide our own Ingress (ingress.yaml) with nginx.org/* annotations
+  # NOT YET LIVE on keller-main (no infra-authentik ArgoCD Application exists
+  # yet — namespace/secrets are provisioned but there's no running workload to
+  # measure). Anchored to the homelab cluster's authentik, which has been in
+  # production there: measured usage ~693Mi RSS against its configured
+  # cpu:25m/mem:768Mi request, mem:2Gi limit — reused verbatim rather than
+  # invented. Revisit once this actually deploys here: 768Mi+1Gi request
+  # (~1.75Gi combined with worker below) is a non-trivial ~23% of a keller-main
+  # worker's ~7.4Gi allocatable, so check node capacity at that point.
+  resources:
+    requests: { cpu: 25m, memory: 768Mi }
+    limits: { memory: 2Gi }
 worker:
   envFrom:
     - secretRef:
         name: authentik-secret
+  # Same caveat as server above. Homelab authentik-worker: ~352Mi RSS against
+  # cpu:50m/mem:1Gi request, mem:4Gi limit.
+  resources:
+    requests: { cpu: 50m, memory: 1Gi }
+    limits: { memory: 4Gi }
 # Use the cluster Postgres/Valkey we provision, not the chart subcharts.
 postgresql:
   enabled: false

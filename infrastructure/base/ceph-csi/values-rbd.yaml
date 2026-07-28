@@ -8,6 +8,44 @@ csiConfig:
 
 provisioner:
   replicaCount: 1 # Homelab; auf 2 erhöhen, wenn HA gewünscht
+  # csi-provisioner/attacher/resizer/snapshotter sidecars, sized from measured
+  # usage on keller-main (kubectl top pods -n ceph-csi --containers, several
+  # samples, 2026-07-28: 58-63Mi / 48Mi / 38Mi resp.). Not present on homelab
+  # (it uses democratic-csi/iscsi, no comparable chart), so anchored to our
+  # own measurements.
+  provisioner:
+    resources:
+      requests: { cpu: 10m, memory: 64Mi }
+      limits: { memory: 128Mi }
+  attacher:
+    resources:
+      requests: { cpu: 10m, memory: 48Mi }
+      limits: { memory: 96Mi }
+  resizer:
+    resources:
+      requests: { cpu: 10m, memory: 48Mi }
+      limits: { memory: 96Mi }
+  snapshotter:
+    resources:
+      requests: { cpu: 10m, memory: 48Mi }
+      limits: { memory: 96Mi }
+
+# nodeplugin.plugin.resources is REUSED by the chart for three containers:
+# the DaemonSet's main csi-rbdplugin AND, inside the provisioner Deployment,
+# csi-rbdplugin AND csi-rbdplugin-controller AND liveness-prometheus (verified
+# via `helm template` + grep on templates/{nodeplugin-daemonset,provisioner-
+# deployment}.yaml — there is no separate values key for those, so sizing here
+# must cover the heaviest of the four: the DaemonSet csi-rbdplugin measured up
+# to 162Mi RSS). nodeplugin.registrar.resources covers driver-registrar only.
+nodeplugin:
+  plugin:
+    resources:
+      requests: { cpu: 20m, memory: 96Mi }
+      limits: { memory: 256Mi }
+  registrar:
+    resources:
+      requests: { cpu: 10m, memory: 32Mi }
+      limits: { memory: 64Mi }
 
 # StorageClass + Secret verwalten wir selbst:
 # SC in infrastructure/base/storage/storageclasses.yaml, Secret via SOPS (secret.sops.yaml).
