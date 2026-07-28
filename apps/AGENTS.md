@@ -9,7 +9,9 @@ Owns `base/<app>/` (generic) and `overlays/main/<app>/` (cluster patches).
 ## Local Contracts
 - **Apps**: kimai, roundcube, collabora, eurooffice, paperless-ngx, forgejo, renovate, wordpress, mastodon, gatus, kite.
 - **Structure**: `kustomization.yaml` + (`values.yaml` | `workload.yaml`) + `database.yaml` + `cache.yaml` + `backup.yaml` + `secret.sops.yaml`.
-- **Database**: Postgres (CNPG), MySQL (mariadb-operator).
+- **Database**: Postgres (CNPG), MySQL (mariadb-operator). `database.yaml` needs
+  `spec.resources` + a pinned image — see root `AGENTS.md`, CI-enforced.
+- **Namespace**: ship `namespace.yaml` explicitly — see `infrastructure/AGENTS.md`, CI-enforced.
 - **Backup**: Daily to Ceph S3 (30d retention).
 - **Secrets**: Must be SOPS-encrypted.
 

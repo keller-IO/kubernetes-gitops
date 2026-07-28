@@ -9,7 +9,10 @@ Owns `PRODUCTION-READINESS.md`, `runbooks/`, `learnings/`, `decisions/`.
 ## Local Contracts
 - **Production Readiness**: Single source of truth for open steps. Mandatory update on blueprint edits.
 - **Runbooks**: Operational procedures.
-- **Learnings**: Distilled pitfalls.
+- **Learnings**: Distilled pitfalls. A learning that names a checkable pattern (a
+  forbidden field, a missing block, an unwanted resource kind) should get a matching
+  check in `scripts/ci/guardrails.sh` or `scripts/ci/check-hpa.sh` — prose alone gets
+  skipped by the next agent who didn't think to read it.
 - **Decisions**: Architecture Decision Records (ADR).
 
 ## Work Guidance

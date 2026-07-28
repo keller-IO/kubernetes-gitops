@@ -1,0 +1,16 @@
+# HorizontalPodAutoscaler objects allowed to render, one "<namespace>/<name>"
+# per line (optional trailing " # reason" comment).
+#
+# Default is zero tolerance: a chart bringing in an unasked HPA silently voided
+# an explicit replicaCount and scaled Collabora to 55 replicas
+# (docs/learnings/collabora-hpa-runaway.md). Every new/bumped chart must be
+# checked for one — inspect the rendered manifest, a set replicaCount is not
+# proof the chart honors it.
+#
+# Listing an HPA here does NOT exempt it from the memory-metric check in
+# scripts/ci/check-hpa.sh: an HPA that targets resource "memory" fails
+# unconditionally and cannot be allowlisted, because per-pod memory doesn't
+# fall as replicas rise — that's a structurally unbounded spiral, not a tuning
+# problem. CPU-based autoscaling only.
+#
+# Empty by design as of 2026-07-28: no HPA currently renders in this repo.
