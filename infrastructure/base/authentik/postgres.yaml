@@ -5,6 +5,16 @@ metadata:
   namespace: authentik
 spec:
   instances: 1 # bump to 3 for HA in production
+  # Ohne resources ist der Pod BestEffort und wird bei Node-Speicherdruck als
+  # ERSTES gekillt; der Scheduler bilanziert Nodes ausserdem nur nach Requests.
+  # Genau das traf am 28.07.2026 die MariaDB-Pods (Exit 137).
+  # Noch nicht live — Wert aus den baugleichen CNPG-Instanzen abgeleitet.
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
   storage:
     size: 5Gi
     storageClass: ceph-rbd # CHANGE ME if your RBD StorageClass differs

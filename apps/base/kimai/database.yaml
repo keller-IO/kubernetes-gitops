@@ -16,6 +16,10 @@ spec:
     size: 5Gi
     storageClassName: ceph-rbd # CHANGE ME
   replicas: 1 # set 3 + galera for HA
+  # Explizit gepinnt: ohne dieses Feld setzt der mariadb-operator sein eigenes
+  # Default-Image. Ein Operator-Bump (Renovate) wuerde damit ungefragt die
+  # DB-Version wechseln — und ArgoCD meldet das Feld dauerhaft als OutOfSync.
+  image: docker-registry1.mariadb.com/library/mariadb:11.4.5 # renovate: image=docker-registry1.mariadb.com/library/mariadb
   myCnf: |
     [mariadb]
     character-set-server = utf8mb4
@@ -34,3 +38,12 @@ spec:
       memory: 1Gi
   metrics:
     enabled: true
+    # Der Exporter laeuft als eigenes Deployment, das die resources der MariaDB
+    # NICHT erbt — ohne diesen Block bleibt er BestEffort. Gemessen ~7-14Mi.
+    exporter:
+      resources:
+        requests:
+          cpu: 10m
+          memory: 32Mi
+        limits:
+          memory: 64Mi

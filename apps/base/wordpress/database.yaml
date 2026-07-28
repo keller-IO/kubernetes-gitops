@@ -15,6 +15,10 @@ spec:
     size: 5Gi
     storageClassName: ceph-rbd # CHANGE ME
   replicas: 1
+  # Explizit gepinnt: ohne dieses Feld setzt der mariadb-operator sein eigenes
+  # Default-Image. Ein Operator-Bump (Renovate) wuerde damit ungefragt die
+  # DB-Version wechseln — und ArgoCD meldet das Feld dauerhaft als OutOfSync.
+  image: docker-registry1.mariadb.com/library/mariadb:11.4.5 # renovate: image=docker-registry1.mariadb.com/library/mariadb
   # Ohne resources landet der Pod in QoS-Klasse BestEffort — und wird bei
   # Node-Speicherdruck als ERSTES vom Kernel gekillt (Exit 137). Genau das ist am
   # 28.07.2026 passiert: wordpress-1 und -2 waren offline, waehrend die baugleiche
@@ -29,3 +33,12 @@ spec:
       memory: 1Gi
   metrics:
     enabled: true
+    # Der Exporter laeuft als eigenes Deployment, das die resources der MariaDB
+    # NICHT erbt — ohne diesen Block bleibt er BestEffort. Gemessen ~7-14Mi.
+    exporter:
+      resources:
+        requests:
+          cpu: 10m
+          memory: 32Mi
+        limits:
+          memory: 64Mi

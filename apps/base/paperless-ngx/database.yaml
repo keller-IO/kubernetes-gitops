@@ -5,6 +5,16 @@ metadata:
   namespace: paperless-ngx
 spec:
   instances: 1 # 3 for HA
+  # Ohne resources ist der Pod BestEffort und wird bei Node-Speicherdruck als
+  # ERSTES gekillt; der Scheduler bilanziert Nodes ausserdem nur nach Requests.
+  # Genau das traf am 28.07.2026 die MariaDB-Pods (Exit 137).
+  # Gemessen am 28.07.2026: ~108Mi im Betrieb.
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
   storage:
     size: 5Gi
     storageClass: ceph-rbd # CNPG-Feld heißt storageClass (nicht storageClassName)

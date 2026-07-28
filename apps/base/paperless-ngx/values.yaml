@@ -48,7 +48,8 @@ persistence:
     accessMode: ReadWriteOnce
     size: 2Gi
 resources:
-  requests: { cpu: 200m, memory: 512Mi }
+  # Gemessen am 28.07.2026: 574Mi, knapp oberhalb des alten 512Mi-Requests.
+  requests: { cpu: 200m, memory: 640Mi }
   limits: { memory: 1Gi }
 # bjw-s common-library: ingress is a named map (main), not a flat block.
 ingress:

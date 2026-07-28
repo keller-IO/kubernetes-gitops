@@ -60,7 +60,9 @@ spec:
             - name: SERVER_EMAIL
               value: postmaster@lists.jitmail.de
           resources:
-            requests: { cpu: 150m, memory: 512Mi }
+            # Gemessen am 28.07.2026: 916Mi — der Request von 512Mi untertrieb den
+            # Verbrauch um Faktor 1,8 und liess den Scheduler wrk2 fuer frei halten.
+            requests: { cpu: 150m, memory: 1Gi }
             limits: { memory: 1536Mi } # 768Mi war zu knapp -> OOMKilled beim Start (13.07.)
           volumeMounts:
             - name: core-data
