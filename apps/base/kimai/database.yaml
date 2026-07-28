@@ -21,5 +21,16 @@ spec:
     character-set-server = utf8mb4
     collation-server = utf8mb4_unicode_ci
     innodb_buffer_pool_size = 256M
+  # Ohne resources landet der Pod in QoS-Klasse BestEffort und wird bei
+  # Node-Speicherdruck als ERSTES gekillt (Exit 137, Vorfall 28.07.2026).
+  # Requests sind ausserdem die einzige Groesse, nach der der Scheduler Nodes
+  # bilanziert — ohne sie verteilt er blind.
+  # memory-Request > innodb_buffer_pool_size (256M) plus Overhead.
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      memory: 1Gi
   metrics:
     enabled: true

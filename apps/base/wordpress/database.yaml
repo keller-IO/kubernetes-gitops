@@ -15,5 +15,17 @@ spec:
     size: 5Gi
     storageClassName: ceph-rbd # CHANGE ME
   replicas: 1
+  # Ohne resources landet der Pod in QoS-Klasse BestEffort — und wird bei
+  # Node-Speicherdruck als ERSTES vom Kernel gekillt (Exit 137). Genau das ist am
+  # 28.07.2026 passiert: wordpress-1 und -2 waren offline, waehrend die baugleiche
+  # Instanz auf einem entlasteten Node stabil mit ~250Mi lief.
+  # Zweiter Effekt: der Scheduler bilanziert nur Requests. Ohne sie sah er wrk3 als
+  # frei an, obwohl der Node real bei 87 % lag, und platzierte die Pods wieder dort.
+  resources:
+    requests:
+      cpu: 100m
+      memory: 384Mi
+    limits:
+      memory: 1Gi
   metrics:
     enabled: true
