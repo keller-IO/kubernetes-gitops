@@ -25,7 +25,22 @@ You are **Senior Kubernetes System Architect** and **GitOps Automation Engineer*
 
 ## Local Contracts
 - **Manifests**: Prefer Kustomize Base/Overlay. Use `helmCharts:` inflation.
-- **Database Strategy**: Postgres via CNPG operator; MariaDB via mariadb-operator. Dedicated CRs per app in `apps/base/<app>/database.yaml`.
+- **New/bumped chart → inspect the rendered manifest**, don't trust the values file: a
+  chart can silently ignore a values key that isn't in its schema, or ship an HPA you
+  never asked for that voids your `replicaCount` (Collabora scaled to 55 replicas and
+  took the cluster down — `docs/learnings/collabora-hpa-runaway.md`). CI fails on any
+  unallowlisted HPA (`scripts/ci/check-hpa.sh`) and never allows one that targets
+  memory — per-pod memory doesn't fall as replicas rise, so that's a structurally
+  unbounded spiral, not a tuning problem. Autoscale on CPU if at all.
+- **Database Strategy**: Postgres via CNPG operator; MariaDB via mariadb-operator. Dedicated
+  CRs per app in `apps/base/<app>/database.yaml`. Every such CR **must** set
+  `spec.resources` (requests+limits) — without them the pod is BestEffort, OOM-killed
+  first, and invisible to the scheduler's request-based node balancing (MariaDB
+  incident, commit `098d145`) — and **must** pin `spec.image`/`spec.imageName`, or the
+  operator's own default silently picks the DB version out of Renovate's sight. Size
+  requests from a measured `kubectl top`, never a guess (Collabora ran at 830Mi
+  against a 512Mi request). CI enforces both via allowlisted exceptions in
+  `scripts/ci/known-gaps/`; new CRs get no free pass.
 - **Ingress**: Use `nginx.org/*` annotations. Hosts in `cluster-config.yaml`.
 - **Backup**: Daily to Ceph S3 via operator-native backup CRs.
 - **OIDC**: Use external Keycloak clients and app SOPS secrets. Do not add new Authentik blueprints unless the architecture decision changes again.

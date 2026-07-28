@@ -59,6 +59,34 @@ jobs:
               | kubeconform -strict -ignore-missing-schemas -summary
           done
 
+  # Render every overlay/base and fail on an HPA a chart brought unasked, or
+  # one that autoscales on memory. See docs/learnings/collabora-hpa-runaway.md
+  # and scripts/ci/check-hpa.sh.
+  hpa-safety:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: azure/setup-helm@v5
+
+      - name: Install kustomize + yq
+        env:
+          KUSTOMIZE_VERSION: 5.8.1
+          # renovate: datasource=github-releases depName=mikefarah/yq
+          YQ_VERSION: 4.53.3
+        run: |
+          set -euo pipefail
+          curl -sSfL "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v${KUSTOMIZE_VERSION}/kustomize_v${KUSTOMIZE_VERSION}_linux_amd64.tar.gz" | tar xz kustomize
+          sudo mv kustomize /usr/local/bin/
+          curl -sSfL "https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION}/yq_linux_amd64" -o yq
+          sudo install -m 0755 yq /usr/local/bin/yq
+          # KSOPS-Stub: CI hat keinen age-Key, Secrets werden nicht gerendert.
+          printf '#!/bin/sh\nexit 0\n' | sudo tee /usr/local/bin/ksops >/dev/null
+          sudo chmod +x /usr/local/bin/ksops
+
+      - name: check-hpa
+        run: bash -n scripts/ci/check-hpa.sh && scripts/ci/check-hpa.sh
+
   # Blueprint phase: secrets are placeholder templates, not yet SOPS-encrypted.
   # Warn only — flip to a hard failure once real secrets are encrypted.
   secrets-check:

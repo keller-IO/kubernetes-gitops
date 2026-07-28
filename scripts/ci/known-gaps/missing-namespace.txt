@@ -1,0 +1,31 @@
+# Base dirs (apps/base/<app>, infrastructure/base/<component>) with no
+# Namespace resource of their own, relying on ArgoCD's CreateNamespace=true.
+# That yields a namespace with no PodSecurity labels — the exact cause of the
+# crowdsec-agent 0/3 incident (2026-07-28, cluster default enforcement is
+# baseline). infrastructure/base/cilium is the one intentional exception: it
+# runs in the pre-existing kube-system namespace, not one of its own.
+# Everything else here is unreviewed tech debt — remove a line once the dir
+# ships its own namespace.yaml, and don't add a new entry without a reason (a
+# new component should ship its own namespace.yaml from day one).
+apps/base/collabora
+apps/base/eurooffice
+apps/base/forgejo
+apps/base/gatus
+apps/base/icecast
+apps/base/kimai
+apps/base/mailman
+apps/base/mastodon
+apps/base/paperless-ngx
+apps/base/phpmyadmin
+apps/base/renovate
+apps/base/roundcube
+apps/base/wordpress
+infrastructure/base/argocd
+infrastructure/base/authentik
+infrastructure/base/cert-manager
+infrastructure/base/cilium
+infrastructure/base/ingress-nginx
+infrastructure/base/kite
+infrastructure/base/kubernetes-mcp
+infrastructure/base/metrics-server
+infrastructure/base/storage
