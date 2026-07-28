@@ -1,4 +1,14 @@
 replicaCount: 1
+# Chart-Default ist autoscaling.enabled=true mit maxReplicas: 100 — das ignoriert
+# replicaCount komplett. Im Cluster gibt es aber KEINEN metrics-server
+# (APIService v1beta1.metrics.k8s.io = MissingEndpoints), also lief die HPA in
+# FailedGetResourceMetric und konnte weder hoch- noch runterskalieren: sie fror bei
+# 55 Replicas ein (~28 GB Memory-Requests, mehr als alle Worker zusammen haben) und
+# hat am 28.07.2026 den halben Cluster lahmgelegt — ArgoCD, cert-manager, ceph-csi
+# und cnpg kamen mangels Speicher nicht mehr hoch.
+# Erst wieder aktivieren, wenn ein metrics-server läuft UND maxReplicas realistisch ist.
+autoscaling:
+  enabled: false
 collabora:
   # WOPI hosts allowed to embed the editor (aus dem Swarm-Setup übernommen:
   # jit.cloud ist die Nextcloud, die Collabora einbindet).
