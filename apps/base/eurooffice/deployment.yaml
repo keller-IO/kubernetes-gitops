@@ -49,7 +49,9 @@ spec:
             initialDelaySeconds: 180 # Erststart: interner Stack + Font-Cache-Generierung dauern
             periodSeconds: 30
           resources:
-            requests: { cpu: 250m, memory: 1Gi }
+            # Gemessen am 28.07.2026: 1013Mi — praktisch exakt auf dem alten Request,
+            # also ohne Reserve. Request mit Kopffreiheit statt auf Kante.
+            requests: { cpu: 250m, memory: 1280Mi }
             limits: { memory: 4Gi } # Doku-Minimum 4 GB RAM
           volumeMounts:
             # KEIN Mount über /var/log/euro-office/documentserver: das Image bringt dort

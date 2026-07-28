@@ -34,8 +34,12 @@ existingSecret:
   usernameKey: username
   passwordKey: password
 resources:
-  requests: { cpu: 250m, memory: 512Mi }
-  limits: { memory: 1Gi }
+  # Gemessen am 28.07.2026: 830Mi. Der alte Request (512Mi) lag deutlich unter dem
+  # Ist-Verbrauch — genau die Diskrepanz, die die Memory-HPA in die Aufwaertsspirale
+  # trieb (dauerhaft >100 % des Requests). Das Limit von 1Gi war nur ~200Mi vom
+  # OOM-Kill entfernt. Siehe docs/learnings/collabora-hpa-runaway.md.
+  requests: { cpu: 250m, memory: 896Mi }
+  limits: { memory: 1536Mi }
 ingress:
   enabled: true
   className: nginx

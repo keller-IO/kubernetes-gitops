@@ -65,8 +65,9 @@ spec:
             - { name: roundcube-custom, mountPath: /var/www/html/plugins/showpassword/style.css, subPath: style.css }
             - { name: roundcube-custom, mountPath: /var/www/html/skins/jit-logo.png, subPath: jit-logo.png }
           resources:
-            requests: { cpu: 50m, memory: 128Mi }
-            limits: { memory: 256Mi }
+            # Gemessen am 28.07.2026: 170Mi, also oberhalb des alten 128Mi-Requests.
+            requests: { cpu: 50m, memory: 192Mi }
+            limits: { memory: 384Mi }
       volumes:
         - name: roundcube-config
           configMap:
