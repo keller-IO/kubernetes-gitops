@@ -4,6 +4,10 @@ metadata:
   name: renovate
   namespace: renovate
 spec:
+  # Suspended 2026-07-28: GitHub token (renovate-secret) expired, runs were
+  # failing. Reversible — set back to `false` once a fresh RENOVATE_TOKEN is
+  # in apps/base/renovate/secret.sops.yaml.
+  suspend: true
   schedule: "0 5 * * 1" # Mondays 05:00 — matches renovate.json schedule
   concurrencyPolicy: Forbid
   jobTemplate:
