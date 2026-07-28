@@ -1,0 +1,11 @@
+# Operator CRs (CNPG Cluster / MariaDB) that still run without spec.resources —
+# QoS class BestEffort, OOM-killed first, and invisible to the scheduler's
+# node-balancing (which only looks at requests). This is exactly the failure
+# mode in docs/learnings/collabora-hpa-runaway.md and the MariaDB OOM incident
+# fixed in commit 098d145. Every line here is unreviewed tech debt, not an
+# accepted design — remove it once the CR gets resources, and don't add a new
+# entry without a reason (a new CR should ship with resources from day one).
+#
+# This list is deliberately EMPTY: PR #49 closed every gap, so the check is
+# effectively zero-tolerance. Do not add an entry to turn a red build green — a
+# database without requests is what took wordpress-1/-2 offline on 2026-07-28.

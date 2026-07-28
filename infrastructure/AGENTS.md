@@ -8,6 +8,13 @@ Owns `base/<component>/` dirs (argocd, cilium, ingress-nginx, cert-manager, cnpg
 
 ## Local Contracts
 - **Manifests**: Kustomize + Helm inflation. Namespace = dir name.
+- **Every base dir ships its own `namespace.yaml`.** Relying on ArgoCD's
+  `CreateNamespace=true` yields a namespace with no PodSecurity labels — that left
+  `crowdsec-agent` at 0/3 against the cluster's default `baseline` enforcement. Add
+  `pod-security.kubernetes.io/enforce` (+ audit/warn) only when the workload needs to
+  deviate from baseline (see `ceph-csi`, `monitoring`, `netbird` for precedent). CI
+  checks this against `scripts/ci/known-gaps/missing-namespace.txt` — a new component
+  gets no free pass.
 - **Operators**: Only here; per-app CRs live under `apps/`.
 - **OIDC**: External Keycloak Realm `bgt` at `https://auth.savar.de/realms/bgt`; app client secrets live in app SOPS secrets.
 - **Backup**: Existing Authentik resources, if still deployed, use platform-level CNPG + Barman (Ceph S3, 30d).
