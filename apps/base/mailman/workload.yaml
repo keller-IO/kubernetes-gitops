@@ -114,6 +114,28 @@ spec:
     metadata:
       labels: { app.kubernetes.io/name: mailman-web }
     spec:
+      # Die beiden Python-Dateien werden in das PVC KOPIERT, statt sie per
+      # subPath aus der ConfigMap zu mounten. Grund: das Entrypoint macht
+      # `chown mailman:mailman /opt/mailman-web-data -R` und läuft mit `set -e`
+      # — auf einem read-only ConfigMap-Mount scheitert das und der Container
+      # geht in CrashLoopBackOff. Der initContainer überschreibt bei jedem
+      # Podstart, die ConfigMap bleibt also die Quelle der Wahrheit.
+      initContainers:
+        - name: install-settings
+          # renovate: ignore
+          image: maxking/mailman-web@sha256:3b240e44635f229a04fd7eb2dc4389ddb115d10c4bc1462577cc5c8b501ff0a0
+          command: ["/bin/sh", "-ec"]
+          args:
+            - cp /config/settings_local.py /config/no_signup_adapter.py /opt/mailman-web-data/
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+            limits: { memory: 128Mi }
+          volumeMounts:
+            - name: web-data
+              mountPath: /opt/mailman-web-data
+            - name: web-settings
+              mountPath: /config
+              readOnly: true
       containers:
         - name: mailman-web
           # MIGRATIONSSTAND — Alt-Stand von 192.168.2.15: Django 2.2.20,
@@ -173,20 +195,13 @@ spec:
             requests: { cpu: 200m, memory: 512Mi }
             limits: { memory: 1536Mi } # Django-Migrations/collectstatic spiken beim Start
           volumeMounts:
+            # settings_local.py und no_signup_adapter.py liegen hier drin —
+            # der initContainer kopiert sie aus der ConfigMap hinein. Das
+            # Entrypoint kopiert settings_local.py von hier weiter nach
+            # /opt/mailman-web/, und settings_local.py legt dieses Verzeichnis
+            # auf den sys.path, damit no_signup_adapter importierbar ist.
             - name: web-data
               mountPath: /opt/mailman-web-data
-            # settings.py macht am Ende `from settings_local import *` und
-            # settings_local.py legt /opt/mailman-web-data auf den sys.path,
-            # damit no_signup_adapter importierbar ist. Beide per subPath in das
-            # PVC-Verzeichnis, wie im Altsystem.
-            - name: web-settings
-              mountPath: /opt/mailman-web-data/settings_local.py
-              subPath: settings_local.py
-              readOnly: true
-            - name: web-settings
-              mountPath: /opt/mailman-web-data/no_signup_adapter.py
-              subPath: no_signup_adapter.py
-              readOnly: true
           # Der Start macht collectstatic --clear, compress und `manage.py
           # migrate`. Die Liveness darf dabei NICHT hineinfunken — ein Kill
           # mitten in der Migration hinterlässt ein halb angewandtes Schema.
