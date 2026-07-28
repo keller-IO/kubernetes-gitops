@@ -1,0 +1,12 @@
+# prometheus-node-exporter (Teil des victoria-metrics-k8s-stack-Charts) läuft mit
+# hostNetwork/hostPID/hostPath/hostPort — das verletzt bereits "baseline". Der
+# Namespace braucht daher explizit "privileged", sonst bleibt das DaemonSet auf
+# allen Nodes 0/N (PodSecurity-Admission blockiert den Pod-Create).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: privileged
+    pod-security.kubernetes.io/warn: privileged

@@ -10,6 +10,7 @@ helmCharts:
     valuesFile: values.yaml
     includeCRDs: true # operator.victoriametrics.com-CRDs (VMRule etc.) liegen im crds/-Ordner
 resources:
+  - namespace.yaml
   - vmsingle-ingress.yaml
 
 generators:
