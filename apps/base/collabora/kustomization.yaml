@@ -11,5 +11,9 @@ helmCharts:
     namespace: collabora
     valuesFile: values.yaml
 
+resources:
+  # Zusaetzlicher Ingress fuer office.savar.de (Cutover von dockerswarm02).
+  - ingress-savar.yaml
+
 generators:
   - ./secret-generator.yaml
