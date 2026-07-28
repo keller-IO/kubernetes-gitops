@@ -27,3 +27,4 @@ data:
   host_mailman: lists.jit.services
   host_icecast: radio.jit.services
   host_phpmyadmin: dbadmin.jit.services
+  host_nextcloud_yealink_phonebook: phonebook.jit.services

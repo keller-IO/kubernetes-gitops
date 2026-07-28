@@ -1,0 +1,20 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nextcloud-yealink-phonebook
+  namespace: nextcloud-yealink-phonebook
+  annotations:
+    nginx.org/ssl-redirect: "false"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: phonebook.jit.services
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: nextcloud-yealink-phonebook
+                port:
+                  number: 80
