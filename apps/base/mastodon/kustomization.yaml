@@ -22,3 +22,20 @@ resources:
 
 generators:
   - ./secret-generator.yaml
+
+# ArgoCD sieht den mastodon-db-prepare-Job (helm.sh/hook: pre-install) NICHT als
+# eigenen Hook — das ist eine reine Helm-Annotation, die unter kustomize/ArgoCD
+# wirkungslos ist (ArgoCD kennt nur argocd.argoproj.io/hook). Der Job läuft also
+# als normale Resource in sync-wave 0 — im selben Wave wie das per KSOPS erzeugte
+# mastodon-secret. Ohne explizite Ordnung race'n beide, und der Job kann vor dem
+# Secret starten ("secret mastodon-secret not found"). Fix: Secret eine Wave vor
+# den Rest der App synchronisieren.
+patches:
+  - target:
+      kind: Secret
+      name: mastodon-secret
+    patch: |-
+      - op: add
+        path: /metadata/annotations
+        value:
+          argocd.argoproj.io/sync-wave: "-1"
