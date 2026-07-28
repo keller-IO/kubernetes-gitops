@@ -15,6 +15,15 @@ vmsingle:
       storageClassName: ceph-rbd # CHANGE ME
 alertmanager:
   enabled: true
+  # Default fullname (releaseName-chartName, since "vm-k8s-stack" doesn't contain
+  # "victoria-metrics-k8s-stack") is 39 chars. The operator prefixes the
+  # StatefulSet with "vmalertmanager-" (54 chars) and Kubernetes appends
+  # "-<controller-revision-hash>" to that for the pod-template label, pushing it
+  # past the 63-byte label-value limit — the StatefulSet then can't create pods
+  # and stays 0/1. Override just this CR's name (top-level, NOT under spec: the
+  # operator's VMAlertmanagerSpec has no "name" field) to keep it well under the
+  # limit even with the hash suffix.
+  name: vm-k8s-stack-alertmanager
   # TODO: wire a notification receiver (see AGENTS.md "Alertmanager → Notification needs to be done!")
   config:
     route:
