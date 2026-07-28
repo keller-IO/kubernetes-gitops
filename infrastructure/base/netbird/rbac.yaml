@@ -24,7 +24,7 @@
 # NetBird Gruppen verwalten kann, setzt sich genauso in k8s_admin (-> cluster-admin).
 # Die echte Vertrauensgrenze ist die NetBird-Gruppenverwaltung, nicht diese Regel.
 # Rechte bekommt eine Gruppe erst durch ein ClusterRoleBinding unten (k8s_admin,
-# k8s_readonly) — All/bgt/admin sind an nichts gebunden und damit wirkungslos.
+# k8s_readonly, k8s_ops) — All/bgt/admin sind an nichts gebunden und damit wirkungslos.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -85,6 +85,9 @@ subjects:
   - apiGroup: rbac.authorization.k8s.io
     kind: Group
     name: k8s_readonly
+  - apiGroup: rbac.authorization.k8s.io
+    kind: Group
+    name: k8s_ops
 ---
 # k8s_readonly, Teil 2: alles, was `view` nicht abdeckt.
 # RBAC kennt kein "deny" — "alles außer Credentials" ist nur als Positivliste
@@ -189,3 +192,58 @@ subjects:
   - apiGroup: rbac.authorization.k8s.io
     kind: Group
     name: k8s_readonly
+  - apiGroup: rbac.authorization.k8s.io
+    kind: Group
+    name: k8s_ops
+---
+# k8s_ops: gezielte Schreibrechte zum Entstallen von Workloads.
+# Bewusst NICHT enthalten: secrets, serviceaccounts/token, RBAC-Schreibrechte,
+# escalate/bind/impersonate, pods/exec|attach|portforward und mutierende Wildcards.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: netbird-k8s-ops-maintainer
+rules:
+  - apiGroups: [""]
+    resources: [pods]
+    verbs: [delete]
+  - apiGroups: [""]
+    resources: [pods/eviction]
+    verbs: [create]
+  - apiGroups: [""]
+    resources: [events]
+    verbs: [create]
+  - apiGroups: [events.k8s.io]
+    resources: [events]
+    verbs: [create]
+  - apiGroups: [apps]
+    resources:
+      [
+        deployments,
+        deployments/scale,
+        statefulsets,
+        statefulsets/scale,
+        daemonsets,
+        replicasets,
+        replicasets/scale,
+      ]
+    verbs: [patch, update]
+  - apiGroups: [batch]
+    resources: [jobs, cronjobs]
+    verbs: [create, delete, patch, update]
+  - apiGroups: [argoproj.io]
+    resources: [applications]
+    verbs: [patch, update]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: netbird-k8s-ops-maintainer
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: netbird-k8s-ops-maintainer
+subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: Group
+    name: k8s_ops
