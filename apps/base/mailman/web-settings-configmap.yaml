@@ -1,0 +1,56 @@
+# Web-Anpassungen aus dem Altsystem 192.168.2.15
+# (/opt/containers/mailman/web-data/settings_local.py + no_signup_adapter.py).
+# settings.py des maxking-Images macht am Ende `from settings_local import *`,
+# diese Werte gewinnen also gegen die Image-Defaults.
+#
+# Bewusst NICHT übernommen: DEBUG=True aus dem Alt-Compose.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mailman-web-settings
+  namespace: mailman
+data:
+  settings_local.py: |
+    import sys
+
+    # no_signup_adapter.py liegt daneben im selben Verzeichnis.
+    sys.path.insert(0, "/opt/mailman-web-data")
+
+    LANGUAGE_CODE = "de-de"
+
+    # Keine Social-Logins.
+    MAILMAN_WEB_SOCIAL_AUTH = []
+
+    # Ausgehende Mail (Passwort-Reset etc.) über mx02, IP-Relay via mynetworks.
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+    EMAIL_HOST = "192.168.2.209"
+    EMAIL_PORT = 25
+    EMAIL_USE_TLS = False
+    EMAIL_USE_SSL = False
+
+    DEFAULT_FROM_EMAIL = "postmaster@lists.jitmail.de"
+    SERVER_EMAIL = "postmaster@lists.jitmail.de"
+
+    # Anti-Spam: öffentliche Registrierung in Postorius deaktivieren.
+    # Bestehende Accounts können weiter einloggen.
+    ACCOUNT_ADAPTER = "no_signup_adapter.DisableSignupAdapter"
+    ACCOUNT_EMAIL_VERIFICATION = "mandatory"
+    ACCOUNT_UNIQUE_EMAIL = True
+
+    # HyperKitty prüft die Quell-IP der Archiver-Requests gegen
+    # MAILMAN_ARCHIVER_FROM. settings.py setzt dafür
+    # gethostbyname(MAILMAN_HOSTNAME) — in Kubernetes ist das die ClusterIP des
+    # Service `mailman-core`, der Request kommt aber von der POD-IP. Ohne diese
+    # Zeile antwortet HyperKitty mit 403 und nichts wird archiviert.
+    # Die Prüfung ist eine reine Stringliste (kein CIDR), Pod-IPs sind
+    # dynamisch — deshalb "*". Die Authentisierung über MAILMAN_ARCHIVER_KEY
+    # (HYPERKITTY_API_KEY, aus dem sops-Secret) bleibt davon unberührt, und der
+    # Dienst ist ohnehin nur clusterintern erreichbar.
+    MAILMAN_ARCHIVER_FROM = ("*",)
+  no_signup_adapter.py: |
+    from allauth.account.adapter import DefaultAccountAdapter
+
+
+    class DisableSignupAdapter(DefaultAccountAdapter):
+        def is_open_for_signup(self, request):
+            return False

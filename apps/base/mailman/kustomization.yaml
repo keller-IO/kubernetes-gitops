@@ -5,6 +5,7 @@ namespace: mailman
 # Postgres is provided by CNPG; an external MTA must route list mail to LMTP.
 resources:
   - database.yaml
+  - web-settings-configmap.yaml
   - workload.yaml
   - backup.yaml
 

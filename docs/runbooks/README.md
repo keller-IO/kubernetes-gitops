@@ -5,6 +5,7 @@ Pro Vorgang eine Markdown-Datei.
 
 - [inbetriebnahme.md](inbetriebnahme.md) — Go-Live-Checkliste (Blaupause → Produktion),
   über beide Repos, mit Shell-Commands und Datei-Hinweisen.
+- [mailman-migration.md](mailman-migration.md) — Migration der Mailman-3-Suite von `192.168.2.15` nach Kubernetes.
 
 Weitere noch zu erstellen — siehe TODOs in
 `docs/PRODUCTION-READINESS.md` (Abschnitt 11 Backup & DR).

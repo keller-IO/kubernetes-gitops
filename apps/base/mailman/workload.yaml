@@ -15,8 +15,16 @@ spec:
     spec:
       containers:
         - name: mailman-core
-          # renovate: image=maxking/mailman-core
-          image: maxking/mailman-core:0.5.2
+          # MIGRATIONSSTAND — bewusst auf den Alt-Stand von 192.168.2.15 gepinnt:
+          # GNU Mailman 3.3.4, alembic 2b73fbcc97c9. Damit geht der pg_dump des
+          # Altsystems 1:1 hinein, ohne Schema-Upgrade beim Import.
+          # Der Digest ist maxking/mailman-core:latest vom 07.04.2021 — genau das
+          # Image, das auf .15 läuft. `latest` wurde seither nie neu gepusht, ist
+          # als Tag aber nicht stabil, deshalb Digest-Pinning.
+          # Upgrade auf 0.5.2 (Mailman 3.3.10) erst NACH abgeschlossener Migration
+          # und getrennt davon. Renovate darf hier nicht anfassen.
+          # renovate: ignore
+          image: maxking/mailman-core@sha256:34b5c3af84cce9b3d3a758e12cb4edeabbc1559b4fba14cb85532471b5a0f199
           ports:
             - name: api
               containerPort: 8001
@@ -67,14 +75,25 @@ spec:
           volumeMounts:
             - name: core-data
               mountPath: /opt/mailman
+          # Der Start wartet auf Postgres und richtet die DB ein; nach dem
+          # Import kommt ein restauriertes Schema dazu. Liveness erst danach.
+          startupProbe:
+            tcpSocket:
+              port: api
+            periodSeconds: 10
+            failureThreshold: 60
           readinessProbe:
             tcpSocket:
               port: api
-            initialDelaySeconds: 20
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 4
           livenessProbe:
             tcpSocket:
               port: api
-            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 6
       volumes:
         - name: core-data
           persistentVolumeClaim:
@@ -97,8 +116,16 @@ spec:
     spec:
       containers:
         - name: mailman-web
-          # renovate: image=maxking/mailman-web
-          image: maxking/mailman-web:0.5.2
+          # MIGRATIONSSTAND — Alt-Stand von 192.168.2.15: Django 2.2.20,
+          # HyperKitty 1.3.4, Postorius 1.3.4, 73 django_migrations. Der
+          # Container legt damit in `mailmanweb` exakt das Schema an, das die
+          # 5,9-GB-SQLite des Altsystems mitbringt; der Import ist dadurch ein
+          # reines Datenkopieren ohne Schemaanpassung.
+          # Digest = maxking/mailman-web:latest vom 07.04.2021.
+          # Upgrade auf 0.5.2 (Django 4.2 / HyperKitty 1.3.12, 99 Migrationen)
+          # erst nach dem Import, als eigener Schritt.
+          # renovate: ignore
+          image: maxking/mailman-web@sha256:3b240e44635f229a04fd7eb2dc4389ddb115d10c4bc1462577cc5c8b501ff0a0
           ports:
             - name: http
               containerPort: 8000
@@ -107,8 +134,9 @@ spec:
           env:
             - name: DB_PASSWORD
               valueFrom: { secretKeyRef: { name: mailman-db-app, key: password } }
+            # Eigene DB, getrennt vom Core-Schema (siehe database.yaml).
             - name: DATABASE_URL
-              value: postgresql://mailman:$(DB_PASSWORD)@mailman-pg-rw:5432/mailmandb
+              value: postgresql://mailman:$(DB_PASSWORD)@mailman-pg-rw:5432/mailmanweb
             - name: DATABASE_TYPE
               value: postgres
             - name: SERVE_FROM_DOMAIN
@@ -147,24 +175,64 @@ spec:
           volumeMounts:
             - name: web-data
               mountPath: /opt/mailman-web-data
+            # settings.py macht am Ende `from settings_local import *` und
+            # settings_local.py legt /opt/mailman-web-data auf den sys.path,
+            # damit no_signup_adapter importierbar ist. Beide per subPath in das
+            # PVC-Verzeichnis, wie im Altsystem.
+            - name: web-settings
+              mountPath: /opt/mailman-web-data/settings_local.py
+              subPath: settings_local.py
+              readOnly: true
+            - name: web-settings
+              mountPath: /opt/mailman-web-data/no_signup_adapter.py
+              subPath: no_signup_adapter.py
+              readOnly: true
+          # Der Start macht collectstatic --clear, compress und `manage.py
+          # migrate`. Die Liveness darf dabei NICHT hineinfunken — ein Kill
+          # mitten in der Migration hinterlässt ein halb angewandtes Schema.
+          # Deshalb startupProbe: bis zu 10 min, erst danach greift Liveness.
+          startupProbe:
+            httpGet:
+              path: /
+              port: http
+              httpHeaders:
+                - { name: Host, value: localhost }
+            periodSeconds: 10
+            failureThreshold: 60
           readinessProbe:
             httpGet:
               path: /
               port: http
               httpHeaders: # kube-probe sendet sonst die Pod-IP als Host -> Django 400 (ALLOWED_HOSTS)
                 - { name: Host, value: localhost }
-            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 4
+          # URSACHE der 37 Neustarts in 9 Tagen (28.07. analysiert): uwsgi
+          # protokolliert Requests in Dateien, nicht auf stdout — im Containerlog
+          # war deshalb nichts zu sehen, nur "Completed/Exit 0". In
+          # web-data/logs/uwsgi-error.log stehen 34x "SIGINT/SIGTERM
+          # received...killing workers": die Liveness lief mit dem Default
+          # timeoutSeconds=1 gegen eine Django-App, die vereinzelt >10 s braucht
+          # (gemessen bis 16,8 s), bei nur 1-2 uwsgi-Workern. 3 Timeouts in 30 s
+          # -> SIGTERM -> uwsgi fährt sauber herunter -> Exit 0. Mit dem
+          # Alt-Image (processes = 1) wäre das noch häufiger passiert.
           livenessProbe:
             httpGet:
               path: /
               port: http
               httpHeaders:
                 - { name: Host, value: localhost }
-            initialDelaySeconds: 90
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 6
       volumes:
         - name: web-data
           persistentVolumeClaim:
             claimName: mailman-web-data
+        - name: web-settings
+          configMap:
+            name: mailman-web-settings
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -185,10 +253,12 @@ metadata:
   namespace: mailman
 spec:
   accessModes: ["ReadWriteOnce"]
-  storageClassName: ceph-rbd # CHANGE ME
+  storageClassName: ceph-rbd
   resources:
     requests:
-      storage: 10Gi
+      # 20Gi: der Whoosh-Volltextindex lag im Altsystem bei 2,3 GB und wächst
+      # mit dem Archiv; dazu static/ und diskcache.
+      storage: 20Gi
 ---
 apiVersion: v1
 kind: Service
