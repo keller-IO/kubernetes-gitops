@@ -71,8 +71,8 @@ config:
       interval: 60s
       conditions: ["[STATUS] == 200"]
     - name: mastodon
-      group: intern (jit.services)
-      url: https://social.jit.services/health
+      group: extern (Cloudflare)
+      url: https://jit.social/health
       interval: 60s
       conditions: ["[STATUS] == 200"]
     - name: eurooffice

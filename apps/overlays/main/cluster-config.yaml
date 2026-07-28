@@ -1,6 +1,5 @@
-# Central hostname reference for the `main` cluster. Placeholder domain: *.jit.services
-# Each app overlay patches its Ingress host from this list. Search & replace `jit.services`
-# with the real domain when going to production (see docs/PRODUCTION-READINESS.md).
+# Central hostname reference for the `main` cluster. Most apps use *.jit.services;
+# migrated federated services retain their existing identity domain (Mastodon: jit.social).
 #
 # NOTE: This file sits directly in overlays/main/ and is intentionally NOT a kustomize
 # overlay dir, so the apps ApplicationSet (which globs overlays/main/*/) ignores it.
@@ -21,7 +20,7 @@ data:
   host_wordpress_1: site1.jit.services
   host_wordpress_2: site2.jit.services
   host_wordpress_3: site3.jit.services
-  host_mastodon: social.jit.services
+  host_mastodon: jit.social
   host_gatus: status.jit.services
   host_kite: kite.jit.services
   host_mailman: lists.jit.services

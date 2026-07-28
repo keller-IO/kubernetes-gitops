@@ -1,6 +1,6 @@
 # Example: request an S3 bucket from Ceph RGW via ObjectBucketClaim.
-# Apps needing S3 (mastodon media, forgejo LFS, CNPG barman backups) create their own OBC
-# in their overlay. The OBC produces a Secret + ConfigMap with endpoint/keys/bucket name.
+# The current cluster has no OBC CRD/provisioner; this file is intentionally not
+# included by kustomization.yaml. Apps currently use explicit external S3 credentials.
 apiVersion: objectbucket.io/v1alpha1
 kind: ObjectBucketClaim
 metadata:
