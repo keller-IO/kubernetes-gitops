@@ -1,28 +1,18 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: mastodon
-# Official mastodon chart (mastodon/helm-charts). Postgres=CNPG, Redis=Valkey, media=Ceph S3.
+# Official chart; migration staging keeps all Mastodon Deployments at 0 replicas.
+# Postgres=CNPG, Redis=Valkey, media=external Ceph RGW.
 helmCharts:
   - name: mastodon
     repo: https://mastodon.github.io/helm-charts
-    version: 1.0.3 # renovate: helm  (official chart; appVersion = Mastodon release)
+    version: 1.0.3 # renovate: helm; appVersion 4.6.3 is intentionally overridden to 4.5.9
     releaseName: mastodon
     namespace: mastodon
     valuesFile: values.yaml
-resources:
-  - database.yaml
-  - cache.yaml
-  # objectbucket.yaml braucht die objectbucket.io-CRD (Rook/lib-bucket-provisioner)
-  # — ohne sie blockiert der OBC den GESAMTEN mastodon-Sync, ArgoCD validiert alle
-  # Sync-Tasks vorab und kippt beim ersten fehlenden Kind. Wieder aktivieren, sobald
-  # ein Bucket-Provisioner läuft. Bis dahin wird mastodon-s3 nicht autogeneriert —
-  # Media-Storage ist eine separate Folgeaufgabe.
-  # - objectbucket.yaml
-  - backup.yaml
-
-generators:
-  - ./secret-generator.yaml
-
+# Chart 1.0.3 renders Helm-hook helpers even when every hook Job is disabled.
+# Delete them during staging so ArgoCD cannot map them to sync hooks.
+#
 # ArgoCD sieht den mastodon-db-prepare-Job (helm.sh/hook: pre-install) NICHT als
 # eigenen Hook — das ist eine reine Helm-Annotation, die unter kustomize/ArgoCD
 # wirkungslos ist (ArgoCD kennt nur argocd.argoproj.io/hook). Der Job läuft also
@@ -32,6 +22,24 @@ generators:
 # den Rest der App synchronisieren.
 patches:
   - target:
+      kind: ServiceAccount
+      name: mastodon-predeploy
+    patch: |-
+      $patch: delete
+      apiVersion: v1
+      kind: ServiceAccount
+      metadata:
+        name: mastodon-predeploy
+  - target:
+      kind: ConfigMap
+      name: mastodon-env-predeploy
+    patch: |-
+      $patch: delete
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: mastodon-env-predeploy
+  - target:
       kind: Secret
       name: mastodon-secret
     patch: |-
@@ -39,3 +47,10 @@ patches:
         path: /metadata/annotations
         value:
           argocd.argoproj.io/sync-wave: "-1"
+resources:
+  - database.yaml
+  - cache.yaml
+  - backup.yaml
+
+generators:
+  - ./secret-generator.yaml

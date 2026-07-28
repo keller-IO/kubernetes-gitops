@@ -164,7 +164,7 @@ Betroffen u.a.: `infrastructure/base/cert-manager/cluster-issuer.sops.yaml`,
 
 - [ ] DB-Passwörter in `secret.sops.yaml` ↔ App-Env identisch.
 - [ ] HA für Prod: CNPG `instances: 1→3`, MariaDB `replicas: 1→3`, Valkey `replicas: 1→3`.
-- [ ] `mastodon-redis`-Passwort (Valkey `requirepass`) ↔ App identisch.
+- [x] `mastodon-redis`-Passwort (Valkey `requirepass`) ↔ App identisch.
 - [ ] `storageClassName` je DB/Cache final.
 - [ ] Prüfen:
       ```bash
@@ -193,8 +193,9 @@ Betroffen u.a.: `infrastructure/base/cert-manager/cluster-issuer.sops.yaml`,
 
 - [ ] Grafana-Admin-Passwort aus SOPS statt Klartext.
 - [ ] **Alertmanager-Receiver** konfigurieren (aktuell `"null"`).
-- [ ] S3-Buckets (`cnpg-<app>`, `mariadb-<app>`) anlegen, `<app>-backup-s3`-Secrets füllen,
-      `endpointURL` (`s3.jit.services`) auf reale RGW-URL.
+- [x] Garage-Bucket `backups`, App-Prefixe, Backup-Secrets und Endpoint
+      `http://192.168.23.21:3900` sind eingerichtet.
+- [ ] Geplante CNPG-/MariaDB-Backups pro App auf `completed` prüfen.
 - [ ] PVC-Daten-Backup (Ceph-Snapshots/Velero) — DB-Backup deckt nur die DB.
 - [ ] **Restore einmal testen** und Runbook hier in `docs/runbooks/` ablegen.
 
@@ -204,7 +205,8 @@ Betroffen u.a.: `infrastructure/base/cert-manager/cluster-issuer.sops.yaml`,
 
 - [ ] GitHub Actions für PRs prüfen.
 - [ ] Renovate-GitHub-Token + `gitAuthor` (`apps/base/renovate/{secret.sops.yaml,config.js}`).
-- [ ] Externen IMAP/SMTP für roundcube/mastodon/paperless setzen (kein Mailserver im Cluster).
+- [x] Externes SMTP für Mastodon von der Bestandsinstanz übernommen.
+- [ ] Externen IMAP/SMTP für Roundcube/Paperless setzen (kein Mailserver im Cluster).
 
 ---
 

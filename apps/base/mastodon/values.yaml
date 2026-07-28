@@ -1,48 +1,71 @@
-# Values for the official mastodon/helm-charts chart (schema 0.5.x).
-# Postgres via CNPG, Redis via standalone Valkey, media via Ceph S3 (RGW).
+# Values for the official mastodon/helm-charts chart (schema 1.0.x).
+# Migration staging: storage is prepared, but all app/cache workloads and Ingress stay disabled.
+image:
+  repository: ghcr.io/mastodon/mastodon
+  tag: v4.5.9
+  pullPolicy: IfNotPresent
+
 mastodon:
-  localDomain: social.jit.services # CHANGE ME
+  # Federation identity must never change during a server migration.
+  localDomain: jit.social
   singleUserMode: false
 
   createAdmin:
-    enabled: true
-    username: admin
-    email: admin@jit.services # CHANGE ME
+    enabled: false
 
-  # secret-key-base, OTP/VAPID and Active-Record-Encryption keys.
-  # Key names must match the chart's existingSecretKeys defaults (see secret.sops.yaml).
+  hooks:
+    # Restore and schema checks are run explicitly according to the migration runbook.
+    # ArgoCD must not initialize or migrate the database during staging.
+    dbPrepare:
+      enabled: false
+    dbMigrate:
+      enabled: false
+    deploySearch:
+      enabled: false
+
+  # Runtime secret-key-base, VAPID and Active-Record-Encryption keys. OTP_SECRET
+  # is retained in the Secret for recovery but no longer injected by chart 1.0.x.
   secrets:
     existingSecret: mastodon-secret
 
   s3:
     enabled: true
-    existingSecret: mastodon-s3 # from the ObjectBucketClaim — see objectbucket.yaml
+    existingSecret: mastodon-s3 # dedicated external Ceph-RGW user
     existingSecretKeys:
       accessKeyId: AWS_ACCESS_KEY_ID
       secretAccessKey: AWS_SECRET_ACCESS_KEY
-    bucket: mastodon-media # aligns with OBC-provisioned bucket (verify exact name)
-    endpoint: https://s3.jit.services # CHANGE ME — Ceph RGW API endpoint (full URL)
-    hostname: s3.jit.services # CHANGE ME — Ceph RGW host (bare, used for object URLs)
+    bucket: jit-social-media
+    endpoint: https://s3.jit.services
+    hostname: s3.jit.services
     region: default
 
   smtp:
-    server: mail.jit.services # CHANGE ME (external SMTP)
+    server: mail.jit-creatives.de
     port: 587
-    fromAddress: notifications@jit.services # CHANGE ME
+    fromAddress: "Mastodon <notifications@jit.social>"
+    authMethod: plain
+    opensslVerifyMode: none # preserve legacy behavior; harden after SMTP certificate validation
     existingSecret: mastodon-smtp
 
   web:
-    replicas: 1
+    replicas: 0 # enabled only for rehearsal/cutover
     resources:
       requests: { cpu: 200m, memory: 512Mi }
-      limits: { memory: 1Gi }
+      limits: { memory: 2Gi }
   sidekiq:
-    replicas: 1
+    workers:
+      - name: all-queues
+        replicas: 0 # enabled only for cutover; never run beside legacy Sidekiq
+        concurrency: 25
+        queues: ["default,8", "push,6", "ingress,4", "mailers,2", "pull", "scheduler", "fasp"]
     resources:
       requests: { cpu: 200m, memory: 512Mi }
-      limits: { memory: 1Gi }
+      limits: { memory: 2Gi }
   streaming:
-    replicas: 1
+    replicas: 0 # enabled only for rehearsal/cutover
+    image:
+      repository: ghcr.io/mastodon/mastodon-streaming
+      tag: v4.5.9
     resources:
       requests: { cpu: 100m, memory: 256Mi }
       limits: { memory: 512Mi }
@@ -65,22 +88,19 @@ elasticsearch:
   enabled: false # enable for full-text search (extra resources)
 
 ingress:
-  enabled: true
+  enabled: false # public route remains on 192.168.2.233 until cutover
   className: nginx
   annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.org/ssl-redirect: "false"
-    nginx.org/redirect-to-https: "true"
+    nginx.org/redirect-to-https: "false"
     nginx.org/websocket-services: mastodon-streaming
     nginx.org/client-max-body-size: "100m"
   hosts:
-    - host: social.jit.services # CHANGE ME
+    - host: jit.social
       paths:
         - path: "/"
           pathType: Prefix
-  tls:
-    - hosts: [social.jit.services] # CHANGE ME
-      secretName: mastodon-tls
+  tls: [] # TLS terminates at Cloudflare/legacy Traefik during migration
 
 # Gateway API not used — this cluster routes through NGINX Ingress.
 httproute:

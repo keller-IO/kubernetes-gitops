@@ -129,19 +129,21 @@ spec:
 **Dateien:** `infrastructure/base/storage/*`, jedes `storageClassName:` / `storageClass:` in den Apps
 
 **Offen:**
-- [ ] Existierende Ceph-StorageClass-Namen verifizieren und Manifeste angleichen
-      (`ceph-rbd` = RWO, `ceph-fs` = RWX). Doppelte Klassen löschen, wenn Ceph sie schon liefert.
-- [ ] S3/RGW: Bucket-StorageClass-Namen für `ObjectBucketClaim` setzen (`ceph-bucket`).
+- [x] `ceph-rbd` ist vorhanden, Default, erweiterbar und nutzt den externen Ceph-Cluster.
+- [ ] `ceph-fs` = RWX live verifizieren. Doppelte Klassen löschen, wenn Ceph sie schon liefert.
+- [x] Im Cluster laufen weder `ObjectBucketClaim`-CRD noch `ceph-bucket`-StorageClass.
+      Mastodon nutzt deshalb den externen RGW mit dediziertem SOPS-Secret; das
+      OBC-Beispiel bleibt deaktiviert.
 - [ ] RWX (CephFS) dort bestätigen, wo mehrere Replicas teilen (paperless media, wordpress wp-content).
-- [ ] Default-StorageClass festlegen (aktuell `ceph-rbd`).
+- [x] Default-StorageClass ist `ceph-rbd`.
 
-**Beispiel** — S3-Bucket via OBC (siehe `infrastructure/base/storage/objectbucket-example.yaml`):
+**Zukünftiges Beispiel** — nur nach Installation eines OBC-Provisioners aktivieren:
 ```yaml
 apiVersion: objectbucket.io/v1alpha1
 kind: ObjectBucketClaim
-metadata: { name: mastodon-media, namespace: mastodon }
+metadata: { name: example-bucket, namespace: storage }
 spec:
-  generateBucketName: mastodon-media
+  generateBucketName: example
   storageClassName: ceph-bucket   # CHANGE ME
 ```
 
@@ -221,7 +223,7 @@ spec:
 - [ ] HA: `replicas: 1 → 3` + Sentinel/Cluster-Topologie für Apps mit harten Cache-Anforderungen.
 - [ ] Pro App prüfen, ob Valkey-Verbindung (Host/Port/DB-Index) in den App-Env/Values stimmt.
 - [ ] `storageClassName` (`ceph-rbd`) und Größe pro App final setzen.
-- [ ] `mastodon-redis`-Passwort setzen + verschlüsseln (Valkey `requirepass` ↔ App müssen identisch sein).
+- [x] `mastodon-redis`-Passwort gesetzt und verschlüsselt (Valkey `requirepass` ↔ App identisch).
 
 **Beispiel** (`apps/base/forgejo/cache.yaml`) — eine kleine, isolierte Instanz pro App:
 ```yaml
@@ -289,7 +291,7 @@ alertmanager:
 
 ## 12. Backup & Disaster Recovery
 
-**Verdrahtet (Blaupause):** DB-Backups sind in den Manifesten aktiv — täglich 02:00 nach Ceph S3,
+**Verdrahtet:** DB-Backups sind in den Manifesten aktiv — täglich 02:00 nach Garage-S3,
 30 Tage Retention.
 - **CNPG** (roundcube, paperless, forgejo, mastodon, mailman): `backup.barmanObjectStore` im
   jeweiligen `database.yaml` (bzw. `postgres.yaml`) + `ScheduledBackup` in `backup.yaml`.
@@ -303,10 +305,11 @@ alertmanager:
 `apps/base/*/secret.sops.yaml`, `infrastructure/overlays/main/` (DR-Overlay, anzulegen)
 
 **Offen:**
-- [ ] S3-Buckets anlegen (OBC oder direkt RGW): `cnpg-<app>`, `mariadb-<app>`. Namen in
-      `destinationPath`/`bucket` müssen existieren.
-- [ ] `<app>-backup-s3` Secrets mit echten Ceph-RGW-Keys füllen + verschlüsseln.
-- [ ] `endpointURL`/`endpoint` (`s3.jit.services`) auf reale RGW-URL setzen.
+- [x] Gemeinsamer Garage-Bucket `backups`, App-Prefixe `cnpg-<app>` /
+      `mariadb-<app>` und verschlüsselte Backup-Credentials sind eingerichtet.
+- [x] Backup-Endpoint ist `http://192.168.23.21:3900`, Region `garage-potsdam`.
+- [ ] Grüne geplante Backups pro App kontrollieren; insbesondere Mastodon nach
+      dem ersten Datenbank-Restore.
 - [ ] CNPG ≥1.26: `barmanObjectStore` in-tree ist deprecated → auf **barman-cloud Plugin** migrieren.
 - [ ] MariaDB **PITR**: für punktgenaues Restore `PhysicalBackup` CRD + Binlog statt logischem Dump.
 - [ ] DR-Overlay `infrastructure/overlays/disaster-recovery/` mit `bootstrap.recovery` anlegen.
@@ -366,7 +369,10 @@ module.exports = { platform: 'github', repositories: ['keller-IO/kubernetes-gito
 
 **Offen:**
 - [ ] Externen IMAP/SMTP-Host in roundcube setzen (`ROUNDCUBEMAIL_DEFAULT_HOST`/`SMTP_SERVER`).
-- [ ] SMTP-Credentials für Mastodon (`mastodon-smtp`) + Paperless (falls Mailversand).
+- [x] SMTP-Credentials für Mastodon (`mastodon-smtp`) von `192.168.2.233` übernommen.
+      `opensslVerifyMode: none` bleibt für die Migration erhalten; nach Prüfung des
+      SMTP-Zertifikats auf `peer` härten.
+- [ ] SMTP-Credentials für Paperless setzen (falls Mailversand).
 - [ ] Mailman: externes MTA/Gateway so konfigurieren, dass Listendomains an
       `mailman-core.mailman.svc.cluster.local:8024` (LMTP) geroutet werden; ausgehend nutzt Mailman
       `SMTP_HOST`/`SMTP_PORT` aus `workload.yaml`.
@@ -398,7 +404,7 @@ Jede App liegt unter `apps/base/<app>/` (Basis) + `apps/overlays/main/<app>/` (C
 | **forgejo** | `apps/base/forgejo/` | Admin-Secret; SSH-Service exponieren (LB/NodePort); OIDC-Provider in Forgejo anlegen; LFS→S3 optional. |
 | **renovate** | `apps/base/renovate/` | Forgejo-Token; `autodiscover` vs. feste Repo-Liste; Schedule abstimmen. |
 | **wordpress-1/2/3** | `apps/base/wordpress/` + `apps/overlays/main/wordpress-{1,2,3}/` | Pro Instanz Secret + Host (in Overlay gepatcht); „Redis Object Cache"-Plugin installieren; `mariadb.enabled:false` + externalDatabase final schalten. |
-| **mastodon** | `apps/base/mastodon/` | Chart migriert auf offizielles `mastodon/helm-charts` (0.5.1). Secret `mastodon-secret` (`secret-key-base`/VAPID/`are-*` Active-Record-Encryption-Keys) generieren; `mastodon-redis`-Passwort setzen (Valkey `requirepass`); S3 (OBC) verdrahten; SMTP; Streaming-WebSocket testen; ggf. Elasticsearch. ArgoCD: `mastodon.hooks` (dbPrepare/dbMigrate Helm-Hooks) für GitOps-Sync prüfen. |
+| **mastodon** | `apps/base/mastodon/` | Migration Phase 1-3 vorbereitet, siehe `docs/runbooks/mastodon-migration.md`: Domain `jit.social`, Mastodon 4.5.9 gepinnt, produktive App-/SMTP-Secrets übernommen, CNPG PG16 mit 64 GiB und Valkey. Sicherer Stagingzustand: App-Replikate 0, Ingress/CreateAdmin/DB-Hooks aus. Der Cluster hat keinen OBC-Provisioner; dedizierte SOPS-Credentials für externen Ceph-RGW liegen vor, Benutzer und Bucket `jit-social-media` müssen dort noch angelegt werden. Offen: Argo-Sync prüfen; DB-/Redis-Restore proben; Remote-Medien bereinigen und S3 synchronisieren; `/system`-Kompatibilitätsroute; Elasticsearch; Cutover und danach CNPG auf 3 Instanzen. |
 | **gatus** | `apps/base/gatus/` | `gatus-oidc`-Secret mit Keycloak-Client-Secret füllen; `issuer-url`/`redirect-url`/`client-id` auf reale Domain. Alle kanonischen Web-App-Endpunkte sind eingetragen; Paperless wird über `paperless.savar.de` geprüft und folgt dem Login-Redirect bis HTTP 200. Gewünschte Legacy- und Alias-Domains bei Bedarf als eigene Routengruppe ergänzen. |
 | **kite** | `apps/base/kite/` | `kite-secrets` füllen (`JWT_SECRET`/`KITE_ENCRYPT_KEY` via `openssl rand -hex 32`, `OAUTH_CLIENT_SECRET` == Keycloak-Client-Secret); `issuer`/`clientId` setzen; RBAC-Rollen-Mapping für OIDC-User; PVC-StorageClass prüfen. |
 | **mailman** | `apps/base/mailman/` | Secrets füllen (`HYPERKITTY_API_KEY`, `SECRET_KEY`, REST-Passwort, `MAILMAN_ADMIN_EMAIL`, `SMTP_HOST_USER`); externes MTA auf LMTP-Service routen; CNPG-Bucket `cnpg-mailman`/S3-Creds anlegen; PVC- und DB-Größen prüfen; erste Admin-Initialisierung testen. |
