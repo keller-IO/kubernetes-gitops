@@ -1,5 +1,9 @@
 victoria-metrics-operator:
   enabled: true
+  # Measured ~62-83Mi RSS on keller-main (kubectl top, 2026-07-28).
+  resources:
+    requests: { cpu: 20m, memory: 64Mi }
+    limits: { memory: 128Mi }
 # monitoring.coreos.com-CRDs (PodMonitor/ServiceMonitor) — cnpg und mariadb-operator
 # rendern solche Ressourcen; ohne diese CRDs schlagen deren Syncs komplett fehl.
 prometheus-operator-crds:
@@ -13,6 +17,15 @@ vmsingle:
         requests:
           storage: 20Gi
       storageClassName: ceph-rbd # CHANGE ME
+    # Single-writer, 30d retention — grows over time and is already the
+    # heaviest pod in this namespace (789-925Mi RSS measured on keller-main,
+    # kubectl top, several samples, 2026-07-28; still climbing). No comparable
+    # component on homelab (it runs VMCluster: vmstorage/vminsert/vmselect,
+    # not VMSingle) so this is anchored to our own measurement with headroom
+    # for growth, not the homelab vmstorage numbers.
+    resources:
+      requests: { cpu: 100m, memory: 1Gi }
+      limits: { memory: 2Gi }
 alertmanager:
   enabled: true
   # Default fullname (releaseName-chartName, since "vm-k8s-stack" doesn't contain
@@ -30,6 +43,42 @@ alertmanager:
       receiver: "null"
     receivers:
       - name: "null"
+  # Homelab's vmalertmanager-vm-am-0 runs cpu:10m/mem:32Mi request, mem:128Mi
+  # limit; our own measured usage is lower still (~17Mi RSS) but reused the
+  # homelab anchor as-is since it has survived real operation there.
+  spec:
+    resources:
+      requests: { cpu: 10m, memory: 32Mi }
+      limits: { memory: 128Mi }
+# vmagent/vmalert: no comparable per-component config exists on homelab either
+# (also victoria-metrics-k8s-stack there, but that cluster's values weren't
+# read — only live pod resources were, and those match what's set here anyway
+# for vmalert). Sized from measured usage on keller-main (kubectl top -n
+# monitoring --containers, several samples, 2026-07-28): vmagent 87-117Mi,
+# vmalert ~43Mi.
+vmagent:
+  spec:
+    resources:
+      requests: { cpu: 25m, memory: 128Mi }
+      limits: { memory: 256Mi }
+vmalert:
+  spec:
+    resources:
+      requests: { cpu: 10m, memory: 64Mi }
+      limits: { memory: 128Mi }
+# kube-state-metrics + prometheus-node-exporter are separate subcharts bundled
+# by victoria-metrics-k8s-stack; their `resources:` keys live at these nested
+# paths (verified via the subchart's own values.yaml, not just the parent
+# chart's rendered --show-values doc). node-exporter is a DaemonSet on every
+# node (control-plane + workers) — measured 9-22Mi per node here.
+kube-state-metrics:
+  resources:
+    requests: { cpu: 10m, memory: 64Mi }
+    limits: { memory: 128Mi }
+prometheus-node-exporter:
+  resources:
+    requests: { cpu: 10m, memory: 32Mi }
+    limits: { memory: 64Mi }
 # Kein internes Grafana: das Haupt-Grafana (192.168.23.9) zieht VictoriaMetrics
 # als Prometheus-Datasource über https://metrics.jit.services (vmsingle-ingress.yaml).
 grafana:

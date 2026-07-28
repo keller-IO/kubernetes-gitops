@@ -3,3 +3,9 @@ monitoring:
   podMonitorEnabled: true
   grafanaDashboard:
     create: true
+# Measured ~40Mi RSS on keller-main (kubectl top, 2026-07-28). Matches the
+# homelab reference exactly (cnpg-system-cnpg-cloudnative-pg deployment there
+# runs cpu:25m/mem:128Mi request, mem:256Mi limit) — reused verbatim.
+resources:
+  requests: { cpu: 25m, memory: 128Mi }
+  limits: { memory: 256Mi }

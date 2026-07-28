@@ -1,6 +1,15 @@
 controller:
   kind: deployment
   replicaCount: 2
+  # Chart default already sets requests: {cpu:100m, memory:128Mi} — but only as
+  # an unversioned default, with no memory limit. Made explicit here (matches
+  # measured 65-116Mi RSS on keller-main, kubectl top, 2026-07-28; homelab's
+  # ingress-nginx-nginx-ingress-controller runs leaner at cpu:10m/mem:64Mi
+  # request, mem:256Mi limit — kept our request at the existing 128Mi since
+  # that's what's already relied upon and it costs no extra capacity delta).
+  resources:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits: { memory: 256Mi }
   service:
     type: LoadBalancer # requires Cilium LB-IPAM or MetalLB pool — see PRODUCTION-READINESS.md
     # Cluster statt (Chart-Default) Local: der Cilium-L2-Announcer kann ein Node

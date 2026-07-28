@@ -19,3 +19,8 @@ clouDNS:
 certManager:
   namespace: cert-manager
   serviceAccountName: cert-manager
+
+# Measured ~47Mi RSS on keller-main (kubectl top, 2026-07-28).
+resources:
+  requests: { cpu: 10m, memory: 64Mi }
+  limits: { memory: 128Mi }

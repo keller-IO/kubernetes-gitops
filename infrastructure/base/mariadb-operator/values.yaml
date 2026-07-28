@@ -3,3 +3,18 @@ crds:
   enabled: false
 metrics:
   enabled: true
+# Requests/limits per component, sized from measured usage on keller-main
+# (kubectl top pods -n mariadb-system, several samples, 2026-07-28): controller
+# ~62Mi, cert-controller ~27Mi, webhook ~22Mi. Not present on homelab (no
+# mariadb-operator there), so these are anchored to our own measurements.
+resources:
+  requests: { cpu: 10m, memory: 64Mi }
+  limits: { memory: 128Mi }
+webhook:
+  resources:
+    requests: { cpu: 10m, memory: 32Mi }
+    limits: { memory: 64Mi }
+certController:
+  resources:
+    requests: { cpu: 10m, memory: 32Mi }
+    limits: { memory: 64Mi }
