@@ -28,6 +28,27 @@ spec:
       destination:
         server: https://kubernetes.default.svc
         namespace: "{{.path.basename}}"
+      # Defaulting-Rauschen unterdruecken. Ohne das stehen Apps dauerhaft auf
+      # OutOfSync, obwohl nichts driftet — und echte Drift geht darin unter.
+      # Siehe docs/learnings/argocd-dauerhaft-outofsync.md.
+      ignoreDifferences:
+        # nodePort vergibt der API-Server bei type NodePort/LoadBalancer selbst.
+        - group: ""
+          kind: Service
+          jqPathExpressions: [".spec.ports[]?.nodePort"]
+        # Felder, die der mariadb-operator in die CR zurueckschreibt. /spec/image
+        # steht bewusst NICHT hier — das pinnen wir in Git (siehe database.yaml).
+        - group: k8s.mariadb.com
+          kind: MariaDB
+          jsonPointers:
+            - /spec/port
+            - /spec/serviceAccountName
+            - /spec/suspend
+            - /spec/tls
+            - /spec/updateStrategy
+            - /spec/rootEmptyPassword
+            - /spec/replicasAllowEvenNumber
+            - /spec/myCnfConfigMapKeyRef
       syncPolicy:
         automated:
           prune: true

@@ -57,6 +57,10 @@ spec:
         name: data
       spec:
         accessModes: ["ReadWriteOnce"]
+        # Explizit, obwohl es der API-Server ohnehin defaultet: ArgoCD normalisiert
+        # volumeClaimTemplates nicht, das Feld fehlte und die App stand dauerhaft
+        # OutOfSync. Siehe docs/learnings/argocd-dauerhaft-outofsync.md.
+        volumeMode: Filesystem
         storageClassName: ceph-rbd # CHANGE ME
         resources:
           requests:
