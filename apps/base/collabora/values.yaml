@@ -1,12 +1,23 @@
 replicaCount: 1
-# Chart-Default ist autoscaling.enabled=true mit maxReplicas: 100 — das ignoriert
-# replicaCount komplett. Im Cluster gibt es aber KEINEN metrics-server
-# (APIService v1beta1.metrics.k8s.io = MissingEndpoints), also lief die HPA in
-# FailedGetResourceMetric und konnte weder hoch- noch runterskalieren: sie fror bei
-# 55 Replicas ein (~28 GB Memory-Requests, mehr als alle Worker zusammen haben) und
-# hat am 28.07.2026 den halben Cluster lahmgelegt — ArgoCD, cert-manager, ceph-csi
-# und cnpg kamen mangels Speicher nicht mehr hoch.
-# Erst wieder aktivieren, wenn ein metrics-server läuft UND maxReplicas realistisch ist.
+# NICHT wieder einschalten. Der Chart-Default ist autoscaling.enabled=true mit
+# maxReplicas: 100 und ignoriert replicaCount komplett.
+#
+# Die HPA skaliert u. a. auf memory mit einem Ziel von 50 % der Requests. Collabora
+# belegt aber dauerhaft MEHR als seinen 512Mi-Request (gemessen: 104 %), und dieser
+# Wert ist PRO POD — mehr Replicas senken ihn nicht. Damit ist das Ziel prinzipiell
+# unerreichbar und die HPA skaliert monoton bis maxReplicas hoch. Das ist kein
+# Tuning-Problem, sondern speicherbasiertes Autoscaling auf einer Workload, die
+# dafuer ungeeignet ist.
+#
+# Am 28.07.2026 stand das Deployment dadurch bei 55 Replicas (~28 GB Requests, mehr
+# als alle drei Worker zusammen haben) und legte den Cluster lahm: ArgoCD (alle 7
+# Komponenten), cert-manager, ceph-csi, cnpg und kube-state-metrics in
+# CrashLoopBackOff, 25 Pods Pending mit "Insufficient memory".
+#
+# Ein laufender metrics-server ist ausdruecklich KEINE Entwarnung — im Gegenteil:
+# ohne Metriken war die HPA nur eingefroren, mit Metriken (metrics-server kam per
+# PR #43 dazu) skalierte sie sofort wieder hoch. Wer autoscaling erneut aktivieren
+# will, braucht zuerst realistische Requests und ein CPU- statt Memory-Target.
 autoscaling:
   enabled: false
 collabora:

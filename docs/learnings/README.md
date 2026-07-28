@@ -7,6 +7,8 @@ Format und Kriterien: siehe AGENTS.md → „Operational Learnings".
   Live-Cluster-Zugriff bleibt read-only und CI blockiert gefaehrliche Automationsmuster.
 - [ArgoCD dauerhaft OutOfSync](argocd-dauerhaft-outofsync.md) — nicht Drift, sondern
   vom API-Server/Operator ergaenzte Default-Felder (`volumeMode`, `nodePort`, `caBundle`).
+- [Collabora-HPA skalierte auf 55 Replicas](collabora-hpa-runaway.md) — Chart-Default-HPA
+  ignorierte replicaCount und legte am 28.07.2026 ArgoCD, cert-manager und ceph-csi lahm.
 - [EuroOffice-Connector behält transiente Verbindungsfehler](eurooffice-stale-settings-error.md)
 - [NIC 5.x verwirft Ingress bei ungueltiger Annotation](nginx-ingress-5x-annotation-strictness.md)
   — `proxy-buffering: "off"` statt `"false"` legte radio.jit.services still auf 404.
