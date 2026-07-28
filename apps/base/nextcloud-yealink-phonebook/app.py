@@ -18,7 +18,6 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 MAX_CARDDAV_RESPONSE = 20 * 1024 * 1024
 NEXTCLOUD_URL = os.environ["NEXTCLOUD_URL"].rstrip("/")
 ADDRESSBOOK = os.environ.get("ADDRESSBOOK", "contacts")
-PHONEBOOK_TITLE = os.environ.get("PHONEBOOK_TITLE", "Nextcloud")
 REFRESH_INTERVAL = int(os.environ.get("REFRESH_INTERVAL", "900"))
 PORT = int(os.environ.get("PORT", "8080"))
 SECRET_DIRECTORY = os.environ.get("SECRET_DIRECTORY", "/run/secrets/phonebook")
@@ -237,8 +236,6 @@ def fetch_contacts():
 
 def render_phonebook(contacts):
     root = ET.Element("YealinkIPPhoneDirectory")
-    ET.SubElement(root, "Title").text = PHONEBOOK_TITLE
-    ET.SubElement(root, "Prompt").text = PHONEBOOK_TITLE
     for contact in contacts:
         entry = ET.SubElement(root, "DirectoryEntry")
         ET.SubElement(entry, "Name").text = contact.name

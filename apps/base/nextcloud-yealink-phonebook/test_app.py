@@ -49,7 +49,8 @@ END:VCARD
         root = ET.fromstring(xml)
 
         self.assertEqual(root.tag, "YealinkIPPhoneDirectory")
-        self.assertEqual(root.findtext("Title"), "Nextcloud")
+        self.assertIsNone(root.find("Title"))
+        self.assertIsNone(root.find("Prompt"))
         self.assertEqual(root.findtext("DirectoryEntry/Name"), "Müller & Partner")
         self.assertEqual(
             [element.text for element in root.findall("DirectoryEntry/Telephone")],
