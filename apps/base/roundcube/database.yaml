@@ -5,6 +5,12 @@ metadata:
   namespace: roundcube
 spec:
   instances: 1 # 3 for HA
+  # Explizit gepinnt: ohne imageName waehlt der CNPG-Operator seine eigene
+  # Default-Postgres-Version. Die steht dann nicht in Git, Renovate sieht sie
+  # nicht, und ein Operator-Bump wechselt die DB-Version ungefragt. Dass das
+  # real passiert, zeigt der Ist-Zustand: mailman-pg ist auf 16.6 gepinnt,
+  # alle ungepinnten liefen auf 17.2 — Major-Divergenz als reiner Nebeneffekt.
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.2 # renovate: image=ghcr.io/cloudnative-pg/postgresql
   # Ohne resources ist der Pod BestEffort und wird bei Node-Speicherdruck als
   # ERSTES gekillt; der Scheduler bilanziert Nodes ausserdem nur nach Requests.
   # Genau das traf am 28.07.2026 die MariaDB-Pods (Exit 137).
