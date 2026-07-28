@@ -9,12 +9,18 @@ spec:
   # ERSTES gekillt; der Scheduler bilanziert Nodes ausserdem nur nach Requests.
   # Genau das traf am 28.07.2026 die MariaDB-Pods (Exit 137).
   # Gemessen am 28.07.2026: ~185Mi im Betrieb.
+  # Limit von 512Mi auf 2Gi angehoben (28.07.2026): der Probelauf des
+  # Archivimports hat den Pod OOMKilled (Exit 137). Der Betriebswert stimmt
+  # weiterhin, aber der Import ist etwas anderes — das groesste HyperKitty-
+  # Attachment ist 15 MB, und ein INSERT mit mehreren solchen Zeilen plus
+  # WAL und Sortierpuffern sprengt 512Mi. Nach Abschluss der Migration kann
+  # das Limit wieder sinken, die Requests bleiben am Betriebswert.
   resources:
     requests:
       cpu: 100m
       memory: 256Mi
     limits:
-      memory: 512Mi
+      memory: 2Gi
   # PG 16 wie das Alt-System: der psql im maxking-Image (PG16-Client) bricht
   # an PG-17-Servern (\l nutzt daticulocale, in 17 umbenannt) — und der
   # pg_dump-Import kommt ebenfalls aus einer 16er.
