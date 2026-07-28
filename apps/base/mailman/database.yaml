@@ -21,7 +21,10 @@ spec:
   # renovate: datasource=docker depName=ghcr.io/cloudnative-pg/postgresql
   imageName: ghcr.io/cloudnative-pg/postgresql:16.6
   storage:
-    size: 10Gi
+    # 30Gi: das HyperKitty-Archiv des Altsystems bringt 5,9 GB Rohdaten mit
+    # (4,3 GB Mail-Bodies + 1,6 GB Anhänge als BYTEA), dazu Indizes, WAL und
+    # der Spitzenbedarf während des Imports. 10Gi waren dafür zu knapp.
+    size: 30Gi
     storageClass: ceph-rbd # CNPG-Feld heißt storageClass (nicht storageClassName)
   bootstrap:
     initdb:
@@ -45,3 +48,23 @@ spec:
       data: { compression: gzip }
   monitoring:
     enablePodMonitor: true
+---
+# Zweite Datenbank für Django/Postorius/HyperKitty — wie im Altsystem, das
+# ebenfalls `mailman` (Core) und `mailmanweb` (Web) trennt. Getrennte DBs, weil
+# Core- und Django-Schema unabhängig voneinander migriert und wiederhergestellt
+# werden müssen; das Web-Schema kommt beim Import aus einer 5,9-GB-SQLite.
+# databaseReclaimPolicy: retain — das Löschen des CR darf niemals das Archiv
+# mitnehmen.
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: mailmanweb
+  namespace: mailman
+spec:
+  cluster:
+    name: mailman-pg
+  name: mailmanweb
+  owner: mailman
+  encoding: UTF8
+  ensure: present
+  databaseReclaimPolicy: retain
