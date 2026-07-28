@@ -213,7 +213,74 @@ kubectl -n mailman exec deploy/mailman-core -- mailman --version                
 Erst wenn diese drei Werte stimmen, passt der Cluster zum Altsystem und der
 Import kann beginnen.
 
-## Phase 1 — Probelauf des Imports (kein Freeze)
+## Phase 1 — Probelauf des Imports — **durchgeführt am 28.07.2026**
+
+Gegen Wegwerf-Datenbanken `mailmandb_probe` / `mailmanweb_probe` im selben
+CNPG-Cluster; der laufende Stack blieb unangetastet. Ergebnis: **erfolgreich**,
+mit vier Befunden, die den echten Import sonst zerrissen hätten.
+
+### Messwerte
+
+| Schritt | Dauer |
+|---|---|
+| `pg_dump` der Core-DB auf `.15` | wenige Sekunden, 113 KB |
+| `pg_restore` der Core-DB | **3,2 s** |
+| SQLite 6,26 GB von `.15` holen, gedrosselt auf 12,5 MB/s | **8:11 min** |
+| SQLite in den Cluster (`kubectl cp`, ~60 MB/s) | **2:12 min** |
+| Datenkopie SQLite → PostgreSQL (99.983 Zeilen) | **403 s**, davon Commit 2,9 s |
+| **Summe Datenteil** | **rund 20 min** |
+
+Dazu kommen Indexaufbau und Verifikation. Ein Fenster von **2 h** ist damit
+komfortabel bemessen, 1 h wäre knapp, aber machbar.
+
+Zielgröße der Datenbank nach dem Import: **2,7 GB** (aus 6,26 GB SQLite —
+PostgreSQL komprimiert Text per TOAST). Spitzenspeicher des PG-Pods: **665Mi**.
+
+### Verifikation
+
+- Core: alembic `2b73fbcc97c9`, 10 Listen, 309 Members, 288 Adressen,
+  29 gehaltene Nachrichten, 47 Pendings — **byte-gleich zum Altsystem**.
+- Web: **0 Abweichungen** bei den Zeilenzahlen aller 34 Tabellen.
+- Anhänge byte-identisch: 17.473 Stück, 1.644.726.656 Bytes, größter 15.069.511.
+- Zeitstempel korrekt mit Zeitzone (2009-04-19 bis 2026-07-28).
+- Django liest die Daten über das ORM: 41.892 Mails, 10 Listen, 1.564 User,
+  Bodies und Anhänge lesbar.
+
+### Befunde
+
+1. **`sqlite3 .backup` auf `.15` ist verboten.** Es liest und schreibt 6 GB auf
+   *derselben* Platte (`/dev/sdd1`); Last auf `.15` ging auf 42, auf dem
+   PVE-Host `pve.jit.land` (VM 107) auf 60. Abgebrochen. Stattdessen die Datei
+   **lesend** streamen (`scp -l 100000`, 12,5 MB/s): Last blieb unter 0,5.
+   `/` auf `.15` hat ohnehin nur 5,5 G frei — die Kopie passt dort gar nicht.
+2. **Der PG-Pod wurde OOMKilled** (Exit 137) beim Laden von
+   `hyperkitty_attachment`; der Client sah nur `SSL SYSCALL error: EOF detected`.
+   Das Limit von 512Mi war am Betriebswert (~185Mi) bemessen, nicht am Import.
+   Behoben (PR #65): Limit 2Gi, Requests unverändert. Gemessene Spitze danach
+   665Mi.
+3. **NUL-Bytes.** 21 Werte in `hyperkitty_email.content` enthalten `0x00` (SAP-
+   Ausdrucke auf `jit-list`). PostgreSQL kann das in `text`/`varchar`
+   grundsätzlich nicht speichern. Der Loader entfernt sie und **zählt sie im
+   Protokoll mit**, damit die Änderung nicht still passiert.
+4. **Eine Live-Kopie der SQLite ist nicht konsistent** — `PRAGMA
+   integrity_check` meldete 64 Fehler, aber **ausschließlich** in
+   `sqlite_autoindex_django_q_task_1`, der ständig beschriebenen Taskqueue. Das
+   Archiv war unversehrt. In Phase 2 ist der Stack ohnehin gestoppt.
+   `django_q_ormq` und `django_q_schedule` sind in der Quelle **leer**,
+   `django_q_task` enthält nur alte Ergebnisse ⇒ alle drei werden übersprungen.
+
+### Werkzeug-Fallstricke
+
+- `pg_restore` im 2021er-Image ist zu alt für PG-16-Dumps
+  (`unsupported version (1.15)`) ⇒ Restore im CNPG-Pod ausführen.
+- **`ssh … | kubectl exec -i` überträgt nichts** (leere Datei), und roher
+  Stdin-Pipe bricht bei großen Dateien ab (`connection reset by peer` nach
+  32 KB). `kubectl cp` funktioniert dagegen zuverlässig und schnell.
+- Ein Patch der ArgoCD-`Application` (etwa `automated` entfernen, um die Pods
+  herunterzufahren) ist **wirkungslos**: das App-of-Apps stellt sie sofort
+  wieder her. Wer die Pods wirklich anhalten muss, ändert `replicas` in Git.
+
+### Ablauf (für die Wiederholung in Phase 2)
 
 Ziel: Dauer messen und die Schemakette einmal fehlerfrei durchspielen, ohne
 das Altsystem anzufassen.
@@ -295,24 +362,28 @@ aus Phase 1 ansetzen, Richtwert 2–3 h.
    die App kurz auf `syncPolicy: {}` setzen oder mit
    `argocd app set --sync-policy none` arbeiten).
 
-6. **Daten kopieren** — pgloader `data only`, inklusive `django_migrations`,
-   damit der Migrationsstand exakt dem Quellstand entspricht:
+6. **Daten kopieren** mit `apps/base/mailman/migration-sqlite-to-postgres.py`
+   im Helper-Pod (nutzt das `mailman-web`-Image, bringt psycopg2 und das
+   `sqlite3`-Modul mit):
 
-   ```
-   LOAD DATABASE
-        FROM sqlite:///data/mailmanweb.db
-        INTO postgresql://postgres@mailman-pg-rw:5432/mailmanweb
-   WITH data only, truncate, disable triggers, reset sequences,
-        batch rows = 500, prefetch rows = 500
-   SET work_mem to '256MB', maintenance_work_mem to '512MB';
+   ```bash
+   SQLITE_PATH=/data/mailmanweb.db \
+   PG_DSN='host=mailman-pg-rw port=5432 dbname=mailmanweb user=mailman password=…' \
+   python3 /data/migration-sqlite-to-postgres.py
    ```
 
-   **`disable triggers` braucht Superuser.** `mailman-pg` hat
-   `enableSuperuserAccess: false`. Für den Import einmalig auf `true` setzen
-   (erzeugt Secret `mailman-pg-superuser`), **danach wieder auf `false`**.
-   Ohne Superuser wäre der Fallback: alle Tabellen in FK-Reihenfolge in *einer*
-   Transaktion laden — Django legt Fremdschlüssel als
-   `DEFERRABLE INITIALLY DEFERRED` an, dann greift `SET CONSTRAINTS ALL DEFERRED`.
+   **Kein pgloader.** Das Zielschema legt Django korrekt an; pgloader würde die
+   Typen aus SQLites dynamischer Typisierung neu raten — genau der Fehler aus
+   der Roundcube-Migration (siehe `docs/learnings/`). Das Skript castet
+   stattdessen anhand des PG-Spaltentyps (bool aus 0/1, Zeitstempel aus
+   Textform, bytea) und begrenzt Batches nach **Bytes** statt Zeilen.
+
+   Es braucht **keinen Superuser**: alles läuft in *einer* Transaktion mit
+   `SET CONSTRAINTS ALL DEFERRED`. Djangos Fremdschlüssel sind
+   `DEFERRABLE INITIALLY DEFERRED` (geprüft: 39/39), damit ist die
+   Ladereihenfolge egal und `enableSuperuserAccess` bleibt aus. Nebeneffekt:
+   ein Abbruch rollt vollständig zurück, es bleiben nie Teildaten liegen —
+   im Probelauf zweimal bestätigt.
 
    Gegenprobe nach dem Lauf:
 
@@ -482,9 +553,9 @@ Rückwärts-Merge. Das ist explizit zu entscheiden, nicht implizit auszusitzen.
 
 | Risiko | Bewertung |
 |---|---|
-| Django 2.2.20 gegen PostgreSQL 16.6 | im Altsystem lief das Web auf SQLite, diese Kombination ist ungetestet — genau dafür ist der Probelauf in Phase 1 da |
+| Django 2.2.20 gegen PostgreSQL 16.6 | im Probelauf 28.07. bestätigt: Schema, Migrationen und ORM-Zugriff funktionieren |
 | Django-Migrationen 2.2 → 4.2 scheitern an Altdaten | aus der Migration herausgezogen, jetzt Phase 7 mit eigenem Backup davor |
-| pgloader braucht Superuser für `disable triggers` | `enableSuperuserAccess` temporär, danach zurücksetzen |
+| Import belastet `.15` bis zur Unbrauchbarkeit | erledigt: nur noch lesender, gedrosselter Stream statt lokaler Kopie |
 | CNPG-Storage zu klein für das Archiv | erledigt: 10 Gi → 30 Gi |
 | `mailman-web` startet sich regelmäßig neu (37× in 9 d) | erledigt: Liveness-Timeout war die Ursache, startupProbe ergänzt |
 | `uwsgi.log` wuchs in 15 Tagen auf 110 MB im PVC (Gatus pollt alle 5 s, uwsgi rotiert nicht) | mit 20 Gi vorerst unkritisch, langfristig Housekeeping nötig |
