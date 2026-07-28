@@ -189,25 +189,15 @@ spec:
       http:
         paths: [{ path: /, pathType: Prefix, backend: { service: { name: auth, port: { number: 8080 } } } }]
 ---
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: office
-  namespace: legacy-proxy
-  annotations:
-    nginx.org/ssl-redirect: "false"
-    nginx.org/redirect-to-https: "false"
-    # Collabora: WebSocket (Upgrade-Header) + lange Verbindungen + grosse Docs
-    nginx.org/websocket-services: "office"
-    nginx.org/proxy-read-timeout: "3600s"
-    nginx.org/proxy-send-timeout: "3600s"
-    nginx.org/client-max-body-size: "0"
-spec:
-  ingressClassName: nginx
-  rules:
-    - host: office.savar.de
-      http:
-        paths: [{ path: /, pathType: Prefix, backend: { service: { name: office, port: { number: 9980 } } } }]
+# office.savar.de wird jetzt vom In-Cluster-Collabora bedient, siehe
+# apps/base/collabora/ingress-savar.yaml. Der Ingress MUSS hier verschwinden,
+# solange der neue existiert: zwei Ingresses mit demselben Host quittiert
+# nginx-inc mit "All hosts are taken by other resources" und verwirft einen davon.
+#
+# Service und EndpointSlice "office" (-> dockerswarm02, 192.168.2.242:9980)
+# bleiben bewusst in external-backends.yaml stehen: ein Revert dieses Commits
+# stellt den alten Pfad damit sofort wieder her. Erst entfernen, wenn
+# dockerswarm02 endgueltig abgeschaltet wird.
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
