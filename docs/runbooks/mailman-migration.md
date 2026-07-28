@@ -197,6 +197,11 @@ kubectl -n mailman rollout restart deploy/mailman-core deploy/mailman-web
 Das entfernt zugleich die verwaisten Django-Tabellen, die bis jetzt mit im
 `mailmandb` lagen — Django zieht ab sofort in `mailmanweb` ein.
 
+**Solange der Core unten ist, wird auch `mailman-web` nicht `Ready`** — das ist
+Folge, kein eigener Fehler. Die Probe fragt `/` ab, Kubernetes folgt dem 301 auf
+`/postorius/lists/`, und Postorius liefert **503**, weil es die Mailman-REST-API
+nicht erreicht. Mit laufendem Core wird die Probe von selbst grün.
+
 Danach prüfen:
 
 ```bash
