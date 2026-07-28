@@ -12,7 +12,12 @@ helmCharts:
 resources:
   - database.yaml
   - cache.yaml
-  - objectbucket.yaml
+  # objectbucket.yaml braucht die objectbucket.io-CRD (Rook/lib-bucket-provisioner)
+  # — ohne sie blockiert der OBC den GESAMTEN mastodon-Sync, ArgoCD validiert alle
+  # Sync-Tasks vorab und kippt beim ersten fehlenden Kind. Wieder aktivieren, sobald
+  # ein Bucket-Provisioner läuft. Bis dahin wird mastodon-s3 nicht autogeneriert —
+  # Media-Storage ist eine separate Folgeaufgabe.
+  # - objectbucket.yaml
   - backup.yaml
 
 generators:
