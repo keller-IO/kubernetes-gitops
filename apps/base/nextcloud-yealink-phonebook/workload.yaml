@@ -33,7 +33,6 @@ spec:
           env:
             - { name: NEXTCLOUD_URL, value: "https://jit.cloud" }
             - { name: ADDRESSBOOK, value: kontakte }
-            - { name: PHONEBOOK_TITLE, value: Nextcloud Kontakte }
             - { name: REFRESH_INTERVAL, value: "900" }
             - { name: PYTHONDONTWRITEBYTECODE, value: "1" }
           readinessProbe:
