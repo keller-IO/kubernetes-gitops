@@ -4,6 +4,9 @@ metadata:
   name: nextcloud-yealink-phonebook
   namespace: nextcloud-yealink-phonebook
   annotations:
+    # Der Bearer-Token ist Teil des Pfads und darf nicht im zentralen Access-Log landen.
+    nginx.org/location-snippets: |
+      access_log off;
     nginx.org/ssl-redirect: "false"
 spec:
   ingressClassName: nginx
