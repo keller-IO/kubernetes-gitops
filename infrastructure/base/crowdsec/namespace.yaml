@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: crowdsec
+  labels:
+    # Der Agent ist ein DaemonSet, das /var/log per hostPath einliest — genau das
+    # ist der Zweck eines Log-basierten IDS. hostPath-Volumes verbietet aber schon
+    # `baseline`, und der Cluster-Default enforced baseline. Ohne dieses Label
+    # blieb crowdsec-agent auf 0/3 haengen ("violates PodSecurity baseline:latest:
+    # hostPath volumes (volume varlog)") — der Namespace wurde bis dahin nur
+    # implizit von ArgoCDs CreateNamespace=true erzeugt, also ohne Labels.
+    #
+    # Trade-off: privileged gilt namespace-weit, also auch fuer crowdsec-pg und die
+    # LAPI, die es nicht braeuchten. PSA kennt keine feinere Granularitaet als den
+    # Namespace. audit/warn bleiben auf restricted, damit Verstoesse sichtbar
+    # bleiben, statt still durchzugehen.
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
