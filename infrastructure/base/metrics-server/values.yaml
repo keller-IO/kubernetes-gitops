@@ -1,0 +1,19 @@
+# Talos rotates kubelet serving certificates and by default they are not
+# signed by a CA metrics-server trusts, so scraping the kubelet /stats/summary
+# endpoint fails with x509 errors out of the box. No kubelet-csr-approver (or
+# equivalent signer) is deployed in this cluster, so we take the pragmatic,
+# widely-used shortcut instead: skip kubelet certificate verification. Traffic
+# to the kubelet stays TLS-encrypted, we just stop verifying the cert chain —
+# metrics-server still authenticates itself to the kubelet via its own client
+# cert/token. The safer alternative, if this ever needs hardening, is to run
+# kubelet-csr-approver (or manually sign kubelet serving certs with a trusted
+# CA) and drop this flag.
+args:
+  - --kubelet-insecure-tls
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 200Mi
+  limits:
+    memory: 400Mi

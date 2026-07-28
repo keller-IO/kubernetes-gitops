@@ -579,6 +579,27 @@ Bewusst draußen: `secrets`, `certificatesigningrequests`.
 
 ---
 
+## 18. Metrics Server (`kubectl top`, HPA)
+
+**Dateien:** `infrastructure/base/metrics-server/*`
+
+**Verdrahtet:** Chart `metrics-server` 3.13.1 liefert die `metrics.k8s.io`-APIService,
+damit `kubectl top` und bestehende HPAs (z. B. Collabora) wieder Werte statt `<unknown>`
+bekommen.
+
+- **Talos-Besonderheit:** Kubelet-Serving-Zertifikate werden auf Talos rotiert und sind
+  i. d. R. nicht von einer CA signiert, der metrics-server vertraut → Scraping schlägt sonst
+  mit x509-Fehlern fehl. Da kein `kubelet-csr-approver` (oder ein anderer Signer für
+  vertrauenswürdige Kubelet-Serving-Certs) im Cluster läuft, nutzt `values.yaml` den
+  pragmatischen, verbreiteten Workaround `--kubelet-insecure-tls`: Traffic zum Kubelet bleibt
+  TLS-verschlüsselt, nur die Zertifikatsprüfung entfällt.
+
+**Offen:**
+- [ ] Sichere Alternative erwägen: `kubelet-csr-approver` (o. ä.) ausrollen, damit Kubelets
+      signierte Serving-Certs bekommen, dann `--kubelet-insecure-tls` entfernen.
+
+---
+
 ## Vor dem ersten `argocd app sync` lokal prüfen
 
 ```bash
