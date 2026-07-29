@@ -339,15 +339,76 @@ aus Phase 1 ansetzen, Richtwert 2–3 h.
 
    Erwartung: **10 Listen**, identisch zur Liste oben.
 
-4. **Core-Dateien nachziehen** (Members und Listen stehen in der DB, hier geht
-   es um Templates, Message-Store und Listendaten):
+4. **Core-Dateien nachziehen.** Members und Listen stehen in der Datenbank; auf
+   der Platte liegen nur zwei Dinge, die zählen — **zusammen rund 2 MB**
+   (am 28.07. inventarisiert und am 29.07. erprobt):
 
-   ```
-   var/data/  var/lists/  var/templates/  var/messages/  var/archives/
+   | Verzeichnis | Inhalt | Übernehmen |
+   |---|---|---|
+   | `var/messages/` | 30 Dateien, 1,6 MB — Mailmans Message-Store, Pfad ist der Message-ID-Hash (`messages/C7/SS/C7SSZ…`) | **ja, zwingend** |
+   | `var/lists/` | 4 Dateien, 412 K — ausschliesslich `digest.mmdf`: angesammelte, noch nicht versandte Digests (jit-list, talk-ml, mitglieder) | ja |
+   | `var/data/` | `postfix_domains`, `postfix_lmtp` — von Mailman **erzeugte** MTA-Maps mit den ALTEN Transportwegen | nein |
+   | `var/templates/`, `var/archives/`, `var/cache/` | **komplett leer, 0 Dateien** | entfällt |
+   | `var/etc/mailman.cfg` | vom Image aus Env erzeugt | **nein, niemals** |
+   | `var/logs/` (41 M), `var/queue/` (562 Dateien, davon 15 M `bad` + 1,6 M `shunt`), `var/locks/`, `var/master.pid` | Laufzeit und Dead Letters | nein |
+
+   **Warum `messages/` zwingend ist:** die Tabelle `message` hat 30 Zeilen, im
+   Store liegen exakt 30 Dateien — 1:1. **15 davon sind gehaltene
+   Moderationsanfragen.** Die Datenbank speichert nur den Hash, der Text liegt
+   allein als Datei vor. Ohne den Baum wirft Mailman beim Zugriff einen
+   `FileNotFoundError` — die Moderationsansicht bleibt also nicht bloss leer,
+   sie bricht ab.
+
+   ```bash
+   POD=$(kubectl -n mailman get pod -l app.kubernetes.io/name=mailman-core \
+           -o jsonpath='{.items[0].metadata.name}')
+
+   ssh root@192.168.2.15 'cd /opt/containers/mailman/core/var && \
+     tar czf /tmp/mm-var.tgz messages lists'
+   scp root@192.168.2.15:/tmp/mm-var.tgz /tmp/
+   kubectl -n mailman cp /tmp/mm-var.tgz mailman/$POD:/tmp/mm-var.tgz
+   kubectl -n mailman exec $POD -- sh -c 'cd /opt/mailman/var && \
+     tar xzf /tmp/mm-var.tgz && chown -R 100:65533 messages lists && \
+     rm -f /tmp/mm-var.tgz'
    ```
 
-   **Nicht** kopieren: `var/etc/mailman.cfg` (wird vom Image aus Env erzeugt),
-   `var/queue/bad`, `var/queue/shunt`, `var/logs`, `var/locks`, `var/master.pid`.
+   Das `chown` ist nötig: `uid 100` ist auf beiden Seiten `mailman`, auf `.15`
+   gehört aber alles `100:0`, während der Container als `gid 65533 (nogroup)`
+   läuft. Der Schritt ist **idempotent** — der Store ist inhaltsadressiert, der
+   Pfad *ist* der Hash — und lässt sich vor wie nach dem DB-Restore ausführen;
+   nötig ist nur ein laufender Core-Pod als Ziel.
+
+   Gegenprobe (am 29.07. mit **14 von 14** erfolgreich durchgeführt):
+
+   ```bash
+   printf '%s\n' "exec('''
+   from zope.component import getUtility
+   from mailman.interfaces.messages import IMessageStore
+   from mailman.interfaces.requests import IListRequests, RequestType
+   from mailman.interfaces.listmanager import IListManager
+   store = getUtility(IMessageStore)
+   ok = 0
+   fail = 0
+   for lst in getUtility(IListManager).mailing_lists:
+       for r in list(IListRequests(lst).of_type(RequestType.held_message)):
+           try:
+               m = store.get_message_by_id(r.key)
+               if m is None:
+                   raise KeyError(\"None\")
+               ok = ok + 1
+           except Exception as e:
+               fail = fail + 1
+               print(\"FEHLT:\", lst.list_id, r.key)
+   print(\"BILANZ: aufloesbar=%d nicht_aufloesbar=%d\" % (ok, fail))
+   ''')" | kubectl -n mailman exec -i deploy/mailman-core -- mailman shell
+   ```
+
+   Zwei Fallstricke dabei: `mailman shell` verdaut aus der Pipe **keine
+   mehrzeiligen Blöcke** (der REPL bricht mit `SyntaxError` ab), deshalb der
+   Umweg über ein einzelnes `exec('''…''')`. Und bei gehaltenen Nachrichten ist
+   `r.key` die **Message-ID**, nicht der Hash — es braucht
+   `get_message_by_id()`, nicht `get_message_by_hash()`, sonst meldet die
+   Prüfung falsche Fehlschläge.
 
 5. **Web-Schema prüfen.** Es ist bereits da: `mailman-web` läuft auf dem
    Alt-Image und hat `mailmanweb` beim ersten Start angelegt. Gegenprobe vor
