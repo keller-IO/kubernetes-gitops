@@ -327,6 +327,40 @@ aus Phase 1 ansetzen, Richtwert 2–3 h.
 
    `bad` (15 MB) und `shunt` (1,6 MB) werden **nicht** migriert.
 
+   **Auch den Cluster-Stack anhalten** — und zwar über Git, nicht über
+   `kubectl scale`. `pg_restore` hängt sonst an Locks, solange `mailman-core`
+   mit der Datenbank verbunden ist (im Probelauf reproduziert: 2 min ohne
+   Fortschritt). Ein `kubectl scale` wird von ArgoCD binnen Sekunden
+   zurückgedreht, und ein Patch an der `Application` ebenso, weil sie aus dem
+   App-of-Apps kommt — beides am 28.07. verifiziert.
+
+   Dafür liegt der **Wartungsschalter** bereit:
+   `apps/overlays/main/mailman/maintenance-scale-to-zero.yaml`, eingebunden über
+   die `patches`-Liste des Overlays. Branch `ops/mailman-maintenance-freeze`
+   (Draft-PR) enthält ihn aktiviert.
+
+   ```bash
+   # anhalten
+   gh pr ready <PR>; gh pr merge <PR> --merge
+   kubectl -n argocd annotate application app-mailman \
+     argocd.argoproj.io/refresh=normal --overwrite      # Sync sofort statt in ~3 min
+   kubectl -n mailman rollout status deploy/mailman-core --timeout=120s
+   kubectl -n mailman get pods            # nur noch mailman-pg-1 darf laufen
+   ```
+
+   **Nach dem Import unbedingt revertieren**, sonst bleibt Mailman unten:
+
+   ```bash
+   gh pr create --base main --title "Revert: Wartungsschalter Mailman" ...   # oder
+   git revert <merge-commit> && git push
+   kubectl -n argocd annotate application app-mailman \
+     argocd.argoproj.io/refresh=normal --overwrite
+   ```
+
+   Achtung bei der Reihenfolge: der Message-Store aus Schritt 4 wird per
+   `kubectl cp` in den **laufenden** Core-Pod kopiert. Entweder erst nach dem
+   Revert, oder vor dem Anhalten — der Schritt ist idempotent, beides geht.
+
 2. **Dumps ziehen** (wie Phase 1, ohne `-probe`), Prüfsummen notieren.
 
 3. **Core-DB einspielen**: `mailmandb` leeren, Dump als Rolle `mailman`
