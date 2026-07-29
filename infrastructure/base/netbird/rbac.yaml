@@ -197,13 +197,84 @@ subjects:
     name: k8s_ops
 ---
 # k8s_ops: gezielte Schreibrechte zum Entstallen von Workloads.
-# Bewusst NICHT enthalten: secrets, serviceaccounts/token, RBAC-Schreibrechte,
-# escalate/bind/impersonate, pods/exec|attach|portforward und mutierende Wildcards.
+#
+# WARUM SO ENG (verschärft am 2026-07-29, siehe Audit-Notiz unten): RBAC kennt keine
+# Feld-Restriktion, nur Verb+Resource. Jedes Recht, das die PodSpec eines Workloads
+# kontrolliert — Jobs anlegen, oder Deployments/StatefulSets/DaemonSets/ReplicaSets
+# patchen/updaten —, erlaubt der haltenden Identität, in der PodSpec einen beliebigen
+# Secret-Mount/`envFrom: secretRef` zu setzen UND/ODER `serviceAccountName` auf eine
+# beliebige, bereits existierende ServiceAccount im Namespace umzubiegen. Letzteres
+# ist schlimmer als ein Secret-Read: der Kubelet mountet das Token der referenzierten
+# ServiceAccount automatisch als projected volume — das braucht KEIN
+# `serviceaccounts/token`-Recht (das ist eine andere API, `TokenRequest`, die nur
+# beim expliziten Minten via API-Call greift, nicht beim impliziten Auto-Mount durch
+# den Kubelet). Beispiel: `serviceAccountName: argocd-application-controller` in
+# einem selbst angelegten Job im Namespace `argocd` liefert ein gültiges Token mit
+# `*/* -> [*]` (ClusterRole `argocd-application-controller`, per `kubectl get
+# clusterrole argocd-application-controller -o yaml` verifiziert) — de facto
+# Cluster-Admin, ganz ohne je ein Secret-Objekt zu lesen. Das gilt clusterweit, weil
+# `netbird-k8s-ops-maintainer` eine ClusterRole ist und kaum ein Namespace hier
+# PodSecurity restriktiv genug durchsetzt, um das zu verhindern (`kubectl get ns -o
+# ...pod-security.kubernetes.io/enforce` zeigt für die meisten Namespaces gar kein
+# Enforce-Label, faktisch unrestricted; nur `crowdsec`/`monitoring`/`ceph-csi` haben
+# explizit `privileged` gesetzt, `netbird` nur `baseline` — kein Namespace erzwingt
+# `restricted`). Per SubjectAccessReview verifiziert (2026-07-29, read-only, kein
+# Live-Objekt angelegt): `create jobs` im Namespace `argocd` UND `netbird` war mit
+# der alten Rolle erlaubt, ebenso `patch daemonsets`/`deployments`/... überall.
+#
+# Deshalb bewusst NICHT (mehr) enthalten, über den alten Ausschluss hinaus:
+# - `batch/jobs|cronjobs: create|patch|update` — jede dieser Verben gibt volle
+#   PodSpec-Kontrolle (Secret-Mount, envFrom, serviceAccountName-Hijack). Kostet:
+#   ein Backup-CronJob lässt sich über `k8s_ops` nicht mehr manuell nachtriggern
+#   (klassisch `kubectl create job --from=cronjob/...`, braucht `jobs: create`).
+#   Verblieben ist nur `jobs: delete`, um ein bereits gescheitertes/hängendes
+#   Job-Objekt aufzuräumen — das rührt keine PodSpec an.
+# - `apps/deployments|statefulsets|daemonsets|replicasets` als Objekte (nicht die
+#   Scale-Subresource) — patchen bedeutet PodSpec-Kontrolle, exakt wie oben. Damit
+#   fällt `kubectl rollout restart` weg; das eigentliche Ziel „wedged Workload neu
+#   starten" erreicht `pods: delete` bereits: der Controller baut den Pod aus dem
+#   unveränderten Template neu, ohne dass `k8s_ops` das Template je anfasst. Scale
+#   bleibt (`*/scale`, nur `spec.replicas` + Selector, keine PodSpec-Felder) für
+#   „Deployment hoch-/runterskalieren". DaemonSets haben keine Scale-Subresource,
+#   deshalb hier komplett ohne Schreibrecht — Restart läuft auch dort über
+#   `pods: delete` (der DaemonSet-Controller stellt den Pod auf demselben Node neu her).
+# - `argoproj.io/applications: patch|update` — erlaubt, `spec.source` auf ein
+#   angreiferkontrolliertes Repo/Pfad umzubiegen; ArgoCD wendet das dann mit den
+#   eigenen, clusterweiten `*/* -> [*]`-Rechten an (ClusterRole
+#   `argocd-application-controller`, s. o.) — keine Secret-Lektüre, sondern volle
+#   Cluster-Übernahme in einem Schritt. Für „hängenden Sync abbrechen" ist
+#   Kubernetes-RBAC ohnehin der falsche Hebel: die API kann „Sync terminieren" nicht
+#   von „Source umbiegen" unterscheiden. Das gehört in ArgoCDs eigenes RBAC
+#   (`argocd-rbac-cm`, Aktion `sync` — laut ArgoCD-Server-Quellcode hängt auch
+#   `TerminateOperation` an der `sync`-Aktion, es gibt keinen eigenen
+#   `terminate`-Verb). Aktuell nicht nutzbar: `argocd-rbac-cm` hat kein `policy.csv`
+#   (nur `policy.default: role:readonly`), und ArgoCD hat keine SSO/OIDC-Anbindung
+#   (`argocd-cm` ohne `dex.config`/`oidc.config`, dafür `users.anonymous.enabled:
+#   "true"` — ein separater, hier nicht behobener Befund) — NetBird-Gruppen sind
+#   ArgoCD schlicht unbekannt. Empfehlung für einen Folge-PR (außerhalb dieses
+#   Scopes): ArgoCD-SSO verdrahten, dann in `argocd-rbac-cm` etwas wie
+#   `p, role:ops, applications, sync, */*, allow` + `g, k8s_ops, role:ops` ergänzen
+#   — Kosten: Login in ArgoCD statt reinem kubectl, plus die SSO-Anbindung selbst.
+#
+# Weiterhin bewusst NICHT enthalten (wie im alten Kommentar): secrets,
+# serviceaccounts/token, RBAC-Schreibrechte, escalate/bind/impersonate,
+# pods/exec|attach|portforward, pods/ephemeralcontainers.
+#
+# Restrisiko, das damit NICHT behoben ist (dokumentiert statt verschwiegen):
+# `pods: delete` und `pods/eviction: create` bleiben ein clusterweites
+# Denial-of-Service-Primitiv — jeder in `k8s_ops` kann jeden Pod in jedem Namespace
+# löschen/evicten (z. B. den CNPG-Primary und damit ein Failover auslösen). Das ist
+# der Preis von Requirement (a); es liest oder schreibt aber keine Credentials.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: netbird-k8s-ops-maintainer
 rules:
+  # Pod löschen/evicten: stellt einen wedged Workload aus seinem unveränderten
+  # Template neu her (Deployment-/StatefulSet-/DaemonSet-Controller reconciled ihn),
+  # ohne dass k8s_ops die PodSpec je sieht oder anfasst. Eviction respektiert
+  # PodDisruptionBudgets und ist deshalb der sanftere Weg; delete bleibt als
+  # Fallback, falls ein PDB die Eviction blockiert.
   - apiGroups: [""]
     resources: [pods]
     verbs: [delete]
@@ -216,24 +287,18 @@ rules:
   - apiGroups: [events.k8s.io]
     resources: [events]
     verbs: [create]
+  # Nur die Scale-Subresource: deren Objekt enthält ausschließlich
+  # spec.replicas/status.replicas + Selector, keine PodSpec-Felder — deshalb ohne
+  # Risiko für Requirement (b). DaemonSets haben keine Scale-Subresource und daher
+  # hier keine Zeile (siehe Begründung oben, warum das volle Objekt fehlt).
   - apiGroups: [apps]
-    resources:
-      [
-        deployments,
-        deployments/scale,
-        statefulsets,
-        statefulsets/scale,
-        daemonsets,
-        replicasets,
-        replicasets/scale,
-      ]
+    resources: [deployments/scale, statefulsets/scale, replicasets/scale]
     verbs: [patch, update]
+  # Nur delete: räumt ein bereits gescheitertes/hängendes Job-Objekt auf, ohne
+  # jemals eine PodSpec zu setzen. create/patch/update bewusst draußen (s. o.).
   - apiGroups: [batch]
-    resources: [jobs, cronjobs]
-    verbs: [create, delete, patch, update]
-  - apiGroups: [argoproj.io]
-    resources: [applications]
-    verbs: [patch, update]
+    resources: [jobs]
+    verbs: [delete]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
