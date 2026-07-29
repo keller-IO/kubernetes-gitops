@@ -1,0 +1,29 @@
+# WARTUNGSSCHALTER — nur waehrend des Migrations-Freeze aktiv.
+#
+# Warum das ueber Git laufen MUSS: `kubectl scale` haelt hier nicht. Die
+# ArgoCD-App `app-mailman` hat automated/selfHeal, und die Application selbst
+# kommt aus dem App-of-Apps — ein Patch an ihrer syncPolicy wird ebenfalls
+# sofort zurueckgesetzt. Beides am 28.07.2026 verifiziert.
+#
+# Warum es ueberhaupt noetig ist: `pg_restore` haengt an Locks, solange
+# mailman-core mit der Datenbank verbunden ist (im Probelauf reproduziert —
+# der Restore lief 2 min ohne Fortschritt und blockierte).
+#
+# Aktivieren:   die beiden `patches`-Eintraege in kustomization.yaml einkommentieren,
+#               mergen, dann Sync erzwingen (siehe docs/runbooks/mailman-migration.md).
+# Deaktivieren: den Merge revertieren. NICHT vergessen — sonst bleibt Mailman unten.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mailman-core
+  namespace: mailman
+spec:
+  replicas: 0
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mailman-web
+  namespace: mailman
+spec:
+  replicas: 0
