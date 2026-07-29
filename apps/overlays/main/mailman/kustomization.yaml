@@ -7,6 +7,10 @@ namespace: mailman
 resources:
   - ../../../base/mailman
 patches:
+  # WARTUNGSSCHALTER für den Migrations-Freeze: faehrt core und web auf 0
+  # Replicas. Siehe maintenance-scale-to-zero.yaml. Einkommentieren, mergen,
+  # Sync erzwingen — und nach dem Import wieder revertieren.
+  - path: maintenance-scale-to-zero.yaml
   - target: { kind: Ingress, name: mailman }
     patch: |
       - op: remove
