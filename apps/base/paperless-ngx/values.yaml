@@ -50,7 +50,11 @@ persistence:
 resources:
   # Gemessen am 28.07.2026: 574Mi, knapp oberhalb des alten 512Mi-Requests.
   requests: { cpu: 200m, memory: 640Mi }
-  limits: { memory: 1Gi }
+  # 1Gi war zu knapp: OOMKilled am 28.07.2026 um 13:35 kurz nach einem Rollout,
+  # waehrend der Dauerverbrauch am 29.07. bei nur 529Mi lag. Der Ausschlag kommt
+  # also vom Start (Index-/Migrations-Arbeit), nicht vom Normalbetrieb — gleiche
+  # Klasse wie mailman-web, siehe apps/base/mailman/workload.yaml.
+  limits: { memory: 1536Mi }
 # bjw-s common-library: ingress is a named map (main), not a flat block.
 ingress:
   main:
