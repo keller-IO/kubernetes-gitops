@@ -551,19 +551,49 @@ Regeln sähe die Rolle weder Postgres-Cluster noch ArgoCD-Apps noch Cilium-Polic
 Bewusst draußen: `secrets`, `certificatesigningrequests`.
 
 **`k8s_ops`** darf zusätzlich eng begrenzt mutieren, um stale/stalled Workloads zu
-reparieren: Pods löschen oder evicten, Deployments/StatefulSets/DaemonSets/ReplicaSets
-patchen/updaten (inkl. Scale-Subresources), Jobs/CronJobs für Reruns/Suspend
-create/delete/patch/update, ArgoCD-Applications patchen/updaten und Events schreiben.
-Bewusst ausgeschlossen: Secrets/Credentials, `serviceaccounts/token`, RBAC-Schreibrechte,
-`escalate`/`bind`/`impersonate` sowie `pods/exec`, `pods/attach` und `pods/portforward`.
+reparieren: Pods löschen oder evicten, Deployments/StatefulSets/ReplicaSets über die
+Scale-Subresource hoch-/runterskalieren, ein bestehendes Job-Objekt löschen und Events
+schreiben. Bewusst ausgeschlossen: Secrets/Credentials, `serviceaccounts/token`,
+RBAC-Schreibrechte, `escalate`/`bind`/`impersonate`, `pods/exec`/`pods/attach`/
+`pods/portforward`/`pods/ephemeralcontainers` — und (Audit 2026-07-29, siehe
+`rbac.yaml`-Kommentar) **kein** `create`/`patch`/`update` mehr auf
+Jobs/CronJobs/Deployments/StatefulSets/DaemonSets/ReplicaSets selbst und **kein**
+Schreibrecht mehr auf `argoproj.io/applications`: jedes dieser Rechte kontrolliert die
+PodSpec eines Workloads (Secret-Mount, `envFrom`, oder `serviceAccountName`-Hijack einer
+beliebigen bestehenden ServiceAccount samt deren automatisch gemountetem Token — dafür
+ist `serviceaccounts/token` nicht nötig) bzw. bei ArgoCD-Applications sogar die
+Sync-Source, was ArgoCD dann mit eigenen, clusterweiten `*/* -> [*]`-Rechten anwendet.
+Damit entfällt operativ: ein Backup-CronJob lässt sich über `k8s_ops` nicht mehr manuell
+nachtriggern (braucht `jobs: create`), `kubectl rollout restart` funktioniert nicht mehr
+(ersetzt durch `pods: delete`, gleicher Effekt ohne PodSpec-Zugriff), und ein hängender
+ArgoCD-Sync lässt sich nicht mehr per `kubectl patch application` abbrechen. Letzteres
+gehört ohnehin in ArgoCDs eigenes RBAC (`argocd-rbac-cm`, Aktion `sync`) statt auf
+Kubernetes-Ebene — aktuell nicht nutzbar, da `argocd-rbac-cm` kein `policy.csv` hat und
+ArgoCD keine SSO/OIDC-Anbindung besitzt (Folge-PR, außerhalb dieses Scopes).
 
 **Nach dem Merge zu tun:**
 - [ ] `kubectl` je Gruppe testen. Erwartung readonly: `get pods -A` geht, `get secret -A` 403.
       Kubeconfig zeigt auf `https://keller-main.netbird-kubeapi-proxy.netbird.selfhosted`.
-- [ ] Erwartung ops: `delete pod`, `create pods/eviction`, `patch deployment`, `patch cronjob`
-      und `patch application.argoproj.io` gehen; `get secret -A`, `create serviceaccounts/token`,
-      `patch clusterrole`, `kubectl exec`, `kubectl attach` und `kubectl port-forward` bleiben 403.
+- [ ] Erwartung ops: `delete pod`, `create pods/eviction`, `patch deployment/scale` gehen;
+      `get secret -A`, `create serviceaccounts/token`, `create jobs`, `patch deployment`,
+      `patch cronjob`, `patch application.argoproj.io`, `patch clusterrole`, `kubectl exec`,
+      `kubectl attach` und `kubectl port-forward` bleiben 403.
 - [ ] Prüfen, dass der Proxy-Peer in NetBird auftaucht und in Gruppe `k8s_api_proxy` landet.
+
+**Bekannte Lücken/Restrisiko von `k8s_ops`:**
+- [ ] **`pods: delete`/`pods/eviction: create` bleiben ein clusterweites
+      Denial-of-Service-Primitiv.** Jedes Mitglied kann jeden Pod in jedem Namespace
+      löschen/evicten (z. B. den CNPG-Primary und damit ein Failover auslösen). Das ist
+      der bewusst akzeptierte Preis von Requirement (a) — es liest oder schreibt aber
+      keine Credentials.
+- [ ] **Re-Trigger für Backup-CronJobs fehlt.** Ohne `jobs: create` kann `k8s_ops` einen
+      gescheiterten Backup-Lauf nicht mehr manuell nachstoßen, nur noch das gescheiterte
+      Job-Objekt löschen. Bewusst in Kauf genommen, siehe `rbac.yaml`-Kommentar; ein
+      separater, eng auf einen einzigen Namespace gescopeter Weg (Role statt ClusterRole,
+      plus ValidatingAdmissionPolicy gegen Secret-Mounts/`serviceAccountName`) wäre denkbar,
+      ist aber nicht Teil dieses Fixes.
+- [ ] **Hängenden ArgoCD-Sync abbrechen fehlt.** Muss aktuell durch jemanden mit direktem
+      ArgoCD-Zugriff (Admin) erfolgen, bis ArgoCD-SSO + `argocd-rbac-cm`-Policy existieren.
 
 **Bekannte Lücken von `k8s_readonly`:**
 - [ ] **`pods/log` clusterweit.** In `view` enthalten und für „alles lesen" nötig — aber der
