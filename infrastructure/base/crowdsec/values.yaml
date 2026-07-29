@@ -39,6 +39,24 @@ config:
       port: 5432
       sslmode: prefer
 
+# Ohne dies generiert der Chart csLapiSecret/registrationToken bei JEDEM Render
+# neu: _helpers.tpl versucht per `lookup "v1" "Secret" ...` das bestehende
+# Secret zu lesen und den Wert wiederzuverwenden, fällt sonst auf
+# randAscii/randAlphaNum zurück. `lookup` funktioniert nur gegen einen echten
+# Cluster — wir inflaten den Chart aber mit kustomizes Helm-Inflator
+# (`kustomize build --enable-helm`) bzw. im ArgoCD-repo-server, beide ohne
+# Cluster-Zugriff. `lookup` liefert dort IMMER leer, also griff bei jedem Sync
+# der Random-Fallback: neues Secret → geänderte Pod-Annotation
+# `checksum/lapi-secret` → Deployment rollt → landet auf anderem Node →
+# Multi-Attach auf den ceph-rbd-PVCs (RWO). Mit externalSecret.name gesetzt
+# rendert der Chart sein eigenes Secret gar nicht mehr (siehe lapi-secrets.yaml:
+# `{{- if or (not .Values.secrets.externalSecret.name) .Values.lapi.extraSecrets -}}`);
+# stattdessen liefern wir crowdsec-lapi-secrets selbst per SOPS/KSOPS
+# (lapi-secret.sops.yaml + secret-generator.yaml) — stabil über Syncs hinweg.
+secrets:
+  externalSecret:
+    name: crowdsec-lapi-secrets
+
 lapi:
   resources:
     requests: { cpu: 100m, memory: 256Mi }
