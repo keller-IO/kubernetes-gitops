@@ -536,7 +536,44 @@ Ohne echten Mailfluss prüfbar:
     --to test@lists.jitmail.de --from postmaster@jitcreatives.de'
   ```
 
-## Phase 4 — Mail-Cutover A (minimal, sofort rückrollbar)
+## Phase 4 — Mail-Cutover A — **vollzogen am 29.07.2026**
+
+Sicherung der alten Map liegt auf `.15` unter
+`/root/transport_mailman.bak-20260729-183245`.
+
+**Verifiziert, in dieser Reihenfolge:**
+
+1. Negativtest — `gibtesnicht@wohngut.net` über den vollen Weg: Postfix routet
+   nach `192.168.2.247:8024`, der Cluster antwortet
+   `550 Requested action not taken: mailbox unavailable`. Der Transport greift,
+   und Unbekanntes wird sauber abgelehnt.
+2. Positivtest — `kunden-request@lists.jitmail.de` mit `help`: `status=sent
+   (250 Ok)`. Ein `-request`-Kommando antwortet nur dem Absender und behelligt
+   keine Mitglieder; das ist der richtige Test für einen Cutover.
+3. Ausgang — die Antwort verließ den Cluster von **192.168.2.84** (Talos-Node)
+   über mx02 und wurde von mail04 mit `250 2.0.0 Ok` angenommen.
+4. Signatur — spam01 zeigt für diese Nachricht
+   `DKIM_SIGNED{jitmail.de:s=2023}` **und** `ARC_SIGNED{jitmail.de:s=2023:i=1}`.
+   Die `sign_networks`-Vorarbeit für die Node-IPs greift also.
+
+**⚠️ Dabei aufgetreten: der LMTP-Runner startet nicht immer mit.** Direkt nach
+dem Cutover lief jede Mail in `connect to 192.168.2.247:8024: Connection
+refused`. Ursache im Core-Log:
+
+```
+TimeoutError: SMTP server started, but not responding within allotted time.
+Try increasing the `ready_timeout` parameter.
+```
+
+Das ist aiosmtpds Selbsttest nach dem Binden, der zu früh aufgibt. Der Prozess
+war tot, **Port 8001 lief aber weiter — der Pod galt als gesund**, während der
+Maileingang stand. Ein `kubectl rollout restart deploy/mailman-core` hat es
+behoben.
+
+Konsequenz: die Probes prüfen seither **beide** Ports (exec statt tcpSocket,
+siehe `workload.yaml`), damit ein toter LMTP-Runner einen Neustart auslöst
+statt unsichtbar zu bleiben. Tritt der Fehler häufiger auf, ist der nächste
+Schritt `ready_timeout` in einer `mailman-extra.cfg` hochzusetzen.
 
 Nur **eine** Datei ändert sich; der komplette Weg davor bleibt bestehen.
 

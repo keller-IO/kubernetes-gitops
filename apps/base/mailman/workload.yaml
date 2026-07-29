@@ -77,20 +77,28 @@ spec:
               mountPath: /opt/mailman
           # Der Start wartet auf Postgres und richtet die DB ein; nach dem
           # Import kommt ein restauriertes Schema dazu. Liveness erst danach.
+          # Die Probes pruefen BEIDE Ports, nicht nur die REST-API. Beim
+          # Mail-Cutover am 29.07.2026 ist der LMTP-Runner beim Podstart mit
+          # "TimeoutError: SMTP server started, but not responding within
+          # allotted time" (aiosmtpd ready_timeout) abgestuerzt und nicht
+          # wiedergekommen. Port 8001 lief weiter, der Pod galt als gesund —
+          # waehrend Postfix jede Listenmail mit "Connection refused" auf 8024
+          # zurueckstellte. Ein Ausfall des Maileingangs darf nicht unsichtbar
+          # sein; mit dieser Probe startet der Pod sich in dem Fall selbst neu.
           startupProbe:
-            tcpSocket:
-              port: api
+            exec:
+              command: ["sh", "-c", "netstat -tln | grep -q ':8001 ' && netstat -tln | grep -q ':8024 '"]
             periodSeconds: 10
             failureThreshold: 60
           readinessProbe:
-            tcpSocket:
-              port: api
+            exec:
+              command: ["sh", "-c", "netstat -tln | grep -q ':8001 ' && netstat -tln | grep -q ':8024 '"]
             periodSeconds: 15
             timeoutSeconds: 5
             failureThreshold: 4
           livenessProbe:
-            tcpSocket:
-              port: api
+            exec:
+              command: ["sh", "-c", "netstat -tln | grep -q ':8001 ' && netstat -tln | grep -q ':8024 '"]
             periodSeconds: 30
             timeoutSeconds: 10
             failureThreshold: 6
