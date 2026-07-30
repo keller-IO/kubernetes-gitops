@@ -184,7 +184,7 @@ unselektierter HTTP-01-Fallback existiert bewusst nicht mehr.
 - [ ] `_acme-challenge`-CNAMEs für `imcor.de`, `jonaks.com` und
       `naturkindergarten-moehringen.de` beim jeweiligen Provider anlegen; erst
       danach TLS für diese Namen aktivieren.
-- [ ] Nach erfolgreichem TLS-Rollout die temporären Staging-Certificates entfernen.
+- [ ] Nach erfolgreichem TLS-Rollout die drei DNS-01-Probe-Certificates entfernen.
 
 **Beispiel** (`infrastructure/base/cert-manager/cluster-issuer.sops.yaml`):
 ```yaml
@@ -412,7 +412,7 @@ Jede App liegt unter `apps/base/<app>/` (Basis) + `apps/overlays/main/<app>/` (C
 | App | Pfad (Basis) | Offene App-spezifische Schritte |
 |-----|--------------|----------------------------------|
 | **kimai** | `apps/base/kimai/` | Secret füllen; `serverVersion` der MariaDB im `DATABASE_URL` angleichen; OIDC aktivieren (Web-Login). |
-| **roundcube** | `apps/base/roundcube/` | Legacy-Domains `roundcube.savar.de`, `webmail01.jit-creatives.de`, `jitmail.de`, `www.jitmail.de` und `webmail.daec-berlin.de` sind für Cluster-TLS vorbereitet. `mail.steinba.ch` bleibt bis zur DNS-01-CNAME-Delegation HTTP-only. PostgreSQL-Schemafehler der historischen pgloader-Migration am 27.07. repariert (`postgres-schema-repair-20260727.sql`). Externen IMAP/SMTP setzen; `managesieve`-Backend prüfen; Session-Cache auf Valkey umstellen (config). |
+| **roundcube** | `apps/base/roundcube/` | Alle Legacy-Domains sind für Cluster-TLS vorbereitet; `mail.steinba.ch` nutzt den zonenbegrenzten HTTP-01-Solver in-place, die übrigen Namen DNS-01. PostgreSQL-Schemafehler der historischen pgloader-Migration am 27.07. repariert (`postgres-schema-repair-20260727.sql`). Externen IMAP/SMTP setzen; `managesieve`-Backend prüfen; Session-Cache auf Valkey umstellen (config). |
 | **collabora** | `apps/base/collabora/` | `aliasgroups`-Regex auf reale WOPI-Hosts; Admin-Passwort; WOPI-Client (z.B. Nextcloud) anbinden. |
 | **eurooffice** | `apps/base/eurooffice/` | JWT-Secret (`jwt-secret`, bereits generiert/verschlüsselt) in der Nextcloud-Connector-App spiegeln (`occ config:app:set eurooffice ...` auf nc01/nc02-dev, URL `https://eurooffice.jit.services`); All-in-One-Image (interne PG/RabbitMQ/Redis) — bei >1 Nextcloud auf offizielles Kubernetes-Docs-Chart + CNPG umstellen (braucht CephFS-RWX); Erststart dauert (Font-Cache), Healthcheck `/healthcheck`. |
 | **paperless-ngx** | `apps/base/paperless-ngx/` | Externe Domain `paperless.savar.de` ist mit Cluster-TLS im Overlay gesetzt; HTTPS-Redirect bleibt bis zum Router-Cutover deaktiviert. Admin + SECRET_KEY; OIDC-JSON `server_url`/`secret`; CephFS-RWX für media/consume bestätigen. |

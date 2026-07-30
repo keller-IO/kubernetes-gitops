@@ -221,9 +221,14 @@ oeffentlich sichtbar und liess sich sauber entfernen.
 
 Bei den externen Providern sind exakt diese CNAMEs anzulegen:
 
+United Domains bietet dafuer eine REST-API, diese erfordert jedoch ein separat
+gebuchtes DNS-API-Produkt und einen portfolioweit gueltigen `X-API-Key`. Fuer
+`imcor.de` und `jonaks.com` werden die sieben statischen CNAMEs deshalb einmalig
+manuell im Portfolio angelegt; laufende API-Zugangsdaten werden nicht im Cluster
+benoetigt.
+
 | Provider-Record | Ziel |
 |---|---|
-| `_acme-challenge.stream.horads.de` | `_acme-challenge.stream.horads.de.acme.jit-creatives.de.` |
 | `_acme-challenge.imcor.de` | `_acme-challenge.imcor.de.acme.jit-creatives.de.` |
 | `_acme-challenge.www.imcor.de` | `_acme-challenge.www.imcor.de.acme.jit-creatives.de.` |
 | `_acme-challenge.db.imcor.de` | `_acme-challenge.db.imcor.de.acme.jit-creatives.de.` |
@@ -231,8 +236,6 @@ Bei den externen Providern sind exakt diese CNAMEs anzulegen:
 | `_acme-challenge.jonaks.com` | `_acme-challenge.jonaks.com.acme.jit-creatives.de.` |
 | `_acme-challenge.www.jonaks.com` | `_acme-challenge.www.jonaks.com.acme.jit-creatives.de.` |
 | `_acme-challenge.cloud.naturkindergarten-moehringen.de` | `_acme-challenge.cloud.naturkindergarten-moehringen.de.acme.jit-creatives.de.` |
-| `_acme-challenge.mail.steinba.ch` | `_acme-challenge.mail.steinba.ch.acme.jit-creatives.de.` |
-| `_acme-challenge.cloud.steinba.ch` | `_acme-challenge.cloud.steinba.ch.acme.jit-creatives.de.` |
 
 Provider-UIs, die den Zonennamen automatisch anhaengen, erhalten links nur den
 relativen Record-Namen. Nach jeder Aenderung muessen CNAME und Ziel ueber einen

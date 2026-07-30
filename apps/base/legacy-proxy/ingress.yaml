@@ -66,7 +66,7 @@ metadata:
   namespace: legacy-proxy
   annotations:
     acme.cert-manager.io/http01-edit-in-place: "true"
-    cert-manager.io/cluster-issuer: letsencrypt-staging
+    cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.org/ssl-redirect: "false"
     nginx.org/redirect-to-https: "false"
     # Icecast-Stream: Buffering aus + lange Timeouts (Dauer-Verbindung). Als
