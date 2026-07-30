@@ -96,14 +96,17 @@ Kubernetes importiert.
 1. `jit.services` bleibt beim vorhandenen ClouDNS-DNS-01-Webhook.
 2. Auf `dns01.jit-creatives.de` autoritative Zonen werden ueber den vorhandenen
    RFC2136-Solver und das SOPS-Secret `rfc2136-tsig` bedient.
-3. Zonen bei anderen Providern koennen `_acme-challenge` per CNAME auf eine
-   dedizierte, von `dns01` verwaltete ACME-Zone delegieren. Der Solver braucht
-   dafuer `cnameStrategy: Follow`.
+3. `imcor.de`, `jonaks.com` und `naturkindergarten-moehringen.de` delegieren
+   `_acme-challenge` per CNAME auf die von `dns01` verwalteten Zielnamen. Der
+   Solver verwendet dafuer `cnameStrategy: Follow`.
 4. `binaergewitter.de` verwendet fuer den ersten Cutover den vorhandenen globalen
    Cloudflare-Key aus der Traefik-Compose-Umgebung. Eine API-Pruefung bestaetigte,
    dass das Konto nur diese eine Zone verwaltet. Das Ziel bleibt ein auf die Zone
    beschraenkter API-Token mit `Zone:Read` und `DNS:Edit`.
-5. HTTP-01 bleibt nur Fallback und ist keine Voraussetzung fuer den Cutover.
+5. `horads.de` und `steinba.ch` verwenden mangels Provider-Zugriff HTTP-01.
+   Der Solver ist explizit auf diese beiden Zonen begrenzt. Weil nginx-inc einen
+   zweiten Ingress mit demselben Host ablehnt, setzt jeder betroffene Ingress
+   `acme.cert-manager.io/http01-edit-in-place: "true"`.
 
 Eine CNAME-Delegation gilt pro angefordertem DNS-Namen. Fuer Zertifikate mit
 mehreren SANs braucht jeder Name einen eigenen `_acme-challenge.<name>`-CNAME;
@@ -179,14 +182,14 @@ Ingresses:
 | `paperless-ngx/paperless-paperless-ngx` | `paperless.savar.de` | RFC2136 | direkt | TXT E2E verifiziert |
 | `mailman/mailman` | `lists.jitmail.de` | RFC2136 | direkt | TXT E2E verifiziert |
 | `roundcube/roundcube-jitmail` | `roundcube.savar.de`, `webmail01.jit-creatives.de`, `jitmail.de`, `www.jitmail.de`, `webmail.daec-berlin.de` | RFC2136 | direkt | TXT E2E verifiziert |
-| `roundcube/roundcube-jitmail` | `mail.steinba.ch` | RFC2136 Follow | CNAME fehlt | blockiert |
+| `roundcube/roundcube-jitmail` | `mail.steinba.ch` | HTTP-01 in-place | direkt ueber Port 80 | Staging ausstehend |
 | `collabora/collabora-office-savar` | `office.savar.de` | RFC2136 | direkt | TXT E2E verifiziert |
 | `binaergewitter/binaergewitter` | `comments`, `search`, `download`, `pad`, `plan` unter `binaergewitter.de` | Cloudflare | direkt | Staging ausstehend |
 | `binaergewitter/binaergewitter` | `podcast.savar.de` | RFC2136 | direkt | TXT E2E verifiziert |
 | `binaergewitter/binaergewitter-etherpad` | `etherpad.binaergewitter.de` | Cloudflare | direkt | Staging ausstehend |
 | `legacy-proxy/mgmt02` | vier Namen unter `jit-creatives.de`/`jitcreatives.de` | RFC2136 | direkt | TXT E2E verifiziert |
 | `legacy-proxy/umdiehand` | zwei Namen unter `jit-creatives.de` | RFC2136 | direkt | TXT E2E verifiziert |
-| `legacy-proxy/horads` | `stream.horads.de` | RFC2136 Follow | CNAME fehlt | blockiert |
+| `legacy-proxy/horads` | `stream.horads.de` | HTTP-01 in-place | direkt ueber Port 80 | Staging ausstehend |
 | `legacy-proxy/gitlab` | `gitlab.jit-creatives.de` | RFC2136 | direkt | TXT E2E verifiziert |
 | `legacy-proxy/gitlab-registry` | `registry.jit-creatives.de`, `registry.savar.de` | RFC2136 | direkt | TXT E2E verifiziert |
 | `legacy-proxy/spam` | `spam.savar.de` | RFC2136 | direkt | TXT E2E verifiziert |
@@ -195,7 +198,8 @@ Ingresses:
 | `legacy-proxy/auth` | `auth.savar.de`, `auth2.savar.de` | RFC2136 | direkt | TXT E2E verifiziert |
 | `legacy-proxy/s3` | `s3.savar.de`, `s3.jit-creatives.de` | RFC2136 | direkt | TXT E2E verifiziert |
 | `legacy-proxy/jitcloud` | `cloud.savar.de`, `jit.cloud`, `cloud.daec-berlin.de` | RFC2136 | direkt | TXT E2E verifiziert |
-| `legacy-proxy/jitcloud` | Namen unter `naturkindergarten-moehringen.de`/`steinba.ch` | RFC2136 Follow | CNAMEs fehlen | blockiert |
+| `legacy-proxy/jitcloud` | `cloud.naturkindergarten-moehringen.de` | RFC2136 Follow | CNAME fehlt | blockiert |
+| `legacy-proxy/jitcloud` | `cloud.steinba.ch` | HTTP-01 in-place | direkt ueber Port 80 | Staging ausstehend |
 | `legacy-proxy/cloud-dev` | `cloud-dev.savar.de` | RFC2136 | direkt | TXT E2E verifiziert |
 | `phpmyadmin/phpmyadmin` | `dbadmin.jit.services` | ClouDNS | direkt | bestehender Produktionspfad |
 | `phpmyadmin/phpmyadmin` | `phpmyadmin.savar.de`, `phpmyadmin.jit-creatives.de` | RFC2136 | direkt | TXT E2E verifiziert |

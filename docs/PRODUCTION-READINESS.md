@@ -169,16 +169,20 @@ Cloudflare-API-Key. Die Secrets liegen SOPS-verschlüsselt im cert-manager-Base.
 
 Production und Staging besitzen dieselbe Solvermatrix. Drei Staging-Certificates
 prüfen ClouDNS, RFC2136 und Cloudflare vor dem produktiven Ingress-TLS-Rollout.
-Ein unselektierter HTTP-01-Fallback existiert bewusst nicht mehr.
+`horads.de` und `steinba.ch` nutzen zusätzlich einen ausschließlich auf diese
+beiden Zonen selektierten HTTP-01-Solver. Die Challenge wird wegen der strikten
+Host-Eindeutigkeit von nginx-inc in-place im vorhandenen Ingress ergänzt. Ein
+unselektierter HTTP-01-Fallback existiert bewusst nicht mehr.
 
 **Offen:**
-- [ ] Alle drei DNS-01-Staging-Certificates `Ready=True` prüfen und den tatsächlich
-      gewählten Solver in den `Challenge`-Ressourcen bestätigen.
+- [ ] Alle drei DNS-01-Staging-Certificates sowie die Staging-Zertifikate für
+      `stream.horads.de`, `mail.steinba.ch` und `cloud.steinba.ch` als
+      `Ready=True` prüfen und den tatsächlich gewählten Solver bestätigen.
 - [ ] Den globalen Cloudflare-Key durch einen auf `binaergewitter.de` beschränkten
       API-Token mit `Zone:Read` und `DNS:Edit` ersetzen.
-- [ ] `_acme-challenge`-CNAMEs für `horads.de`, `imcor.de`, `jonaks.com`,
-      `naturkindergarten-moehringen.de` und `steinba.ch` beim jeweiligen Provider
-      anlegen; erst danach TLS für diese Namen aktivieren.
+- [ ] `_acme-challenge`-CNAMEs für `imcor.de`, `jonaks.com` und
+      `naturkindergarten-moehringen.de` beim jeweiligen Provider anlegen; erst
+      danach TLS für diese Namen aktivieren.
 - [ ] Nach erfolgreichem TLS-Rollout die temporären Staging-Certificates entfernen.
 
 **Beispiel** (`infrastructure/base/cert-manager/cluster-issuer.sops.yaml`):

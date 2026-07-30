@@ -4,23 +4,23 @@ metadata:
     name: cloudns-credentials
     namespace: cert-manager
 stringData:
-    auth_id: ENC[AES256_GCM,data:gppc0ZY=,iv:fV7tOOMR7mYtXQ/eSjR0hI9L5/yGfw0ICcGcSP/Ur6c=,tag:cdyvXiFr6XKLVYq4Le2ArQ==,type:str]
-    auth_password: ENC[AES256_GCM,data:+VrSEfJaJVIHDNuM,iv:+L9t9VscyTHEx/ivLbdO6qrbEZjyvPr3TO5IP6J03o0=,tag:r3+MrPhuMsM7lOUCg2bk1Q==,type:str]
+    auth_id: ENC[AES256_GCM,data:/Ak9G08=,iv:WDxOx4re4RyJv++Saa2aohsTYWay/jSui0VtzK/G5Xc=,tag:NPQLi8tceCg5n5JdNN5yUg==,type:str]
+    auth_password: ENC[AES256_GCM,data:owzUs0w807e5obky,iv:0lLfHN2CZcnbOM5tfMW/xOMWC1aV6N84qEjiXxzHlLg=,tag:v3uFZLlgv3WkoZw5ty7rzg==,type:str]
 type: Opaque
 sops:
     age:
         - enc: |
             -----BEGIN AGE ENCRYPTED FILE-----
-            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBLUVNHTTVOUlJQWWk3MldH
-            TTdpQW9OcGtPS0FzZ3RKWmdOYlBXanlOQUZ3CmZtQ2t2cVVHTjVoWW5COTY4aThy
-            RWdoQ1FSSS9JZk1ES0ZSdnpxdUZJaXcKLS0tIGdNRTFGVnlqQlZsVnY2OTZ2SEp0
-            TnpjVHVaU0l2MFltZWJvWXVaTUtnNm8KvasA/Iehz5ill0TKvdGFfNBM9Ntigrk/
-            wZO1gxpI8R47IzfhTD3Ztpzg5VS7zfpn44FFoi3vNt/iIYrvHkYZbA==
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBIRlEyUHpqM2U4amVLZlhG
+            RHlxRE1pWk1FRE95YmJCQ254S09vUzJybUhvClFRRTFKMUlKR0tkV2U5dUR3d1Q4
+            Sm4xZis0WGd2cE41aFZaQ0FLYUpBZTQKLS0tIDdTbyt4Vk5adVFlczN2TlNucTJM
+            eGhxSjR1V0hnUXJsamxDSmJiKzFnVGsKbsqvfXhB923JcUHclx5CezzIKc2jMFjF
+            j1mmcaB9A7xtVVQzY+fxQI7F8o36C4wliPNkJ9h8v8imc9hH0WQvXA==
             -----END AGE ENCRYPTED FILE-----
           recipient: age17x04ga87qyu9lzcuja9k83z90veew9cez7jusul4y5xyr09xaejs9rq755
     encrypted_regex: ^(data|stringData)$
-    lastmodified: "2026-07-30T12:43:20Z"
-    mac: ENC[AES256_GCM,data:E4K4ymdt5HoWZgQT65nnVqSVth7z7KbHJ6eKdmB0mjI4QjEIt6qXEuyjbQK9o47lXZ2wa1PyuJQlLRrEzPjNLaXsdYGonirnT1pwIYXYdLAffPf0H9Nl+GuAqPR3+uHwPR4HZrKtqf+G1wHXtAkCRP1cuqpIa7fBMfbORGHKHeA=,iv:OZTp7X32Ph4NtFyBFNmBLjvsL7q8Bh6RXtDpeH3EhoQ=,tag:vSYl12dl0eWmerP9FtR3yA==,type:str]
+    lastmodified: "2026-07-30T13:32:44Z"
+    mac: ENC[AES256_GCM,data:Pnmf37HfLdRSqu5Fh0uja1yQrip7Y5D4a3lcVN9xkvRzCnd+/SKA8JfIo71MlNSJBOD8VYYU7ACfKVzduiXRvuuRhx3K5sMXXrBuu2CNvafnKMCwHpbV7B9hy5zUxfu0x7WSM4HZ8DZvn7mSzWLicg+4wiS2kujjkV0yzsSs4tA=,iv:54+Q/bmViNZ4coNZL0LjuTWIUaOnbwnmOCjLimIj5Ds=,tag:V055JUjvzXx8wKg1Tq90iA==,type:str]
     version: 3.13.3
 ---
 apiVersion: cert-manager.io/v1
@@ -80,25 +80,30 @@ spec:
                         key: secret
               selector:
                 dnsZones:
-                    - horads.de
                     - imcor.de
                     - jonaks.com
                     - naturkindergarten-moehringen.de
+            - http01:
+                ingress:
+                    ingressClassName: nginx
+              selector:
+                dnsZones:
+                    - horads.de
                     - steinba.ch
 sops:
     age:
         - enc: |
             -----BEGIN AGE ENCRYPTED FILE-----
-            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBLUVNHTTVOUlJQWWk3MldH
-            TTdpQW9OcGtPS0FzZ3RKWmdOYlBXanlOQUZ3CmZtQ2t2cVVHTjVoWW5COTY4aThy
-            RWdoQ1FSSS9JZk1ES0ZSdnpxdUZJaXcKLS0tIGdNRTFGVnlqQlZsVnY2OTZ2SEp0
-            TnpjVHVaU0l2MFltZWJvWXVaTUtnNm8KvasA/Iehz5ill0TKvdGFfNBM9Ntigrk/
-            wZO1gxpI8R47IzfhTD3Ztpzg5VS7zfpn44FFoi3vNt/iIYrvHkYZbA==
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBIRlEyUHpqM2U4amVLZlhG
+            RHlxRE1pWk1FRE95YmJCQ254S09vUzJybUhvClFRRTFKMUlKR0tkV2U5dUR3d1Q4
+            Sm4xZis0WGd2cE41aFZaQ0FLYUpBZTQKLS0tIDdTbyt4Vk5adVFlczN2TlNucTJM
+            eGhxSjR1V0hnUXJsamxDSmJiKzFnVGsKbsqvfXhB923JcUHclx5CezzIKc2jMFjF
+            j1mmcaB9A7xtVVQzY+fxQI7F8o36C4wliPNkJ9h8v8imc9hH0WQvXA==
             -----END AGE ENCRYPTED FILE-----
           recipient: age17x04ga87qyu9lzcuja9k83z90veew9cez7jusul4y5xyr09xaejs9rq755
     encrypted_regex: ^(data|stringData)$
-    lastmodified: "2026-07-30T12:43:20Z"
-    mac: ENC[AES256_GCM,data:E4K4ymdt5HoWZgQT65nnVqSVth7z7KbHJ6eKdmB0mjI4QjEIt6qXEuyjbQK9o47lXZ2wa1PyuJQlLRrEzPjNLaXsdYGonirnT1pwIYXYdLAffPf0H9Nl+GuAqPR3+uHwPR4HZrKtqf+G1wHXtAkCRP1cuqpIa7fBMfbORGHKHeA=,iv:OZTp7X32Ph4NtFyBFNmBLjvsL7q8Bh6RXtDpeH3EhoQ=,tag:vSYl12dl0eWmerP9FtR3yA==,type:str]
+    lastmodified: "2026-07-30T13:32:44Z"
+    mac: ENC[AES256_GCM,data:Pnmf37HfLdRSqu5Fh0uja1yQrip7Y5D4a3lcVN9xkvRzCnd+/SKA8JfIo71MlNSJBOD8VYYU7ACfKVzduiXRvuuRhx3K5sMXXrBuu2CNvafnKMCwHpbV7B9hy5zUxfu0x7WSM4HZ8DZvn7mSzWLicg+4wiS2kujjkV0yzsSs4tA=,iv:54+Q/bmViNZ4coNZL0LjuTWIUaOnbwnmOCjLimIj5Ds=,tag:V055JUjvzXx8wKg1Tq90iA==,type:str]
     version: 3.13.3
 ---
 apiVersion: cert-manager.io/v1
@@ -158,23 +163,28 @@ spec:
                         key: secret
               selector:
                 dnsZones:
-                    - horads.de
                     - imcor.de
                     - jonaks.com
                     - naturkindergarten-moehringen.de
+            - http01:
+                ingress:
+                    ingressClassName: nginx
+              selector:
+                dnsZones:
+                    - horads.de
                     - steinba.ch
 sops:
     age:
         - enc: |
             -----BEGIN AGE ENCRYPTED FILE-----
-            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBLUVNHTTVOUlJQWWk3MldH
-            TTdpQW9OcGtPS0FzZ3RKWmdOYlBXanlOQUZ3CmZtQ2t2cVVHTjVoWW5COTY4aThy
-            RWdoQ1FSSS9JZk1ES0ZSdnpxdUZJaXcKLS0tIGdNRTFGVnlqQlZsVnY2OTZ2SEp0
-            TnpjVHVaU0l2MFltZWJvWXVaTUtnNm8KvasA/Iehz5ill0TKvdGFfNBM9Ntigrk/
-            wZO1gxpI8R47IzfhTD3Ztpzg5VS7zfpn44FFoi3vNt/iIYrvHkYZbA==
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBIRlEyUHpqM2U4amVLZlhG
+            RHlxRE1pWk1FRE95YmJCQ254S09vUzJybUhvClFRRTFKMUlKR0tkV2U5dUR3d1Q4
+            Sm4xZis0WGd2cE41aFZaQ0FLYUpBZTQKLS0tIDdTbyt4Vk5adVFlczN2TlNucTJM
+            eGhxSjR1V0hnUXJsamxDSmJiKzFnVGsKbsqvfXhB923JcUHclx5CezzIKc2jMFjF
+            j1mmcaB9A7xtVVQzY+fxQI7F8o36C4wliPNkJ9h8v8imc9hH0WQvXA==
             -----END AGE ENCRYPTED FILE-----
           recipient: age17x04ga87qyu9lzcuja9k83z90veew9cez7jusul4y5xyr09xaejs9rq755
     encrypted_regex: ^(data|stringData)$
-    lastmodified: "2026-07-30T12:43:20Z"
-    mac: ENC[AES256_GCM,data:E4K4ymdt5HoWZgQT65nnVqSVth7z7KbHJ6eKdmB0mjI4QjEIt6qXEuyjbQK9o47lXZ2wa1PyuJQlLRrEzPjNLaXsdYGonirnT1pwIYXYdLAffPf0H9Nl+GuAqPR3+uHwPR4HZrKtqf+G1wHXtAkCRP1cuqpIa7fBMfbORGHKHeA=,iv:OZTp7X32Ph4NtFyBFNmBLjvsL7q8Bh6RXtDpeH3EhoQ=,tag:vSYl12dl0eWmerP9FtR3yA==,type:str]
+    lastmodified: "2026-07-30T13:32:44Z"
+    mac: ENC[AES256_GCM,data:Pnmf37HfLdRSqu5Fh0uja1yQrip7Y5D4a3lcVN9xkvRzCnd+/SKA8JfIo71MlNSJBOD8VYYU7ACfKVzduiXRvuuRhx3K5sMXXrBuu2CNvafnKMCwHpbV7B9hy5zUxfu0x7WSM4HZ8DZvn7mSzWLicg+4wiS2kujjkV0yzsSs4tA=,iv:54+Q/bmViNZ4coNZL0LjuTWIUaOnbwnmOCjLimIj5Ds=,tag:V055JUjvzXx8wKg1Tq90iA==,type:str]
     version: 3.13.3
