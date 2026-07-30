@@ -212,6 +212,31 @@ Der dokumentierte Recovery-Ablauf war: `rndc freeze`, `named-checkzone`, die
 jeweilige `.db.jnl` reversibel nach `.jnl.stale-20260730T124500Z` verschieben,
 danach `rndc thaw`. Ein erneuter E2E-Test war fuer alle neun Zonen erfolgreich.
 
+Die delegierten Challenges verwenden eindeutige Ziele unter
+`acme.jit-creatives.de`. Ein permanenter TXT-Record am Knoten
+`acme.jit-creatives.de` verhindert, dass das vorhandene
+`*.jit-creatives.de`-CNAME auf `halbe.jit-creatives.de` fuer diese tieferen
+Namen synthetisiert wird. Ein temporaeres RFC2136-Update unter diesem Knoten war
+oeffentlich sichtbar und liess sich sauber entfernen.
+
+Bei den externen Providern sind exakt diese CNAMEs anzulegen:
+
+United Domains bietet dafuer eine REST-API, diese erfordert jedoch ein separat
+gebuchtes DNS-API-Produkt und einen portfolioweit gueltigen `X-API-Key`. Fuer
+`imcor.de` und `jonaks.com` werden die sechs statischen CNAMEs deshalb einmalig
+manuell im Portfolio angelegt; laufende API-Zugangsdaten werden nicht im Cluster
+benoetigt.
+
+| Provider-Record | Ziel |
+|---|---|
+| `_acme-challenge.imcor.de` | `_acme-challenge.imcor.de.acme.jit-creatives.de.` |
+| `_acme-challenge.www.imcor.de` | `_acme-challenge.www.imcor.de.acme.jit-creatives.de.` |
+| `_acme-challenge.db.imcor.de` | `_acme-challenge.db.imcor.de.acme.jit-creatives.de.` |
+| `_acme-challenge.config.imcor.de` | `_acme-challenge.config.imcor.de.acme.jit-creatives.de.` |
+| `_acme-challenge.jonaks.com` | `_acme-challenge.jonaks.com.acme.jit-creatives.de.` |
+| `_acme-challenge.www.jonaks.com` | `_acme-challenge.www.jonaks.com.acme.jit-creatives.de.` |
+| `_acme-challenge.cloud.naturkindergarten-moehringen.de` | `_acme-challenge.cloud.naturkindergarten-moehringen.de.acme.jit-creatives.de.` |
+
 Die sechs United-Domains-CNAMEs fuer `imcor.de` und `jonaks.com` wurden am
 30.07.2026 auf allen drei autoritativen UD-Nameservern sowie ueber Google und
 Quad9 bestaetigt. Fuer alle sechs Namen wurde anschliessend ein temporaerer TXT
@@ -219,6 +244,11 @@ am RFC2136-Ziel erstellt, ueber den urspruenglichen Namen oeffentlich gelesen
 und wieder entfernt. Cloudflare `1.1.1.1` hielt fuer
 `_acme-challenge.db.imcor.de` voruebergehend eine negative SOA-Antwort im Cache;
 auch dieser Resolver lieferte nach Ablauf des Caches den korrekten CNAME.
+
+Provider-UIs, die den Zonennamen automatisch anhaengen, erhalten links nur den
+relativen Record-Namen. Nach jeder Aenderung muessen CNAME und Ziel ueber einen
+oeffentlichen Resolver geprueft werden, bevor das zugehoerige Ingress-TLS
+aktiviert wird.
 
 Ein blosses `Certificate Ready=True` reicht nicht: Zu jeder Ausstellung wird
 der erzeugte `Challenge` kontrolliert. Der aktuelle unselektierte

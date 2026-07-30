@@ -20,6 +20,12 @@ patches:
                     port:
                       number: 80
       - op: add
+        path: /spec/tls/0/hosts/-
+        value: phpmyadmin.savar.de
+      - op: add
+        path: /spec/tls/0/hosts/-
+        value: phpmyadmin.jit-creatives.de
+      - op: add
         path: /spec/rules/-
         value:
           host: phpmyadmin.jit-creatives.de

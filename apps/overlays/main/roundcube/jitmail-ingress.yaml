@@ -5,13 +5,20 @@ metadata:
   namespace: roundcube
   annotations:
     acme.cert-manager.io/http01-edit-in-place: "true"
-    cert-manager.io/cluster-issuer: letsencrypt-staging
+    cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.org/ssl-redirect: "false"
     nginx.org/redirect-to-https: "false"
     nginx.org/client-max-body-size: "25m"
 spec:
   ingressClassName: nginx
   tls:
+    - hosts:
+        - roundcube.savar.de
+        - webmail01.jit-creatives.de
+        - jitmail.de
+        - webmail.daec-berlin.de
+        - www.jitmail.de
+      secretName: roundcube-jitmail-tls
     - hosts:
         - mail.steinba.ch
       secretName: roundcube-steinba-tls

@@ -1,8 +1,7 @@
 # Reverse-Proxy für die binaergewitter-Subdomains -> savarcast (192.168.2.66),
 # nachgebaut aus dem .15-Traefik (binaergewitter_service/binaergewitter2_service).
-# HTTP-only: TLS wird upstream terminiert (Cloudflare bzw. .15/Router), genau wie
-# bisher. Für Cluster-direktes TLS: cert-manager-Issuer + tls-Block ergänzen,
-# sobald die Domains öffentlich auf .246 zeigen.
+# Cluster-TLS wird vor dem Routerwechsel ausgestellt; HTTPS-Redirects bleiben
+# bis dahin deaktiviert.
 # CORS aus der Traefik cors-headers-Middleware als location-snippet nachgebaut.
 ---
 apiVersion: networking.k8s.io/v1
@@ -11,6 +10,7 @@ metadata:
   name: binaergewitter
   namespace: binaergewitter
   annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.org/ssl-redirect: "false"
     nginx.org/redirect-to-https: "false"
     # CORS aus der Traefik cors-headers-Middleware, mit Standard-nginx add_header
@@ -24,6 +24,17 @@ metadata:
       add_header 'Access-Control-Max-Age' '100' always;
 spec:
   ingressClassName: nginx
+  tls:
+    - hosts:
+        - comments.binaergewitter.de
+        - search.binaergewitter.de
+        - download.binaergewitter.de
+        - pad.binaergewitter.de
+        - plan.binaergewitter.de
+      secretName: binaergewitter-tls
+    - hosts:
+        - podcast.savar.de
+      secretName: binaergewitter-podcast-tls
   rules:
     - host: comments.binaergewitter.de
       http:
@@ -56,11 +67,16 @@ metadata:
   name: binaergewitter-etherpad
   namespace: binaergewitter
   annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.org/ssl-redirect: "false"
     nginx.org/redirect-to-https: "false"
     nginx.org/websocket-services: savarcast-etherpad # Etherpad braucht WebSockets
 spec:
   ingressClassName: nginx
+  tls:
+    - hosts:
+        - etherpad.binaergewitter.de
+      secretName: binaergewitter-etherpad-tls
   rules:
     - host: etherpad.binaergewitter.de
       http:
