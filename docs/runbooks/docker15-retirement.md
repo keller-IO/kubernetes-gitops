@@ -212,6 +212,33 @@ Der dokumentierte Recovery-Ablauf war: `rndc freeze`, `named-checkzone`, die
 jeweilige `.db.jnl` reversibel nach `.jnl.stale-20260730T124500Z` verschieben,
 danach `rndc thaw`. Ein erneuter E2E-Test war fuer alle neun Zonen erfolgreich.
 
+Die delegierten Challenges verwenden eindeutige Ziele unter
+`acme.jit-creatives.de`. Ein permanenter TXT-Record am Knoten
+`acme.jit-creatives.de` verhindert, dass das vorhandene
+`*.jit-creatives.de`-CNAME auf `halbe.jit-creatives.de` fuer diese tieferen
+Namen synthetisiert wird. Ein temporaeres RFC2136-Update unter diesem Knoten war
+oeffentlich sichtbar und liess sich sauber entfernen.
+
+Bei den externen Providern sind exakt diese CNAMEs anzulegen:
+
+| Provider-Record | Ziel |
+|---|---|
+| `_acme-challenge.stream.horads.de` | `_acme-challenge.stream.horads.de.acme.jit-creatives.de.` |
+| `_acme-challenge.imcor.de` | `_acme-challenge.imcor.de.acme.jit-creatives.de.` |
+| `_acme-challenge.www.imcor.de` | `_acme-challenge.www.imcor.de.acme.jit-creatives.de.` |
+| `_acme-challenge.db.imcor.de` | `_acme-challenge.db.imcor.de.acme.jit-creatives.de.` |
+| `_acme-challenge.config.imcor.de` | `_acme-challenge.config.imcor.de.acme.jit-creatives.de.` |
+| `_acme-challenge.jonaks.com` | `_acme-challenge.jonaks.com.acme.jit-creatives.de.` |
+| `_acme-challenge.www.jonaks.com` | `_acme-challenge.www.jonaks.com.acme.jit-creatives.de.` |
+| `_acme-challenge.cloud.naturkindergarten-moehringen.de` | `_acme-challenge.cloud.naturkindergarten-moehringen.de.acme.jit-creatives.de.` |
+| `_acme-challenge.mail.steinba.ch` | `_acme-challenge.mail.steinba.ch.acme.jit-creatives.de.` |
+| `_acme-challenge.cloud.steinba.ch` | `_acme-challenge.cloud.steinba.ch.acme.jit-creatives.de.` |
+
+Provider-UIs, die den Zonennamen automatisch anhaengen, erhalten links nur den
+relativen Record-Namen. Nach jeder Aenderung muessen CNAME und Ziel ueber einen
+oeffentlichen Resolver geprueft werden, bevor das zugehoerige Ingress-TLS
+aktiviert wird.
+
 Ein blosses `Certificate Ready=True` reicht nicht: Zu jeder Ausstellung wird
 der erzeugte `Challenge` kontrolliert. Der aktuelle unselektierte
 Catch-all-HTTP01-Solver muss vor der Massenanforderung entfernt oder auf
