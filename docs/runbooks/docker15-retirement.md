@@ -1,6 +1,6 @@
 # Abschaltplan fuer docker15 (192.168.2.15)
 
-Status: Architektur- und Cutover-Plan, noch nicht zur Ausfuehrung freigegeben.
+Status: Phase 1 inventarisiert; Phase 2 vorbereitet, noch nicht ausgerollt.
 
 Planstand: 2026-07-30.
 
@@ -99,10 +99,10 @@ Kubernetes importiert.
 3. Zonen bei anderen Providern koennen `_acme-challenge` per CNAME auf eine
    dedizierte, von `dns01` verwaltete ACME-Zone delegieren. Der Solver braucht
    dafuer `cnameStrategy: Follow`.
-4. `binaergewitter.de` verwendet aktuell Cloudflare-Zugangsdaten aus der
-   Traefik-Compose-Umgebung (`CF_API_EMAIL`, `CF_API_KEY`). Bevorzugt wird ein
-   neuer, zonenbeschraenkter API-Token mit `Zone:Read` und `DNS:Edit`, gespeichert
-   in einem SOPS-Secret. Alternativ wird auch diese Zone per CNAME delegiert.
+4. `binaergewitter.de` verwendet fuer den ersten Cutover den vorhandenen globalen
+   Cloudflare-Key aus der Traefik-Compose-Umgebung. Eine API-Pruefung bestaetigte,
+   dass das Konto nur diese eine Zone verwaltet. Das Ziel bleibt ein auf die Zone
+   beschraenkter API-Token mit `Zone:Read` und `DNS:Edit`.
 5. HTTP-01 bleibt nur Fallback und ist keine Voraussetzung fuer den Cutover.
 
 Eine CNAME-Delegation gilt pro angefordertem DNS-Namen. Fuer Zertifikate mit
@@ -112,8 +112,10 @@ Zone und Nutzung eingesetzt.
 
 Vor der Solver-Zuordnung jeder Zone muss die oeffentliche NS-Delegation geprueft
 werden. Eine vorhandene Zone auf `dns01` beweist nicht, dass sie im Internet
-autoritative Antworten liefert. Das gilt insbesondere fuer
-`gemeinsam-fuer-halbe.de`, das aktuell an Cloudflare delegiert ist.
+autoritative Antworten liefert. `gemeinsam-fuer-halbe.de` war in einer frueheren
+Pruefung bei Cloudflare; die Registry- und Autoritaetspruefung am 30.07.2026
+lieferte dagegen `ns.jitcreatives.de` und `ns3.jitcreatives.de`. Diese Delegation
+muss unmittelbar vor dem Rollout erneut kontrolliert werden.
 
 Zu inventarisierende Zonen:
 
@@ -166,11 +168,45 @@ Zuerst wird mit einem `letsencrypt-staging`-Issuer getestet. Produktion folgt
 erst, wenn TXT-Create, oeffentliche Sichtbarkeit und Cleanup fuer jede
 Solver-Klasse funktionieren.
 
-Vor der Ausstellung wird eine versionierte Matrix erstellt:
+Solvermatrix fuer die bisher HTTP-only oder nur teilweise TLS-abgedeckten
+Ingresses:
 
-| Zertifikat/Ingress | DNS-Namen | Solver | Autoritative Zone | Delegation/CNAME | Challenge verifiziert |
-|---|---|---|---|---|---|
-| auszufuellen | auszufuellen | ClouDNS/RFC2136/Cloudflare | auszufuellen | direkt/CNAME | nein |
+| Ingress | DNS-Namen | Solver | Delegation | Status |
+|---|---|---|---|---|
+| `wordpress-1/wordpress` | `jugendbeauftragter-halbe.de`, `www.jugendbeauftragter-halbe.de` | RFC2136 | direkt | TXT E2E verifiziert |
+| `wordpress-2/wordpress` | `gemeinsam-fuer-halbe.de`, `www.gemeinsam-fuer-halbe.de` | RFC2136 | direkt | TXT E2E verifiziert; NS vor Rollout pruefen |
+| `kimai/kimai` | `kimai.savar.de` | RFC2136 | direkt | TXT E2E verifiziert |
+| `paperless-ngx/paperless-paperless-ngx` | `paperless.savar.de` | RFC2136 | direkt | TXT E2E verifiziert |
+| `mailman/mailman` | `lists.jitmail.de` | RFC2136 | direkt | TXT E2E verifiziert |
+| `roundcube/roundcube-jitmail` | `roundcube.savar.de`, `webmail01.jit-creatives.de`, `jitmail.de`, `www.jitmail.de`, `webmail.daec-berlin.de` | RFC2136 | direkt | TXT E2E verifiziert |
+| `roundcube/roundcube-jitmail` | `mail.steinba.ch` | RFC2136 Follow | CNAME fehlt | blockiert |
+| `collabora/collabora-office-savar` | `office.savar.de` | RFC2136 | direkt | TXT E2E verifiziert |
+| `binaergewitter/binaergewitter` | `comments`, `search`, `download`, `pad`, `plan` unter `binaergewitter.de` | Cloudflare | direkt | Staging ausstehend |
+| `binaergewitter/binaergewitter` | `podcast.savar.de` | RFC2136 | direkt | TXT E2E verifiziert |
+| `binaergewitter/binaergewitter-etherpad` | `etherpad.binaergewitter.de` | Cloudflare | direkt | Staging ausstehend |
+| `legacy-proxy/mgmt02` | vier Namen unter `jit-creatives.de`/`jitcreatives.de` | RFC2136 | direkt | TXT E2E verifiziert |
+| `legacy-proxy/umdiehand` | zwei Namen unter `jit-creatives.de` | RFC2136 | direkt | TXT E2E verifiziert |
+| `legacy-proxy/horads` | `stream.horads.de` | RFC2136 Follow | CNAME fehlt | blockiert |
+| `legacy-proxy/gitlab` | `gitlab.jit-creatives.de` | RFC2136 | direkt | TXT E2E verifiziert |
+| `legacy-proxy/gitlab-registry` | `registry.jit-creatives.de`, `registry.savar.de` | RFC2136 | direkt | TXT E2E verifiziert |
+| `legacy-proxy/spam` | `spam.savar.de` | RFC2136 | direkt | TXT E2E verifiziert |
+| `legacy-proxy/imcor` | sechs Namen unter `imcor.de`/`jonaks.com` | RFC2136 Follow | CNAMEs fehlen | blockiert |
+| `legacy-proxy/aios` | `www.aios.tools`, `test.aios.tools` | RFC2136 | direkt | TXT E2E verifiziert |
+| `legacy-proxy/auth` | `auth.savar.de`, `auth2.savar.de` | RFC2136 | direkt | TXT E2E verifiziert |
+| `legacy-proxy/s3` | `s3.savar.de`, `s3.jit-creatives.de` | RFC2136 | direkt | TXT E2E verifiziert |
+| `legacy-proxy/jitcloud` | `cloud.savar.de`, `jit.cloud`, `cloud.daec-berlin.de` | RFC2136 | direkt | TXT E2E verifiziert |
+| `legacy-proxy/jitcloud` | Namen unter `naturkindergarten-moehringen.de`/`steinba.ch` | RFC2136 Follow | CNAMEs fehlen | blockiert |
+| `legacy-proxy/cloud-dev` | `cloud-dev.savar.de` | RFC2136 | direkt | TXT E2E verifiziert |
+| `phpmyadmin/phpmyadmin` | `dbadmin.jit.services` | ClouDNS | direkt | bestehender Produktionspfad |
+| `phpmyadmin/phpmyadmin` | `phpmyadmin.savar.de`, `phpmyadmin.jit-creatives.de` | RFC2136 | direkt | TXT E2E verifiziert |
+
+Am 30.07.2026 wurden in allen neun RFC2136-Zonen temporaere TXT-Records
+erstellt, ueber `1.1.1.1` verifiziert und wieder entfernt. Bei
+`jitcreatives.de`, `jugendbeauftragter-halbe.de` und `jit.cloud` nahmen die
+unsigned Zonen Updates an, waehrend die inline-signierten Views festhingen.
+Der dokumentierte Recovery-Ablauf war: `rndc freeze`, `named-checkzone`, die
+jeweilige `.db.jnl` reversibel nach `.jnl.stale-20260730T124500Z` verschieben,
+danach `rndc thaw`. Ein erneuter E2E-Test war fuer alle neun Zonen erfolgreich.
 
 Ein blosses `Certificate Ready=True` reicht nicht: Zu jeder Ausstellung wird
 der erzeugte `Challenge` kontrolliert. Der aktuelle unselektierte
