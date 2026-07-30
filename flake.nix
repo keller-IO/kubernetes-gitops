@@ -1,5 +1,5 @@
 {
-  description = "keller.io — GitOps dev shell (kustomize, kubeconform, sops, age, yamllint)";
+  description = "keller.io — GitOps and Talos operations dev shell";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -34,7 +34,7 @@
         devShells.default = pkgs.mkShell {
           name = "keller.io";
 
-          # Tooling required by the justfile recipes and the CI pipeline.
+          # Tooling required by validation and cluster operations.
           packages = with pkgs; [
             just # task runner
             kustomize # manifest rendering
@@ -45,6 +45,8 @@
             age # age keys for SOPS (age + age-keygen)
             yamllint # YAML linting
             kubectl # cluster access
+            talosctl # Talos node diagnostics and maintenance
+            jq # parse Kubernetes and Talos JSON output
             argocd # inspect ArgoCD state
           ];
 
