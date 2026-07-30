@@ -4,11 +4,20 @@ metadata:
   name: roundcube-jitmail
   namespace: roundcube
   annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.org/ssl-redirect: "false"
     nginx.org/redirect-to-https: "false"
     nginx.org/client-max-body-size: "25m"
 spec:
   ingressClassName: nginx
+  tls:
+    - hosts:
+        - roundcube.savar.de
+        - webmail01.jit-creatives.de
+        - jitmail.de
+        - webmail.daec-berlin.de
+        - www.jitmail.de
+      secretName: roundcube-jitmail-tls
   rules:
     - host: roundcube.savar.de
       http:

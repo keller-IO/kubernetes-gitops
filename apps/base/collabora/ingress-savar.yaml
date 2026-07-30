@@ -1,11 +1,9 @@
 # Cutover-Ingress: uebernimmt office.savar.de von dockerswarm02 in den Cluster.
 #
 # Warum ein eigener Ingress und nicht ein zweiter Host im Chart-Ingress:
-# office.jit.services laeuft mit Cluster-TLS (cert-manager, redirect-to-https),
-# office.savar.de dagegen HTTP-only — die TLS-Terminierung passiert davor am
-# .15-Traefik, genau wie bisher beim legacy-proxy-Eintrag. Zwei Hosts mit
-# unterschiedlichem TLS-Verhalten lassen sich im Chart-Ingress nicht sauber
-# abbilden.
+# office.jit.services laeuft mit Cluster-TLS und eigenem Redirect-Verhalten.
+# office.savar.de bleibt deshalb in einem separaten Ingress; sein Redirect wird
+# erst beim Router-Cutover aktiviert.
 #
 # Es ist KEINE DNS-Aenderung noetig: office.savar.de (87.191.135.42) laeuft schon
 # heute ueber den .15-Traefik auf den Cluster-Ingress — der legacy-proxy-Eintrag
@@ -24,7 +22,7 @@ metadata:
   name: collabora-office-savar
   namespace: collabora
   annotations:
-    # HTTP-only: TLS terminiert am vorgelagerten .15-Traefik (wie bisher).
+    cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.org/ssl-redirect: "false"
     nginx.org/redirect-to-https: "false"
     # MUSS dem Service-Namen entsprechen, sonst verwirft NGINX den GESAMTEN
@@ -40,6 +38,10 @@ metadata:
     nginx.org/client-max-body-size: "0"
 spec:
   ingressClassName: nginx
+  tls:
+    - hosts:
+        - office.savar.de
+      secretName: collabora-office-savar-tls
   rules:
     - host: office.savar.de
       http:
