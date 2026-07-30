@@ -223,7 +223,7 @@ Bei den externen Providern sind exakt diese CNAMEs anzulegen:
 
 United Domains bietet dafuer eine REST-API, diese erfordert jedoch ein separat
 gebuchtes DNS-API-Produkt und einen portfolioweit gueltigen `X-API-Key`. Fuer
-`imcor.de` und `jonaks.com` werden die sieben statischen CNAMEs deshalb einmalig
+`imcor.de` und `jonaks.com` werden die sechs statischen CNAMEs deshalb einmalig
 manuell im Portfolio angelegt; laufende API-Zugangsdaten werden nicht im Cluster
 benoetigt.
 
