@@ -13,6 +13,9 @@ Format und Kriterien: siehe AGENTS.md → „Operational Learnings".
   folgen keinem atomaren Host-Rename; Nextcloud muss zusaetzlich dem Pod-CIDR
   des neuen Proxy-Hops vertrauen.
 - [EuroOffice-Connector behält transiente Verbindungsfehler](eurooffice-stale-settings-error.md)
+- [Externes CephFS nach Node-Stall](external-cephfs-client-stall-recovery.md) — Node
+  und Mount koennen gesund wirken, obwohl die MDS-Session verworfen wurde; erst
+  ein echter Cross-Node-I/O-Test bestaetigt die Recovery.
 - [NIC 5.x verwirft Ingress bei ungueltiger Annotation](nginx-ingress-5x-annotation-strictness.md)
   — `proxy-buffering: "off"` statt `"false"` legte radio.jit.services still auf 404.
 - [Roundcube: pgloader-Schema-Typen](roundcube-pgloader-schema-types.md)

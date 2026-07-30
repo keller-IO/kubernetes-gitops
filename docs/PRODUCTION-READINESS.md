@@ -133,6 +133,9 @@ spec:
       (`ceph-rbd` = RWO, `ceph-fs` = RWX). Doppelte Klassen löschen, wenn Ceph sie schon liefert.
 - [ ] S3/RGW: Bucket-StorageClass-Namen für `ObjectBucketClaim` setzen (`ceph-bucket`).
 - [ ] RWX (CephFS) dort bestätigen, wo mehrere Replicas teilen (paperless media, wordpress wp-content).
+- [ ] Vor CephFS-Aktivierung Cross-Node-RWX und CSI-Recovery nach einem
+      kontrollierten Node-Reboot testen; MDS-Session und reales Datei-I/O
+      explizit verifizieren (`docs/learnings/external-cephfs-client-stall-recovery.md`).
 - [ ] Default-StorageClass festlegen (aktuell `ceph-rbd`).
 
 **Beispiel** — S3-Bucket via OBC (siehe `infrastructure/base/storage/objectbucket-example.yaml`):
@@ -261,6 +264,8 @@ https://auth.savar.de/realms/bgt
       (AGENTS.md: „Alertmanager → Notification needs to be done!")
 - [ ] Retention/Storage-Size an Clustergröße anpassen.
 - [ ] ServiceMonitor/PodMonitor-Scrape für CNPG, MariaDB, Valkey, NGINX, Cilium prüfen.
+- [ ] Alerts fuer CephFS-CSI-Mount-/Sessionfehler und das Alter des letzten
+      erfolgreichen Backups einrichten; ein vorhandener Zeitplan reicht nicht.
 
 **Beispiel** — Alertmanager-Receiver (`infrastructure/base/monitoring/values.yaml`):
 ```yaml
