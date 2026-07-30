@@ -259,3 +259,43 @@ ports: [{ name: https, port: 443 }]
 endpoints:
   - addresses: ["192.168.2.217"]
     conditions: { ready: true }
+---
+# cloud-dev (Nextcloud-Dev, HTTPS-Backend) -> nc01-dev 192.168.2.220:443
+# nc02-dev bleibt draussen, solange 192.168.2.221 nicht erreichbar ist und noch
+# nicht derselbe Release-Stand nachgewiesen wurde.
+apiVersion: v1
+kind: Service
+metadata: { name: cloud-dev, namespace: legacy-proxy }
+spec:
+  ports: [{ name: https, port: 443, targetPort: 443 }]
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: cloud-dev
+  namespace: legacy-proxy
+  labels: { kubernetes.io/service-name: cloud-dev }
+addressType: IPv4
+ports: [{ name: https, port: 443 }]
+endpoints:
+  - addresses: ["192.168.2.220"]
+    conditions: { ready: true }
+---
+# Nextcloud notify_push -> nc01-dev 192.168.2.220:7867 (HTTP/WebSocket)
+apiVersion: v1
+kind: Service
+metadata: { name: cloud-dev-push, namespace: legacy-proxy }
+spec:
+  ports: [{ name: http, port: 7867, targetPort: 7867 }]
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: cloud-dev-push
+  namespace: legacy-proxy
+  labels: { kubernetes.io/service-name: cloud-dev-push }
+addressType: IPv4
+ports: [{ name: http, port: 7867 }]
+endpoints:
+  - addresses: ["192.168.2.220"]
+    conditions: { ready: true }

@@ -110,6 +110,11 @@ config:
       url: https://lists.jitmail.de/postorius/lists/
       interval: 60s
       conditions: ["[STATUS] == 200"]
+    - name: nextcloud-dev
+      group: extern (via Legacy-Traefik)
+      url: https://cloud-dev.savar.de/status.php
+      interval: 60s
+      conditions: ["[STATUS] == 200", "[BODY].installed == true", "[BODY].maintenance == false"]
     - name: jugendbeauftragter-halbe
       group: extern (via Legacy-Traefik)
       url: https://jugendbeauftragter-halbe.de

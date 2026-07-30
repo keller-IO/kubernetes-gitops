@@ -28,3 +28,4 @@ data:
   host_icecast: radio.jit.services
   host_phpmyadmin: dbadmin.jit.services
   host_nextcloud_yealink_phonebook: phonebook.jit.services
+  host_nextcloud_dev: cloud-dev.savar.de
