@@ -38,6 +38,21 @@ aus.
 
    Erwartet: HTTP 200, `installed=true`, `maintenance=false`.
 
+6. Nextcloud vertraut neben dem LAN auch dem Cluster-Pod-CIDR. Der aktuelle
+   vierte Eintrag ist `10.244.0.0/16`:
+
+   ```bash
+   ssh root@192.168.2.220 \
+     'sudo -u www-data php8.4 /var/www/nextcloud/occ config:system:get trusted_proxies'
+   ```
+
+   Fehlt der CIDR, nach Sicherung von `config.php` ergaenzen:
+
+   ```bash
+   ssh root@192.168.2.220 \
+     'sudo -u www-data php8.4 /var/www/nextcloud/occ config:system:set trusted_proxies 3 --value=10.244.0.0/16'
+   ```
+
 ## Traefik umstellen
 
 Datei auf `192.168.2.15`:
@@ -58,9 +73,22 @@ Datei auf `192.168.2.15`:
          - url: http://192.168.2.246:80
    ```
 
-Traefik beobachtet die dynamische Datei und laedt sie automatisch neu. Vor dem
-Speichern auf korrekte YAML-Einrueckung achten; danach die Traefik-Logs auf
-Parserfehler pruefen.
+Vor dem Speichern auf korrekte YAML-Einrueckung achten. Die Datei ist als
+einzelne Datei nach `/dynamic_conf.yml` in den Container bind-gemountet. Ein
+atomarer Austausch per `mv` erzeugt auf dem Host einen neuen Inode, waehrend der
+laufende Container die alte Datei behaelt. Nach einem solchen Austausch Traefik
+kontrolliert neu starten oder den bestehenden Mount-Inode aktualisieren und einen
+neuen File-Event ausloesen. Anschliessend muessen beide Hashes uebereinstimmen:
+
+```bash
+ssh root@192.168.2.15 \
+  'sha256sum /opt/containers/traefik/data/dynamic_conf.yml; docker exec traefik sha256sum /dynamic_conf.yml'
+```
+
+Danach die Traefik-Logs auf Parserfehler pruefen. Ein `404` von Traefik direkt
+nach dem Schreiben weist darauf hin, dass der File-Watcher einen temporaer
+leeren Zwischenstand geladen hat; den Event dann auf der vollstaendigen Datei
+erneut ausloesen.
 
 ## Verifikation
 
@@ -68,7 +96,7 @@ Parserfehler pruefen.
 curl -fsS https://cloud-dev.savar.de/status.php
 curl -fsSI https://cloud-dev.savar.de/login
 ssh root@192.168.2.220 \
-  'sudo -u www-data php8.4 /var/www/nextcloud/occ notify_push:setup'
+  'sudo -u www-data php8.4 /var/www/nextcloud/occ notify_push:setup https://cloud-dev.savar.de/push'
 ```
 
 Zusatztests:
@@ -83,7 +111,9 @@ Zusatztests:
 1. `dynamic_conf.yml` aus der Sicherung wiederherstellen.
 2. Alternativ `jitcloud-dev_router` zurueck auf `jitcloud-dev_service` setzen
    und `jitcloud-dev_push_router` wieder aktivieren.
-3. `status.php`, Login und `notify_push:setup` erneut pruefen.
+3. Falls die Datei atomar ersetzt wurde, Traefik neu starten oder den laufenden
+   Mount-Inode ebenfalls aktualisieren.
+4. `status.php`, Login und `notify_push:setup` erneut pruefen.
 
 Der Rollback veraendert weder Nextcloud-Daten noch Datenbank oder Redis; es wird
 nur der Proxy-Pfad zurueckgeschaltet.
