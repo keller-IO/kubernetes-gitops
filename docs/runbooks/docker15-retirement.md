@@ -193,7 +193,7 @@ Ingresses:
 | `legacy-proxy/gitlab` | `gitlab.jit-creatives.de` | RFC2136 | direkt | TXT E2E verifiziert |
 | `legacy-proxy/gitlab-registry` | `registry.jit-creatives.de`, `registry.savar.de` | RFC2136 | direkt | TXT E2E verifiziert |
 | `legacy-proxy/spam` | `spam.savar.de` | RFC2136 | direkt | TXT E2E verifiziert |
-| `legacy-proxy/imcor` | sechs Namen unter `imcor.de`/`jonaks.com` | RFC2136 Follow | CNAMEs fehlen | blockiert |
+| `legacy-proxy/imcor` | sechs Namen unter `imcor.de`/`jonaks.com` | RFC2136 Follow | CNAMEs vorhanden | Staging nach Ablauf negativer Caches |
 | `legacy-proxy/aios` | `www.aios.tools`, `test.aios.tools` | RFC2136 | direkt | TXT E2E verifiziert |
 | `legacy-proxy/auth` | `auth.savar.de`, `auth2.savar.de` | RFC2136 | direkt | TXT E2E verifiziert |
 | `legacy-proxy/s3` | `s3.savar.de`, `s3.jit-creatives.de` | RFC2136 | direkt | TXT E2E verifiziert |
@@ -236,6 +236,12 @@ benoetigt.
 | `_acme-challenge.jonaks.com` | `_acme-challenge.jonaks.com.acme.jit-creatives.de.` |
 | `_acme-challenge.www.jonaks.com` | `_acme-challenge.www.jonaks.com.acme.jit-creatives.de.` |
 | `_acme-challenge.cloud.naturkindergarten-moehringen.de` | `_acme-challenge.cloud.naturkindergarten-moehringen.de.acme.jit-creatives.de.` |
+
+Die sechs United-Domains-CNAMEs fuer `imcor.de` und `jonaks.com` wurden am
+30.07.2026 auf allen drei autoritativen UD-Nameservern sowie ueber Google und
+Quad9 bestaetigt. Cloudflare `1.1.1.1` hielt fuer
+`_acme-challenge.db.imcor.de` noch eine negative SOA-Antwort im Cache. Der
+Staging-Rollout wartet, bis auch dieser Cache abgelaufen ist.
 
 Provider-UIs, die den Zonennamen automatisch anhaengen, erhalten links nur den
 relativen Record-Namen. Nach jeder Aenderung muessen CNAME und Ziel ueber einen

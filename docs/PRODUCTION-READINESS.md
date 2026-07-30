@@ -177,13 +177,17 @@ unselektierter HTTP-01-Fallback existiert bewusst nicht mehr.
 
 **Offen:**
 - [ ] Alle drei DNS-01-Staging-Certificates sowie die Staging-Zertifikate für
-      `stream.horads.de`, `mail.steinba.ch` und `cloud.steinba.ch` als
-      `Ready=True` prüfen und den tatsächlich gewählten Solver bestätigen.
+      `stream.horads.de`, `mail.steinba.ch`, `cloud.steinba.ch` und den
+      `imcor.de`/`jonaks.com`-SAN-Satz als `Ready=True` prüfen und den tatsächlich
+      gewählten Solver bestätigen.
 - [ ] Den globalen Cloudflare-Key durch einen auf `binaergewitter.de` beschränkten
       API-Token mit `Zone:Read` und `DNS:Edit` ersetzen.
-- [ ] `_acme-challenge`-CNAMEs für `imcor.de`, `jonaks.com` und
-      `naturkindergarten-moehringen.de` beim jeweiligen Provider anlegen; erst
-      danach TLS für diese Namen aktivieren.
+- [x] Sechs `_acme-challenge`-CNAMEs für `imcor.de` und `jonaks.com` bei United
+      Domains angelegt und autoritativ sowie über mehrere öffentliche Resolver
+      verifiziert. Der negative Cache für `db.imcor.de` auf `1.1.1.1` muss vor
+      dem Staging-Rollout ablaufen.
+- [ ] `_acme-challenge.cloud.naturkindergarten-moehringen.de` beim Provider
+      anlegen; erst danach TLS für diesen Namen aktivieren.
 - [ ] Nach erfolgreichem TLS-Rollout die drei DNS-01-Probe-Certificates entfernen.
 
 **Beispiel** (`infrastructure/base/cert-manager/cluster-issuer.sops.yaml`):
