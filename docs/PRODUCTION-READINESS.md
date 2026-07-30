@@ -184,8 +184,9 @@ unselektierter HTTP-01-Fallback existiert bewusst nicht mehr.
       API-Token mit `Zone:Read` und `DNS:Edit` ersetzen.
 - [x] Sechs `_acme-challenge`-CNAMEs für `imcor.de` und `jonaks.com` bei United
       Domains angelegt und autoritativ sowie über mehrere öffentliche Resolver
-      verifiziert. Der negative Cache für `db.imcor.de` auf `1.1.1.1` muss vor
-      dem Staging-Rollout ablaufen.
+      verifiziert. TXT-Create, Auflösung über die ursprünglichen Namen und Cleanup
+      waren für alle sechs Delegationen erfolgreich. Der negative Cache für
+      `db.imcor.de` auf `1.1.1.1` muss vor dem Staging-Rollout ablaufen.
 - [ ] `_acme-challenge.cloud.naturkindergarten-moehringen.de` beim Provider
       anlegen; erst danach TLS für diesen Namen aktivieren.
 - [ ] Nach erfolgreichem TLS-Rollout die drei DNS-01-Probe-Certificates entfernen.
