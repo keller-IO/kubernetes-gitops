@@ -21,6 +21,20 @@ config:
     dashboard-subheading: Verfuegbarkeit unserer oeffentlichen Dienste
     default-sort-by: group
   endpoints:
+    - name: Nextcloud
+      group: Cloud
+      url: https://jit.cloud/status.php
+      interval: 60s
+      conditions:
+        - "[STATUS] == 200"
+        - "[BODY].installed == true"
+        - "[BODY].maintenance == false"
+        - "[BODY].needsDbUpgrade == false"
+      ui:
+        hide-url: true
+        hide-hostname: true
+        hide-conditions: true
+        hide-errors: true
     - name: Nextcloud Dev
       group: Cloud
       url: https://cloud-dev.savar.de/status.php
@@ -64,9 +78,79 @@ config:
         hide-hostname: true
         hide-conditions: true
         hide-errors: true
+    - name: SMTP
+      group: Kommunikation
+      url: starttls://mail.jit-creatives.de:587
+      interval: 60s
+      client:
+        timeout: 5s
+      conditions:
+        - "[CONNECTED] == true"
+        - "[CERTIFICATE_EXPIRATION] > 168h"
+      ui:
+        hide-url: true
+        hide-hostname: true
+        hide-conditions: true
+        hide-errors: true
+    - name: IMAP
+      group: Kommunikation
+      url: tls://mail.jit-creatives.de:993
+      interval: 60s
+      client:
+        timeout: 5s
+      conditions:
+        - "[CONNECTED] == true"
+        - "[CERTIFICATE_EXPIRATION] > 168h"
+      ui:
+        hide-url: true
+        hide-hostname: true
+        hide-conditions: true
+        hide-errors: true
     - name: Mailinglisten
       group: Kommunikation
       url: https://lists.jitmail.de/postorius/lists/
+      interval: 60s
+      conditions: ["[STATUS] == 200"]
+      ui:
+        hide-url: true
+        hide-hostname: true
+        hide-conditions: true
+        hide-errors: true
+    - name: GitLab
+      group: Plattform
+      url: https://gitlab.jit-creatives.de/users/sign_in
+      interval: 60s
+      conditions: ["[STATUS] == 200"]
+      ui:
+        hide-url: true
+        hide-hostname: true
+        hide-conditions: true
+        hide-errors: true
+    - name: Keycloak
+      group: Plattform
+      url: https://auth.savar.de/realms/bgt/.well-known/openid-configuration
+      interval: 60s
+      conditions:
+        - "[STATUS] == 200"
+        - "has([BODY].issuer) == true"
+      ui:
+        hide-url: true
+        hide-hostname: true
+        hide-conditions: true
+        hide-errors: true
+    - name: Mastodon
+      group: Community
+      url: https://jit.social/health
+      interval: 60s
+      conditions: ["[STATUS] == 200"]
+      ui:
+        hide-url: true
+        hide-hostname: true
+        hide-conditions: true
+        hide-errors: true
+    - name: Binaergewitter Downloads
+      group: Community
+      url: https://download.binaergewitter.de/
       interval: 60s
       conditions: ["[STATUS] == 200"]
       ui:
