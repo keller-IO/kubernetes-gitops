@@ -7,7 +7,7 @@ namespace: mailman
 resources:
   - ../../../base/mailman
 patches:
-  - path: maintenance-scale-to-zero.yaml
+  - path: maintenance-start-core.yaml
   - target: { kind: Ingress, name: mailman }
     patch: |
       - op: remove
