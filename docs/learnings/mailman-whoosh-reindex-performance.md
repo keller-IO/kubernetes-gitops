@@ -104,6 +104,35 @@ committen. Das vermeidet die wiederholte Segmentarbeit von
 Standard-Builder auf Dokumentvollstaendigkeit und identische Suchtreffer
 getestet werden.
 
+## Uebergrosse Mailtexte im Index begrenzen
+
+Der groesste Hebel liegt vor dem Suchbackend. HyperKittys
+`email_text.txt` uebergibt den vollstaendigen Wert von `object.content` an den
+Filter `nolongterms`. Damit werden auch mehrmegabytegrosse Systemberichte
+vollstaendig durch Djangos Template-Auswertung und Haystacks
+`full_prepare()` geschickt.
+
+Eine Begrenzung gilt nur fuer den Suchindex; Mailtext und Anzeige im Archiv
+bleiben unveraendert. Fuer den produktiven Bestand ergeben sich:
+
+| Indexlimit pro Mail | Betroffene Mails | Zu indexierender Mailtext |
+|---|---:|---:|
+| keines | 0 | 4.335 MiB |
+| 2 MiB | 521 | 3.598 MiB |
+| 1 MiB | 1.054 | 2.860 MiB |
+| 256 KiB | 3.821 | 1.460 MiB |
+
+Ein Limit von 1 MiB entfernt also rund ein Drittel des zu tokenisierenden
+Textes und deckelt den schlimmsten Einzelfall von 27,5 MiB. Nachteil: Begriffe,
+die in einer uebergrossen Mail erst hinter dem Limit stehen, sind nicht mehr
+auffindbar. Betreff, Absender, Tags, Datum, Attachment-Namen und der erste Teil
+des Bodys bleiben suchbar.
+
+Vor einer produktiven Aenderung auf einer Restore-Kopie mit einem
+ueberschriebenen Haystack-Template benchmarken und fachlich entscheiden, ob
+1 MiB oder 256 KiB ausreichen. Ein Limit ist fuer diesen Bestand
+voraussichtlich wirksamer als ein reiner Storage-Wechsel.
+
 ## NFS und CephFS
 
 Ein Netzwerkdateisystem ist technisch als Staging-Speicher moeglich, aber kein
@@ -129,7 +158,7 @@ ein dedizierter Worker oder eine temporaere VM mit lokaler SSD/NVMe und genug
 RAM die bessere Ausfuehrungsumgebung. Der fertige Index kann anschliessend als
 Tar-Stream oder ueber ein Staging-PVC in den Cluster uebertragen werden.
 
-## Xapian als bevorzugte Alternative
+## Xapian als zu pruefende Alternative
 
 Das verwendete Web-Image enthaelt bereits:
 
@@ -137,10 +166,16 @@ Das verwendete Web-Image enthaelt bereits:
 - Xapian 1.4.24,
 - `xapian_backend.XapianEngine`.
 
-Aktiv ist trotzdem Whoosh. Xapian ist eine native Suchengine und fuer diesen
-Bestand voraussichtlich die sinnvollere dauerhafte Loesung als immer komplexere
-Whoosh-Sonderjobs. Vor einer Umstellung sind auf einer restaurierten
-Produktionskopie mindestens zu messen:
+Aktiv ist trotzdem Whoosh. Xapian ist eine native Suchengine und kann die
+Segment- und Commit-Kosten von Whoosh vermeiden. Ein erster Mikrobenchmark
+unter gleichzeitiger Volllast zeigte aber keinen sicheren Geschwindigkeitsvorteil:
+Die groesste Mail brauchte mit Xapian 561 Sekunden, mit Whoosh im laufenden
+Vier-Worker-Aufbau rund 408 Sekunden. Wegen unterschiedlicher CPU-Konkurrenz
+ist das kein fairer Backendvergleich, belegt aber, dass der native Indexer die
+teure Python-Aufbereitung des Mailtexts nicht beseitigt.
+
+Vor einer Umstellung sind deshalb auf einer restaurierten Produktionskopie mit
+identischer exklusiver CPU-Zuteilung mindestens zu messen:
 
 - Vollaufbauzeit und Spitzenspeicher,
 - Indexgroesse,
@@ -161,9 +196,11 @@ laufenden Incident-Reindex.
 - Keine Vollindexierung mehr im Web-Pod oder direkt im produktiven Indexpfad.
 - Keine Parallelisierung nach Zeilenanzahl.
 - Kein Batch ohne Byte-Limit.
+- Uebergrosse Mailtexte im Suchindex begrenzen, wenn die fachliche Abnahme
+  bestaetigt, dass Volltexttreffer hinter dem Limit entbehrlich sind.
 - Kein speicherintensiver Job auf einem Node, dessen reale Grundlast plus
   moeglicher Jobverbrauch den physischen RAM erreicht.
 - CephFS/NFS nur fuer Checkpoints und Artefakttransport einplanen, solange ein
   direkter Benchmark keinen Vorteil zeigt.
-- Xapian auf einer Restore-Kopie benchmarken und bei korrekter Suchfunktion als
-  dauerhaften Backend-Wechsel bevorzugen.
+- Xapian auf einer Restore-Kopie nach einem Body-Limit benchmarken und nur bei
+  messbarem Vorteil sowie korrekter Suchfunktion dauerhaft aktivieren.
