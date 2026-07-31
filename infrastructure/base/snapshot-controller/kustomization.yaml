@@ -1,0 +1,12 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: snapshot-controller
+# The Ceph CSI chart already runs csi-snapshotter v8.5.0. Kubernetes still
+# needs the matching cluster-level API and common snapshot controller.
+resources:
+  - namespace.yaml
+  - controller.yaml
+  # external-snapshotter v8.5.0, pinned to the release commit.
+  - https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/5aab051d1af135e2c852f6fb7fc27fa709d877bf/client/config/crd/snapshot.storage.k8s.io_volumesnapshotclasses.yaml
+  - https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/5aab051d1af135e2c852f6fb7fc27fa709d877bf/client/config/crd/snapshot.storage.k8s.io_volumesnapshotcontents.yaml
+  - https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/5aab051d1af135e2c852f6fb7fc27fa709d877bf/client/config/crd/snapshot.storage.k8s.io_volumesnapshots.yaml

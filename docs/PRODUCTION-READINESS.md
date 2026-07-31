@@ -126,7 +126,8 @@ spec:
 
 ## 5. Storage (Ceph)
 
-**Dateien:** `infrastructure/base/storage/*`, jedes `storageClassName:` / `storageClass:` in den Apps
+**Dateien:** `infrastructure/base/{storage,ceph-csi,snapshot-controller}/*`, jedes
+`storageClassName:` / `storageClass:` in den Apps
 
 **Offen:**
 - [ ] Existierende Ceph-StorageClass-Namen verifizieren und Manifeste angleichen
@@ -137,6 +138,9 @@ spec:
       kontrollierten Node-Reboot testen; MDS-Session und reales Datei-I/O
       explizit verifizieren (`docs/learnings/external-cephfs-client-stall-recovery.md`).
 - [ ] Default-StorageClass festlegen (aktuell `ceph-rbd`).
+- [ ] CSI-Snapshot/Restore mit einem Wegwerf-`ceph-rbd`-PVC testen. API,
+      Controller und `ceph-rbd-retain` sind verdrahtet; produktive Snapshots erst
+      nach erfolgreichem Restore-Test anlegen.
 
 **Beispiel** — S3-Bucket via OBC (siehe `infrastructure/base/storage/objectbucket-example.yaml`):
 ```yaml
@@ -301,6 +305,9 @@ alertmanager:
   Continuous WAL + base → PITR.
 - **MariaDB** (kimai, wordpress): `Backup` CR in `apps/base/<app>/backup.yaml` (logischer Dump).
 - **S3-Creds**: `<app>-backup-s3` Secret in jeder `secret.sops.yaml`.
+- **PVC-Checkpoints**: CSI-`VolumeSnapshot` für `ceph-rbd` ist mit
+  `deletionPolicy: Retain` vorbereitet. Diese Snapshots liegen im selben Ceph und
+  ersetzen kein Offsite-Backup.
 - **Keine DB**: Icecast ist zustandsarm; Backup betrifft nur die GitOps-Konfiguration und externe
   Stream-Quellen/Clients.
 
@@ -315,9 +322,10 @@ alertmanager:
 - [ ] CNPG ≥1.26: `barmanObjectStore` in-tree ist deprecated → auf **barman-cloud Plugin** migrieren.
 - [ ] MariaDB **PITR**: für punktgenaues Restore `PhysicalBackup` CRD + Binlog statt logischem Dump.
 - [ ] DR-Overlay `infrastructure/overlays/disaster-recovery/` mit `bootstrap.recovery` anlegen.
-- [ ] PVC-Daten (paperless media/consume, forgejo repos, wordpress wp-content, mastodon-uploads via S3)
-      Backup-Strategie (Ceph-Snapshots / Velero) — DB-Backup deckt nur die Datenbank.
-- [ ] Restore-Runbook in `docs/runbooks/` schreiben + testen.
+- [ ] PVC-Daten (paperless media/consume, forgejo repos, wordpress wp-content,
+      Mailman-Dateien) nach dem CSI-Smoke-Test per quiesced Snapshot absichern und
+      für Ceph-Ausfälle zusätzlich eine Offsite-Strategie festlegen.
+- [ ] Restore-Abläufe aus `docs/runbooks/backup-restore.md` je Backend testen.
 
 **Beispiel** — CNPG continuous backup (`apps/base/forgejo/database.yaml` + `backup.yaml`):
 ```yaml
