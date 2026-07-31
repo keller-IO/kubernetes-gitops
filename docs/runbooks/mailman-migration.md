@@ -681,7 +681,9 @@ Listenmail stabil verarbeitet und ein verifiziertes Backup existiert.
 9. Danach `select count(*) from django_migrations` = **98** und
    `mailman --version` = **3.3.10** prüfen. Bestehender Login, Listen,
    Mitglieder, Archive, Anhänge, Moderation, LMTP und ausgehende Zustellung
-   müssen funktionieren.
+   müssen funktionieren. Der produktive Web-Start überschritt mit Migrationen,
+   `collectstatic` und gleichzeitig startendem Django-Q zweimal das alte
+   1536-MiB-Limit; für 0.5.2 sind deshalb 2 GiB gesetzt.
 10. `/accounts/signup/` muss weiterhin „Registrierung geschlossen“ zeigen und
     darf keine Passwortfelder anbieten. `ACCOUNT_ADAPTER` und
     `MAILMAN_WEB_SOCIAL_AUTH=[]` bleiben verpflichtend.

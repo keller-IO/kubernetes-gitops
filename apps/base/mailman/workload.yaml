@@ -193,7 +193,9 @@ spec:
               value: /static=/opt/mailman-web-data/static
           resources:
             requests: { cpu: 200m, memory: 512Mi }
-            limits: { memory: 1536Mi } # Django-Migrations/collectstatic spiken beim Start
+            # 0.5.2 überschritt beim produktiven Start zweimal 1536Mi, während
+            # Migrationen/collectstatic und Django-Q gleichzeitig anliefen.
+            limits: { memory: 2Gi }
           volumeMounts:
             # settings_local.py und no_signup_adapter.py liegen hier drin —
             # der initContainer kopiert sie aus der ConfigMap hinein. Das
