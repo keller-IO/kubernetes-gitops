@@ -18,6 +18,15 @@ patches:
         value: paperless.savar.de
   - target: { kind: Deployment, name: paperless-paperless-ngx }
     patch: |
-      - op: replace
-        path: /spec/template/spec/containers/0/env/13/value
-        value: https://paperless.savar.de
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: paperless-paperless-ngx
+      spec:
+        template:
+          spec:
+            containers:
+              - name: paperless-paperless-ngx
+                env:
+                  - name: PAPERLESS_URL
+                    value: https://paperless.savar.de
