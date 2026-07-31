@@ -136,6 +136,15 @@ if [[ -n "$matches" ]]; then
   report "ignoreDifferences found outside clusters/main/appset-*.yaml — a patch on a generated Application is overwritten by the ApplicationSet controller within a second (docs/learnings/argocd-dauerhaft-outofsync.md). Move it into the ApplicationSet template."
 fi
 
+section "Mailman public signup stays disabled"
+mailman_settings="apps/base/mailman/web-settings-configmap.yaml"
+grep -qF 'MAILMAN_WEB_SOCIAL_AUTH = []' "$mailman_settings" \
+  || report "$mailman_settings: social authentication must remain disabled"
+grep -qF 'ACCOUNT_ADAPTER = "no_signup_adapter.DisableSignupAdapter"' "$mailman_settings" \
+  || report "$mailman_settings: the no-signup account adapter is missing"
+grep -qE '^[[:space:]]+return False[[:space:]]*$' "$mailman_settings" \
+  || report "$mailman_settings: DisableSignupAdapter no longer rejects signup"
+
 if ((fail != 0)); then
   printf '\nGuardrail checks failed.\n' >&2
   exit 1

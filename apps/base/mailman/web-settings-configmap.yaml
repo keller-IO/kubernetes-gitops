@@ -21,6 +21,20 @@ data:
     # Keine Social-Logins.
     MAILMAN_WEB_SOCIAL_AUTH = []
 
+    # Der Image-Default startet sonst einen Worker pro Node-CPU. Das erzeugte
+    # zusammen mit den periodischen HyperKitty-Jobs die OOM-Spitzen. Vollständig
+    # definieren statt update(): settings_local.py ist ein eigenes Modul und
+    # sieht Q_CLUSTER aus settings.py beim Import nicht.
+    Q_CLUSTER = {
+        "workers": 1,
+        "recycle": 100,
+        "timeout": 300,
+        "retry": 360,
+        "max_attempts": 3,
+        "save_limit": 100,
+        "orm": "default",
+    }
+
     # Ausgehende Mail (Passwort-Reset etc.) über mx02, IP-Relay via mynetworks.
     EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
     EMAIL_HOST = "192.168.2.209"

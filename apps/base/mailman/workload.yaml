@@ -121,6 +121,10 @@ spec:
   template:
     metadata:
       labels: { app.kubernetes.io/name: mailman-web }
+      annotations:
+        # settings_local.py wird vom initContainer ins PVC kopiert. Eine reine
+        # ConfigMap-Aenderung startet den Pod nicht neu, deshalb Revision bumpen.
+        mailman.jit.services/settings-revision: "20260730-qcluster"
     spec:
       # Die beiden Python-Dateien werden in das PVC KOPIERT, statt sie per
       # subPath aus der ConfigMap zu mounten. Grund: das Entrypoint macht

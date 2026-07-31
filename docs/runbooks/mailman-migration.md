@@ -635,16 +635,40 @@ Erst nach einigen stabilen Tagen.
 Bewusst **nach** der Migration und getrennt davon. Erst wenn der Cluster
 Listenmail stabil verarbeitet und ein verifiziertes Backup existiert.
 
-1. Frisches CNPG-Backup, und die Alt-Images bleiben als Rückfallebene im
-   Repo dokumentiert.
-2. Images auf `maxking/mailman-core:0.5.2` und `maxking/mailman-web:0.5.2`
-   heben, `# renovate: ignore` wieder durch die `renovate:`-Marker ersetzen.
-3. Beim Start laufen dann **automatisch**: alembic `2b73fbcc97c9` →
-   `8cc1f79f4459` im Core und `django-admin migrate` 73 → 99 im Web.
-   Die `startupProbe` (10 min) deckt das ab.
-4. Danach `select count(*) from django_migrations` = **99** und
-   `mailman --version` = **3.3.10**.
-5. Volltextindex nach dem HyperKitty-Sprung 1.3.4 → 1.3.12 neu bauen.
+1. **Stabilisierung ohne Versionswechsel:** Django-Q auf einen Worker begrenzen,
+   Worker nach 100 Tasks recyceln, `retry=360` größer als `timeout=300` setzen
+   und Fehlversuche auf drei begrenzen. Danach OOM-Restarts und Queue-Latenz
+   beobachten.
+2. Offene Moderations-/Confirmation-Vorgänge abarbeiten und vor dem Stoppen
+   prüfen, dass keine lang laufende oder `idle in transaction`-Verbindung mehr
+   migrationsrelevante Tabellen sperrt.
+3. CSI-Snapshot/Restore zuerst mit einem Wegwerf-`ceph-rbd`-PVC vollständig
+   testen (`docs/runbooks/backup-restore.md`).
+4. Core und Web über einen eigenen Git-Commit auf null skalieren. Warten, bis
+   beide Pods und ihre `VolumeAttachment`-Objekte verschwunden sind.
+5. Ein benanntes CNPG-Backup sowie je einen datierten `VolumeSnapshot` von
+   `mailman-core-data` und `mailman-web-data` anlegen. Die Snapshots müssen
+   `readyToUse: true` melden und vor dem Upgrade in Wegwerf-PVCs restauriert und
+   gelesen werden.
+6. Während die Deployments weiter auf null stehen, die Images per Digest auf
+   den stabilen Stand `0.5.2` setzen:
+
+   - Core: `maxking/mailman-core@sha256:cb8e412bb18d74480f996da68f46e92473b6103995e71bc5aeba139b255cc3d2`
+   - Web: `maxking/mailman-web@sha256:014726db85586fb53541f66f6ce964bf07e939791cfd5ffc796cd6d243696a18`
+
+7. Zuerst Core starten und die automatische Alembic-Migration
+   `2b73fbcc97c9` → `8cc1f79f4459` abwarten. Danach Web starten; dessen
+   Entrypoint führt automatisch `django-admin migrate` von 73 auf 99
+   Migrationen aus. Nicht beide Migrationen mit einem ungeprüften Rolling
+   Update gleichzeitig starten.
+8. Danach `select count(*) from django_migrations` = **99** und
+   `mailman --version` = **3.3.10** prüfen. Bestehender Login, Listen,
+   Mitglieder, Archive, Anhänge, Moderation, LMTP und ausgehende Zustellung
+   müssen funktionieren.
+9. `/accounts/signup/` muss weiterhin „Registrierung geschlossen“ zeigen und
+   darf keine Passwortfelder anbieten. `ACCOUNT_ADAPTER` und
+   `MAILMAN_WEB_SOCIAL_AUTH=[]` bleiben verpflichtend.
+10. Volltextindex nach dem HyperKitty-Sprung 1.3.4 → 1.3.12 neu bauen.
 
 Rollback ist hier nur über das Backup möglich — Django- und alembic-Migrationen
 laufen nicht rückwärts. Deshalb nicht mit dem Umzug vermischen.
@@ -687,6 +711,7 @@ Rückwärts-Merge. Das ist explizit zu entscheiden, nicht implizit auszusitzen.
 |---|---|
 | Django 2.2.20 gegen PostgreSQL 16.6 | im Probelauf 28.07. bestätigt: Schema, Migrationen und ORM-Zugriff funktionieren |
 | Django-Migrationen 2.2 → 4.2 scheitern an Altdaten | aus der Migration herausgezogen, jetzt Phase 7 mit eigenem Backup davor |
+| Django-Q startet pro Node-CPU Worker und erzeugt OOM-Spitzen | vor dem Upgrade auf einen Worker begrenzt; Queue-Latenz und Restarts nach Rollout beobachten |
 | Import belastet `.15` bis zur Unbrauchbarkeit | erledigt: nur noch lesender, gedrosselter Stream statt lokaler Kopie |
 | CNPG-Storage zu klein für das Archiv | erledigt: 10 Gi → 30 Gi |
 | `mailman-web` startet sich regelmäßig neu (37× in 9 d) | erledigt: Liveness-Timeout war die Ursache, startupProbe ergänzt |
