@@ -41,7 +41,7 @@ Listen und Archivgrößen:
 | Komponente | Wert |
 |---|---|
 | Core | `maxking/mailman-core:0.5.2`, GNU Mailman **3.3.10**, alembic `8cc1f79f4459` |
-| Web | `maxking/mailman-web:0.5.2`, Django **4.2.16**, HyperKitty **1.3.12**, Postorius **1.3.13**, 99 `django_migrations` |
+| Web | `maxking/mailman-web:0.5.2`, Django **4.2.16**, HyperKitty **1.3.12**, Postorius **1.3.13**, 98 `django_migrations` |
 | DB | CNPG `mailman-pg`, 1 Instanz, PG 16.6, **eine** DB `mailmandb` mit Core- **und** Django-Tabellen, 11 MB, 10 Gi Storage |
 | PVCs | `mailman-core-data` 5 Gi (66 MB belegt), `mailman-web-data` 10 Gi (138 MB belegt) |
 | LMTP | Service `mailman-lmtp`, LoadBalancer, feste IP **192.168.2.247:8024** |
@@ -94,7 +94,7 @@ Internet → MX mx02/mx03
 Die Altimages sind vom **07.04.2021**. Zwischen Alt und Neu liegen
 
 - Mailman Core **3.3.4 → 3.3.10** (alembic `2b73fbcc97c9` → `8cc1f79f4459`),
-- Django **2.2 → 4.2**, HyperKitty **1.3.4 → 1.3.12**, **73 → 99** Django-Migrationen.
+- Django **2.2 → 4.2**, HyperKitty **1.3.4 → 1.3.12**, **73 → 98** Django-Migrationen.
 
 **Entscheidung: Migration und Upgrade werden getrennt.** Der Cluster läuft für
 den Umzug auf demselben Stand wie `.15`; der Dump geht dann 1:1 hinein, ohne
@@ -650,25 +650,42 @@ Listenmail stabil verarbeitet und ein verifiziertes Backup existiert.
    `mailman-core-data` und `mailman-web-data` anlegen. Die Snapshots müssen
    `readyToUse: true` melden und vor dem Upgrade in Wegwerf-PVCs restauriert und
    gelesen werden.
-6. Während die Deployments weiter auf null stehen, die Images per Digest auf
+6. Das alte Core-Schema verwendet zwölf aktive Zeitspalten als `timestamp with
+   time zone`; eine frische Mailman-3.3.10-DB und deren SQLAlchemy-Modelle
+   verwenden `timestamp without time zone`. SQLAlchemy 2.0 liefert die alten
+   Werte sonst timezone-aware, worauf unter anderem der Task-Runner bei der
+   Pending-Bereinigung dauerhaft abstürzt. Die transaktionale, auf exakt zwölf
+   Spalten vorgeprüfte Reparatur ausführen:
+
+   ```bash
+   kubectl -n mailman exec -i mailman-pg-1 -- \
+     psql -U postgres -d mailmandb -v ON_ERROR_STOP=1 \
+     < apps/base/mailman/postgres-schema-repair-052.sql
+   ```
+
+   Dieser Schritt wurde auf dem CNPG-Restore getestet: Danach liefen alle
+   Core-Runner stabil, 33 abgelaufene Pendings wurden entfernt und die drei
+   aktiven Workflows blieben erhalten. Das Skript absichtlich nicht erneut auf
+   einem bereits reparierten Schema ausführen; seine Vorbedingung bricht dann ab.
+7. Während die Deployments weiter auf null stehen, die Images per Digest auf
    den stabilen Stand `0.5.2` setzen:
 
    - Core: `maxking/mailman-core@sha256:cb8e412bb18d74480f996da68f46e92473b6103995e71bc5aeba139b255cc3d2`
    - Web: `maxking/mailman-web@sha256:014726db85586fb53541f66f6ce964bf07e939791cfd5ffc796cd6d243696a18`
 
-7. Zuerst Core starten und die automatische Alembic-Migration
+8. Zuerst Core starten und die automatische Alembic-Migration
    `2b73fbcc97c9` → `8cc1f79f4459` abwarten. Danach Web starten; dessen
-   Entrypoint führt automatisch `django-admin migrate` von 73 auf 99
+   Entrypoint führt automatisch `django-admin migrate` von 73 auf 98
    Migrationen aus. Nicht beide Migrationen mit einem ungeprüften Rolling
    Update gleichzeitig starten.
-8. Danach `select count(*) from django_migrations` = **99** und
+9. Danach `select count(*) from django_migrations` = **98** und
    `mailman --version` = **3.3.10** prüfen. Bestehender Login, Listen,
    Mitglieder, Archive, Anhänge, Moderation, LMTP und ausgehende Zustellung
    müssen funktionieren.
-9. `/accounts/signup/` muss weiterhin „Registrierung geschlossen“ zeigen und
-   darf keine Passwortfelder anbieten. `ACCOUNT_ADAPTER` und
-   `MAILMAN_WEB_SOCIAL_AUTH=[]` bleiben verpflichtend.
-10. Volltextindex nach dem HyperKitty-Sprung 1.3.4 → 1.3.12 neu bauen.
+10. `/accounts/signup/` muss weiterhin „Registrierung geschlossen“ zeigen und
+    darf keine Passwortfelder anbieten. `ACCOUNT_ADAPTER` und
+    `MAILMAN_WEB_SOCIAL_AUTH=[]` bleiben verpflichtend.
+11. Volltextindex nach dem HyperKitty-Sprung 1.3.4 → 1.3.12 neu bauen.
 
 Rollback ist hier nur über das Backup möglich — Django- und alembic-Migrationen
 laufen nicht rückwärts. Deshalb nicht mit dem Umzug vermischen.

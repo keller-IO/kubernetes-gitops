@@ -15,16 +15,10 @@ spec:
     spec:
       containers:
         - name: mailman-core
-          # MIGRATIONSSTAND — bewusst auf den Alt-Stand von 192.168.2.15 gepinnt:
-          # GNU Mailman 3.3.4, alembic 2b73fbcc97c9. Damit geht der pg_dump des
-          # Altsystems 1:1 hinein, ohne Schema-Upgrade beim Import.
-          # Der Digest ist maxking/mailman-core:latest vom 07.04.2021 — genau das
-          # Image, das auf .15 läuft. `latest` wurde seither nie neu gepusht, ist
-          # als Tag aber nicht stabil, deshalb Digest-Pinning.
-          # Upgrade auf 0.5.2 (Mailman 3.3.10) erst NACH abgeschlossener Migration
-          # und getrennt davon. Renovate darf hier nicht anfassen.
+          # Mailman 3.3.10 / alembic 8cc1f79f4459. Upgrade auf einer restaurierten
+          # Produktionskopie einschließlich PostgreSQL-Schema-Reparatur verifiziert.
           # renovate: ignore
-          image: maxking/mailman-core@sha256:34b5c3af84cce9b3d3a758e12cb4edeabbc1559b4fba14cb85532471b5a0f199
+          image: maxking/mailman-core@sha256:cb8e412bb18d74480f996da68f46e92473b6103995e71bc5aeba139b255cc3d2
           ports:
             - name: api
               containerPort: 8001
@@ -135,7 +129,7 @@ spec:
       initContainers:
         - name: install-settings
           # renovate: ignore
-          image: maxking/mailman-web@sha256:3b240e44635f229a04fd7eb2dc4389ddb115d10c4bc1462577cc5c8b501ff0a0
+          image: maxking/mailman-web@sha256:014726db85586fb53541f66f6ce964bf07e939791cfd5ffc796cd6d243696a18
           command: ["/bin/sh", "-ec"]
           args:
             - cp /config/settings_local.py /config/no_signup_adapter.py /opt/mailman-web-data/
@@ -150,16 +144,10 @@ spec:
               readOnly: true
       containers:
         - name: mailman-web
-          # MIGRATIONSSTAND — Alt-Stand von 192.168.2.15: Django 2.2.20,
-          # HyperKitty 1.3.4, Postorius 1.3.4, 73 django_migrations. Der
-          # Container legt damit in `mailmanweb` exakt das Schema an, das die
-          # 5,9-GB-SQLite des Altsystems mitbringt; der Import ist dadurch ein
-          # reines Datenkopieren ohne Schemaanpassung.
-          # Digest = maxking/mailman-web:latest vom 07.04.2021.
-          # Upgrade auf 0.5.2 (Django 4.2 / HyperKitty 1.3.12, 99 Migrationen)
-          # erst nach dem Import, als eigener Schritt.
+          # Django 4.2.16 / HyperKitty 1.3.12 / Postorius 1.3.13; die Migration
+          # von 73 auf 98 django_migrations wurde auf einer Restore-Kopie geprüft.
           # renovate: ignore
-          image: maxking/mailman-web@sha256:3b240e44635f229a04fd7eb2dc4389ddb115d10c4bc1462577cc5c8b501ff0a0
+          image: maxking/mailman-web@sha256:014726db85586fb53541f66f6ce964bf07e939791cfd5ffc796cd6d243696a18
           ports:
             - name: http
               containerPort: 8000

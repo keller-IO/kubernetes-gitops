@@ -144,6 +144,8 @@ spec:
     - name: roundcube-quelle
       barmanObjectStore:
         destinationPath: s3://backups/cnpg-roundcube/
+        # Erforderlich, wenn der Restore-Cluster anders als die Quelle heißt.
+        serverName: roundcube-pg
         endpointURL: http://192.168.23.21:3900
         s3Credentials:
           accessKeyId: { name: roundcube-backup-s3, key: ACCESS_KEY_ID }
