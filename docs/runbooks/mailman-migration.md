@@ -501,12 +501,18 @@ aus Phase 1 ansetzen, Richtwert 2–3 h.
 
 8. **Volltextindex neu bauen** (der alte Whoosh-Index wird nicht übernommen):
 
-   ```bash
-   kubectl -n mailman exec deploy/mailman-web -- django-admin rebuild_index --noinput
-   ```
+   Nicht im Web-Pod und nicht direkt im produktiven PVC ausfuehren. Der Bestand
+   hat zwar nur rund 42.000 Mails, aber 4,3 GiB stark ungleich verteilten Text;
+   ein naiver Whoosh-Aufbau dauerte viele Stunden und verursachte bei falscher
+   Node-Platzierung einen System-OOM. Auf lokalem Scratch nach Textbytes
+   geshardet bauen, fertige Shards persistent checkpointen, alle 41.925
+   `django_id` pruefen und erst dann atomar in den produktiven Indexpfad
+   umschalten. Ablauf, Messwerte und Bewertung von CephFS/NFS sowie Xapian:
+   `docs/learnings/mailman-whoosh-reindex-performance.md`.
 
-   Läuft lange und ist nicht cutover-kritisch — kann nach dem Cutover laufen,
-   solange klar ist, dass die Archivsuche bis dahin unvollständig ist.
+   Der Aufbau ist nicht mail-cutover-kritisch und kann danach laufen, solange
+   Web bis zum validierten Index auf null bleibt oder eindeutig kommuniziert
+   wird, dass die Archivsuche unvollstaendig ist.
 
 9. **Sofort-Backup** ziehen, bevor Mail fließt:
 
