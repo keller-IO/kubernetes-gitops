@@ -46,6 +46,11 @@ sind deshalb extrem ungleich teure Index-Shards.
    fehlgeschlagenen Pods und waren nach dessen Loeschung verloren. Ein hohes
    Containerlimit ist kein Ersatz fuer freie physische Node-Kapazitaet und
    persistente Checkpoints.
+5. Der bytebalancierte Folgelauf wurde auf dem freien Worker 4 nicht per OOM,
+   sondern durch `Usage of EmptyDir volume "work" exceeds the limit "8Gi"`
+   evicted. Im selben Scratch lagen neben den Whoosh-Shards auch temporaere
+   Xapian-Mikrobenchmarks. Scratch-Groesse und getrennte Benchmarkpfade muessen
+   deshalb ebenfalls vor dem Start geplant werden.
 
 Der produktive Mailfluss blieb aktiv, weil nur `mailman-web` auf null skaliert
 war. `mailman-core`, LMTP und PostgreSQL liefen weiter. Der produktive Index
@@ -128,10 +133,11 @@ die in einer uebergrossen Mail erst hinter dem Limit stehen, sind nicht mehr
 auffindbar. Betreff, Absender, Tags, Datum, Attachment-Namen und der erste Teil
 des Bodys bleiben suchbar.
 
-Vor einer produktiven Aenderung auf einer Restore-Kopie mit einem
-ueberschriebenen Haystack-Template benchmarken und fachlich entscheiden, ob
-1 MiB oder 256 KiB ausreichen. Ein Limit ist fuer diesen Bestand
-voraussichtlich wirksamer als ein reiner Storage-Wechsel.
+Am 01.08.2026 wurde 1 MiB als fachlicher Kompromiss festgelegt. Das GitOps-
+Template nutzt `slice:":1048576"` vor `nolongterms`. Ein Test im produktiven
+0.5.2-Image bestaetigte sowohl den geladenen lokalen Templatepfad als auch
+exakt 1.048.576 indexierte Body-Zeichen. Ein Limit ist fuer diesen Bestand
+wirksamer als ein reiner Storage-Wechsel.
 
 ## NFS und CephFS
 

@@ -510,6 +510,11 @@ aus Phase 1 ansetzen, Richtwert 2–3 h.
    umschalten. Ablauf, Messwerte und Bewertung von CephFS/NFS sowie Xapian:
    `docs/learnings/mailman-whoosh-reindex-performance.md`.
 
+   Seit 01.08.2026 begrenzt das verwaltete Haystack-Template nur den fuer die
+   Suche aufbereiteten Body auf 1 MiB pro Mail. Archivinhalt und Anzeige bleiben
+   vollstaendig; Betreff, Absender, Tags, Datum und Attachment-Namen werden
+   weiterhin komplett indexiert.
+
    Der Aufbau ist nicht mail-cutover-kritisch und kann danach laufen, solange
    Web bis zum validierten Index auf null bleibt oder eindeutig kommuniziert
    wird, dass die Archivsuche unvollstaendig ist.
