@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: paperless-pre-22015-export-reader-20260802
+  namespace: paperless-ngx
+spec:
+  restartPolicy: Never
+  activeDeadlineSeconds: 3600
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+  containers:
+    - name: reader
+      image: ghcr.io/paperless-ngx/paperless-ngx:2.20.6
+      imagePullPolicy: IfNotPresent
+      command:
+        - /bin/sleep
+        - "3600"
+      resources:
+        requests: { cpu: 10m, memory: 16Mi }
+        limits: { memory: 32Mi }
+      volumeMounts:
+        - name: export
+          mountPath: /usr/src/paperless/export
+          readOnly: true
+  volumes:
+    - name: export
+      persistentVolumeClaim:
+        claimName: paperless-paperless-ngx-export
