@@ -322,9 +322,10 @@ alertmanager:
 - [ ] CNPG ≥1.26: `barmanObjectStore` in-tree ist deprecated → auf **barman-cloud Plugin** migrieren.
 - [ ] MariaDB **PITR**: für punktgenaues Restore `PhysicalBackup` CRD + Binlog statt logischem Dump.
 - [ ] DR-Overlay `infrastructure/overlays/disaster-recovery/` mit `bootstrap.recovery` anlegen.
-- [ ] PVC-Daten (paperless media/consume, forgejo repos, wordpress wp-content,
-      Mailman-Dateien) nach dem CSI-Smoke-Test per quiesced Snapshot absichern und
-      für Ceph-Ausfälle zusätzlich eine Offsite-Strategie festlegen.
+- [ ] PVC-Daten (paperless data/media, forgejo repos, wordpress wp-content,
+      Mailman-Dateien) nach dem CSI-Smoke-Test per quiesced Snapshot absichern.
+      Fuer die SMB-Scanner-Inbox und Ceph-Ausfaelle zusaetzlich eine
+      Offsite-Strategie festlegen.
 - [ ] Restore-Abläufe aus `docs/runbooks/backup-restore.md` je Backend testen.
 
 **Beispiel** — CNPG continuous backup (`apps/base/forgejo/database.yaml` + `backup.yaml`):
@@ -407,7 +408,7 @@ Jede App liegt unter `apps/base/<app>/` (Basis) + `apps/overlays/main/<app>/` (C
 | **roundcube** | `apps/base/roundcube/` | Legacy-Domains `roundcube.savar.de`, `mail.steinba.ch`, `webmail01.jit-creatives.de`, `jitmail.de`, `www.jitmail.de` und `webmail.daec-berlin.de` sind im Overlay als Übergangs-Ingress ergänzt; TLS endet dort am Legacy-Traefik. PostgreSQL-Schemafehler der historischen pgloader-Migration am 27.07. repariert (`postgres-schema-repair-20260727.sql`). Externen IMAP/SMTP setzen; `managesieve`-Backend prüfen; Session-Cache auf Valkey umstellen (config). |
 | **collabora** | `apps/base/collabora/` | `aliasgroups`-Regex auf reale WOPI-Hosts; Admin-Passwort; WOPI-Client (z.B. Nextcloud) anbinden. |
 | **eurooffice** | `apps/base/eurooffice/` | JWT-Secret (`jwt-secret`, bereits generiert/verschlüsselt) in der Nextcloud-Connector-App spiegeln (`occ config:app:set eurooffice ...` auf nc01/nc02-dev, URL `https://eurooffice.jit.services`); All-in-One-Image (interne PG/RabbitMQ/Redis) — bei >1 Nextcloud auf offizielles Kubernetes-Docs-Chart + CNPG umstellen (braucht CephFS-RWX); Erststart dauert (Font-Cache), Healthcheck `/healthcheck`. |
-| **paperless-ngx** | `apps/base/paperless-ngx/` | Phase-1-Preflight fuer 2.20.15: Deployment absichtlich auf 0; Export-Job `paperless-pre-22015-export-20260802-v3`, CNPG-Backup und `data`/`media`-Snapshots sind abgeschlossen. Der temporaere read-only Pod `paperless-pre-22015-export-reader-20260802` stellt den Export fuer die externe Kopie bereit; erst danach darf PR #89 das Deployment wieder starten. Scanner-Inbox `//192.168.2.75/scanner` ist via SMB-CSI eingebunden und aktuell leer. Externe Domain `paperless.savar.de`; TLS endet waehrend der Migration am Legacy-Traefik. Admin + SECRET_KEY; OIDC-JSON `server_url`/`secret`; CephFS-RWX fuer media bestaetigen. |
+| **paperless-ngx** | `apps/base/paperless-ngx/` | Version 2.20.15 ist der verpflichtende Zwischenstand vor 3.x; der quieszierte Recovery-Punkt vom 02.08.2026 ist dokumentiert (`docs/runbooks/paperless-v3-upgrade.md`). Scanner-Inbox `//192.168.2.75/scanner` ist via SMB-CSI eingebunden und wird alle 10 Sekunden abgefragt. Externe Domain `paperless.savar.de`; TLS endet waehrend der Migration am Legacy-Traefik. Admin + SECRET_KEY; OIDC-JSON `server_url`/`secret`; CephFS-RWX fuer media bestaetigen. |
 | **forgejo** | `apps/base/forgejo/` | Admin-Secret; SSH-Service exponieren (LB/NodePort); OIDC-Provider in Forgejo anlegen; LFS→S3 optional. |
 | **renovate** | `apps/base/renovate/` | Forgejo-Token; `autodiscover` vs. feste Repo-Liste; Schedule abstimmen. |
 | **wordpress-1/2/3** | `apps/base/wordpress/` + `apps/overlays/main/wordpress-{1,2,3}/` | Pro Instanz Secret + Host (in Overlay gepatcht); „Redis Object Cache"-Plugin installieren; `mariadb.enabled:false` + externalDatabase final schalten. |

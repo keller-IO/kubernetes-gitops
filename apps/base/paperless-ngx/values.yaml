@@ -1,5 +1,6 @@
 image:
-  tag: 2.20.6 # renovate: image=ghcr.io/paperless-ngx/paperless-ngx — = Version des Alt-Systems (Migration)
+  # Letztes 2.x-Release und zwingender Migrationsstand vor Paperless 3.x.
+  tag: 2.20.15 # renovate: image=ghcr.io/paperless-ngx/paperless-ngx
 env:
   PAPERLESS_URL: https://paperless.jit.services
   PAPERLESS_DBENGINE: postgresql
