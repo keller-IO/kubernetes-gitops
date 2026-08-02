@@ -38,5 +38,7 @@ args:
 ```
 
 Die benoetigten `PAPERLESS_*`-Variablen und Secrets muessen der Job-Spec direkt
-uebergeben werden. Bei einer Korrektur muss der Job einen neuen Namen erhalten,
-weil `spec.template` eines bestehenden Kubernetes-Jobs immutable ist.
+uebergeben werden. `document_exporter` legt das angegebene Zielverzeichnis nicht
+selbst an; ein Init-Container muss den leeren Ordner vorher mit UID/GID 1000
+erzeugen. Bei einer Korrektur muss der Job einen neuen Namen erhalten, weil
+`spec.template` eines bestehenden Kubernetes-Jobs immutable ist.
