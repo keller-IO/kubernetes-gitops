@@ -1,0 +1,3 @@
+# The cluster only runs Linux nodes. Disabling Windows avoids an unused DaemonSet.
+windows:
+  enabled: false

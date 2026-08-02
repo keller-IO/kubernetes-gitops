@@ -1,6 +1,6 @@
 # Paperless-ngx: Upgrade von 2.20.15 auf 3.x
 
-Stand: 31.07.2026. Dieses Runbook trennt den verpflichtenden 2.x-Zwischenstand
+Stand: 02.08.2026. Dieses Runbook trennt den verpflichtenden 2.x-Zwischenstand
 bewusst vom Major-Upgrade. ArgoCD darf beide Schritte nicht in einem Sync
 ueberspringen.
 
@@ -16,18 +16,18 @@ ueberspringen.
 
 ## Gepruefter Ist-Stand
 
-Am 31.07.2026 wurden Repository, gerendertes Manifest und Cluster read-only
+Am 02.08.2026 wurden Repository, gerendertes Manifest und Cluster read-only
 geprueft:
 
 | Bereich | Ergebnis |
 |---|---|
 | Laufende App | `2.20.6`, Deployment `1/1`, Pod ohne Restarts |
 | Datenbank | CNPG/PostgreSQL 17.2, Cluster gesund; PostgreSQL >=14 wird von Paperless 3 unterstuetzt |
-| Backup | CNPG-Backup vom 31.07. `completed`; ersetzt kein Backup der Paperless-PVCs |
+| Backup | CNPG-Backup vom 02.08. `completed`; ersetzt kein Backup der Paperless-PVCs oder der externen Scanner-Inbox |
 | Broker | Valkey 8.1 ueber `redis://paperless-valkey:6379`, kompatibel |
 | Secret | `PAPERLESS_SECRET_KEY` ist im SOPS-Secret vorhanden und muss unveraendert bleiben |
 | DB-Konfiguration | `PAPERLESS_DBENGINE=postgresql` ist bereits explizit gesetzt; keine veralteten erweiterten DB-Variablen im Manifest |
-| Volumes | `data`, `media`, `consume` und `export` verwenden die unveraenderten offiziellen Mount-Pfade |
+| Volumes | `data`, `media` und `export` liegen auf RBD-PVCs; `consume` bindet `//192.168.2.75/scanner` per SMB-CSI ein |
 | Rollout | Eine Replica und Strategie `Recreate`; keine parallelen App-Migrationen |
 | CPU | Alle Worker haben `pni`, `ssse3`, `sse4_1`, `sse4_2`, `popcnt` und `cx16`; NumPys `x86-64-v2`-Minimum ist erfuellt |
 | Chart-Ressourcen | Kein HPA; Redis-Subchart bleibt deaktiviert |
@@ -52,8 +52,9 @@ vorbereitet. Er muss separat gemergt und von ArgoCD synchronisiert werden.
 1. Vor dem ArgoCD-Sync die Warteschlange leerlaufen lassen und einen
    vollstaendigen 2.20.6-Export ausserhalb des Clusters sichern. Fuer einen
    deterministischen Rollback danach den App-Pod stoppen, ein frisches
-   CNPG-Backup erstellen und Snapshots von `data`, `media` und `consume`
-   erzeugen. Alle Sicherungen muessen zum gestoppten Anwendungsstand gehoeren.
+   CNPG-Backup erstellen und Snapshots von `data` und `media` erzeugen. Noch
+   nicht konsumierte Dateien der SMB-Scanner-Inbox separat sichern. Alle
+   Sicherungen muessen zum gestoppten Anwendungsstand gehoeren.
 2. ArgoCD-Sync fuer `app-paperless-ngx` abwarten.
 3. Pruefen, dass das Deployment das Image `2.20.15` verwendet und der Pod
    `Ready` wird.
@@ -73,7 +74,8 @@ Vor dem ersten Start von 3.x keine neuen Dokumente konsumieren und keine
 Metadaten aendern.
 
 1. Lass die Celery-/Consume-Warteschlange leerlaufen und sichere noch nicht
-   verarbeitete Dateien aus dem Consume-PVC.
+   verarbeitete Dateien aus `//192.168.2.75/scanner` separat. Die SMB-Inbox ist
+   kein Ceph-PVC und wird von `VolumeSnapshot`s nicht erfasst.
 2. Erzeuge unter laufendem `2.20.15` einen vollstaendigen Paperless-Export und
    kopiere ihn aus dem Cluster-Ceph. Pruefe dessen Inhalt. Exporte sind
    versionsgebunden; dieser Export ist der Rueckweg zu 2.20.15.
@@ -81,18 +83,19 @@ Metadaten aendern.
    und warte, bis er vollstaendig beendet ist. Postgres bleibt fuer sein natives
    Backup aktiv.
 4. Erzeuge und verifiziere jetzt ein neues CNPG-Base-Backup inklusive
-   funktionierendem WAL-Archiv. Erzeuge danach `VolumeSnapshot`s fuer mindestens
-   `data`, `media` und `consume`. Da Paperless seit Schritt 3 gestoppt ist,
-   gehoeren Datenbank und PVCs zum selben quieszierten Anwendungsstand. Das
-   Snapshot-Verfahren steht in `docs/runbooks/backup-restore.md`.
+   funktionierendem WAL-Archiv. Erzeuge danach `VolumeSnapshot`s fuer `data` und
+   `media`. Da Paperless seit Schritt 3 gestoppt ist, gehoeren Datenbank, PVCs
+   und die separate Kopie der Scanner-Inbox zum selben quieszierten
+   Anwendungsstand. Das Snapshot-Verfahren steht in
+   `docs/runbooks/backup-restore.md`.
 5. Lege nach Abschluss aller Sicherungen, aber vor dem ersten 3.x-Start, mit
    `pg_create_restore_point` einen eindeutig benannten PostgreSQL-Restore-Punkt
    an und erzwinge danach mit `pg_switch_wal` den Segmentwechsel. Notiere
    Restore-Punkt, Kubernetes-Backup-Name, `Backup.status.backupId` (Barman-ID)
-   und Snapshot-Namen und bestaetige, dass das WAL mit dem Restore-Punkt
-   archiviert wurde. Kubernetes-Name und Barman-ID sind nicht austauschbar. Dies
-   ist das gemeinsame Rollback-Ziel. Ohne getesteten Restore-Punkt kein
-   Major-Upgrade.
+   und Snapshot-Namen sowie Ort und Zeitstempel der Scanner-Inbox-Sicherung und
+   bestaetige, dass das WAL mit dem Restore-Punkt archiviert wurde.
+   Kubernetes-Name und Barman-ID sind nicht austauschbar. Dies ist das gemeinsame
+   Rollback-Ziel. Ohne getesteten Restore-Punkt kein Major-Upgrade.
 6. Pruefe die drei oben genannten manuellen Punkte: externe Consume-Skripte,
    gespeicherte Suchen und den vollstaendigen Export.
 
@@ -117,7 +120,7 @@ In einem neuen PR nach erfolgreich laufendem 2.20.15:
    erhoehen. Beim ersten 3.x-Start wird der inkompatible Whoosh-Index automatisch
    als Tantivy-Index neu aufgebaut.
 6. Manifest rendern und kontrollieren: genau eine App-Replica, `Recreate`, kein
-   HPA, unveraenderte PVC-Mounts und alle Env-Werte am richtigen Namen.
+   HPA, unveraenderte Storage-Mounts und alle Env-Werte am richtigen Namen.
 7. `nix develop -c just validate` ausfuehren und den Change separat mergen.
 
 ## Beobachtung und Abnahme
@@ -149,8 +152,8 @@ Nach dem ersten 3.x-Start nicht nur den Image-Tag zuruecksetzen. Stattdessen:
    `targetName` mit dem gemeinsamen PostgreSQL-Restore-Punkt zwingend zu setzen;
    sonst kann CNPG ein spaeteres Backup waehlen, von dem der Restore-Punkt nicht
    erreichbar ist. Paperless per GitOps auf den neuen `-rw`-Service umstellen.
-3. Neue PVCs aus den dazugehoerigen Snapshots von `data`, `media` und `consume`
-   erzeugen und die Paperless-Manifeste auf diese Restore-Claims umstellen. Die
+3. Neue PVCs aus den dazugehoerigen Snapshots von `data` und `media` erzeugen
+   und die Paperless-Manifeste auf diese Restore-Claims umstellen. Die
    Original-Claims bis zur abgeschlossenen Konsistenzpruefung nicht loeschen.
 4. Valkey gestoppt halten und seinen persistenten AOF-Datentraeger durch einen
    leeren Restore-PVC ersetzen. Keine 3.x-Queue-Nachrichten duerfen gegen die
@@ -158,10 +161,13 @@ Nach dem ersten 3.x-Start nicht nur den Image-Tag zuruecksetzen. Stattdessen:
 5. Image und 2.20.15-kompatible OCR-Konfiguration wiederherstellen; denselben
    `PAPERLESS_SECRET_KEY` behalten.
 6. Zuerst Postgres, dann leeres Valkey und zuletzt Paperless starten. Erst nach
-   Konsistenzpruefung den Dienst wieder freigeben.
+   Konsistenzpruefung den Dienst wieder freigeben und danach gesicherte,
+   unvollstaendig konsumierte Scanner-Dateien kontrolliert in die SMB-Inbox
+   zuruecklegen.
 
 Ein Rollback des Phase-1-Upgrades auf 2.20.6 folgt demselben Muster mit dem vor
-Phase 1 erstellten Export, CNPG-Backup und den dazugehoerigen PVC-Snapshots.
+Phase 1 erstellten Export, CNPG-Backup, den dazugehoerigen PVC-Snapshots und der
+separaten Sicherung der Scanner-Inbox.
 
 ## Quellen
 

@@ -23,6 +23,7 @@ data:
   host_wordpress_3: site3.jit.services
   host_mastodon: social.jit.services
   host_gatus: status.jit.services
+  host_gatus_public: status.jit-creatives.de
   host_kite: kite.jit.services
   host_mailman: lists.jit.services
   host_icecast: radio.jit.services
