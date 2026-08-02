@@ -21,7 +21,7 @@ geprueft:
 
 | Bereich | Ergebnis |
 |---|---|
-| Laufende App | `2.20.6`, Deployment `1/1`, Pod ohne Restarts |
+| Laufende App | `2.20.15`, Deployment `1/1`, Pod ohne Restarts; 50 Dokumente nach zwei erfolgreichen SMB-Imports |
 | Datenbank | CNPG/PostgreSQL 17.2, Cluster gesund; PostgreSQL >=14 wird von Paperless 3 unterstuetzt |
 | Backup | CNPG-Backup vom 02.08. `completed`; ersetzt kein Backup der Paperless-PVCs oder der externen Scanner-Inbox |
 | Broker | Valkey 8.1 ueber `redis://paperless-valkey:6379`, kompatibel |
@@ -83,6 +83,20 @@ vorbereitet. Er muss separat gemergt und von ArgoCD synchronisiert werden.
 
 Paperless 3 prueft die 2.20.15-Migrationen und verweigert einen direkten Sprung
 von 2.20.6.
+
+### Phase-1-Abnahme vom 02.08.2026
+
+- ArgoCD: `Synced`, `Healthy`, Operation `Succeeded` auf Merge-Commit
+  `dc3b7e4b370f28e3e5b63e96b58131aafd8db72f`.
+- Paperless meldet beim Start `v2.20.15`; keine ausstehenden Migrationen und
+  `System check identified no issues`.
+- Deployment `1/1`, keine Pod-Restarts; PostgreSQL und Valkey gesund.
+- Oeffentliche Login-Seite HTTP 200 und Keycloak-OIDC-Schaltflaeche vorhanden.
+- SMB-Polling aktiv. `BRN94DDF86F11BA_000103.pdf` und
+  `BRN94DDF86F11BA_000105.pdf` wurden erfolgreich konsumiert; die Inbox ist
+  danach leer und die Datenbank enthaelt 50 Dokumente.
+- Interaktiven Keycloak-Login, Dokumentanzeige und Suche vor dem 3.x-Preflight
+  noch einmal mit einem Benutzerkonto bestaetigen.
 
 ## Phase 2: Backup- und Preflight-Gate
 
