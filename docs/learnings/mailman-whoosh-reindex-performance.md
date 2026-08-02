@@ -199,6 +199,27 @@ laufenden Incident-Reindex.
 
 ## Konsequenz
 
+## Produktionsversuch am 02.08.2026
+
+Der geplante Merge der acht validierten Shards wurde mit drei Varianten
+erprobt. Ein kompletter produktiver Index wurde dabei **nicht** erzeugt:
+
+- Ein Merge mit dem ersten Dokument jedes Shards außerhalb des Iterators
+  duplizierte dieses Dokument und scheiterte an der Sollzahl.
+- Ein korrigierter Shard-Merge lief beim ersten 107-MiB-Shard trotz 3 GiB
+  Speicherlimit in `OOMKilled`.
+- 25-MiB-Batches ohne Konsolidierung liefen zunächst weiter, füllten den
+  16-GiB-PVC aber durch die vielen Whoosh-Segmente (`No space left on device`).
+- Konsolidierung nach jedem Batch war zwar speichersicher, aber wegen des
+  wiederholten Umschreibens des wachsenden Gesamtindex nicht praktikabel.
+- `IndexWriter.add_reader()` scheiterte an inkompatiblen Whoosh-Spaltenwerten
+  (`struct.error: required argument is not an integer`).
+
+Der dedizierte Staging-PVC wurde für weitere Versuche auf 100 GiB erweitert;
+der Web-Deployment bleibt bis zu einem neuen, getesteten Suchverfahren auf
+null. Die produktive Mailzustellung über `mailman-core` und LMTP war davon
+nicht betroffen.
+
 - Keine Vollindexierung mehr im Web-Pod oder direkt im produktiven Indexpfad.
 - Keine Parallelisierung nach Zeilenanzahl.
 - Kein Batch ohne Byte-Limit.
