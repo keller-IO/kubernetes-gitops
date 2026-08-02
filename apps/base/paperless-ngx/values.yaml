@@ -8,6 +8,8 @@ env:
   PAPERLESS_DBUSER: paperless
   PAPERLESS_REDIS: redis://paperless-valkey:6379
   PAPERLESS_TIME_ZONE: Europe/Berlin
+  # CIFS does not reliably propagate inotify events; poll the scanner inbox.
+  PAPERLESS_CONSUMER_POLLING: "10"
   # OCR-Einstellungen wie im Alt-System auf 192.168.2.15
   PAPERLESS_OCR_LANGUAGE: deu+eng
   PAPERLESS_OCR_LANGUAGES: deu # Paket-Liste (Leerzeichen-Format), eng ist im Image enthalten
@@ -39,9 +41,14 @@ persistence:
     size: 20Gi
   consume:
     enabled: true
-    storageClass: ceph-rbd
-    accessMode: ReadWriteOnce
-    size: 2Gi
+    type: custom
+    mountPath: /usr/src/paperless/consume
+    volumeSpec:
+      csi:
+        driver: smb.csi.k8s.io
+        volumeAttributes:
+          source: //192.168.2.75/scanner
+          mountOptions: guest,vers=3.0,uid=1000,gid=1000,dir_mode=0777,file_mode=0666,noperm,cache=strict,noserverino
   export:
     enabled: true
     storageClass: ceph-rbd # CHANGE ME
