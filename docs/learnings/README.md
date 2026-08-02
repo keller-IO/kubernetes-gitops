@@ -18,6 +18,9 @@ Format und Kriterien: siehe AGENTS.md → „Operational Learnings".
   ein echter Cross-Node-I/O-Test bestaetigt die Recovery.
 - [NIC 5.x verwirft Ingress bei ungueltiger Annotation](nginx-ingress-5x-annotation-strictness.md)
   — `proxy-buffering: "off"` statt `"false"` legte radio.jit.services still auf 404.
+- [Paperless-CLI ausserhalb von s6](paperless-cli-without-s6.md) — die
+  Convenience-Wrapper erwarten `/init`; Kubernetes-Jobs rufen `manage.py`
+  stattdessen explizit als Benutzer `paperless` auf.
 - [Roundcube: pgloader-Schema-Typen](roundcube-pgloader-schema-types.md)
 - [Yealink T46S: OEM-Firmware blockiert Remote Phone Book](yealink-t46s-oem-phonebook.md)
   — funktionierender Fallback ist der einmalige Import ins lokale Telefonbuch.

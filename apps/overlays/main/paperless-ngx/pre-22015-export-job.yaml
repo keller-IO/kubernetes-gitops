@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: paperless-pre-22015-export-20260802
+  name: paperless-pre-22015-export-20260802-v2
   namespace: paperless-ngx
   annotations:
     argocd.argoproj.io/sync-wave: "-2"
@@ -15,9 +15,14 @@ spec:
         - name: exporter
           image: ghcr.io/paperless-ngx/paperless-ngx:2.20.6
           imagePullPolicy: IfNotPresent
+          workingDir: /usr/src/paperless/src
           command:
-            - /usr/local/bin/document_exporter
+            - /command/s6-setuidgid
           args:
+            - paperless
+            - python3
+            - manage.py
+            - document_exporter
             - /usr/src/paperless/export/pre-2.20.15-20260802
             - --no-progress-bar
           env:
