@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: paperless-pre-22015-export-20260802-v2
+  name: paperless-pre-22015-export-20260802-v3
   namespace: paperless-ngx
   annotations:
     argocd.argoproj.io/sync-wave: "-2"
@@ -11,6 +11,23 @@ spec:
   template:
     spec:
       restartPolicy: Never
+      initContainers:
+        - name: prepare-export-dir
+          image: ghcr.io/paperless-ngx/paperless-ngx:2.20.6
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/mkdir
+            - -p
+            - /usr/src/paperless/export/pre-2.20.15-20260802
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+          resources:
+            requests: { cpu: 10m, memory: 16Mi }
+            limits: { memory: 32Mi }
+          volumeMounts:
+            - name: export
+              mountPath: /usr/src/paperless/export
       containers:
         - name: exporter
           image: ghcr.io/paperless-ngx/paperless-ngx:2.20.6
