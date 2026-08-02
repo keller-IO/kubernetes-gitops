@@ -34,6 +34,22 @@ geprueft:
 | Verschluesselung | Keine `.gpg`-Dateien im Media-PVC gefunden; keine Passphrase oder Consume-Skripte im Deployment konfiguriert |
 | Export-Platz | 1,9 GiB frei; Media-PVC derzeit nur 42 MiB belegt |
 
+### Phase-1-Recovery-Punkt vom 02.08.2026
+
+Paperless 2.20.6 war fuer alle folgenden Sicherungen auf null Replicas skaliert;
+die Scanner-Inbox war leer:
+
+| Artefakt | Wert |
+|---|---|
+| Paperless-Export | 48 Dokumente; lokales Archiv `/home/ingo/ansible/backups/paperless-pre-2.20.15-20260802.tar.gz`, 45 MiB |
+| Export SHA-256 | `590ad83f243baae66f08681a824586de3b426d922381cc23d7d0d68268dc4650` |
+| CNPG-Backup | `paperless-pg-pre-22015-20260802`; Barman-ID `20260802T171946`; WAL `000000010000000F00000017` |
+| Data-Snapshot | `paperless-data-pre-22015-20260802`; Content `snapcontent-8fd96659-0375-4e0f-a8a8-f3b01603b9db` |
+| Media-Snapshot | `paperless-media-pre-22015-20260802`; Content `snapcontent-81bea0d7-b40f-403b-bded-19fdb3db30c7` |
+
+Export-Manifest und Datenbank enthielten beide exakt 48 Dokumente. Die beiden
+`VolumeSnapshot`-Objekte bleiben bis nach der 3.x-Abnahme deklarativ erhalten.
+
 Vor dem Major-Upgrade trotzdem manuell zu bestaetigen:
 
 - Es gibt auch in extern eingebundenen oder nicht im Deployment sichtbaren

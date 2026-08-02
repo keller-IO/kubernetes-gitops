@@ -3,6 +3,7 @@ kind: Kustomization
 namespace: paperless-ngx
 resources:
   - ../../../base/paperless-ngx
+  - pre-22015-recovery-points.yaml
 patches:
   - target: { kind: Ingress, name: paperless-paperless-ngx }
     patch: |
