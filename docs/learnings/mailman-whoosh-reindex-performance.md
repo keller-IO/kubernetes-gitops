@@ -215,10 +215,11 @@ erprobt. Ein kompletter produktiver Index wurde dabei **nicht** erzeugt:
 - `IndexWriter.add_reader()` scheiterte an inkompatiblen Whoosh-Spaltenwerten
   (`struct.error: required argument is not an integer`).
 
-Der dedizierte Staging-PVC wurde für weitere Versuche auf 100 GiB erweitert;
-der Web-Deployment bleibt bis zu einem neuen, getesteten Suchverfahren auf
-null. Die produktive Mailzustellung über `mailman-core` und LMTP war davon
-nicht betroffen.
+Der dedizierte Staging-PVC wurde für weitere Versuche auf 100 GiB erweitert.
+Der unvollständige Staging-Index wurde nicht in das produktive Web-PVC kopiert;
+Web wird auf ausdrückliche Betriebsentscheidung mit dem dort vorhandenen Index
+wieder gestartet. Die produktive Mailzustellung über `mailman-core` und LMTP
+war vom Reindex nicht betroffen.
 
 - Keine Vollindexierung mehr im Web-Pod oder direkt im produktiven Indexpfad.
 - Keine Parallelisierung nach Zeilenanzahl.
