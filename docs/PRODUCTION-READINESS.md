@@ -132,7 +132,8 @@ spec:
 
 ## 5. Storage (Ceph)
 
-**Dateien:** `infrastructure/base/storage/*`, jedes `storageClassName:` / `storageClass:` in den Apps
+**Dateien:** `infrastructure/base/{storage,ceph-csi,snapshot-controller}/*`, jedes
+`storageClassName:` / `storageClass:` in den Apps
 
 **Offen:**
 - [ ] Existierende Ceph-StorageClass-Namen verifizieren und Manifeste angleichen
@@ -143,6 +144,9 @@ spec:
       kontrollierten Node-Reboot testen; MDS-Session und reales Datei-I/O
       explizit verifizieren (`docs/learnings/external-cephfs-client-stall-recovery.md`).
 - [ ] Default-StorageClass festlegen (aktuell `ceph-rbd`).
+- [ ] CSI-Snapshot/Restore mit einem Wegwerf-`ceph-rbd`-PVC testen. API,
+      Controller und `ceph-rbd-retain` sind verdrahtet; produktive Snapshots erst
+      nach erfolgreichem Restore-Test anlegen.
 
 **Beispiel** — S3-Bucket via OBC (siehe `infrastructure/base/storage/objectbucket-example.yaml`):
 ```yaml
@@ -307,6 +311,9 @@ alertmanager:
   Continuous WAL + base → PITR.
 - **MariaDB** (kimai, wordpress): `Backup` CR in `apps/base/<app>/backup.yaml` (logischer Dump).
 - **S3-Creds**: `<app>-backup-s3` Secret in jeder `secret.sops.yaml`.
+- **PVC-Checkpoints**: CSI-`VolumeSnapshot` für `ceph-rbd` ist mit
+  `deletionPolicy: Retain` vorbereitet. Diese Snapshots liegen im selben Ceph und
+  ersetzen kein Offsite-Backup.
 - **Keine DB**: Icecast ist zustandsarm; Backup betrifft nur die GitOps-Konfiguration und externe
   Stream-Quellen/Clients.
 
@@ -321,9 +328,11 @@ alertmanager:
 - [ ] CNPG ≥1.26: `barmanObjectStore` in-tree ist deprecated → auf **barman-cloud Plugin** migrieren.
 - [ ] MariaDB **PITR**: für punktgenaues Restore `PhysicalBackup` CRD + Binlog statt logischem Dump.
 - [ ] DR-Overlay `infrastructure/overlays/disaster-recovery/` mit `bootstrap.recovery` anlegen.
-- [ ] PVC-Daten (paperless media/consume, forgejo repos, wordpress wp-content, mastodon-uploads via S3)
-      Backup-Strategie (Ceph-Snapshots / Velero) — DB-Backup deckt nur die Datenbank.
-- [ ] Restore-Runbook in `docs/runbooks/` schreiben + testen.
+- [ ] PVC-Daten (paperless data/media, forgejo repos, wordpress wp-content,
+      Mailman-Dateien) nach dem CSI-Smoke-Test per quiesced Snapshot absichern.
+      Fuer die SMB-Scanner-Inbox und Ceph-Ausfaelle zusaetzlich eine
+      Offsite-Strategie festlegen.
+- [ ] Restore-Abläufe aus `docs/runbooks/backup-restore.md` je Backend testen.
 
 **Beispiel** — CNPG continuous backup (`apps/base/forgejo/database.yaml` + `backup.yaml`):
 ```yaml
@@ -405,14 +414,15 @@ Jede App liegt unter `apps/base/<app>/` (Basis) + `apps/overlays/main/<app>/` (C
 | **roundcube** | `apps/base/roundcube/` | Legacy-Domains `roundcube.savar.de`, `mail.steinba.ch`, `webmail01.jit-creatives.de`, `jitmail.de`, `www.jitmail.de` und `webmail.daec-berlin.de` sind im Overlay als Übergangs-Ingress ergänzt; TLS endet dort am Legacy-Traefik. PostgreSQL-Schemafehler der historischen pgloader-Migration am 27.07. repariert (`postgres-schema-repair-20260727.sql`). Externen IMAP/SMTP setzen; `managesieve`-Backend prüfen; Session-Cache auf Valkey umstellen (config). |
 | **collabora** | `apps/base/collabora/` | `aliasgroups`-Regex auf reale WOPI-Hosts; Admin-Passwort; WOPI-Client (z.B. Nextcloud) anbinden. |
 | **eurooffice** | `apps/base/eurooffice/` | JWT-Secret (`jwt-secret`, bereits generiert/verschlüsselt) in der Nextcloud-Connector-App spiegeln (`occ config:app:set eurooffice ...` auf nc01/nc02-dev, URL `https://eurooffice.jit.services`); All-in-One-Image (interne PG/RabbitMQ/Redis) — bei >1 Nextcloud auf offizielles Kubernetes-Docs-Chart + CNPG umstellen (braucht CephFS-RWX); Erststart dauert (Font-Cache), Healthcheck `/healthcheck`. |
-| **paperless-ngx** | `apps/base/paperless-ngx/` | Externe Domain `paperless.savar.de` ist im Overlay gesetzt; TLS endet während der Migration am Legacy-Traefik. Admin + SECRET_KEY; OIDC-JSON `server_url`/`secret`; CephFS-RWX für media/consume bestätigen. |
+| **paperless-ngx** | `apps/base/paperless-ngx/` | Version 2.20.15 ist der verpflichtende Zwischenstand vor 3.x; der quieszierte Recovery-Punkt vom 02.08.2026 ist dokumentiert (`docs/runbooks/paperless-v3-upgrade.md`). Scanner-Inbox `//192.168.2.75/scanner` ist via SMB-CSI eingebunden und wird alle 10 Sekunden abgefragt. Externe Domain `paperless.savar.de`; TLS endet waehrend der Migration am Legacy-Traefik. Admin + SECRET_KEY; OIDC-JSON `server_url`/`secret`; CephFS-RWX fuer media bestaetigen. |
 | **forgejo** | `apps/base/forgejo/` | Admin-Secret; SSH-Service exponieren (LB/NodePort); OIDC-Provider in Forgejo anlegen; LFS→S3 optional. |
 | **renovate** | `apps/base/renovate/` | Forgejo-Token; `autodiscover` vs. feste Repo-Liste; Schedule abstimmen. |
 | **wordpress-1/2/3** | `apps/base/wordpress/` + `apps/overlays/main/wordpress-{1,2,3}/` | Pro Instanz Secret + Host (in Overlay gepatcht); „Redis Object Cache"-Plugin installieren; `mariadb.enabled:false` + externalDatabase final schalten. |
 | **mastodon** | `apps/base/mastodon/` | Chart migriert auf offizielles `mastodon/helm-charts` (0.5.1). Secret `mastodon-secret` (`secret-key-base`/VAPID/`are-*` Active-Record-Encryption-Keys) generieren; `mastodon-redis`-Passwort setzen (Valkey `requirepass`); S3 (OBC) verdrahten; SMTP; Streaming-WebSocket testen; ggf. Elasticsearch. ArgoCD: `mastodon.hooks` (dbPrepare/dbMigrate Helm-Hooks) für GitOps-Sync prüfen. |
 | **gatus** | `apps/base/gatus/` | `gatus-oidc`-Secret mit Keycloak-Client-Secret füllen; `issuer-url`/`redirect-url`/`client-id` auf reale Domain. Alle kanonischen Web-App-Endpunkte sind eingetragen; Paperless wird über `paperless.savar.de` geprüft und folgt dem Login-Redirect bis HTTP 200. Gewünschte Legacy- und Alias-Domains bei Bedarf als eigene Routengruppe ergänzen. |
+| **gatus-public** | `apps/base/gatus-public/` | Oeffentliche, bewusst getrennte Statusseite unter `status.jit-creatives.de`; enthaelt nur freigegebene Cloud-, Office-, Kommunikations-, Plattform-, Community- und Streaming-Dienste. SMTP wird per STARTTLS/587, IMAP per TLS/993 jeweils inklusive Zertifikatslaufzeit geprueft. Endpoint-URLs, Bedingungen und Fehlerdetails sind im UI verborgen. TLS terminiert am vorgeschalteten `.15`-Traefik; der Cluster-Ingress bleibt HTTP-only. |
 | **kite** | `apps/base/kite/` | `kite-secrets` füllen (`JWT_SECRET`/`KITE_ENCRYPT_KEY` via `openssl rand -hex 32`, `OAUTH_CLIENT_SECRET` == Keycloak-Client-Secret); `issuer`/`clientId` setzen; RBAC-Rollen-Mapping für OIDC-User; PVC-StorageClass prüfen. |
-| **mailman** | `apps/base/mailman/` | Secrets füllen (`HYPERKITTY_API_KEY`, `SECRET_KEY`, REST-Passwort, `MAILMAN_ADMIN_EMAIL`, `SMTP_HOST_USER`); externes MTA auf LMTP-Service routen; CNPG-Bucket `cnpg-mailman`/S3-Creds anlegen; PVC- und DB-Größen prüfen; erste Admin-Initialisierung testen. |
+| **mailman** | `apps/base/mailman/` | Upgrade auf 0.5.2 ist produktiv; PostgreSQL-Zeitspalten wurden repariert, Web-Startup-Limit nach zwei OOMs auf 2 GiB erhöht. Core, LMTP und der ausgehende Rundlauf sind verifiziert. Der Whoosh-Volltext-Neuaufbau scheiterte an Speicher-, Segment- und Laufzeitgrenzen; Web wird mit dem bisherigen Index im produktiven PVC wieder betrieben. Suche, Queue und Restarts beobachten; ein neues Suchverfahren separat testen. |
 | **icecast** | `apps/base/icecast/` | Source/Admin/Relay-Passwörter setzen; Source-Clients auf HTTPS-URL und Source-Passwort umstellen; Listener-Limit nach Stream-Profil prüfen (Ingress-Timeouts/Buffering für Live-Streaming sind gesetzt: `proxy-buffering off`, 3600s Read/Send-Timeout). |
 | **phpmyadmin** | `apps/base/phpmyadmin/` | Legacy-Domains `phpmyadmin.savar.de`/`phpmyadmin.jit-creatives.de` sind im Overlay ergänzt; TLS endet dort am Legacy-Traefik. Zugriff absichern (IP-Allowlist oder separater Auth-Proxy); nur dedizierte DB-User statt Root verwenden; Default-DB-Host `kimai-mariadb.kimai.svc.cluster.local` prüfen; weitere Ziele als FQDN eintragen. |
 | **nextcloud-yealink-phonebook** | `apps/base/nextcloud-yealink-phonebook/` | Liest das Nextcloud-Adressbuch alle 15 Minuten per CardDAV und stellt tokenisiert Remote- sowie T46S-Local-Directory-XML bereit. Die OEM-Firmware `66.85.193.13` blockiert Remote Phone Book und verwirft `local_contact.data.url`; deshalb wurden 17 Kontakte einmalig als lokales Telefonbuch importiert und auf dem Display unter `Kontakte > Alle Kontakte > Eingeben` validiert. Automatische Telefonaktualisierung bleibt offen und erfordert Kontrolle des PnP/DHCP-Provisionierungsservers oder einen getesteten Web-Upload-Client. Details: `docs/learnings/yealink-t46s-oem-phonebook.md`. |

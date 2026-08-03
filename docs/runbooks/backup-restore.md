@@ -1,4 +1,4 @@
-# Runbook — Datenbank-Backup & Restore (CNPG → Garage-S3)
+# Runbook — Backup & Restore (Datenbanken und RBD-PVCs)
 
 Kontinuierliche PostgreSQL-Backups der CNPG-Apps nach **Garage-S3 Potsdam**
 (offsite, getrennt vom Cluster-Ceph). Eingerichtet 13.07.2026.
@@ -18,6 +18,56 @@ CNPG-Cluster (roundcube-pg, paperless-pg, forgejo-pg, mailman-pg, mastodon-pg)
   MariaDB-Apps (kimai, wordpress) sind hier NICHT abgedeckt — separater Weg nötig.
 - **Retention:** 30 Tage (`retentionPolicy` je Cluster).
 - **Pfad je App:** `s3://backups/cnpg-<app>/` (roundcube, paperless, forgejo, mailman, mastodon).
+
+## Ceph-RBD-PVC-Snapshots
+
+`infrastructure/base/snapshot-controller/` installiert die drei stabilen
+`snapshot.storage.k8s.io/v1`-CRDs und den zu Ceph CSIs
+`csi-snapshotter:v8.5.0` passenden Controller. Der Ceph-RBD-Chart erzeugt die
+Klasse `ceph-rbd-retain`.
+
+Ein `VolumeSnapshot` ist ein schneller lokaler Rollback-Punkt, aber **kein
+Offsite-Backup**: Quell-PVC und Snapshot liegen im selben Ceph-Pool. Vor dem
+ersten produktiven Snapshot muss ein Wegwerf-PVC diese Kette vollständig
+durchlaufen:
+
+1. Markerdatei auf einem `ceph-rbd`-PVC schreiben und den schreibenden Pod stoppen.
+2. `VolumeSnapshot` mit `volumeSnapshotClassName: ceph-rbd-retain` anlegen.
+3. `readyToUse: true` und die beidseitige Bindung zum erzeugten
+   `VolumeSnapshotContent` prüfen.
+4. Einen neuen PVC per `spec.dataSource` aus dem Snapshot erzeugen.
+5. Den Restore-PVC in einem Wegwerf-Pod mounten, Markerdatei lesen und eine
+   Schreib-/Löschprobe ausschließlich auf dem Restore durchführen.
+
+Bei Anwendungsdaten zuerst alle schreibenden Pods über Git auf null skalieren
+und zusätzlich auf das Verschwinden der Pods und `VolumeAttachment`-Objekte
+warten. RBD-Snapshots frieren ext4 nicht ein; bei laufenden Schreibern wären sie
+nur crash-konsistent. Der Postgres-Pod bleibt aktiv und wird separat über das
+native CNPG-Backup gesichert.
+
+Beispiel für einen Restore-PVC:
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: app-data-restore-test
+spec:
+  accessModes: [ReadWriteOnce]
+  volumeMode: Filesystem
+  storageClassName: ceph-rbd
+  dataSource:
+    apiGroup: snapshot.storage.k8s.io
+    kind: VolumeSnapshot
+    name: app-data-checkpoint
+  resources:
+    requests:
+      storage: 5Gi
+```
+
+Die angeforderte Größe darf nicht kleiner als `status.restoreSize` sein.
+`deletionPolicy: Retain` verhindert das automatische Löschen des Ceph-Snapshots;
+Aufräumen ist deshalb immer ein expliziter, geprüfter Vorgang.
 
 ## Secrets
 
@@ -94,6 +144,8 @@ spec:
     - name: roundcube-quelle
       barmanObjectStore:
         destinationPath: s3://backups/cnpg-roundcube/
+        # Erforderlich, wenn der Restore-Cluster anders als die Quelle heißt.
+        serverName: roundcube-pg
         endpointURL: http://192.168.23.21:3900
         s3Credentials:
           accessKeyId: { name: roundcube-backup-s3, key: ACCESS_KEY_ID }

@@ -16,10 +16,31 @@ data:
     # no_signup_adapter.py liegt daneben im selben Verzeichnis.
     sys.path.insert(0, "/opt/mailman-web-data")
 
+    # Das lokale Template begrenzt nur den indexierten Mailbody. Die
+    # Archivansicht und der Datenbankinhalt bleiben vollstaendig.
+    import settings as _base_settings
+
+    TEMPLATES = _base_settings.TEMPLATES
+    TEMPLATES[0]["DIRS"] = ["/opt/mailman-web-data/templates"]
+
     LANGUAGE_CODE = "de-de"
 
     # Keine Social-Logins.
     MAILMAN_WEB_SOCIAL_AUTH = []
+
+    # Der Image-Default startet sonst einen Worker pro Node-CPU. Das erzeugte
+    # zusammen mit den periodischen HyperKitty-Jobs die OOM-Spitzen. Vollständig
+    # definieren statt update(): settings_local.py ist ein eigenes Modul und
+    # sieht Q_CLUSTER aus settings.py beim Import nicht.
+    Q_CLUSTER = {
+        "workers": 1,
+        "recycle": 100,
+        "timeout": 300,
+        "retry": 360,
+        "max_attempts": 3,
+        "save_limit": 100,
+        "orm": "default",
+    }
 
     # Ausgehende Mail (Passwort-Reset etc.) über mx02, IP-Relay via mynetworks.
     EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
@@ -54,3 +75,11 @@ data:
     class DisableSignupAdapter(DefaultAccountAdapter):
         def is_open_for_signup(self, request):
             return False
+  email_text.txt: |
+    {% load hk_haystack %}
+    {{ object.subject|nolongterms }}
+    {{ object.sender_name|nolongterms }}
+    {{ object.content|slice:":1048576"|nolongterms }}
+    {% for att in object.attachments.all %}
+        {{ att.name|nolongterms }}
+    {% endfor %}

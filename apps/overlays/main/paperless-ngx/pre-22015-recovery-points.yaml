@@ -1,0 +1,35 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Backup
+metadata:
+  name: paperless-pg-pre-22015-20260802
+  namespace: paperless-ngx
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  cluster:
+    name: paperless-pg
+  method: barmanObjectStore
+---
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshot
+metadata:
+  name: paperless-data-pre-22015-20260802
+  namespace: paperless-ngx
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  volumeSnapshotClassName: ceph-rbd-retain
+  source:
+    persistentVolumeClaimName: paperless-paperless-ngx-data
+---
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshot
+metadata:
+  name: paperless-media-pre-22015-20260802
+  namespace: paperless-ngx
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  volumeSnapshotClassName: ceph-rbd-retain
+  source:
+    persistentVolumeClaimName: paperless-paperless-ngx-media
