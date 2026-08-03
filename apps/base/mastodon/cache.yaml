@@ -30,7 +30,7 @@ spec:
         fsGroup: 999
       containers:
         - name: valkey
-          image: valkey/valkey:8.1-alpine # renovate: image=valkey/valkey
+          image: valkey/valkey:9.1-alpine # renovate: image=valkey/valkey
           # $(REDISCLI_AUTH) is expanded from the env var below; valkey-cli also
           # reads REDISCLI_AUTH automatically, so the readiness probe stays authed.
           args: ["--appendonly", "yes", "--requirepass", "$(REDISCLI_AUTH)"]
