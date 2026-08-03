@@ -7,7 +7,6 @@ namespace: mailman
 resources:
   - ../../../base/mailman
 patches:
-  - path: maintenance-web-index.yaml
   - target: { kind: Ingress, name: mailman }
     patch: |
       - op: remove

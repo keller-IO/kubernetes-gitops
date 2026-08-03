@@ -118,10 +118,10 @@ spec:
       annotations:
         # settings_local.py wird vom initContainer ins PVC kopiert. Eine reine
         # ConfigMap-Aenderung startet den Pod nicht neu, deshalb Revision bumpen.
-        mailman.jit.services/settings-revision: "20260730-qcluster"
+        mailman.jit.services/settings-revision: "20260801-search-body-limit"
     spec:
-      # Die beiden Python-Dateien werden in das PVC KOPIERT, statt sie per
-      # subPath aus der ConfigMap zu mounten. Grund: das Entrypoint macht
+      # Die lokalen Konfigurationsdateien werden in das PVC KOPIERT, statt sie
+      # per subPath aus der ConfigMap zu mounten. Grund: das Entrypoint macht
       # `chown mailman:mailman /opt/mailman-web-data -R` und läuft mit `set -e`
       # — auf einem read-only ConfigMap-Mount scheitert das und der Container
       # geht in CrashLoopBackOff. Der initContainer überschreibt bei jedem
@@ -132,7 +132,10 @@ spec:
           image: maxking/mailman-web@sha256:014726db85586fb53541f66f6ce964bf07e939791cfd5ffc796cd6d243696a18
           command: ["/bin/sh", "-ec"]
           args:
-            - cp /config/settings_local.py /config/no_signup_adapter.py /opt/mailman-web-data/
+            - |
+              install -d /opt/mailman-web-data/templates/search/indexes/hyperkitty
+              cp /config/settings_local.py /config/no_signup_adapter.py /opt/mailman-web-data/
+              cp /config/email_text.txt /opt/mailman-web-data/templates/search/indexes/hyperkitty/
           resources:
             requests: { cpu: 10m, memory: 32Mi }
             limits: { memory: 128Mi }
@@ -197,8 +200,9 @@ spec:
             # Migrationen/collectstatic und Django-Q gleichzeitig anliefen.
             limits: { memory: 2Gi }
           volumeMounts:
-            # settings_local.py und no_signup_adapter.py liegen hier drin —
-            # der initContainer kopiert sie aus der ConfigMap hinein. Das
+            # settings_local.py, no_signup_adapter.py und das begrenzte
+            # Haystack-Template liegen hier drin — der initContainer kopiert
+            # sie aus der ConfigMap hinein. Das
             # Entrypoint kopiert settings_local.py von hier weiter nach
             # /opt/mailman-web/, und settings_local.py legt dieses Verzeichnis
             # auf den sys.path, damit no_signup_adapter importierbar ist.

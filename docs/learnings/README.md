@@ -22,5 +22,9 @@ Format und Kriterien: siehe AGENTS.md → „Operational Learnings".
   Convenience-Wrapper erwarten `/init`; Kubernetes-Jobs rufen `manage.py`
   stattdessen explizit als Benutzer `paperless` auf.
 - [Roundcube: pgloader-Schema-Typen](roundcube-pgloader-schema-types.md)
+- [Mailman: Volltextindex nach Datenmenge planen](mailman-whoosh-reindex-performance.md)
+  — gleich grosse ID-Shards fuehrten bei 4,3 GiB ungleich verteiltem Mailtext zu
+  einem System-OOM; lokales Scratch, Byte-Limits, persistente Checkpoints und
+  ein Xapian-Benchmark sind der belastbare Weg.
 - [Yealink T46S: OEM-Firmware blockiert Remote Phone Book](yealink-t46s-oem-phonebook.md)
   — funktionierender Fallback ist der einmalige Import ins lokale Telefonbuch.
