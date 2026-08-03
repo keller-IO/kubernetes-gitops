@@ -27,7 +27,7 @@ spec:
         fsGroup: 999
       containers:
         - name: valkey
-          image: valkey/valkey:8.1-alpine # renovate: image=valkey/valkey
+          image: valkey/valkey:9.1-alpine # renovate: image=valkey/valkey
           args: ["--appendonly", "yes"]
           ports:
             - name: valkey
