@@ -164,30 +164,44 @@ spec:
 
 **Dateien:** `infrastructure/base/cert-manager/*`, alle `cert-manager.io/cluster-issuer` Annotations
 
-DNS-01 läuft über **ClouDNS**. Da ClouDNS kein nativer cert-manager-Provider ist, wird der
-ACME-Webhook `cert-manager-webhook-cloudns` mitausgerollt (Chart in `kustomization.yaml`,
-Werte in `cloudns-webhook-values.yaml`).
+DNS-01 nutzt explizite, zonenbegrenzte Solver. `jit.services` läuft über den
+ClouDNS-Webhook. RFC2136/TSIG gegen `dns01.jit-creatives.de` bedient `savar.de`,
+`jit-creatives.de`, `jitcreatives.de`, `jitmail.de`, `gemeinsam-fuer-halbe.de`,
+`jugendbeauftragter-halbe.de`, `aios.tools`, `jit.cloud` und `daec-berlin.de`.
+`binaergewitter.de` nutzt vorübergehend den aus Traefik übernommenen globalen
+Cloudflare-API-Key. Die Secrets liegen SOPS-verschlüsselt im cert-manager-Base.
 
-`savar.de` nutzt zusätzlich DNS-01 via RFC2136/TSIG gegen `dns01.jit-creatives.de`.
-Das Secret liegt in `infrastructure/base/cert-manager/rfc2136-tsig.sops.yaml`; der
-Solver ist im `letsencrypt-prod`-ClusterIssuer auf `dnsZones: [savar.de]` begrenzt.
+Production und Staging besitzen dieselbe Solvermatrix. Drei Staging-Certificates
+prüfen ClouDNS, RFC2136 und Cloudflare vor dem produktiven Ingress-TLS-Rollout.
+`horads.de` und `steinba.ch` nutzen zusätzlich einen ausschließlich auf diese
+beiden Zonen selektierten HTTP-01-Solver. Die Challenge wird wegen der strikten
+Host-Eindeutigkeit von nginx-inc in-place im vorhandenen Ingress ergänzt. Ein
+unselektierter HTTP-01-Fallback existiert bewusst nicht mehr.
 
 **Offen:**
-- [ ] ClouDNS-Credentials in `cluster-issuer.sops.yaml` setzen + verschlüsseln
-      (`auth_id`/`auth_password`). Empfohlen: zonen-beschränkter **sub-auth-id**-Nutzer.
-- [ ] `clouDNS.authIdType` in `cloudns-webhook-values.yaml` zum Credential passend setzen
-      (`sub-auth-id` oder `auth-id`).
-- [ ] `groupName` in Issuer **und** Webhook-Werten müssen identisch sein (`acme.jit.services`).
-- [ ] `email:` und `dnsZones:` auf echte Werte.
-- [ ] Optional Staging-Issuer für Testläufe (Let's-Encrypt-Ratelimits).
+- [ ] Alle drei DNS-01-Staging-Certificates sowie die Staging-Zertifikate für
+      `stream.horads.de`, `mail.steinba.ch`, `cloud.steinba.ch` und den
+      `imcor.de`/`jonaks.com`-SAN-Satz als `Ready=True` prüfen und den tatsächlich
+      gewählten Solver bestätigen.
+- [ ] Den globalen Cloudflare-Key durch einen auf `binaergewitter.de` beschränkten
+      API-Token mit `Zone:Read` und `DNS:Edit` ersetzen.
+- [x] Sechs `_acme-challenge`-CNAMEs für `imcor.de` und `jonaks.com` bei United
+      Domains angelegt und autoritativ sowie über mehrere öffentliche Resolver
+      verifiziert. TXT-Create, Auflösung über die ursprünglichen Namen und Cleanup
+      waren für alle sechs Delegationen erfolgreich; auch der vorübergehend
+      negative Cache für `db.imcor.de` auf `1.1.1.1` ist abgelaufen.
+- [ ] `_acme-challenge.cloud.naturkindergarten-moehringen.de` beim Provider
+      anlegen; erst danach TLS für diesen Namen aktivieren.
+- [ ] Nach erfolgreichem TLS-Rollout die temporären Staging-Certificates entfernen.
 
 **Beispiel** (`infrastructure/base/cert-manager/cluster-issuer.sops.yaml`):
 ```yaml
 spec:
   acme:
-    email: admin@DEINE-DOMAIN.tld
+    email: admin@jit.services
     solvers:
       - dns01: { webhook: { groupName: acme.jit.services, solverName: cloudns } }
+        selector: { dnsZones: [jit.services] }
 ```
 
 ---

@@ -1,0 +1,38 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: dns01-staging-cloudns
+  namespace: cert-manager
+spec:
+  secretName: dns01-staging-cloudns-tls
+  dnsNames:
+    - dns01-staging.jit.services
+  issuerRef:
+    kind: ClusterIssuer
+    name: letsencrypt-staging
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: dns01-staging-rfc2136
+  namespace: cert-manager
+spec:
+  secretName: dns01-staging-rfc2136-tls
+  dnsNames:
+    - dns01-staging.savar.de
+  issuerRef:
+    kind: ClusterIssuer
+    name: letsencrypt-staging
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: dns01-staging-cloudflare
+  namespace: cert-manager
+spec:
+  secretName: dns01-staging-cloudflare-tls
+  dnsNames:
+    - dns01-staging.binaergewitter.de
+  issuerRef:
+    kind: ClusterIssuer
+    name: letsencrypt-staging
