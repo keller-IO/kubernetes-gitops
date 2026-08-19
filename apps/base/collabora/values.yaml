@@ -38,8 +38,11 @@ resources:
   # Ist-Verbrauch — genau die Diskrepanz, die die Memory-HPA in die Aufwaertsspirale
   # trieb (dauerhaft >100 % des Requests). Das Limit von 1Gi war nur ~200Mi vom
   # OOM-Kill entfernt. Siehe docs/learnings/collabora-hpa-runaway.md.
+  # 19.08.2026: Limit 1536Mi -> 2Gi. Der Ist-Verbrauch war auf 1004Mi gestiegen
+  # (65 % des Limits) und der Pod wurde mit OOMKilled/Exit 137 abgeraeumt.
+  # Dokumentbearbeitung erzeugt Spitzen deutlich ueber dem Ruhewert.
   requests: { cpu: 250m, memory: 896Mi }
-  limits: { memory: 1536Mi }
+  limits: { memory: 2Gi }
 ingress:
   enabled: true
   className: nginx
