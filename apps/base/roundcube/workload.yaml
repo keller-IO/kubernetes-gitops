@@ -66,8 +66,14 @@ spec:
             - { name: roundcube-custom, mountPath: /var/www/html/skins/jit-logo.png, subPath: jit-logo.png }
           resources:
             # Gemessen am 28.07.2026: 170Mi, also oberhalb des alten 128Mi-Requests.
+            # 19.08.2026: Limit 384Mi -> 768Mi. Der Ruhewert (gemessen 240Mi) lag bei
+            # 62 % des Limits — das sieht harmlos aus, reicht aber nicht fuer
+            # Lastspitzen: der Pod wurde 11x mit OOMKilled/Exit 137 abgeraeumt,
+            # zuletzt nach 5,3 h Laufzeit. Die Nodes hatten dabei reichlich Luft
+            # (wrk1: 32 % Speicher), es war also das cgroup-Limit, nicht der Node.
+            # Faustregel hier: Limit ~3x Ruhewert, nicht ~1,5x.
             requests: { cpu: 50m, memory: 192Mi }
-            limits: { memory: 384Mi }
+            limits: { memory: 768Mi }
       volumes:
         - name: roundcube-config
           configMap:
