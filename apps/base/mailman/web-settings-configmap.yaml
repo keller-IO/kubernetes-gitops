@@ -18,6 +18,15 @@ data:
 
     # Das lokale Template begrenzt nur den indexierten Mailbody. Die
     # Archivansicht und der Datenbankinhalt bleiben vollstaendig.
+    #
+    # 20.08.2026: Limit von 1 MiB auf 256 KiB gesenkt. Live gemessen an
+    # 42.051 Mails (SQL ueber octet_length(content)):
+    #   ungekappt 4.370 MB | 1 MiB 2.883 MB | 256 KiB 1.470 MB
+    # Der zu indexierende Text halbiert sich damit. Grund: der
+    # Whoosh-Index passt sonst nicht in den Web-Pod -- gemessen kostet
+    # ein konsolidierter Gesamtindex rund 3 GB allein zum Oeffnen.
+    # Betroffen sind 3.852 statt bisher 1.065 Mails; Betreff, Absender,
+    # Anhangsnamen und die ersten 256 KB bleiben durchsuchbar.
     import settings as _base_settings
 
     TEMPLATES = _base_settings.TEMPLATES
@@ -79,7 +88,7 @@ data:
     {% load hk_haystack %}
     {{ object.subject|nolongterms }}
     {{ object.sender_name|nolongterms }}
-    {{ object.content|slice:":1048576"|nolongterms }}
+    {{ object.content|slice:":262144"|nolongterms }}
     {% for att in object.attachments.all %}
         {{ att.name|nolongterms }}
     {% endfor %}
