@@ -118,7 +118,7 @@ spec:
       annotations:
         # settings_local.py wird vom initContainer ins PVC kopiert. Eine reine
         # ConfigMap-Aenderung startet den Pod nicht neu, deshalb Revision bumpen.
-        mailman.jit.services/settings-revision: "20260820-no-hourly-index"
+        mailman.jit.services/settings-revision: "20260820-search-cap-256k"
     spec:
       # Die lokalen Konfigurationsdateien werden in das PVC KOPIERT, statt sie
       # per subPath aus der ConfigMap zu mounten. Grund: das Entrypoint macht
@@ -198,7 +198,13 @@ spec:
             requests: { cpu: 200m, memory: 512Mi }
             # 0.5.2 überschritt beim produktiven Start zweimal 1536Mi, während
             # Migrationen/collectstatic und Django-Q gleichzeitig anliefen.
-            limits: { memory: 2Gi }
+            # 20.08.2026 auf 3Gi: mit dem 256-KiB-Cap landet der Suchindex
+            # bei geschätzt ~1,5 GB, dazu ~250 MB für uwsgi und Django-Q.
+            # 2Gi wäre eine Punktlandung ohne Reserve gewesen. Der Node hat
+            # den Platz (wrk3 rund 4,4 GB frei) -- und ein zu hohes Limit auf
+            # einem knappen Node hat hier schon einmal einen System-OOM
+            # ausgelöst, siehe docs/learnings/mailman-whoosh-reindex-performance.md.
+            limits: { memory: 3Gi }
           volumeMounts:
             # settings_local.py, no_signup_adapter.py und das begrenzte
             # Haystack-Template liegen hier drin — der initContainer kopiert
