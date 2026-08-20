@@ -118,7 +118,7 @@ spec:
       annotations:
         # settings_local.py wird vom initContainer ins PVC kopiert. Eine reine
         # ConfigMap-Aenderung startet den Pod nicht neu, deshalb Revision bumpen.
-        mailman.jit.services/settings-revision: "20260801-search-body-limit"
+        mailman.jit.services/settings-revision: "20260820-no-hourly-index"
     spec:
       # Die lokalen Konfigurationsdateien werden in das PVC KOPIERT, statt sie
       # per subPath aus der ConfigMap zu mounten. Grund: das Entrypoint macht
@@ -208,6 +208,19 @@ spec:
             # auf den sys.path, damit no_signup_adapter importierbar ist.
             - name: web-data
               mountPath: /opt/mailman-web-data
+            # uwsgi.ini aus der ConfigMap, damit der stuendliche
+            # update_index-Job nicht mehr in diesem Pod laeuft.
+            # subPath ist hier sicher: das Entrypoint chownt zwar
+            # /opt/mailman-web-data und settings_local.py, fasst
+            # uwsgi.ini aber nicht an -- der Grund, warum
+            # settings_local.py per initContainer kopiert werden muss
+            # (4647f71), trifft hier also nicht zu. Achtung: subPath
+            # aktualisiert sich NICHT bei ConfigMap-Aenderungen,
+            # deshalb die settings-revision-Annotation mitziehen.
+            - name: web-settings
+              mountPath: /opt/mailman-web/uwsgi.ini
+              subPath: uwsgi.ini
+              readOnly: true
           # Der Start macht collectstatic --clear, compress und `manage.py
           # migrate`. Die Liveness darf dabei NICHT hineinfunken — ein Kill
           # mitten in der Migration hinterlässt ein halb angewandtes Schema.
