@@ -125,6 +125,73 @@ App** syncen, nicht alle 19 auf einmal.
   `failed to run "diff": executable file not found`. Lösung:
   `KUBECTL_EXTERNAL_DIFF="/usr/bin/diff -u -N"`.
 
+## Ausgang (24.08.2026)
+
+Behoben. Ablauf und die Punkte, die beim Nachstellen Zeit gekostet hätten:
+
+1. **Auto-Sync zuerst fleet-weit einfrieren** (PR #116). Alle Applications teilen sich
+   *eine* `syncPolicy` aus dem jeweiligen ApplicationSet-Template — es gibt keinen
+   Per-App-Override. Ohne diesen Schritt hätten nach der Reparatur **alle 19 blinden
+   Apps gleichzeitig gesynct und geprunt**, statt App für App. `root` und beide
+   ApplicationSets sind reines YAML ohne `helmCharts:` und rendern auch im kaputten
+   Zustand, der Freeze ließ sich also ganz normal per GitOps ausrollen.
+2. Fix in Git: PR #117 (`values.yaml`) und keller-IO/infrastructure#7 (`argocd.tf`).
+3. **Aktivierung out-of-band per `kubectl patch`** am `argocd-repo-server`-Deployment.
+
+### `tofu apply` war NICHT der Aktivierungsweg — auch nicht mit `-target`
+
+`tofu plan -target=helm_release.argocd` ergab **`2 to add, 8 to change, 2 to destroy`**:
+`kellerio-wrk1` und `kellerio-wrk4` wären zerstört und neu gebaut worden. `-target`
+zieht `module.nodes` als Dependency mit, und `-exclude` ist damit nicht kombinierbar
+(OpenTofu 1.12.5: *"mutually-exclusive"*); `-exclude=module.nodes` allein schließt
+`helm_release.argocd` transitiv gleich mit aus (`No changes`).
+
+**Ursache war die tfvars, nicht der State.** `node_name` erzwingt beim Proxmox-Provider
+eine Ersetzung, und die tfvars nannten falsche Hosts: wrk1 liegt real auf `pve`
+(tfvars: `cloud67`), wrk4 auf `cloud62` (tfvars: `cloud59`). Verifiziert per
+`pvesh get /cluster/resources --type vm` **und** Tofu-Refresh. Nach der Korrektur:
+`0 to add, 9 to change, 0 to destroy`.
+
+> **Falle:** `tofu state show` liest den *gespeicherten* State und meldete weiterhin
+> `cloud67`/`cloud59`. Nur der Refresh im `plan` zeigt die Realität.
+
+Weiterhin offen: wrk4s Disk liegt auf Ceph (`vmimages`), `vm_storage_id` ist global
+`local-zfs` — der Plan will sie migrieren. `talos-proxmox-nodes` setzt
+`datastore_id = var.vm_storage_id` fest (`vms.tf:39,49,79`) und kennt Per-Node-Storage
+nur für `extra_disk`.
+
+### Der gecachte Fehler verschwindet nicht von allein
+
+Nach dem Patch liefen im Pod die richtigen Binaries (`kustomize v5.8.1` + `helm v4.2.1`),
+**alle 19 Apps standen trotzdem weiter auf `Unknown`** — die Meldung lautet
+`Manifest generation error (CACHED)`. Es braucht pro App einen Hard-Refresh:
+
+```bash
+kubectl patch application <name> -n argocd --type=merge \
+  -p '{"metadata":{"annotations":{"argocd.argoproj.io/refresh":"hard"}}}'
+```
+
+### Ergebnis: 0 Unknown, 30 Synced, 6 OutOfSync
+
+Deutlich weniger Drift als befürchtet. `infra-argocd` steht selbst auf `Synced` — der
+Patch deckt sich exakt mit `values.yaml`. Die sechs Verbliebenen:
+`infra-mariadb-operator`, `app-mastodon`, `infra-cilium`, `infra-monitoring`,
+`infra-metrics-server`, `app-collabora`.
+
+### Nebenbefund: Ressourcen im falschen Namespace
+
+In drei Infra-Apps landen Objekte, die laut Chart in einen **festen** Namespace gehören
+(meist `kube-system`), stattdessen im Destination-Namespace der Application — der kommt
+im ApplicationSet 1:1 aus `{{.path.basename}}`.
+
+Nachgemessen bei `infra-metrics-server`: `RoleBinding metrics-server-auth-reader`
+existiert live in `metrics-server` (26 Tage alt), aber **nicht** in `kube-system`, wo sie
+die Role `extension-apiserver-authentication-reader` binden müsste — die Bindung ist
+damit funktionslos. **Hier hat Git recht und Live ist kaputt**, also genau umgekehrt zu
+`infra-mariadb-operator`, wo der Operator produktiv in `mariadb-system` läuft und Git
+nach `mariadb-operator` rendert. Betrifft `metrics-server`, `monitoring`,
+`mariadb-operator`.
+
 ## Siehe auch
 
 - `docs/learnings/argocd-dauerhaft-outofsync.md` — der *andere* Sync-Fehlerzustand
