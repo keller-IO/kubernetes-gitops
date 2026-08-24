@@ -80,10 +80,13 @@ spec:
             - /spec/storage/waitForVolumeResize
             - /spec/passwordSecretKeyRef/generate
             - /spec/rootPasswordSecretKeyRef/generate
+      # Auto-sync TEMPORARILY disabled fleet-wide (#111): the repo-server can't
+      # render helmCharts-apps right now, so once it's fixed every one of these
+      # would auto-sync+prune simultaneously instead of app-by-app. This template
+      # has no per-app override. Re-enable (restore `automated: {prune: true,
+      # selfHeal: true}`) once the repo-server fix lands AND each app's drift has
+      # been reviewed — see docs/learnings/argocd-helm-rendering-kaputt.md.
       syncPolicy:
-        automated:
-          prune: true
-          selfHeal: true
         syncOptions:
           - CreateNamespace=true
           - ServerSideApply=true
