@@ -12,6 +12,7 @@ resources:
   - database.yaml
   - cache.yaml
   - backup.yaml
+  - watchdog.yaml
 
 generators:
   - ./secret-generator.yaml
