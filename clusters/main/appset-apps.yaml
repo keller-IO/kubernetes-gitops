@@ -12,6 +12,14 @@ spec:
         revision: main
         directories:
           - path: apps/overlays/main/*
+          # Mastodon ist noch nicht produktiv und live nicht deployt — der
+          # Namespace enthielt nur einen seit Tagen haengenden db-prepare-Job.
+          # Solange die Migration (#46) laeuft, soll ArgoCD den kompletten Stack
+          # nicht bei der ersten Gelegenheit hochfahren. Gleiche Handhabung wie
+          # bei authentik im Infrastruktur-ApplicationSet.
+          # Wieder aufnehmen, wenn die Migration soweit ist.
+          - path: apps/overlays/main/mastodon
+            exclude: true
   template:
     metadata:
       name: "app-{{.path.basename}}"
