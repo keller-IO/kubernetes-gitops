@@ -66,6 +66,36 @@ spec:
         - group: ""
           kind: Service
           jqPathExpressions: [".spec.ports[]?.nodePort"]
+        # Ciliums Hubble-PKI. Der Chart laeuft mit dem Default
+        # tls.auto.method: helm und erzeugt CA und Zertifikate per genCA/
+        # genSignedCert BEIM RENDERN — zwei Builds desselben Commits liefern
+        # nachweislich verschiedene CAs. Diese Secrets sind damit Cluster-
+        # Zustand, kein Git-Zustand: ArgoCD sieht bei JEDEM Vergleich Drift,
+        # infra-cilium kann strukturell nie Synced werden.
+        #
+        # Ohne dieses Ignore wuerde selfHeal die Cilium-CA im Reconcile-Takt
+        # (180 s) immer wieder neu ausrollen und dabei jedes Mal die
+        # Hubble-mTLS-Kette brechen. Das ist der Grund, warum das hier VOR dem
+        # Reaktivieren von automated: stehen muss.
+        #
+        # Dauerhafte Loesung waere tls.auto.method: certmanager (cert-manager
+        # laeuft im Cluster) — dann werden die Zertifikate verwaltet statt
+        # gewuerfelt, und das Ignore kann wieder weg.
+        - group: ""
+          kind: Secret
+          name: cilium-ca
+          namespace: kube-system
+          jsonPointers: [/data]
+        - group: ""
+          kind: Secret
+          name: hubble-server-certs
+          namespace: kube-system
+          jsonPointers: [/data]
+        - group: ""
+          kind: Secret
+          name: hubble-relay-client-certs
+          namespace: kube-system
+          jsonPointers: [/data]
         # Der API-Server materialisiert in JEDEM eingebetteten PVC-Template eines
         # StatefulSets apiVersion, kind und status — unabhaengig von volumeMode,
         # das seit #48 explizit in Git steht. Betrifft hier authentik-valkey.
