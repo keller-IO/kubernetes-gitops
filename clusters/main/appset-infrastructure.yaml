@@ -14,33 +14,6 @@ spec:
           - path: infrastructure/base/*
           - path: infrastructure/base/authentik
             exclude: true
-          - path: infrastructure/base/mariadb-operator
-            exclude: true
-    # mariadb-operator ist die eine Ausnahme vom Schema
-    # "Namespace = Verzeichnisname": der Operator laeuft produktiv in
-    # mariadb-system, der Namespace mariadb-operator ist leer.
-    #
-    # Noetig, weil `kustomize build` fuer diese App 37 Objekte OHNE
-    # metadata.namespace liefert — trotz `namespace: mariadb-system` in der
-    # Kustomization, das bei cnpg und crowdsec sauber stempelt. Ursache liegt
-    # im Chart und ist ungeklaert. Namenlose Objekte legt ArgoCD im
-    # destination.namespace ab, mit dem Verzeichnisnamen also im FALSCHEN.
-    # Ein Sync haette einen zweiten Operator neben den laufenden gestellt —
-    # zwei Instanzen auf denselben MariaDB-CRs.
-    #
-    # Eigener Generator mit Template-Override statt Bedingung im Template:
-    # das Template hier wird ueber das globale gemerged, bleibt also auf eine
-    # Zeile begrenzt und laesst die uebrigen 16 Infra-Apps unberuehrt.
-    - git:
-        repoURL: https://github.com/keller-IO/kubernetes-gitops.git
-        revision: main
-        directories:
-          - path: infrastructure/base/mariadb-operator
-      template:
-        metadata: {}
-        spec:
-          destination:
-            namespace: mariadb-system
   template:
     metadata:
       name: "infra-{{.path.basename}}"
@@ -57,7 +30,24 @@ spec:
         # --enable-exec + ksops in PATH; see infrastructure/base/argocd + Terraform argocd.tf).
       destination:
         server: https://kubernetes.default.svc
-        namespace: "{{.path.basename}}"
+        # Namespace = Verzeichnisname, mit einer Ausnahme: mariadb-operator
+        # laeuft produktiv in mariadb-system, der Namespace mariadb-operator
+        # ist leer.
+        #
+        # Das schlaegt durch, weil `kustomize build` fuer diese App 37 Objekte
+        # OHNE metadata.namespace liefert — trotz `namespace: mariadb-system`
+        # in der Kustomization, das bei cnpg und crowdsec sauber stempelt
+        # (Ursache liegt im Chart, ungeklaert). Namenlose Objekte legt ArgoCD
+        # im destination.namespace ab, mit dem Verzeichnisnamen also im
+        # falschen: ein Sync haette einen ZWEITEN Operator neben den laufenden
+        # gestellt, zwei Instanzen auf denselben MariaDB-CRs.
+        #
+        # Als Bedingung im Template, NICHT als Template auf Generator-Ebene:
+        # dieses ArgoCD kennt `template` unterhalb von generators[] nicht
+        # (die CRD listet dort nur git/list/matrix/...), ein solcher Override
+        # wird vom API-Server still verworfen und das ApplicationSet bleibt
+        # dauerhaft OutOfSync.
+        namespace: '{{ if eq .path.basename "mariadb-operator" }}mariadb-system{{ else }}{{ .path.basename }}{{ end }}'
       # Defaulting-Rauschen unterdruecken. Ohne das stehen Apps dauerhaft auf
       # OutOfSync, obwohl nichts driftet — und echte Drift geht darin unter.
       # Siehe docs/learnings/argocd-dauerhaft-outofsync.md.
