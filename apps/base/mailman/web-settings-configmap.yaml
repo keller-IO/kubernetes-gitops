@@ -34,6 +34,10 @@ data:
 
     LANGUAGE_CODE = "de-de"
 
+    # TLS endet vor dem HTTP-Ingress; Django muss den externen Origin explizit
+    # fuer Login- und Passwort-Reset-POSTs akzeptieren.
+    CSRF_TRUSTED_ORIGINS = ["https://lists.jitmail.de"]
+
     # Keine Social-Logins.
     MAILMAN_WEB_SOCIAL_AUTH = []
 
