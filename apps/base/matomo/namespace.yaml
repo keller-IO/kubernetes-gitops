@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: matomo
+  labels:
+    # Explizit statt implizit: ein Namespace ohne PodSecurity-Labels war die
+    # Ursache des crowdsec-agent-Vorfalls (0/3, 28.07.2026).
+    # "baseline" und nicht "restricted", weil das Matomo-Apache-Image als root
+    # startet und Port 80 bindet — unter restricted liefe der Pod nicht an.
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
