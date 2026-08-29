@@ -1,0 +1,39 @@
+apiVersion: k8s.mariadb.com/v1alpha1
+kind: MariaDB
+metadata:
+  name: matomo-mariadb
+  namespace: matomo
+spec:
+  rootPasswordSecretKeyRef: # CRD-Feldname: *SecretKeyRef, nicht *SecretRef
+    name: matomo-secret
+    key: mariadb-root-password
+  username: matomo
+  passwordSecretKeyRef:
+    name: matomo-secret
+    key: mariadb-password
+  database: matomo
+  # Ohne expliziten Pin waehlt der Operator seine eigene Default-Version:
+  # nicht in Git sichtbar, fuer Renovate unsichtbar, und ein Operator-Bump
+  # wechselt die DB-Version ungefragt (Postgres-Major-Split 28.07.2026).
+  image: docker-registry1.mariadb.com/library/mariadb:11.4.5 # renovate: image=docker-registry1.mariadb.com/library/mariadb
+  storage:
+    size: 10Gi # Rohdaten wachsen mit den Besuchen; 90d Retention siehe docs
+    storageClassName: ceph-rbd
+  replicas: 1 # set 3 + galera for HA
+  myCnf: |
+    [mariadb]
+    character-set-server = utf8mb4
+    collation-server = utf8mb4_unicode_ci
+    innodb_buffer_pool_size = 256M
+    max_allowed_packet = 64M
+  # Ohne resources landet der Pod in QoS-Klasse BestEffort und wird bei
+  # Node-Speicherdruck als ERSTES gekillt (Vorfall 28.07.2026, siehe kimai).
+  # memory-Request > innodb_buffer_pool_size (256M) plus Overhead.
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      memory: 1Gi
+  metrics:
+    enabled: true

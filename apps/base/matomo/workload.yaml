@@ -1,0 +1,85 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: matomo-data
+  namespace: matomo
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: ceph-rbd
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: matomo
+  namespace: matomo
+spec:
+  replicas: 1 # RWO-PVC: mehr als eine Replica geht nicht ohne RWX
+  strategy:
+    type: Recreate # sonst blockiert die alte Replica das RWO-Volume
+  selector:
+    matchLabels: { app.kubernetes.io/name: matomo }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: matomo }
+    spec:
+      containers:
+        - name: matomo
+          # renovate: image=matomo
+          image: matomo:5.13.0-apache
+          ports: [{ containerPort: 80, name: http }]
+          env:
+            - name: MATOMO_DATABASE_ADAPTER
+              value: mysql
+            - name: MATOMO_DATABASE_HOST
+              value: matomo-mariadb
+            - name: MATOMO_DATABASE_DBNAME
+              value: matomo
+            - name: MATOMO_DATABASE_USERNAME
+              value: matomo
+            - name: MATOMO_DATABASE_PASSWORD
+              valueFrom: { secretKeyRef: { name: matomo-secret, key: mariadb-password } }
+          volumeMounts:
+            - name: data
+              mountPath: /var/www/html
+            - name: config
+              mountPath: /var/www/html/config/common.config.ini.php
+              subPath: common.config.ini.php
+              readOnly: true
+          # Probe-Werte bewusst grosszuegig: in diesem Cluster wurden schon
+          # mehrfach gesunde Dienste von ihren eigenen Probes abgeschossen
+          # (mailman-web, roundcube-pg, gatus-public). Matomo entpackt beim
+          # ersten Start seine Dateien auf das Ceph-Volume, das dauert.
+          startupProbe:
+            httpGet: { path: /, port: http }
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 60 # bis zu 10 Minuten fuer den Erststart
+          readinessProbe:
+            httpGet: { path: /, port: http }
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet: { path: /, port: http }
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 6
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 1Gi
+          # Kein `capabilities: drop: [ALL]`: das Apache-Image bindet Port 80
+          # und braucht dafuer CAP_NET_BIND_SERVICE — ein pauschales Drop
+          # laesst den Container gar nicht erst starten.
+          securityContext:
+            allowPrivilegeEscalation: false
+      volumes:
+        - name: data
+          persistentVolumeClaim: { claimName: matomo-data }
+        - name: config
+          configMap: { name: matomo-config }

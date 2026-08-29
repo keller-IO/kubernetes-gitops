@@ -1,0 +1,44 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: matomo-config
+  namespace: matomo
+data:
+  # Matomo liest common.config.ini.php ZUSAETZLICH zur config.ini.php und
+  # ueberschreibt damit deren Werte. So bleiben diese Einstellungen in Git,
+  # obwohl der Installer config.ini.php selbst auf das PVC schreibt.
+  #
+  # ACHTUNG: IP-Anonymisierung, DoNotTrack und Datenaufbewahrung sind KEINE
+  # Konfigdatei-Schluessel — sie liegen als PrivacyManager-Optionen in der
+  # Datenbank und werden einmalig in der Oberflaeche gesetzt (siehe
+  # docs/runbooks/matomo-setup.md). Was hier steht, ist der Teil, der sich
+  # deklarativ festlegen laesst.
+  common.config.ini.php: |
+    ; Verwaltet ueber GitOps — Aenderungen in apps/base/matomo/configmap.yaml.
+
+    [General]
+    ; Matomo steht hinter nginx-Ingress und (fuer den Tracker) hinter der
+    ; nginx auf mgmt02. Ohne diese Header saehe Matomo bei JEDEM Besuch die
+    ; IP des Proxys statt die des Besuchers — die Statistik waere wertlos
+    ; und die IP-Anonymisierung liefe ins Leere.
+    proxy_client_headers[] = "HTTP_X_FORWARDED_FOR"
+    proxy_host_headers[] = "HTTP_X_FORWARDED_HOST"
+
+    ; Schutz gegen Host-Header-Injection. Nur diese Namen darf Matomo als
+    ; eigene Adresse akzeptieren.
+    trusted_hosts[] = "matomo.jit.services"
+    trusted_hosts[] = "www.jit-creatives.de"
+
+    ; Kein websiteuebergreifendes Fingerprinting (ist Default, hier bewusst
+    ; festgeschrieben, damit ein Upstream-Wechsel es nicht still umdreht).
+    enable_fingerprinting_across_websites = 0
+
+    ; Die Admin-Oberflaeche ist nur intern erreichbar und der Tracker laeuft
+    ; ueber die nginx auf mgmt02 per HTTP an den Cluster. force_ssl wuerde
+    ; daher eine Weiterleitungsschleife ausloesen.
+    force_ssl = 0
+
+    [Tracker]
+    ; Keine Drittanbieter-Cookies. Das eigentliche cookielose Tracking
+    ; erzwingt disableCookies() im Snippet — das hier ist die zweite Reihe.
+    use_third_party_id_cookie = 0

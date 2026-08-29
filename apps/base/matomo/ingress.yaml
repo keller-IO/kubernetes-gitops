@@ -1,0 +1,29 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: matomo
+  namespace: matomo
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    # Bewusst KEINE HTTPS-Erzwingung: die nginx auf mgmt02 reicht den Tracker
+    # per HTTP an den Cluster durch (first-party /stats/). Ein Redirect wuerde
+    # diesen Pfad brechen. Die Oberflaeche ist ohnehin nur intern erreichbar.
+    nginx.org/ssl-redirect: "false"
+    nginx.org/redirect-to-https: "false"
+    nginx.org/client-max-body-size: "10m"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: [matomo.jit.services]
+      secretName: matomo-tls
+  rules:
+    - host: matomo.jit.services
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: matomo
+                port:
+                  number: 80

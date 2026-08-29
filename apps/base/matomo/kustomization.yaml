@@ -1,0 +1,25 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: matomo
+# Matomo (self-hosted Analytics) fuer www.jit-creatives.de.
+#
+# Datenschutz-Architektur (Entscheidung 29.08.2026):
+#   - Die Admin-Oberflaeche laeuft NUR intern auf matomo.jit.services.
+#   - Der Tracker wird auf mgmt02 als /stats/ unter www.jit-creatives.de
+#     durchgereicht (first-party). Dadurch kein neuer oeffentlicher Name,
+#     kein Traefik-Zertifikat, und der Tracker faellt Adblockern kaum auf.
+#   - Cookieless + DoNotTrack werden im Tracking-Snippet erzwungen, nicht
+#     serverseitig — so kann es nicht versehentlich abgeschaltet werden.
+#
+# MariaDB statt CNPG: Matomo unterstuetzt offiziell nur MySQL/MariaDB.
+resources:
+  - namespace.yaml
+  - database.yaml
+  - configmap.yaml
+  - workload.yaml
+  - service.yaml
+  - ingress.yaml
+  - backup.yaml
+
+generators:
+  - ./secret-generator.yaml
