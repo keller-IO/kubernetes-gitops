@@ -12,6 +12,14 @@ spec:
         revision: main
         directories:
           - path: apps/overlays/main/*
+          # Mastodon ist noch nicht produktiv und live nicht deployt — der
+          # Namespace enthielt nur einen seit Tagen haengenden db-prepare-Job.
+          # Solange die Migration (#46) laeuft, soll ArgoCD den kompletten Stack
+          # nicht bei der ersten Gelegenheit hochfahren. Gleiche Handhabung wie
+          # bei authentik im Infrastruktur-ApplicationSet.
+          # Wieder aufnehmen, wenn die Migration soweit ist.
+          - path: apps/overlays/main/mastodon
+            exclude: true
   template:
     metadata:
       name: "app-{{.path.basename}}"
@@ -80,10 +88,13 @@ spec:
             - /spec/storage/waitForVolumeResize
             - /spec/passwordSecretKeyRef/generate
             - /spec/rootPasswordSecretKeyRef/generate
+      # Auto-sync TEMPORARILY disabled fleet-wide (#111): the repo-server can't
+      # render helmCharts-apps right now, so once it's fixed every one of these
+      # would auto-sync+prune simultaneously instead of app-by-app. This template
+      # has no per-app override. Re-enable (restore `automated: {prune: true,
+      # selfHeal: true}`) once the repo-server fix lands AND each app's drift has
+      # been reviewed — see docs/learnings/argocd-helm-rendering-kaputt.md.
       syncPolicy:
-        automated:
-          prune: true
-          selfHeal: true
         syncOptions:
           - CreateNamespace=true
           - ServerSideApply=true

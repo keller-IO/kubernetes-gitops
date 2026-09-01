@@ -1,0 +1,170 @@
+# Public status page. Keep internal infrastructure checks in the private Gatus
+# instance under status.jit.services.
+resources:
+  requests: { cpu: 50m, memory: 32Mi }
+  limits: { memory: 64Mi }
+
+# TLS terminates on the external .15 Traefik and traffic reaches nginx over HTTP.
+ingress:
+  enabled: true
+  annotations:
+    nginx.org/ssl-redirect: "false"
+    nginx.org/redirect-to-https: "false"
+  hosts:
+    - status.jit-creatives.de
+
+config:
+  ui:
+    title: JIT Creatives Status
+    header: JIT Creatives
+    dashboard-heading: Systemstatus
+    dashboard-subheading: Verfuegbarkeit unserer oeffentlichen Dienste
+    default-sort-by: group
+  endpoints:
+    - name: Nextcloud
+      group: Cloud
+      url: https://jit.cloud/status.php
+      interval: 60s
+      conditions:
+        - "[STATUS] == 200"
+        - "[BODY].installed == true"
+        - "[BODY].maintenance == false"
+        - "[BODY].needsDbUpgrade == false"
+      ui:
+        hide-url: true
+        hide-hostname: true
+        hide-conditions: true
+        hide-errors: true
+    - name: Nextcloud Dev
+      group: Cloud
+      url: https://cloud-dev.savar.de/status.php
+      interval: 60s
+      conditions:
+        - "[STATUS] == 200"
+        - "[BODY].installed == true"
+        - "[BODY].maintenance == false"
+      ui:
+        hide-url: true
+        hide-hostname: true
+        hide-conditions: true
+        hide-errors: true
+    - name: Nextcloud Office
+      group: Office
+      url: https://office.savar.de/hosting/discovery
+      interval: 60s
+      conditions: ["[STATUS] == 200"]
+      ui:
+        hide-url: true
+        hide-hostname: true
+        hide-conditions: true
+        hide-errors: true
+    - name: EuroOffice
+      group: Office
+      url: https://eurooffice.jit.services/healthcheck
+      interval: 60s
+      conditions: ["[STATUS] == 200"]
+      ui:
+        hide-url: true
+        hide-hostname: true
+        hide-conditions: true
+        hide-errors: true
+    - name: Webmail
+      group: Kommunikation
+      url: https://webmail01.jit-creatives.de/
+      interval: 60s
+      conditions: ["[STATUS] == 200"]
+      ui:
+        hide-url: true
+        hide-hostname: true
+        hide-conditions: true
+        hide-errors: true
+    - name: SMTP
+      group: Kommunikation
+      url: starttls://mail.jit-creatives.de:587
+      interval: 60s
+      client:
+        timeout: 5s
+      conditions:
+        - "[CONNECTED] == true"
+        - "[CERTIFICATE_EXPIRATION] > 168h"
+      ui:
+        hide-url: true
+        hide-hostname: true
+        hide-conditions: true
+        hide-errors: true
+    - name: IMAP
+      group: Kommunikation
+      url: tls://mail.jit-creatives.de:993
+      interval: 60s
+      client:
+        timeout: 5s
+      conditions:
+        - "[CONNECTED] == true"
+        - "[CERTIFICATE_EXPIRATION] > 168h"
+      ui:
+        hide-url: true
+        hide-hostname: true
+        hide-conditions: true
+        hide-errors: true
+    - name: Mailinglisten
+      group: Kommunikation
+      url: https://lists.jitmail.de/postorius/lists/
+      interval: 60s
+      conditions: ["[STATUS] == 200"]
+      ui:
+        hide-url: true
+        hide-hostname: true
+        hide-conditions: true
+        hide-errors: true
+    - name: GitLab
+      group: Plattform
+      url: https://gitlab.jit-creatives.de/users/sign_in
+      interval: 60s
+      conditions: ["[STATUS] == 200"]
+      ui:
+        hide-url: true
+        hide-hostname: true
+        hide-conditions: true
+        hide-errors: true
+    - name: Keycloak
+      group: Plattform
+      url: https://auth.savar.de/realms/bgt/.well-known/openid-configuration
+      interval: 60s
+      conditions:
+        - "[STATUS] == 200"
+        - "has([BODY].issuer) == true"
+      ui:
+        hide-url: true
+        hide-hostname: true
+        hide-conditions: true
+        hide-errors: true
+    - name: Mastodon
+      group: Community
+      url: https://jit.social/health
+      interval: 60s
+      conditions: ["[STATUS] == 200"]
+      ui:
+        hide-url: true
+        hide-hostname: true
+        hide-conditions: true
+        hide-errors: true
+    - name: Binaergewitter Downloads
+      group: Community
+      url: https://download.binaergewitter.de/
+      interval: 60s
+      conditions: ["[STATUS] == 200"]
+      ui:
+        hide-url: true
+        hide-hostname: true
+        hide-conditions: true
+        hide-errors: true
+    - name: Radio
+      group: Streaming
+      url: https://radio.jit.services/status.xsl
+      interval: 60s
+      conditions: ["[STATUS] == 200"]
+      ui:
+        hide-url: true
+        hide-hostname: true
+        hide-conditions: true
+        hide-errors: true

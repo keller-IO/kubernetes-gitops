@@ -16,10 +16,44 @@ data:
     # no_signup_adapter.py liegt daneben im selben Verzeichnis.
     sys.path.insert(0, "/opt/mailman-web-data")
 
+    # Das lokale Template begrenzt nur den indexierten Mailbody. Die
+    # Archivansicht und der Datenbankinhalt bleiben vollstaendig.
+    #
+    # 20.08.2026: Limit von 1 MiB auf 256 KiB gesenkt. Live gemessen an
+    # 42.051 Mails (SQL ueber octet_length(content)):
+    #   ungekappt 4.370 MB | 1 MiB 2.883 MB | 256 KiB 1.470 MB
+    # Der zu indexierende Text halbiert sich damit. Grund: der
+    # Whoosh-Index passt sonst nicht in den Web-Pod -- gemessen kostet
+    # ein konsolidierter Gesamtindex rund 3 GB allein zum Oeffnen.
+    # Betroffen sind 3.852 statt bisher 1.065 Mails; Betreff, Absender,
+    # Anhangsnamen und die ersten 256 KB bleiben durchsuchbar.
+    import settings as _base_settings
+
+    TEMPLATES = _base_settings.TEMPLATES
+    TEMPLATES[0]["DIRS"] = ["/opt/mailman-web-data/templates"]
+
     LANGUAGE_CODE = "de-de"
+
+    # TLS endet vor dem HTTP-Ingress; Django muss den externen Origin explizit
+    # fuer Login- und Passwort-Reset-POSTs akzeptieren.
+    CSRF_TRUSTED_ORIGINS = ["https://lists.jitmail.de"]
 
     # Keine Social-Logins.
     MAILMAN_WEB_SOCIAL_AUTH = []
+
+    # Der Image-Default startet sonst einen Worker pro Node-CPU. Das erzeugte
+    # zusammen mit den periodischen HyperKitty-Jobs die OOM-Spitzen. Vollständig
+    # definieren statt update(): settings_local.py ist ein eigenes Modul und
+    # sieht Q_CLUSTER aus settings.py beim Import nicht.
+    Q_CLUSTER = {
+        "workers": 1,
+        "recycle": 100,
+        "timeout": 300,
+        "retry": 360,
+        "max_attempts": 3,
+        "save_limit": 100,
+        "orm": "default",
+    }
 
     # Ausgehende Mail (Passwort-Reset etc.) über mx02, IP-Relay via mynetworks.
     EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
@@ -54,3 +88,78 @@ data:
     class DisableSignupAdapter(DefaultAccountAdapter):
         def is_open_for_signup(self, request):
             return False
+  email_text.txt: |
+    {% load hk_haystack %}
+    {{ object.subject|nolongterms }}
+    {{ object.sender_name|nolongterms }}
+    {{ object.content|slice:":262144"|nolongterms }}
+    {% for att in object.attachments.all %}
+        {{ att.name|nolongterms }}
+    {% endfor %}
+  uwsgi.ini: |
+    [uwsgi]
+    # Port on which uwsgi will be listening.
+    uwsgi-socket = 0.0.0.0:8080
+    http-socket = 0.0.0.0:8000
+
+    # Enable threading for python
+    enable-threads = true
+
+    # Setting uwsgi buffer size to what Apache2 supports.
+    buffer-size = 8190
+
+    # Move to the directory where the django files are.
+    chdir = /opt/mailman-web
+
+    # Use the wsgi file provided with the django project.
+    wsgi-file = wsgi.py
+
+    # Setup default number of processes and threads per process.
+    master = true
+    processes = 2
+    threads = 2
+
+    # Drop privileges and don't run as root.
+    uid = mailman
+    gid = mailman
+
+    # Setup the django_q related worker processes.
+    attach-daemon = ./manage.py qcluster
+
+    # Setup hyperkitty's cron jobs.
+    # 'minutely' jobs are run hourly for perf reasons.
+    # See https://github.com/maxking/docker-mailman/issues/327
+    unique-cron = 0 -1 -1 -1 -1 ./manage.py runjobs minutely
+    unique-cron = -15 -1 -1 -1 -1 ./manage.py runjobs quarter_hourly
+    # GEAENDERT gegenueber dem Image (Original: `runjobs hourly`).
+    #
+    # `runjobs hourly` fuehrt DREI HyperKitty-Jobs aus: new_lists_from_mailman,
+    # thread_starting_email und update_index. Der letzte baut den
+    # Whoosh-Volltextindex fort und ist die Ursache der OOM-Schleife dieses
+    # Pods: 1049 Laeufe gestartet, nur 400 beendet, der Index seit 31.07.2026
+    # unveraendert. Details in docs/learnings/mailman-whoosh-reindex-performance.md.
+    #
+    # Deshalb hier die beiden guenstigen Jobs einzeln per `runjob`, und
+    # update_index bewusst NICHT. Der Volltextindex wird ausserhalb dieses Pods
+    # neu gebaut; bis dahin bleibt die Suche auf dem Stand vom 31.07.2026 --
+    # genau wie vorher, nur ohne das Frontend stuendlich mitzureissen.
+    unique-cron = 0 -1 -1 -1 -1 ./manage.py runjob hyperkitty new_lists_from_mailman
+    unique-cron = 0 -1 -1 -1 -1 ./manage.py runjob hyperkitty thread_starting_email
+    unique-cron = 0 0 -1 -1 -1 ./manage.py runjobs daily
+    unique-cron = 0 0 1 -1 -1 ./manage.py runjobs monthly
+    unique-cron = 0 0 -1 -1 0 ./manage.py runjobs weekly
+    unique-cron = 0 0 1 1 -1 ./manage.py runjobs yearly
+
+    # Setup the request log.
+    req-logger = file:/opt/mailman-web-data/logs/uwsgi.log
+
+    # Log cron seperately.
+    logger = cron file:/opt/mailman-web-data/logs/uwsgi-cron.log
+    log-route = cron uwsgi-cron
+
+    # Log qcluster commands seperately.
+    logger = qcluster file:/opt/mailman-web-data/logs/uwsgi-qcluster.log
+    log-route = qcluster uwsgi-daemons
+
+    # Last log and it logs the rest of the stuff.
+    logger = file:/opt/mailman-web-data/logs/uwsgi-error.log

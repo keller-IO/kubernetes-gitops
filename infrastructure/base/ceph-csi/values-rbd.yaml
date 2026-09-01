@@ -53,3 +53,13 @@ storageClass:
   create: false
 secret:
   create: false
+
+# Fast rollback checkpoints for RBD PVCs. Retain is deliberate: deleting the
+# namespaced VolumeSnapshot must not silently remove the backend snapshot.
+volumeSnapshotClass:
+  create: true
+  name: ceph-rbd-retain
+  clusterID: "74747628-63a3-440d-a3f6-f4681660b858"
+  snapshotterSecret: csi-rbd-secret
+  snapshotterSecretNamespace: ceph-csi
+  deletionPolicy: Retain

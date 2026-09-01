@@ -6,7 +6,7 @@ namespace: argocd
 helmCharts:
   - name: argo-cd
     repo: https://argoproj.github.io/argo-helm
-    version: 10.1.4 # renovate: helm — appVersion v3.4.3, MUSS zum Tofu-Bootstrap (argocd.tf) passen
+    version: 10.3.3 # renovate: helm — appVersion v3.4.3, MUSS zum Tofu-Bootstrap (argocd.tf) passen
     releaseName: argocd
     namespace: argocd
     valuesFile: values.yaml

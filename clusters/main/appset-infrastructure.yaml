@@ -30,7 +30,24 @@ spec:
         # --enable-exec + ksops in PATH; see infrastructure/base/argocd + Terraform argocd.tf).
       destination:
         server: https://kubernetes.default.svc
-        namespace: "{{.path.basename}}"
+        # Namespace = Verzeichnisname, mit einer Ausnahme: mariadb-operator
+        # laeuft produktiv in mariadb-system, der Namespace mariadb-operator
+        # ist leer.
+        #
+        # Das schlaegt durch, weil `kustomize build` fuer diese App 37 Objekte
+        # OHNE metadata.namespace liefert — trotz `namespace: mariadb-system`
+        # in der Kustomization, das bei cnpg und crowdsec sauber stempelt
+        # (Ursache liegt im Chart, ungeklaert). Namenlose Objekte legt ArgoCD
+        # im destination.namespace ab, mit dem Verzeichnisnamen also im
+        # falschen: ein Sync haette einen ZWEITEN Operator neben den laufenden
+        # gestellt, zwei Instanzen auf denselben MariaDB-CRs.
+        #
+        # Als Bedingung im Template, NICHT als Template auf Generator-Ebene:
+        # dieses ArgoCD kennt `template` unterhalb von generators[] nicht
+        # (die CRD listet dort nur git/list/matrix/...), ein solcher Override
+        # wird vom API-Server still verworfen und das ApplicationSet bleibt
+        # dauerhaft OutOfSync.
+        namespace: '{{ if eq .path.basename "mariadb-operator" }}mariadb-system{{ else }}{{ .path.basename }}{{ end }}'
       # Defaulting-Rauschen unterdruecken. Ohne das stehen Apps dauerhaft auf
       # OutOfSync, obwohl nichts driftet — und echte Drift geht darin unter.
       # Siehe docs/learnings/argocd-dauerhaft-outofsync.md.
@@ -39,6 +56,36 @@ spec:
         - group: ""
           kind: Service
           jqPathExpressions: [".spec.ports[]?.nodePort"]
+        # Ciliums Hubble-PKI. Der Chart laeuft mit dem Default
+        # tls.auto.method: helm und erzeugt CA und Zertifikate per genCA/
+        # genSignedCert BEIM RENDERN — zwei Builds desselben Commits liefern
+        # nachweislich verschiedene CAs. Diese Secrets sind damit Cluster-
+        # Zustand, kein Git-Zustand: ArgoCD sieht bei JEDEM Vergleich Drift,
+        # infra-cilium kann strukturell nie Synced werden.
+        #
+        # Ohne dieses Ignore wuerde selfHeal die Cilium-CA im Reconcile-Takt
+        # (180 s) immer wieder neu ausrollen und dabei jedes Mal die
+        # Hubble-mTLS-Kette brechen. Das ist der Grund, warum das hier VOR dem
+        # Reaktivieren von automated: stehen muss.
+        #
+        # Dauerhafte Loesung waere tls.auto.method: certmanager (cert-manager
+        # laeuft im Cluster) — dann werden die Zertifikate verwaltet statt
+        # gewuerfelt, und das Ignore kann wieder weg.
+        - group: ""
+          kind: Secret
+          name: cilium-ca
+          namespace: kube-system
+          jsonPointers: [/data]
+        - group: ""
+          kind: Secret
+          name: hubble-server-certs
+          namespace: kube-system
+          jsonPointers: [/data]
+        - group: ""
+          kind: Secret
+          name: hubble-relay-client-certs
+          namespace: kube-system
+          jsonPointers: [/data]
         # Der API-Server materialisiert in JEDEM eingebetteten PVC-Template eines
         # StatefulSets apiVersion, kind und status — unabhaengig von volumeMode,
         # das seit #48 explizit in Git steht. Betrifft hier authentik-valkey.
@@ -50,10 +97,13 @@ spec:
             - ".spec.volumeClaimTemplates[]?.apiVersion"
             - ".spec.volumeClaimTemplates[]?.kind"
             - ".spec.volumeClaimTemplates[]?.status"
+      # Auto-sync TEMPORARILY disabled fleet-wide (#111): the repo-server can't
+      # render helmCharts-apps right now, so once it's fixed every one of these
+      # would auto-sync+prune simultaneously instead of app-by-app. This template
+      # has no per-app override. Re-enable (restore `automated: {prune: true,
+      # selfHeal: true}`) once the repo-server fix lands AND each app's drift has
+      # been reviewed — see docs/learnings/argocd-helm-rendering-kaputt.md.
       syncPolicy:
-        automated:
-          prune: true
-          selfHeal: true
         syncOptions:
           - CreateNamespace=true
           - ServerSideApply=true

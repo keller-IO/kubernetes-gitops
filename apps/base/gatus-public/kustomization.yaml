@@ -1,0 +1,45 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: gatus-public
+resources:
+  - namespace.yaml
+helmCharts:
+  - name: gatus
+    repo: https://twin.github.io/helm-charts
+    version: 1.5.0 # renovate: helm
+    releaseName: gatus-public
+    namespace: gatus-public
+    valuesFile: values.yaml
+
+# Probe-Timeouts. Das Chart rendert liveness/readiness nur mit httpGet und
+# kennt zu den Timeouts KEINE values-Option (templates/_pod.tpl) — es greifen
+# also die Kubernetes-Defaults timeoutSeconds: 1 / failureThreshold: 3.
+# Eine Sekunde ist fuer diese Instanz zu knapp: /health antwortet erst, wenn
+# der Watchdog nicht gerade in einem Check haengt, und die externen Checks
+# brauchen real 5-9 s (Webmail gemessen 8,8 s). Folge am 06.08.2026: gatus
+# arbeitete nachweislich korrekt (im Log lauter success=true) und wurde
+# trotzdem mitten im Betrieb per SIGTERM abgeraeumt ("Received termination
+# signal") — 454 Restarts, status.jit-creatives.de durchgehend 502, weil der
+# Service ohne ready-Pod keine Endpoints hatte.
+# Muss ein Patch bleiben, solange das Chart die Felder nicht anbietet.
+patches:
+  - target:
+      kind: Deployment
+      name: gatus-public
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: gatus-public
+      spec:
+        template:
+          spec:
+            containers:
+              - name: gatus
+                livenessProbe:
+                  timeoutSeconds: 10
+                  periodSeconds: 30
+                  failureThreshold: 5
+                readinessProbe:
+                  timeoutSeconds: 10
+                  failureThreshold: 5
