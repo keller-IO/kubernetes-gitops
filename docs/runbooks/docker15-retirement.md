@@ -51,18 +51,27 @@ vier verwaiste cm-acme-http-solver-Ingresses in beiden Namespaces
 
 Das ist der im Plan beschriebene Catch-all-HTTP01-Solver in der Praxis: Solange
 WAN-Port 80 auf `.15` zeigt, kann eine HTTP-01-Challenge gegen `.246` nicht
-loesen. Der Zustand ist nicht harmlos:
+loesen.
 
-- `wordpress-1` hat ueberhaupt kein Zertifikat.
-- `wordpress-2` haelt noch ein Zertifikat bis **2026-10-10**, Renewal-Termin
-  ist **2026-09-10** — in neun Tagen. Der Renewal wird mit dem aktuellen
-  Solver-Setup ebenfalls scheitern.
-- 43 Tage Dauer-Retry gegen Let's Encrypt Produktion belastet unnoetig das
-  Rate-Limit-Budget derselben Zonen, die spaeter beim Massen-Rollout gebraucht
-  werden.
+**Kein Produktionsrisiko.** Die Overlays auf `main` entfernen fuer beide
+Instanzen bewusst `cert-manager.io/cluster-issuer` und `spec.tls` ("oeffentlich
+ueber den .15-Traefik, sonst 301-Loop"). Die beiden `Certificate`-Objekte sind
+Altlasten aus der Zeit davor, mit `ownerReference` auf den Ingress und ohne
+Entsprechung in Git. Extern liefert Traefik eigene Zertifikate und erneuert sie
+selbst — am 01.09. verifiziert:
 
-Das ist der dringlichste Punkt des gesamten Plans und muss unabhaengig vom
-Cutover-Termin aufgeraeumt werden.
+```text
+gemeinsam-fuer-halbe.de     CN=www.gemeinsam-fuer-halbe.de   gueltig bis 2026-10-26
+jugendbeauftragter-halbe.de CN=www.jugendbeauftragter-halbe.de gueltig bis 2026-10-23
+```
+
+Das in `wordpress-2` liegende Cluster-Secret `wordpress-tls` (Ablauf
+2026-10-10) wird von keinem Ingress referenziert. Sein Ablauf ist folgenlos.
+
+Schaedlich ist der Zustand trotzdem: 43 Tage Dauer-Retry gegen Let's Encrypt
+Produktion belasten das Rate-Limit-Budget genau der Zonen, die spaeter beim
+Massen-Rollout gebraucht werden, und der Cluster driftet gegenueber Git. Das
+Aufraeumen ist deshalb dringend, aber nicht terminkritisch.
 
 ### Was sich zugunsten der Abschaltung verbessert hat
 
@@ -128,11 +137,11 @@ Plattformentscheidung fuer Phase 3 noch offen ist.
    verwaisten `cm-acme-http-solver`-Ingresses in `wordpress-1`/`wordpress-2`
    entfernen und die Zertifikatsanforderung aussetzen, bis ein passender Solver
    existiert. Damit endet der 43-Tage-Retry gegen die Produktions-ACME.
-2. **Renewal-Frist `wordpress-2` entscheiden.** Bis zum 10.09.2026 muss
-   entweder ein funktionierender DNS-01-Solver fuer
-   `gemeinsam-fuer-halbe.de` stehen oder bewusst akzeptiert werden, dass der
-   Host bis zum Cutover ueber Traefik auf `.15` weiterlaeuft. Nichtstun laeuft
-   auf einen Zertifikatsablauf am 10.10.2026 hinaus.
+2. **Keine separate Renewal-Frist.** Beide Halbe-Sites laufen bereits im
+   Cluster und werden extern nur von Traefik terminiert, der seine
+   Zertifikate selbst erneuert. Cluster-TLS fuer diese beiden Hosts kommt
+   zusammen mit dem RFC2136-Solver aus Schritt 7 — ein Sonderweg vorab ist
+   nicht noetig.
 3. **Postfix-Beobachtungsfenster formal schliessen.** Beginn `2026-08-10`, Ende
    `2026-09-01`, Nachweis: leere Queue, keine Logzeile, keine Verbindung. Damit
    ist Phase 7 Schritt 3 abgehakt.
