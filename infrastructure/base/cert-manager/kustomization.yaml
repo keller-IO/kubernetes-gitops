@@ -5,6 +5,8 @@ kind: Kustomization
 # nach cert-manager umschreiben — dann bekommt der Webhook 403 auf die
 # Authn-ConfigMap und ACME-DNS-01 steht still. Ressourcen ohne Namespace
 # bekommen den App-Destination-Namespace von ArgoCD.
+resources:
+  - ./dns01-staging-probes.yaml
 helmCharts:
   - name: cert-manager
     repo: https://charts.jetstack.io

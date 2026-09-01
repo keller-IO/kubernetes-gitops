@@ -52,6 +52,8 @@ metadata:
   name: horads
   namespace: legacy-proxy
   annotations:
+    acme.cert-manager.io/http01-edit-in-place: "true"
+    cert-manager.io/cluster-issuer: letsencrypt-staging
     nginx.org/ssl-redirect: "false"
     nginx.org/redirect-to-https: "false"
     # Icecast-Stream: Buffering aus + lange Timeouts (Dauer-Verbindung). Als
@@ -62,6 +64,10 @@ metadata:
     nginx.org/proxy-send-timeout: "3600s"
 spec:
   ingressClassName: nginx
+  tls:
+    - hosts:
+        - stream.horads.de
+      secretName: horads-tls
   rules:
     - host: stream.horads.de
       http:
@@ -127,12 +133,22 @@ metadata:
   name: imcor
   namespace: legacy-proxy
   annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-staging
     nginx.org/ssl-redirect: "false"
     nginx.org/redirect-to-https: "false"
     # Backend spricht selbst HTTPS (.21:443) -> re-encrypt zum Upstream
     nginx.org/ssl-services: "imcor"
 spec:
   ingressClassName: nginx
+  tls:
+    - hosts:
+        - imcor.de
+        - www.imcor.de
+        - db.imcor.de
+        - config.imcor.de
+        - jonaks.com
+        - www.jonaks.com
+      secretName: imcor-tls
   rules:
     - host: imcor.de
       http:
@@ -228,6 +244,8 @@ metadata:
   name: jitcloud
   namespace: legacy-proxy
   annotations:
+    acme.cert-manager.io/http01-edit-in-place: "true"
+    cert-manager.io/cluster-issuer: letsencrypt-staging
     nginx.org/ssl-redirect: "false"
     nginx.org/redirect-to-https: "false"
     # Backend spricht selbst HTTPS (.217:443) -> re-encrypt zum Upstream
@@ -238,6 +256,10 @@ metadata:
     nginx.org/proxy-send-timeout: "3600s"
 spec:
   ingressClassName: nginx
+  tls:
+    - hosts:
+        - cloud.steinba.ch
+      secretName: jitcloud-steinba-tls
   rules:
     - host: cloud.savar.de
       http:
