@@ -15,16 +15,10 @@ spec:
     spec:
       containers:
         - name: mailman-core
-          # MIGRATIONSSTAND — bewusst auf den Alt-Stand von 192.168.2.15 gepinnt:
-          # GNU Mailman 3.3.4, alembic 2b73fbcc97c9. Damit geht der pg_dump des
-          # Altsystems 1:1 hinein, ohne Schema-Upgrade beim Import.
-          # Der Digest ist maxking/mailman-core:latest vom 07.04.2021 — genau das
-          # Image, das auf .15 läuft. `latest` wurde seither nie neu gepusht, ist
-          # als Tag aber nicht stabil, deshalb Digest-Pinning.
-          # Upgrade auf 0.5.2 (Mailman 3.3.10) erst NACH abgeschlossener Migration
-          # und getrennt davon. Renovate darf hier nicht anfassen.
+          # Mailman 3.3.10 / alembic 8cc1f79f4459. Upgrade auf einer restaurierten
+          # Produktionskopie einschließlich PostgreSQL-Schema-Reparatur verifiziert.
           # renovate: ignore
-          image: maxking/mailman-core@sha256:34b5c3af84cce9b3d3a758e12cb4edeabbc1559b4fba14cb85532471b5a0f199
+          image: maxking/mailman-core@sha256:cb8e412bb18d74480f996da68f46e92473b6103995e71bc5aeba139b255cc3d2
           ports:
             - name: api
               containerPort: 8001
@@ -121,9 +115,13 @@ spec:
   template:
     metadata:
       labels: { app.kubernetes.io/name: mailman-web }
+      annotations:
+        # settings_local.py wird vom initContainer ins PVC kopiert. Eine reine
+        # ConfigMap-Aenderung startet den Pod nicht neu, deshalb Revision bumpen.
+        mailman.jit.services/settings-revision: "20260820-search-cap-256k"
     spec:
-      # Die beiden Python-Dateien werden in das PVC KOPIERT, statt sie per
-      # subPath aus der ConfigMap zu mounten. Grund: das Entrypoint macht
+      # Die lokalen Konfigurationsdateien werden in das PVC KOPIERT, statt sie
+      # per subPath aus der ConfigMap zu mounten. Grund: das Entrypoint macht
       # `chown mailman:mailman /opt/mailman-web-data -R` und läuft mit `set -e`
       # — auf einem read-only ConfigMap-Mount scheitert das und der Container
       # geht in CrashLoopBackOff. Der initContainer überschreibt bei jedem
@@ -131,10 +129,13 @@ spec:
       initContainers:
         - name: install-settings
           # renovate: ignore
-          image: maxking/mailman-web@sha256:3b240e44635f229a04fd7eb2dc4389ddb115d10c4bc1462577cc5c8b501ff0a0
+          image: maxking/mailman-web@sha256:014726db85586fb53541f66f6ce964bf07e939791cfd5ffc796cd6d243696a18
           command: ["/bin/sh", "-ec"]
           args:
-            - cp /config/settings_local.py /config/no_signup_adapter.py /opt/mailman-web-data/
+            - |
+              install -d /opt/mailman-web-data/templates/search/indexes/hyperkitty
+              cp /config/settings_local.py /config/no_signup_adapter.py /opt/mailman-web-data/
+              cp /config/email_text.txt /opt/mailman-web-data/templates/search/indexes/hyperkitty/
           resources:
             requests: { cpu: 10m, memory: 32Mi }
             limits: { memory: 128Mi }
@@ -146,16 +147,10 @@ spec:
               readOnly: true
       containers:
         - name: mailman-web
-          # MIGRATIONSSTAND — Alt-Stand von 192.168.2.15: Django 2.2.20,
-          # HyperKitty 1.3.4, Postorius 1.3.4, 73 django_migrations. Der
-          # Container legt damit in `mailmanweb` exakt das Schema an, das die
-          # 5,9-GB-SQLite des Altsystems mitbringt; der Import ist dadurch ein
-          # reines Datenkopieren ohne Schemaanpassung.
-          # Digest = maxking/mailman-web:latest vom 07.04.2021.
-          # Upgrade auf 0.5.2 (Django 4.2 / HyperKitty 1.3.12, 99 Migrationen)
-          # erst nach dem Import, als eigener Schritt.
+          # Django 4.2.16 / HyperKitty 1.3.12 / Postorius 1.3.13; die Migration
+          # von 73 auf 98 django_migrations wurde auf einer Restore-Kopie geprüft.
           # renovate: ignore
-          image: maxking/mailman-web@sha256:3b240e44635f229a04fd7eb2dc4389ddb115d10c4bc1462577cc5c8b501ff0a0
+          image: maxking/mailman-web@sha256:014726db85586fb53541f66f6ce964bf07e939791cfd5ffc796cd6d243696a18
           ports:
             - name: http
               containerPort: 8000
@@ -201,15 +196,37 @@ spec:
               value: /static=/opt/mailman-web-data/static
           resources:
             requests: { cpu: 200m, memory: 512Mi }
-            limits: { memory: 1536Mi } # Django-Migrations/collectstatic spiken beim Start
+            # 0.5.2 überschritt beim produktiven Start zweimal 1536Mi, während
+            # Migrationen/collectstatic und Django-Q gleichzeitig anliefen.
+            # 20.08.2026 auf 3Gi: mit dem 256-KiB-Cap landet der Suchindex
+            # bei geschätzt ~1,5 GB, dazu ~250 MB für uwsgi und Django-Q.
+            # 2Gi wäre eine Punktlandung ohne Reserve gewesen. Der Node hat
+            # den Platz (wrk3 rund 4,4 GB frei) -- und ein zu hohes Limit auf
+            # einem knappen Node hat hier schon einmal einen System-OOM
+            # ausgelöst, siehe docs/learnings/mailman-whoosh-reindex-performance.md.
+            limits: { memory: 3Gi }
           volumeMounts:
-            # settings_local.py und no_signup_adapter.py liegen hier drin —
-            # der initContainer kopiert sie aus der ConfigMap hinein. Das
+            # settings_local.py, no_signup_adapter.py und das begrenzte
+            # Haystack-Template liegen hier drin — der initContainer kopiert
+            # sie aus der ConfigMap hinein. Das
             # Entrypoint kopiert settings_local.py von hier weiter nach
             # /opt/mailman-web/, und settings_local.py legt dieses Verzeichnis
             # auf den sys.path, damit no_signup_adapter importierbar ist.
             - name: web-data
               mountPath: /opt/mailman-web-data
+            # uwsgi.ini aus der ConfigMap, damit der stuendliche
+            # update_index-Job nicht mehr in diesem Pod laeuft.
+            # subPath ist hier sicher: das Entrypoint chownt zwar
+            # /opt/mailman-web-data und settings_local.py, fasst
+            # uwsgi.ini aber nicht an -- der Grund, warum
+            # settings_local.py per initContainer kopiert werden muss
+            # (4647f71), trifft hier also nicht zu. Achtung: subPath
+            # aktualisiert sich NICHT bei ConfigMap-Aenderungen,
+            # deshalb die settings-revision-Annotation mitziehen.
+            - name: web-settings
+              mountPath: /opt/mailman-web/uwsgi.ini
+              subPath: uwsgi.ini
+              readOnly: true
           # Der Start macht collectstatic --clear, compress und `manage.py
           # migrate`. Die Liveness darf dabei NICHT hineinfunken — ein Kill
           # mitten in der Migration hinterlässt ein halb angewandtes Schema.
@@ -221,6 +238,7 @@ spec:
               httpHeaders:
                 - { name: Host, value: localhost }
             periodSeconds: 10
+            timeoutSeconds: 15 # ohne das greift der Kubernetes-Default 1 s
             failureThreshold: 60
           readinessProbe:
             httpGet:
@@ -229,7 +247,7 @@ spec:
               httpHeaders: # kube-probe sendet sonst die Pod-IP als Host -> Django 400 (ALLOWED_HOSTS)
                 - { name: Host, value: localhost }
             periodSeconds: 15
-            timeoutSeconds: 5
+            timeoutSeconds: 15
             failureThreshold: 4
           # URSACHE der 37 Neustarts in 9 Tagen (28.07. analysiert): uwsgi
           # protokolliert Requests in Dateien, nicht auf stdout — im Containerlog
@@ -240,6 +258,15 @@ spec:
           # (gemessen bis 16,8 s), bei nur 1-2 uwsgi-Workern. 3 Timeouts in 30 s
           # -> SIGTERM -> uwsgi fährt sauber herunter -> Exit 0. Mit dem
           # Alt-Image (processes = 1) wäre das noch häufiger passiert.
+          #
+          # 18.08.2026: die damals gewählten 10 s reichten NICHT — der Pod
+          # stand bei 429 Neustarts. 10 s liegen unter der oben gemessenen
+          # Spitze von 16,8 s, jeder solche Request zählte also weiter als
+          # Fehlschlag. Liveness daher auf 30 s (deutlich über der Spitze),
+          # Readiness auf 15 s (dort ist ein Timeout harmlos: der Pod fällt
+          # kurz aus dem Service, statt gekillt zu werden). Die startupProbe
+          # hatte gar kein timeoutSeconds und lief damit auf dem Default 1 s
+          # gegen einen Start mit collectstatic/compress/migrate.
           livenessProbe:
             httpGet:
               path: /
@@ -247,7 +274,7 @@ spec:
               httpHeaders:
                 - { name: Host, value: localhost }
             periodSeconds: 30
-            timeoutSeconds: 10
+            timeoutSeconds: 30
             failureThreshold: 6
       volumes:
         - name: web-data

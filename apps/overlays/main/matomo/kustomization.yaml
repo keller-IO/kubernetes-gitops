@@ -1,0 +1,9 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: matomo
+# Keine Patches noetig: matomo.jit.services ist intern und terminiert TLS am
+# Cluster (wie kimai in der Base). Der oeffentliche Tracker laeuft nicht ueber
+# einen eigenen Ingress, sondern als /stats/ durch die nginx auf mgmt02 —
+# siehe docs/runbooks/matomo-setup.md.
+resources:
+  - ../../../base/matomo

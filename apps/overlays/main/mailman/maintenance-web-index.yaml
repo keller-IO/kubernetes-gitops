@@ -1,0 +1,7 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mailman-web
+  namespace: mailman
+spec:
+  replicas: 0

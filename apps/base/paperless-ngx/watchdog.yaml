@@ -1,0 +1,141 @@
+# Wachhund für den Paperless-Consumer.
+#
+# Hintergrund: `document_consumer` läuft als eigener Prozess im Paperless-Pod und
+# beobachtet den consume-Ordner (ein SMB-Mount vom Scanner-NAS). Sein
+# Watchdog-Emitter-Thread kann still sterben — der Prozess lebt weiter, bekommt aber
+# keine Datei-Events mehr und protokolliert dann GAR NICHTS. Der Pod bleibt Ready,
+# die Liveness-Probe greift nicht, und gescannte Dokumente bleiben einfach liegen.
+# Am 21.08.2026 ist das 11 Tage lang unbemerkt geblieben.
+#
+# Zwei Signale, bewusst getrennt:
+#   consume-queue  — liegt eine Datei länger als STALE_MINUTES im Ordner, ist der
+#                    Consumer defekt. Direktes Signal, praktisch ohne Fehlalarme.
+#   last-document  — kam seit MAX_AGE_DAYS gar nichts mehr an. Grobes Netz für
+#                    Fälle, in denen schon der Scanner nichts mehr ablegt.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: paperless-watchdog
+  namespace: paperless-ngx
+data:
+  watchdog.py: |
+    import os, pathlib, time, urllib.request, urllib.parse
+    from datetime import datetime, timezone
+    import psycopg
+
+    GATUS = os.environ.get("GATUS_URL", "http://gatus.gatus.svc.cluster.local")
+    TOKEN = os.environ["WATCHDOG_TOKEN"]
+    STALE_MIN = int(os.environ.get("STALE_MINUTES", "30"))
+    MAX_AGE_DAYS = int(os.environ.get("MAX_AGE_DAYS", "14"))
+    CONSUME = pathlib.Path(os.environ.get("CONSUME_DIR", "/consume"))
+
+    def push(key, ok, err=""):
+        params = {"success": "true" if ok else "false"}
+        if err:
+            params["error"] = err[:400]
+        url = f"{GATUS}/api/v1/endpoints/{key}/external?" + urllib.parse.urlencode(params)
+        req = urllib.request.Request(url, method="POST")
+        req.add_header("Authorization", "Bearer " + TOKEN)
+        with urllib.request.urlopen(req, timeout=15) as r:
+            print(f"  push {key} success={ok} -> HTTP {r.status}")
+
+    # --- 1) Bleibt etwas im consume-Ordner liegen?
+    # Verzeichnisse werden übersprungen: das QNAP-Share bringt @Recycle und
+    # @Recently-Snapshot mit, die sind kein Scanergebnis.
+    try:
+        now = time.time()
+        stuck = []
+        for p in CONSUME.iterdir():
+            if not p.is_file():
+                continue
+            age_min = (now - p.stat().st_mtime) / 60
+            if age_min > STALE_MIN:
+                stuck.append((p.name, int(age_min)))
+        if stuck:
+            name, age = max(stuck, key=lambda x: x[1])
+            push("paperless_consume-queue", False,
+                 f"{len(stuck)} Datei(en) unverarbeitet, aelteste: {name} seit {age} min")
+        else:
+            push("paperless_consume-queue", True)
+    except Exception as e:
+        push("paperless_consume-queue", False, f"Pruefung fehlgeschlagen: {e}")
+
+    # --- 2) Wann kam zuletzt überhaupt ein Dokument an?
+    try:
+        with psycopg.connect(
+            host=os.environ["DB_HOST"], dbname=os.environ["DB_NAME"],
+            user=os.environ["DB_USER"], password=os.environ["DB_PASSWORD"],
+            connect_timeout=10,
+        ) as conn:
+            newest = conn.execute("SELECT max(added) FROM documents_document").fetchone()[0]
+        if newest is None:
+            push("paperless_last-document", False, "keine Dokumente in der Datenbank")
+        else:
+            age_days = (datetime.now(timezone.utc) - newest).days
+            if age_days > MAX_AGE_DAYS:
+                push("paperless_last-document", False,
+                     f"letztes Dokument vor {age_days} Tagen ({newest:%Y-%m-%d})")
+            else:
+                push("paperless_last-document", True)
+    except Exception as e:
+        push("paperless_last-document", False, f"Pruefung fehlgeschlagen: {e}")
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: paperless-watchdog
+  namespace: paperless-ngx
+spec:
+  schedule: "*/15 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: watchdog
+              # Dasselbe Image wie die App: bringt python3 und psycopg schon mit,
+              # liegt auf den Nodes bereits im Cache.
+              image: ghcr.io/paperless-ngx/paperless-ngx:2.20.15
+              # /init (s6) NICHT durchlaufen — wir wollen nur das Skript.
+              command: [python3, /opt/watchdog/watchdog.py]
+              env:
+                - name: DB_HOST
+                  value: paperless-pg-rw
+                - name: DB_NAME
+                  value: paperless
+                - name: DB_USER
+                  valueFrom:
+                    secretKeyRef: { name: paperless-db-app, key: username }
+                - name: DB_PASSWORD
+                  valueFrom:
+                    secretKeyRef: { name: paperless-db-app, key: password }
+                - name: WATCHDOG_TOKEN
+                  valueFrom:
+                    secretKeyRef: { name: paperless-watchdog, key: WATCHDOG_TOKEN }
+                - name: STALE_MINUTES
+                  value: "30"
+                - name: MAX_AGE_DAYS
+                  value: "14"
+              volumeMounts:
+                - { name: script, mountPath: /opt/watchdog }
+                - { name: consume, mountPath: /consume, readOnly: true }
+              resources:
+                requests: { cpu: 10m, memory: 64Mi }
+                limits: { memory: 192Mi }
+          volumes:
+            - name: script
+              configMap: { name: paperless-watchdog }
+            # Gleicher Scanner-Share wie in values.yaml. Read-only: der Wachhund
+            # soll ausschliesslich schauen, niemals aufräumen.
+            - name: consume
+              csi:
+                driver: smb.csi.k8s.io
+                readOnly: true
+                volumeAttributes:
+                  source: //192.168.2.75/scanner
+                  mountOptions: guest,vers=3.0,uid=1000,gid=1000,dir_mode=0777,file_mode=0666,noperm,cache=strict,noserverino

@@ -57,10 +57,15 @@ repoServer:
   env:
     - name: SOPS_AGE_KEY_FILE
       value: /home/argocd/.config/sops/age/keys.txt
+  # Only ksops comes from this image now — NOT its bundled kustomize (#111: that
+  # kustomize was v5.3.0, which probes helm with the removed `helm version -c`
+  # flag and breaks every helmCharts-app against Argo CD's Helm 4). Argo CD's
+  # own kustomize (currently v5.8.1) already runs the KSOPS exec plugin fine, so
+  # nothing else needs to change. Keep this in sync with argocd.tf.
   initContainers:
     - name: install-ksops
       image: viaductoss/ksops:v4.5.1 # renovate: image=viaductoss/ksops
-      command: ["/usr/local/bin/ksops", "install", "--with-kustomize", "/custom-tools"]
+      command: ["/usr/local/bin/ksops", "install", "/custom-tools"]
       volumeMounts:
         - mountPath: /custom-tools
           name: custom-tools
@@ -71,9 +76,6 @@ repoServer:
       secret:
         secretName: argocd-sops-age # created by Terraform (infrastructure/tofu .../argocd.tf)
   volumeMounts:
-    - mountPath: /usr/local/bin/kustomize
-      name: custom-tools
-      subPath: kustomize
     - mountPath: /usr/local/bin/ksops
       name: custom-tools
       subPath: ksops

@@ -1,0 +1,7 @@
+# CSI node plugins require privileged hostPath mounts on every Talos node.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: csi-driver-smb
+  labels:
+    pod-security.kubernetes.io/enforce: privileged

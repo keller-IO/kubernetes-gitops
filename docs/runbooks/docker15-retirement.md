@@ -20,7 +20,7 @@ auf `.15` selbst deutlich entspannt und es sind zwei neue Blocker dazugekommen.
 | Ingress-TLS | `spec.tls` an allen migrierten Hosts | `legacy-proxy` (alle), `mailman`, `roundcube-jitmail`, `binaergewitter` (beide), `kimai`, `paperless`, `collabora-office-savar`, `wordpress-1/2`, `gatus-public` weiterhin ohne TLS |
 | Phase 3 Source-IP | Plattformentscheidung DSR vs. L2 | Cilium unveraendert `1.16.5`, weiterhin globale `default-l2`-Policy, `.246` weiterhin nicht deklarativ gepinnt |
 | Phase 4 CrowdSec | Enforcement im neuen Pfad | Im Cluster laufen nur Agents und LAPI, kein Bouncer; die zwei Host-Bouncer auf `.15` sind weiter aktiv |
-| Branch-Stand | gemergt und ausgerollt | `feat/docker15-ingress-tls`: 80 Commits vor, 15 hinter `origin/main`; Merge-Vorschau konfliktfrei |
+| Branch-Stand | gemergt und ausgerollt | `feat/docker15-ingress-tls`: 16 Commits vor, 88 hinter `origin/main` (Stand vor dem Nachziehen am 01.09.) |
 
 Das `rfc2136-tsig`-Secret existiert im Namespace `cert-manager` (50 Tage alt).
 Die Vorarbeit ist also nur an der Solver-/Issuer-Definition haengengeblieben.
@@ -145,9 +145,11 @@ Plattformentscheidung fuer Phase 3 noch offen ist.
 5. **ArgoCD-Freeze aufloesen.** `syncPolicy.automated` fleet-weit
    wiederherstellen, die sechs `OutOfSync`/`Degraded`-Apps klaeren. Ohne diesen
    Schritt ist weder Rollout noch Git-Rollback wirksam.
-6. **Branch aktualisieren.** `feat/docker15-ingress-tls` auf `origin/main`
-   rebasen beziehungsweise mergen (Vorschau ist konfliktfrei) und die
-   Issuer-Manifeste gegen cert-manager `v1.21.1` pruefen.
+6. **Branch aktualisieren.** ERLEDIGT 01.09.2026: `origin/main` ist nach
+   `feat/docker15-phase12` und von dort nach `feat/docker15-ingress-tls`
+   gemergt; ein Konflikt in `docs/PRODUCTION-READINESS.md` (Paperless-Zeile)
+   wurde zusammengefuehrt. Offen bleibt die Pruefung der Issuer- und
+   Solver-Manifeste gegen cert-manager `v1.21.1`.
 7. **Staging zuerst.** Den `letsencrypt-staging`-Issuer und die
    DNS-01-Solver ausrollen und die in der Solvermatrix mit "Staging ausstehend"
    markierten Zonen durchtesten, bevor irgendein Produktionszertifikat

@@ -1,0 +1,23 @@
+apiVersion: k8s.mariadb.com/v1alpha1
+kind: Backup
+metadata:
+  name: matomo-mariadb
+  namespace: matomo
+spec:
+  mariaDbRef:
+    name: matomo-mariadb
+  schedule:
+    cron: "30 2 * * *" # taeglich 02:30, versetzt zu kimai (02:00)
+  maxRetention: 720h # 30d
+  compression: gzip
+  # Logischer Dump (mariadb-dump) nach Garage-S3 (192.168.23.21).
+  storage:
+    s3:
+      bucket: backups
+      prefix: mariadb-matomo
+      endpoint: 192.168.23.21:3900 # Garage, ohne Schema
+      region: garage-potsdam
+      accessKeyIdSecretKeyRef: { name: matomo-backup-s3, key: ACCESS_KEY_ID }
+      secretAccessKeySecretKeyRef: { name: matomo-backup-s3, key: SECRET_ACCESS_KEY }
+      tls:
+        enabled: false # Garage spricht HTTP, kein TLS
