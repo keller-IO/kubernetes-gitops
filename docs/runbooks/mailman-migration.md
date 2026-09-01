@@ -608,16 +608,18 @@ Dauer unter einer Minute.
 
 ## Phase 5 — Web-Cutover
 
-`lists.jitmail.de` ist CNAME auf `jitmail.de` → `87.191.135.42`; TLS terminiert
-der Traefik auf `.15` per Docker-Labels am Alt-Container.
+`lists.jitmail.de` ist CNAME auf `jitmail.de` → `87.191.135.42`; bis zum
+Router-Cutover terminiert der Traefik auf `.15` weiterhin das öffentliche TLS.
 
 File-Router in `/opt/containers/traefik/data/dynamic_conf.yml` ergänzen, Muster
 wie `wordpress_halbe_k8s_router` (Priority 1000 schlägt die Docker-Labels),
-Service → `192.168.2.246`. Der Cluster-Ingress ist bereits HTTP-only und
-liefert unter `Host: lists.jitmail.de` HTTP 200 auf `/postorius/lists/`.
+Service → `192.168.2.246`. Der Cluster-Ingress liefert unter
+`Host: lists.jitmail.de` HTTP 200 auf `/postorius/lists/` und besitzt bereits
+ein cert-manager-TLS-Secret für den direkten `.246`-Pfad.
 
-**Nicht** `spec.tls` im Cluster-Ingress ergänzen, solange Traefik terminiert —
-sonst Redirect-Loop.
+`nginx.org/ssl-redirect` und `nginx.org/redirect-to-https` bleiben bis zum
+Router-Cutover `false`. So kann cert-manager das Zertifikat vorab ausstellen,
+ohne den HTTP-Upstream des Traefik in einen Redirect-Loop zu schicken.
 
 ## Phase 6 — Mail-Cutover B (Altpfad entfernen)
 
@@ -714,9 +716,9 @@ laufen nicht rückwärts. Deshalb nicht mit dem Umzug vermischen.
   Wegwerfdaten; die Roh-mboxen ggf. einmal offsite sichern und dann löschen.
 - **Backup verifizieren**: Restore der `mailmanweb` aus dem Garage-S3-Backup
   in eine Wegwerf-DB einmal durchspielen (Runbook `backup-restore.md`).
-- **TLS direkt im Cluster**: Router 443 → `.246`, `spec.tls` und
-  `cert-manager.io/cluster-issuer` im Overlay wieder aktivieren — zusammen mit
-  dem allgemeinen Traefik-Cutover.
+- **TLS direkt im Cluster**: Zertifikat und Issuer sind vorbereitet. Vor dem
+  Routerwechsel Secret/SNI prüfen; Redirects zusammen mit dem allgemeinen
+  Traefik-Cutover aktivieren.
 - **Image-Pinning**: `maxking/mailman-*:0.5.2` steht im Repo, Renovate ist
   konfiguriert. Ein Upgrade **nicht** mit der Migration vermischen.
 
