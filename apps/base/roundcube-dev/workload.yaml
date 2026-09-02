@@ -1,0 +1,117 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: roundcube-dev
+  namespace: roundcube-dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app.kubernetes.io/name: roundcube-dev }
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: roundcube-dev }
+    spec:
+      # Der Kniff, der diese Instanz ausmacht.
+      #
+      # mail05 liefert das Let's-Encrypt-Zertifikat mit den Namen
+      # mail.jit-creatives.de und imap.jit-creatives.de aus. Oeffentlich
+      # zeigen beide Namen aber noch auf mail04 - der DNS-Swing kommt erst
+      # beim Cutover. Wuerde man hier stattdessen die IP oder mail05.jit.land
+      # eintragen, passte der Name nicht zum Zertifikat und man muesste die
+      # Zertifikatspruefung abschalten. Genau das will man auf einem System
+      # nicht tun, mit dem man TLS testen moechte.
+      #
+      # Ueber die hostAliases loest der Pod die Zertifikatsnamen auf mail05
+      # auf. Damit stimmt der Name, die Pruefung bleibt scharf, und beim
+      # Cutover faellt hier nur dieser Block wieder weg.
+      hostAliases:
+        - ip: "192.168.2.34"
+          hostnames:
+            - mail.jit-creatives.de
+            - imap.jit-creatives.de
+      containers:
+        - name: roundcube
+          # renovate: image=roundcube/roundcubemail
+          image: roundcube/roundcubemail:1.7.1-apache
+          ports: [{ containerPort: 80 }]
+          env:
+            - name: ROUNDCUBEMAIL_DB_TYPE
+              value: sqlite
+            - name: ROUNDCUBEMAIL_DEFAULT_HOST
+              value: "tls://mail.jit-creatives.de"
+            - name: ROUNDCUBEMAIL_DEFAULT_PORT
+              value: "143"
+            - name: ROUNDCUBEMAIL_SMTP_SERVER
+              value: "tls://mail.jit-creatives.de"
+            - name: ROUNDCUBEMAIL_SMTP_PORT
+              value: "587"
+            - name: ROUNDCUBEMAIL_PLUGINS
+              value: "managesieve,archive,zipdownload"
+            - name: ROUNDCUBEMAIL_SKIN
+              value: elastic
+            - name: ROUNDCUBEMAIL_UPLOAD_MAX_FILESIZE
+              value: "25M"
+            - name: ROUNDCUBEMAIL_DES_KEY
+              valueFrom: { secretKeyRef: { name: roundcube-dev-app, key: des_key } }
+          volumeMounts:
+            - name: roundcube-dev-config
+              mountPath: /var/roundcube/config
+            # SQLite und Temporaerdaten. emptyDir ist Absicht: die Instanz
+            # soll nichts aufbewahren.
+            - name: roundcube-dev-data
+              mountPath: /var/roundcube/db
+            - name: roundcube-dev-temp
+              mountPath: /var/roundcube/temp
+          readinessProbe:
+            httpGet: { path: /, port: 80 }
+            initialDelaySeconds: 20
+            periodSeconds: 15
+            # Bewusst grosszuegig. Das Muster "gesunder Dienst, den die eigene
+            # Probe abschiesst" hat im Cluster schon mehrfach zugeschlagen.
+            timeoutSeconds: 10
+            failureThreshold: 6
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { memory: 384Mi }
+      volumes:
+        - name: roundcube-dev-config
+          configMap:
+            name: roundcube-dev-config
+        - name: roundcube-dev-data
+          emptyDir: {}
+        - name: roundcube-dev-temp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: roundcube-dev
+  namespace: roundcube-dev
+spec:
+  selector: { app.kubernetes.io/name: roundcube-dev }
+  ports: [{ name: http, port: 80, targetPort: 80 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: roundcube-dev
+  namespace: roundcube-dev
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.org/ssl-redirect: "false"
+    nginx.org/redirect-to-https: "true"
+    nginx.org/client-max-body-size: "25m"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: [dev.jitmail.de]
+      secretName: roundcube-dev-tls
+  rules:
+    - host: dev.jitmail.de
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: roundcube-dev, port: { number: 80 } } }

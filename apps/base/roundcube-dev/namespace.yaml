@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: roundcube-dev
+  labels:
+    # Explizit statt implizit: ein per CreateNamespace=true angelegter
+    # Namespace traegt gar keine PodSecurity-Labels (crowdsec-agent 0/3,
+    # 2026-07-28).
+    #
+    # baseline und nicht restricted, weil das offizielle
+    # roundcube/roundcubemail:*-apache als root startet und erst Apache
+    # selbst auf www-data wechselt. Unter restricted (runAsNonRoot) wuerde
+    # der Pod gar nicht erst anlaufen.
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
