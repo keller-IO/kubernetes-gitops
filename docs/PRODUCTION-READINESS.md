@@ -381,11 +381,18 @@ module.exports = { platform: 'github', repositories: ['keller-IO/kubernetes-gito
 
 ## 14. Mail (extern)
 
-**Dateien:** `apps/base/roundcube/workload.yaml`, `apps/base/mastodon/{values,secret.sops}.yaml`,
-`apps/base/mailman/{workload,secret.sops}.yaml`
+**Dateien:** `apps/base/roundcube/workload.yaml`, `apps/base/roundcube-dev/workload.yaml`,
+`apps/base/mastodon/{values,secret.sops}.yaml`, `apps/base/mailman/{workload,secret.sops}.yaml`
+
+**roundcube-dev (`dev.jitmail.de`)** ist eine bewusst wegwerfbare Zweitinstanz fuer den Cutover
+mail04 -> mail05. Sie zeigt per `hostAliases` auf mail05 (192.168.2.34), haelt ihre Daten in
+SQLite auf einem `emptyDir` und hat deshalb weder Datenbank noch Backup. Sie ist **kein
+Produktionsdienst** und faellt nach dem Cutover ersatzlos weg.
 
 **Offen:**
 - [ ] Externen IMAP/SMTP-Host in roundcube setzen (`ROUNDCUBEMAIL_DEFAULT_HOST`/`SMTP_SERVER`).
+- [ ] Nach dem mail05-Cutover: `roundcube-dev` samt Ingress, DNS-Record `dev.jitmail.de` und
+      dem `jitmail.de`-Eintrag im RFC2136-Solver wieder entfernen.
 - [ ] SMTP-Credentials für Mastodon (`mastodon-smtp`) + Paperless (falls Mailversand).
 - [ ] Mailman: externes MTA/Gateway so konfigurieren, dass Listendomains an
       `mailman-core.mailman.svc.cluster.local:8024` (LMTP) geroutet werden; ausgehend nutzt Mailman

@@ -4,24 +4,24 @@ metadata:
     name: cloudns-credentials
     namespace: cert-manager
 stringData:
-    auth_id: ENC[AES256_GCM,data:epi3kDw=,iv:5fkSigf2YvN3lPY0pP084nmhTxxbEdBhjyXp+jbNGz0=,tag:7OrV60MhfCQ9BLkjHIeCEw==,type:str]
-    auth_password: ENC[AES256_GCM,data:OYtkEtnfOyWGCWh3,iv:V5esQI5PSntqUMS5P0DkpcRzgLlYD4rXvSc5/IRqlgg=,tag:0SU77HAJe15/muO26De0uw==,type:str]
+    auth_id: ENC[AES256_GCM,data:ooWbYdk=,iv:EePQTkCJqjZz0L6e25GPI5HTocvzX+pqhQwMogXXwgA=,tag:H7CkHUE4giL22nd712GCRg==,type:str]
+    auth_password: ENC[AES256_GCM,data:yRWnjcLVyyCfphNw,iv:ToeCmnR3/tdVzy0+WWdEASbbd4Im3L/+hZSM9Ow9akU=,tag:70aFKrkk9kHOrorAx123WQ==,type:str]
 type: Opaque
 sops:
     age:
         - enc: |
             -----BEGIN AGE ENCRYPTED FILE-----
-            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBnem5DaFArRDhqSTRpZ2pZ
-            eTNwcm1VMnVqQTJRN25hcVlPWHdVeXFRa3o0Cmo1UHVRSVgvTVVrZ0hnNTduWFVW
-            Q2ozVkk0VFF1UXhvVkgxMGwzWUxOTVEKLS0tIFFaSDlTamt4OFhYd01idUdXN3pP
-            SDFYZFFlcHBNcDVwdURRdlNnR2pIc28K/jXnPkrzPC2hFEuT3XD7RNXWCbdJXSmL
-            jIIgvSyilTVtnPZKebC1bs9rcIWsGs2l0YokalGowU4qQ1Xn7fDFXw==
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSB4NU1HVFFmNlZScU5vSEZk
+            NDNlODRkaG51SHVldzJLVHpvcHhIR21Ic1VzCmkxTThJYm80MGQ2QnUwUytyNU5M
+            c05TR0g5ZEZ3WWY2TkZSc0xSci9VL0kKLS0tIHJ3R3NoUzJTSGl6bFVmYWZWS1dY
+            NFU2UCtKOHRmVWsrb1pNcnd5Z2d0V1UKT5Wp++T6B4fDnOZIkGew9yrs46FWfmAY
+            4TNLqGcrC+96AVdQCaTq9qdCotlBqO9qebwSR4CSCCZ8oCNikG3oPQ==
             -----END AGE ENCRYPTED FILE-----
           recipient: age17x04ga87qyu9lzcuja9k83z90veew9cez7jusul4y5xyr09xaejs9rq755
     encrypted_regex: ^(data|stringData)$
-    lastmodified: "2026-07-13T04:51:44Z"
-    mac: ENC[AES256_GCM,data:TXOZ1jy0f7X+D8+jjWvP2qV7rx9hi74UdHgFBZ56ELnj8zv0YMNy2a1c5OSWhXPB2EcudfSoAN2h4bsqU9HR7Xc5NjGYblBUPYby0GehdJ8dAZLS0hvASlA5Gu3YRqy/bw5kVHzz1ty7WBn5lEa1brRk97+HGKFTRFt5kFXceMk=,iv:EqzLgS7EHv72TCzjBX3OqsKFUONgc6qkJj8qV0cQbJ0=,tag:6gxIiPcyRpZITW5TIHcTnA==,type:str]
-    version: 3.13.1
+    lastmodified: "2026-09-02T07:57:47Z"
+    mac: ENC[AES256_GCM,data:7LQa8+tLN+Qo9E0hJGT9kCQlWyWUgMWSLkZT26TL85RhkkpJsPUro8iAakSD7PbRQxQyLFTzJ/Pcp0Apm9mu3A9flFsumwfBRuKG/uBxUIB3ofVEamcu+47SlwZkud8NaK7QCRGh23soW5xnbBrX/rbmLEqx/+1xGq267b2VX+k=,iv:p72U/Kbx1DXSwz1ySniB50IjGr1Pis2ra9BcudNhQnY=,tag:/hXJlYBY1Fy0WeyVYS3yhQ==,type:str]
+    version: 3.13.3
 ---
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
@@ -52,6 +52,11 @@ spec:
               selector:
                 dnsZones:
                     - savar.de
+                    # jitmail.de traegt auf dns01 dieselbe update-policy
+                    # (grant "cert-manager." zonesub "TXT") wie savar.de, der
+                    # RFC2136-Solver kann die Zone also ohne weitere
+                    # Vorbereitung bedienen. Gebraucht fuer dev.jitmail.de.
+                    - jitmail.de
             - http01:
                 ingress:
                     ingressClassName: nginx
@@ -59,14 +64,14 @@ sops:
     age:
         - enc: |
             -----BEGIN AGE ENCRYPTED FILE-----
-            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBnem5DaFArRDhqSTRpZ2pZ
-            eTNwcm1VMnVqQTJRN25hcVlPWHdVeXFRa3o0Cmo1UHVRSVgvTVVrZ0hnNTduWFVW
-            Q2ozVkk0VFF1UXhvVkgxMGwzWUxOTVEKLS0tIFFaSDlTamt4OFhYd01idUdXN3pP
-            SDFYZFFlcHBNcDVwdURRdlNnR2pIc28K/jXnPkrzPC2hFEuT3XD7RNXWCbdJXSmL
-            jIIgvSyilTVtnPZKebC1bs9rcIWsGs2l0YokalGowU4qQ1Xn7fDFXw==
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSB4NU1HVFFmNlZScU5vSEZk
+            NDNlODRkaG51SHVldzJLVHpvcHhIR21Ic1VzCmkxTThJYm80MGQ2QnUwUytyNU5M
+            c05TR0g5ZEZ3WWY2TkZSc0xSci9VL0kKLS0tIHJ3R3NoUzJTSGl6bFVmYWZWS1dY
+            NFU2UCtKOHRmVWsrb1pNcnd5Z2d0V1UKT5Wp++T6B4fDnOZIkGew9yrs46FWfmAY
+            4TNLqGcrC+96AVdQCaTq9qdCotlBqO9qebwSR4CSCCZ8oCNikG3oPQ==
             -----END AGE ENCRYPTED FILE-----
           recipient: age17x04ga87qyu9lzcuja9k83z90veew9cez7jusul4y5xyr09xaejs9rq755
     encrypted_regex: ^(data|stringData)$
-    lastmodified: "2026-07-13T04:51:44Z"
-    mac: ENC[AES256_GCM,data:TXOZ1jy0f7X+D8+jjWvP2qV7rx9hi74UdHgFBZ56ELnj8zv0YMNy2a1c5OSWhXPB2EcudfSoAN2h4bsqU9HR7Xc5NjGYblBUPYby0GehdJ8dAZLS0hvASlA5Gu3YRqy/bw5kVHzz1ty7WBn5lEa1brRk97+HGKFTRFt5kFXceMk=,iv:EqzLgS7EHv72TCzjBX3OqsKFUONgc6qkJj8qV0cQbJ0=,tag:6gxIiPcyRpZITW5TIHcTnA==,type:str]
-    version: 3.13.1
+    lastmodified: "2026-09-02T07:57:47Z"
+    mac: ENC[AES256_GCM,data:7LQa8+tLN+Qo9E0hJGT9kCQlWyWUgMWSLkZT26TL85RhkkpJsPUro8iAakSD7PbRQxQyLFTzJ/Pcp0Apm9mu3A9flFsumwfBRuKG/uBxUIB3ofVEamcu+47SlwZkud8NaK7QCRGh23soW5xnbBrX/rbmLEqx/+1xGq267b2VX+k=,iv:p72U/Kbx1DXSwz1ySniB50IjGr1Pis2ra9BcudNhQnY=,tag:/hXJlYBY1Fy0WeyVYS3yhQ==,type:str]
+    version: 3.13.3

@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: roundcube-dev-config
+  namespace: roundcube-dev
+data:
+  roundcube.php: |
+    <?php
+    $config['product_name'] = 'J.I.T. - Mail (DEV / mail05)';
+    $config['support_url'] = 'http://www.jit-creatives.de';
+    $config['max_recipients'] = 250;
+    $config['draft_autosave'] = 30;
+    // Muss zum Namespace-Praefix von mail05 passen: prefix = INBOX/,
+    // separator = /. Sonst legt Roundcube Ordner neben INBOX an.
+    $config['imap_delimiter'] = '/';
+    $config['x_frame_options'] = false;
+    $config['zipdownload_selection'] = true;
+
+    // Unuebersehbar machen, dass dies nicht das Produktivsystem ist.
+    $config['login_page_text'] = 'TESTSYSTEM — verbindet gegen mail05. Nicht fuer echte Arbeit benutzen.';
+
+  managesieve.php: |
+    <?php
+    // Zeigt ueber die hostAliases des Pods ebenfalls auf mail05.
+    $config['managesieve_host'] = 'tls://mail.jit-creatives.de';
+    $config['managesieve_port'] = 4190;
+    $config['managesieve_script_name'] = 'roundcube';
+    $config['managesieve_mbox_encoding'] = 'UTF-8';
+    $config['managesieve_raw_editor'] = true;
