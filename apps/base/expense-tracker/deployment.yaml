@@ -6,7 +6,11 @@ metadata:
   labels:
     app.kubernetes.io/name: expense-tracker
 spec:
+  # RWO-Volume: bei einem Rolling Update wuerden zwei Pods dasselbe Volume
+  # mounten wollen und der neue bliebe haengen.
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app.kubernetes.io/name: expense-tracker
