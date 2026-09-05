@@ -4,10 +4,14 @@ metadata:
   name: expense-tracker-receipts
   namespace: expense-tracker
 spec:
-  # ceph-fs statt ceph-rbd: RWX erlaubt spaeter mehr als eine Replica,
-  # ohne dass die Belege neu verteilt werden muessen.
-  accessModes: ["ReadWriteMany"]
-  storageClassName: ceph-fs
+  # ceph-rbd (RWO), NICHT ceph-fs: die ceph-fs-StorageClass existiert zwar,
+  # aber im Cluster laeuft nur der RBD-Provisioner (ceph-csi-rbd-*). Ein
+  # ceph-fs-PVC bleibt deshalb dauerhaft Pending
+  # ("waiting for a volume to be created ... cephfs.csi.ceph.com").
+  # Solange kein CephFS-Provisioner existiert, ist RWX hier nicht verfuegbar
+  # -- daher auch replicas: 1 und strategy: Recreate im Deployment.
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: ceph-rbd
   resources:
     requests:
       storage: 5Gi
