@@ -56,6 +56,11 @@ spec:
               valueFrom: { secretKeyRef: { name: roundcube-legacy-app, key: virtuser_query_dsn } }
             - name: ROUNDCUBE_PASSWORD_DB_DSN
               valueFrom: { secretKeyRef: { name: roundcube-legacy-app, key: password_db_dsn } }
+            # Ohne diesen DSN steht das fetchmail-Plugin zwar in der Liste,
+            # kann aber keine Abholkonten lesen oder anlegen - die Nutzer
+            # sehen eine leere Maske.
+            - name: ROUNDCUBE_FETCHMAIL_DB_DSN
+              valueFrom: { secretKeyRef: { name: roundcube-legacy-app, key: fetchmail_db_dsn } }
           volumeMounts:
             - name: roundcube-config
               mountPath: /var/roundcube/config

@@ -46,7 +46,11 @@ data:
 
   fetchmail.php: |
     <?php
-    $config['fetchmail_db_dsn'] = null;
+    // Die Abholkonten stehen in der Tabelle "fetchmail" derselben Datenbank.
+    // Ausgelesen und abgeholt werden sie auf dem Mailserver (mail05,
+    // /usr/local/sbin/fetchmail-all.pl aus der Rolle jit.mail_v2); hier
+    // pflegen die Nutzer nur die Eintraege.
+    $config['fetchmail_db_dsn'] = getenv('ROUNDCUBE_FETCHMAIL_DB_DSN') ?: null;
     $config['fetchmail_limit'] = 10;
     $config['fetchmail_folder'] = false;
     $config['fetchmail_mda'] = '';
