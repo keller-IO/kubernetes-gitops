@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: expense-tracker
+resources:
+  - database.yaml
+  - configmap.yaml
+  - pvc.yaml
+  - service.yaml
+  - deployment.yaml
+  - ingress.yaml
+
+generators:
+  - ./secret-generator.yaml

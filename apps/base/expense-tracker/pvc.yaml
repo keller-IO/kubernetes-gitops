@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: expense-tracker-receipts
+  namespace: expense-tracker
+spec:
+  # ceph-fs statt ceph-rbd: RWX erlaubt spaeter mehr als eine Replica,
+  # ohne dass die Belege neu verteilt werden muessen.
+  accessModes: ["ReadWriteMany"]
+  storageClassName: ceph-fs
+  resources:
+    requests:
+      storage: 5Gi

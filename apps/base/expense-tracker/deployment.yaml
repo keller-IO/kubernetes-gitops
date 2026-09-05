@@ -1,0 +1,101 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: expense-tracker
+  namespace: expense-tracker
+  labels:
+    app.kubernetes.io/name: expense-tracker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: expense-tracker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: expense-tracker
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      imagePullSecrets:
+        - name: gitlab-registry
+      initContainers:
+        # Migrationen vor dem Start; der Anwendungscontainer laeuft mit
+        # RUN_MIGRATIONS=0, damit bei mehreren Replicas nur einer migriert.
+        - name: migrate
+          image: registry.jit-creatives.de/jit/expense-tracker:latest
+          command: ["alembic", "upgrade", "head"]
+          envFrom:
+            - configMapRef:
+                name: expense-tracker-config
+            - secretRef:
+                name: expense-tracker-secrets
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: expense-db-app
+                  key: password
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { memory: 256Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+      containers:
+        - name: app
+          image: registry.jit-creatives.de/jit/expense-tracker:latest
+          env:
+            - name: RUN_MIGRATIONS
+              value: "0"
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: expense-db-app
+                  key: password
+          envFrom:
+            - configMapRef:
+                name: expense-tracker-config
+            - secretRef:
+                name: expense-tracker-secrets
+          ports:
+            - name: http
+              containerPort: 8000
+          startupProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 5
+            failureThreshold: 24
+          livenessProbe:
+            # /health prueft bewusst NICHT die Datenbank — ein DB-Ausfall
+            # soll keine Neustartschleife ausloesen.
+            httpGet: { path: /health, port: http }
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet: { path: /health/ready, port: http }
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          volumeMounts:
+            - { name: receipts, mountPath: /data/receipts }
+            - { name: tmp, mountPath: /tmp }
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { cpu: "1", memory: 512Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+      volumes:
+        - name: receipts
+          persistentVolumeClaim:
+            claimName: expense-tracker-receipts
+        - name: tmp
+          emptyDir: { sizeLimit: 256Mi }

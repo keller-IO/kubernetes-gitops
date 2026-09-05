@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: expense-tracker-config
+  namespace: expense-tracker
+data:
+  ENVIRONMENT: "prod"
+  DEBUG: "false"
+  # Muss exakt der oeffentlichen URL entsprechen — daraus baut die App die
+  # Redirect-URI, die im Keycloak-Client hinterlegt sein muss.
+  BASE_URL: "https://expense.porga.de"
+
+  # CNPG legt den Service <cluster>-rw fuer den Primary an.
+  POSTGRES_HOST: "expense-pg-rw"
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: "expenses"
+  POSTGRES_USER: "expenses"
+
+  # Keycloak laeuft ausserhalb des Clusters (auth01, 192.168.2.30) und ist
+  # per legacy-proxy als auth.savar.de veroeffentlicht. KEIN
+  # KEYCLOAK_INTERNAL_URL noetig: Keycloak hat KC_HOSTNAME=auth.savar.de
+  # gesetzt, liefert also immer den oeffentlichen Issuer, und der Cluster
+  # erreicht die oeffentliche URL per Hairpin (geprueft).
+  KEYCLOAK_BASE_URL: "https://auth.savar.de"
+  KEYCLOAK_REALM: "bgt"
+  KEYCLOAK_CLIENT_ID: "expense-tracker"
+
+  UPLOAD_DIR: "/data/receipts"
+  MAX_UPLOAD_BYTES: "10485760"
