@@ -28,7 +28,7 @@ spec:
         # Migrationen vor dem Start; der Anwendungscontainer laeuft mit
         # RUN_MIGRATIONS=0, damit bei mehreren Replicas nur einer migriert.
         - name: migrate
-          image: registry.jit-creatives.de/jit/expense-tracker:latest
+          image: registry.jit-creatives.de/jit/expense-tracker:60bff9b5 # renovate: gitlab-tags
           command: ["alembic", "upgrade", "head"]
           envFrom:
             - configMapRef:
@@ -50,7 +50,7 @@ spec:
             capabilities: { drop: ["ALL"] }
       containers:
         - name: app
-          image: registry.jit-creatives.de/jit/expense-tracker:latest
+          image: registry.jit-creatives.de/jit/expense-tracker:60bff9b5 # renovate: gitlab-tags
           env:
             - name: RUN_MIGRATIONS
               value: "0"
