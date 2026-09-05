@@ -1,0 +1,34 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: expense-tracker
+  namespace: expense-tracker
+  annotations:
+    # Ingress-Controller ist nginx-inc (nginx.org/ingress-controller), NICHT
+    # das Community-ingress-nginx. nginx.ingress.kubernetes.io/*-Annotationen
+    # wuerden hier still ignoriert.
+    #
+    # redirect-to-https bleibt aus: TLS terminiert bereits Traefik auf
+    # 192.168.2.15 und reicht Klartext-HTTP an :80 weiter. Ein zweiter
+    # Redirect hier ergaebe eine Schleife (gleiches Muster wie paperless).
+    nginx.org/redirect-to-https: "false"
+    nginx.org/ssl-redirect: "false"
+    # Muss zu MAX_UPLOAD_BYTES passen, sonst schneidet nginx den
+    # Beleg-Upload ab, bevor die App eine saubere Meldung liefern kann.
+    nginx.org/client-max-body-size: "12m"
+    nginx.org/proxy-read-timeout: "60s"
+spec:
+  ingressClassName: nginx
+  # Kein tls:-Block und kein cert-manager: das oeffentliche Zertifikat fuer
+  # expense.porga.de stellt Traefik per HTTP-01 aus.
+  rules:
+    - host: expense.porga.de
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: expense-tracker
+                port:
+                  name: http
