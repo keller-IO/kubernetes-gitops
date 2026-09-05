@@ -17,6 +17,12 @@ metadata:
     # Beleg-Upload ab, bevor die App eine saubere Meldung liefern kann.
     nginx.org/client-max-body-size: "12m"
     nginx.org/proxy-read-timeout: "60s"
+    # Reserve fuer den Antwort-Header: OIDC-Callbacks setzen ein
+    # Session-Cookie, und der Default-Puffer (4k/8k) hat den Login schon
+    # einmal mit "upstream sent too big header" (502) abgebrochen. Die App
+    # haelt die Session inzwischen klein -- das hier ist der zweite Boden.
+    nginx.org/proxy-buffer-size: "16k"
+    nginx.org/proxy-buffers: "8 16k"
 spec:
   ingressClassName: nginx
   # Kein tls:-Block und kein cert-manager: das oeffentliche Zertifikat fuer
