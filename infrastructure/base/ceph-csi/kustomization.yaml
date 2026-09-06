@@ -1,8 +1,13 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: ceph-csi
-# ceph-csi (RBD) gegen das externe PVE-Ceph (fsid 74747628-…, Mons cloud64/65/67).
-# CephFS-Treiber folgt separat, sobald client.kubernetes mds/cephfs-Caps hat.
+# ceph-csi gegen das externe PVE-Ceph (fsid 74747628-…, Mons cloud64/65/67).
+# RBD und CephFS sind zwei getrennte Charts und zwei getrennte Ceph-Identitaeten:
+#   client.kubernetes         -> nur RBD    (profile rbd pool=kubernetes)
+#   client.kubernetes-cephfs  -> nur CephFS (mds/osd auf fsname=cephfs)
+# Bewusst getrennt statt client.kubernetes zu erweitern: `ceph auth caps`
+# ERSETZT die Rechte einer Identitaet -- ein Fehler dort haette alle
+# RBD-Volumes getroffen. Getrennt heisst ausserdem: einzeln widerrufbar.
 helmCharts:
   - name: ceph-csi-rbd
     repo: https://ceph.github.io/csi-charts
@@ -10,6 +15,13 @@ helmCharts:
     releaseName: ceph-csi-rbd
     namespace: ceph-csi
     valuesFile: values-rbd.yaml
+    includeCRDs: true
+  - name: ceph-csi-cephfs
+    repo: https://ceph.github.io/csi-charts
+    version: 3.17.0 # renovate: helm
+    releaseName: ceph-csi-cephfs
+    namespace: ceph-csi
+    valuesFile: values-cephfs.yaml
     includeCRDs: true
 
 resources:

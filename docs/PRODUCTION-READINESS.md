@@ -139,10 +139,16 @@ spec:
 - [ ] Existierende Ceph-StorageClass-Namen verifizieren und Manifeste angleichen
       (`ceph-rbd` = RWO, `ceph-fs` = RWX). Doppelte Klassen löschen, wenn Ceph sie schon liefert.
 - [ ] S3/RGW: Bucket-StorageClass-Namen für `ObjectBucketClaim` setzen (`ceph-bucket`).
+- [x] CephFS-CSI-Treiber ausgerollt (06.09.2026): Chart `ceph-csi-cephfs` 3.17.0
+      neben `ceph-csi-rbd`, eigene Ceph-Identitaet `client.kubernetes-cephfs`
+      (`mds allow rw fsname=cephfs`, kein RBD-Zugriff — gegengeprueft), Secret
+      `csi-cephfs-secret`. Die StorageClass `ceph-fs` zeigte bis dahin ins Leere:
+      deklariert, aber ohne Provisioner — PVCs blieben dauerhaft `Pending`.
 - [ ] RWX (CephFS) dort bestätigen, wo mehrere Replicas teilen (paperless media, wordpress wp-content).
-- [ ] Vor CephFS-Aktivierung Cross-Node-RWX und CSI-Recovery nach einem
+- [ ] **Abnahme steht aus:** Cross-Node-RWX und CSI-Recovery nach einem
       kontrollierten Node-Reboot testen; MDS-Session und reales Datei-I/O
       explizit verifizieren (`docs/learnings/external-cephfs-client-stall-recovery.md`).
+      Reboot-Fenster noch festzulegen. Bis dahin keine produktiven RWX-Volumes.
 - [ ] Default-StorageClass festlegen (aktuell `ceph-rbd`).
 - [ ] CSI-Snapshot/Restore mit einem Wegwerf-`ceph-rbd`-PVC testen. API,
       Controller und `ceph-rbd-retain` sind verdrahtet; produktive Snapshots erst
