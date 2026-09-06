@@ -55,6 +55,14 @@ configMapName: ceph-csi-config-cephfs
 cephConfConfigMapName: ceph-config-cephfs
 kmsConfigMapName: ceph-csi-encryption-kms-config-cephfs
 
+# VORAUSSETZUNG auf der Ceph-Seite, einmalig und NICHT vom Chart erledigt:
+# die Subvolume-Gruppe muss existieren, sonst scheitert jedes PVC mit
+#   "rados: ret=-2 ... subvolume group 'csi' does not exist"
+# und bleibt Pending. Angelegt am 06.09.2026 mit:
+#   ceph fs subvolumegroup create cephfs csi
+# client.kubernetes-cephfs darf das selbst (mgr 'allow rw' genuegt).
+# Bei einem Neuaufbau des Ceph-Clusters daran denken.
+
 # StorageClass + Secret verwalten wir selbst:
 # SC 'ceph-fs' liegt in infrastructure/base/storage/storageclasses.yaml und
 # existiert dort bereits (sie zeigte bisher ins Leere), Secret via SOPS.

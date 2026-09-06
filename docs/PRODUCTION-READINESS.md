@@ -145,10 +145,17 @@ spec:
       `csi-cephfs-secret`. Die StorageClass `ceph-fs` zeigte bis dahin ins Leere:
       deklariert, aber ohne Provisioner — PVCs blieben dauerhaft `Pending`.
 - [ ] RWX (CephFS) dort bestätigen, wo mehrere Replicas teilen (paperless media, wordpress wp-content).
-- [ ] **Abnahme steht aus:** Cross-Node-RWX und CSI-Recovery nach einem
-      kontrollierten Node-Reboot testen; MDS-Session und reales Datei-I/O
-      explizit verifizieren (`docs/learnings/external-cephfs-client-stall-recovery.md`).
-      Reboot-Fenster noch festzulegen. Bis dahin keine produktiven RWX-Volumes.
+- [x] Cross-Node-RWX verifiziert (06.09.2026, Wegwerf-PVC in `cephfs-abnahme`):
+      zwei Pods auf kellerio-wrk1 und -wrk3 am selben Volume; Schreiben/Lesen in
+      BEIDE Richtungen, gleichzeitiges Anhaengen ergab 100 Zeilen (50+50, keine
+      verlorenen Schreibvorgaenge), 20 MiB mit 476 MB/s sofort cross-node sichtbar.
+      Mount ist der Kernel-Client (`kubernetes-cephfs@<fsid>.cephfs=/volumes/csi/...`).
+      Loeschen des PVC hat das Subvolume auf Ceph mit entfernt.
+- [ ] **Abnahme unvollstaendig:** CSI-Recovery nach einem kontrollierten
+      Node-Reboot steht aus — MDS-Session und reales Datei-I/O danach explizit
+      verifizieren (`docs/learnings/external-cephfs-client-stall-recovery.md`,
+      Punkte 5 und 6). Reboot-Fenster noch festzulegen. **Bis dahin keine
+      produktiven RWX-Volumes** — expense-tracker bleibt auf ceph-rbd/replicas 1.
 - [ ] Default-StorageClass festlegen (aktuell `ceph-rbd`).
 - [ ] CSI-Snapshot/Restore mit einem Wegwerf-`ceph-rbd`-PVC testen. API,
       Controller und `ceph-rbd-retain` sind verdrahtet; produktive Snapshots erst
