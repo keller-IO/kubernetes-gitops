@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: expense-tracker
+  labels:
+    app.kubernetes.io/name: expense-tracker
+    # Eigener Namespace statt CreateNamespace=true: der haette gar keine
+    # PodSecurity-Labels (Ursache des crowdsec-agent-Vorfalls 2026-07-28).
+    #
+    # enforce bleibt wie bei den uebrigen App-Namespaces auf 'baseline'.
+    # Beide Workloads erfuellen nachweislich schon 'restricted' (App und
+    # CNPG-Pod: runAsNonRoot, seccomp RuntimeDefault, capabilities drop ALL,
+    # allowPrivilegeEscalation false) -- unklar ist nur, ob das auch fuer
+    # spaetere Operator-Jobs gilt. warn/audit auf 'restricted' melden solche
+    # Faelle, ohne sie abzuweisen; danach laesst sich enforce gefahrlos
+    # nachziehen.
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted
