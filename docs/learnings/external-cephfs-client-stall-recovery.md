@@ -9,10 +9,13 @@ Kernel-Mounts weiterhin in der Mount-Tabelle eingetragen, jeder Zugriff endete
 aber mit `Permission denied`. Auf der MDS-Seite existierte keine gueltige Session
 des Clients mehr.
 
-Der kellerIO-Cluster nutzt derzeit nur den RBD-Treiber von ceph-csi. Der
-CephFS-CSI-Treiber und die dafuer notwendigen MDS-Caps fehlen noch. Dieses
-Learning beschreibt deshalb eine Abnahmebedingung fuer die zukuenftige
-CephFS-/RWX-Nutzung und keinen bereits beobachteten Kubernetes-Ausfall.
+Stand 06.09.2026 sind CephFS-CSI-Treiber und Ceph-Identitaet ausgerollt
+(`ceph-csi-cephfs`, `client.kubernetes-cephfs` mit `mds allow rw
+fsname=cephfs`). **Die hier beschriebene Abnahme steht aber noch aus:** der
+Test nach kontrolliertem Node-Reboot ist bewusst auf ein Wartungsfenster
+verschoben. Bis dahin beschreibt dieses Learning eine Abnahmebedingung und
+keinen bereits beobachteten Kubernetes-Ausfall. Produktive RWX-Volumes erst
+nach Punkt 4 und 6 der Liste unten anlegen.
 
 ## Symptom
 
