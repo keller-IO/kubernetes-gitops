@@ -1,15 +1,16 @@
-apiVersion: postgresql.cnpg.io/v1
-kind: Backup
-metadata:
-  name: paperless-pg-pre-22015-20260802
-  namespace: paperless-ngx
-  annotations:
-    argocd.argoproj.io/sync-wave: "-1"
-spec:
-  cluster:
-    name: paperless-pg
-  method: barmanObjectStore
----
+# Der CNPG-Backup 'paperless-pg-pre-22015-20260802' stand hier bis zum
+# 06.09.2026 und ist entfernt: die barmanObjectStore-Retention (30 Tage)
+# hat ihn am ~01.09. geloescht. In Git stehen bleiben konnte er nicht --
+# ArgoCD meldete die App dauerhaft OutOfSync, und ein Sync haette das
+# Objekt NEU angelegt, also heute eine frische Sicherung unter dem
+# irrefuehrenden Namen "pre-22015" erzeugt.
+#
+# Die laufende Absicherung ist davon unberuehrt: backup.yaml plant
+# taeglich 02:00 nach s3://backups/cnpg-paperless/, zuletzt erfolgreich
+# am 06.09.2026, Wiederherstellungspunkt ab 07.08.2026.
+#
+# Die beiden VolumeSnapshots unten bestehen weiter (ceph-rbd-retain) und
+# sind der verbliebene Rollback-Punkt fuer das 22015-Upgrade.
 apiVersion: snapshot.storage.k8s.io/v1
 kind: VolumeSnapshot
 metadata:
