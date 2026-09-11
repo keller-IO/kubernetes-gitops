@@ -37,7 +37,8 @@ Verworfene Alternativen (bewertet am 11.09.2026, hier nur zur Nachvollziehbarkei
 | Toter CrowdSec-Bouncer auf `.15` | `crowdsec-firewall-bouncer.service` (LAPI `192.168.2.17:8087`, seit dem GitLab-Umzug unerreichbar) gestoppt und deaktiviert. Der nc05-Bouncer laeuft weiter. |
 | Haengende HTTP-01-Challenges | Die verwaisten `Certificate/wordpress-tls` in `wordpress-1`/`wordpress-2` (nicht in Git, von keinem Ingress referenziert) geloescht. Alle vier Challenges nach 53 Tagen weg, keine `cm-acme-http-solver`-Ingresses mehr. |
 | UDM-NAT-Ist-Stand | Per SSH ueber `pve` gelesen (`iptables -t nat`), in Phase 6 dokumentiert. |
-| Legacy-Datenbanken | Alle vier gedumpt, age-verschluesselt nach Garage-S3 Potsdam, Test-Restore mit identischen Zeilenzahlen (Phase 7). |
+| Legacy-Datenbanken | Alle vier gedumpt, age-verschluesselt nach Garage-S3 Potsdam, Test-Restore mit identischen Zeilenzahlen (Phase 7). Container gestoppt, `restart=no`, Daten bleiben. Aufbewahrung der Dumps 1 Jahr (bis 11.09.2027). |
+| Postfix auf `.15` | Gestoppt und deaktiviert (0 Verbindungen, Queue leer, keine Logzeile seit 10.08.; mx02 liefert direkt an `.247`, zuletzt verifiziert 02.09.). |
 
 Entfernte Router und warum:
 
@@ -113,7 +114,8 @@ bei Cloudflare), die GitLab-Registry-Tests und `binaergewitter.de`, `aios.tools`
 3. **steinba.ch-Mailzertifikat umbauen** (siehe Phase 2). Muss vor dem Port-80-
    Cutover stehen und vor Anfang November 2026 funktionieren (Renewal-Fenster fuer
    den Ablauf am 04.12.2026).
-4. **Offene Hosts entscheiden:** nur noch die drei imcor/jonaks-Namen ohne A-Record.
+4. ~~Offene Hosts entscheiden~~ — erledigt. Die imcor/jonaks-Namen bleiben; `db.imcor.de`,
+   `config.imcor.de` und `www.jonaks.com` haben seit 11.09. A-Records (87.191.135.42).
    `cloud-dev.savar.de` bleibt. Das `home.savar.de`-Dashboard entfaellt: Es haengt als
    Docker-Label am Traefik-Container und verschwindet mit dem Traefik-Stopp in Phase 8.
    Vorzeitig entfernen hiesse, den Container neu zu erzeugen (kurze Unterbrechung aller
@@ -205,11 +207,11 @@ Stand 11.09.2026:
 |---|---|---|---|
 | Traefik | TCP 80/443, 21 Router fuer die verbleibenden Legacy-Hosts | Alle Hosts, Zertifikate und Sonderregeln auf nginx-inc verifiziert | Phase 2–6 |
 | steinba.ch-Mailzertifikat | Traefik-Router + Cron nach mail05 | Ersatzkette im Cluster liefert und verteilt ein gueltiges Zertifikat | neu, offen |
-| Postfix | aktiv, seit 10.08. ohne Verbindung; mx02 liefert direkt an `.247` | keine produktive Verbindung, Queue leer | nur Stopp und `mynetworks` auf mx02 |
+| Postfix | **gestoppt und deaktiviert 11.09.**; mx02 liefert direkt an `.247` | keine produktive Verbindung, Queue leer | ab 18.09.: `.15` aus `mynetworks`/`sign_networks` |
 | CrowdSec | nc05-Bouncer aktiv, GitLab-Bouncer seit 11.09. deaktiviert | kein Gate | optional Ersatz (Phase 4) |
-| Mailman-Postgres | laeuft, kein Port, keine Verbindung | Archiv + Ende der Rollback-Frist | gesichert + Restore geprueft (11.09.); Frist offen |
-| WordPress-MariaDBs | zwei Container, kein Port, Webcontainer gestoppt | Dumps, Aufbewahrung | gesichert + Restore geprueft (11.09.); Aufbewahrung offen |
-| XWiki-MySQL (`db`) | laeuft, kein Port, XWiki gestoppt; Datenbank leer (0 Tabellen) | Dump, Aufbewahrung | gesichert (11.09.); Aufbewahrung offen |
+| Mailman-Postgres | **gestoppt 11.09.** (`restart=no`), Daten erhalten | Archiv + Ende der Rollback-Frist | gesichert + Restore geprueft; Dumps bis 11.09.2027 |
+| WordPress-MariaDBs | **gestoppt 11.09.** (`restart=no`), Daten erhalten | Dumps, Aufbewahrung | gesichert + Restore geprueft; Dumps bis 11.09.2027 |
+| XWiki-MySQL (`db`) | **gestoppt 11.09.** (`restart=no`); Datenbank leer (0 Tabellen) | Dump, Aufbewahrung | gesichert; Dump bis 11.09.2027 |
 
 Daneben liegen rund 20 gestoppte Container-Leichen (paperless, mailman-web/-core,
 odoo, mastodon-db, nextcloud-db, wg-easy, xwiki u. a.). Sie haben keinen Einfluss
@@ -236,7 +238,7 @@ der VM nur dann gesichert, wenn Schritt 2 sie als relevant einstuft.
 | `stream.horads.de` | `.240:8080` | ok | `legacy-proxy/horads` | HTTP-01 in-place | migrieren |
 | `spam.savar.de` | `.230:80` | ok | `legacy-proxy/spam` | RFC2136 | migrieren |
 | `imcor.de`, `www.imcor.de`, `jonaks.com` | `https .21:443` | ok | `legacy-proxy/imcor` | RFC2136 Follow | migrieren |
-| `db.imcor.de`, `config.imcor.de`, `www.jonaks.com` | `https .21:443` | ok | `legacy-proxy/imcor` | RFC2136 Follow | **entscheiden** (kein A-Record) |
+| `db.imcor.de`, `config.imcor.de`, `www.jonaks.com` | `https .21:443` | ok | `legacy-proxy/imcor` | RFC2136 Follow | migrieren (A-Records seit 11.09.) |
 | `s3.savar.de`, `s3.jit-creatives.de` | `.6/.7/.8:7480` | ok | `legacy-proxy/s3` | RFC2136 | migrieren |
 | `auth.savar.de`, `auth2.savar.de` | `.30:8080` | ok | `legacy-proxy/auth` | RFC2136 | migrieren |
 | `office.savar.de` | `.246` (Collabora im Cluster) | ok | `collabora-office-savar` | RFC2136 | migrieren |
@@ -595,10 +597,10 @@ Stand 11.09.2026: Die Voraussetzungen sind erfuellt.
 
 Ausfuehrung:
 
-1. UDM-Regel 2525 im Export als deaktiviert bzw. entfernt belegen.
-2. Kontrollierte Listenmail ueber den normalen MX-Pfad an mehrere Listendomains.
-3. Postfix auf `.15` stoppen und deaktivieren; sieben Tage Queues und Logs auf mx02/mx03
-   und Mailman beobachten.
+1. ~~UDM-Regel 2525~~ — existiert nicht mehr (NAT-Ist-Stand 11.09.).
+2. Statt einer synthetischen Testmail: Produktivzustellungen mx02 → `.247` im Log belegt
+   (zuletzt 02.09.), keine einzige Zustellung an `.15`.
+3. ~~Postfix stoppen~~ — erledigt 11.09.2026. Beobachtung bis **18.09.2026**.
 4. `192.168.2.15/32` aus `mynetworks` auf mx02 entfernen (Ansible
    `group_vars/mx_gateways.yml`, `mx_gateway_trusted_clients`), ebenso aus
    `sign_networks` der rspamd-Konfiguration auf spam01/02.
@@ -629,7 +631,8 @@ Stand 11.09.2026: **Schritte 1–4 erledigt.**
   identisch, 0 Importfehler, Container entfernt.
 - Restore:
   `rclone cat garage:backups/docker15-legacy/20260911/<name>.sql.gz.age | age -d -i ~/.config/sops/age/keys.txt | gunzip | <psql|mysql|mariadb>`
-- Offen: Aufbewahrungs- und Loeschdatum (Review-Frage 6), danach Schritt 6.
+- **Aufbewahrung 1 Jahr, Loeschdatum 11.09.2027** (Entscheidung 11.09.2026).
+- Schritt 6 erledigt 11.09.: alle vier Container gestoppt, `restart=no`, Daten und Compose-Dateien unveraendert.
 
 Fuer jede der vier Datenbanken:
 
@@ -696,10 +699,10 @@ Stand 11.09.2026:
 | 3 | Cloudflare per API-Token oder CNAME-Delegation? | entfallen (keine Cloudflare-Zone mehr im Cluster) |
 | 4 | Welche Enforcement-Variante ersetzt die CrowdSec-Bouncer? | entschieden: kein Gate, spaeter optional |
 | 5 | `home.savar.de`, `tools.kniff.eu`, `netbox.kniff.eu`? | entschieden: kniff umgezogen; `home.savar.de`-Dashboard entfaellt (11.09.) |
-| 6 | Aufbewahrung Mailman-Altbestand und Legacy-DB-Backups? | **offen** (Dumps liegen seit 11.09. in Garage) |
+| 6 | Aufbewahrung Mailman-Altbestand und Legacy-DB-Backups? | entschieden: 1 Jahr, Loeschdatum 11.09.2027 |
 | 7 | DNS-01 fuer `gemeinsam-fuer-halbe.de` vor dem 10.09.? | entfallen (Alt-Certificate geloescht, Traefik liefert bis zum Cutover) |
 | 8 | Wie wird das steinba.ch-Mailzertifikat kuenftig bezogen und verteilt? | **neu, offen** |
 | 9 | `cloud-dev.savar.de` weiterbetreiben oder abkuendigen? | entschieden: bleibt (11.09.) |
-| 10 | `db.imcor.de`, `config.imcor.de`, `www.jonaks.com` (kein A-Record) im Zertifikat behalten? | **neu, offen** |
+| 10 | `db.imcor.de`, `config.imcor.de`, `www.jonaks.com` (kein A-Record) im Zertifikat behalten? | entschieden: behalten, A-Records angelegt |
 | 11 | Soll WAN-Port 8080 (Icecast) offen bleiben? | entschieden: bleibt offen (11.09.) |
 | 12 | Potsdam-DR-Edge aktualisieren oder aufgeben? | entschieden: aktualisieren; Rollout blockiert (IP-Konflikt `.20`) |
