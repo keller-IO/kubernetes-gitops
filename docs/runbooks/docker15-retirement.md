@@ -15,6 +15,10 @@ Planstand: 2026-09-11 (Live-Nachinventur; vorherige Staende 2026-09-01 und
 | Zielbild | **Bleibt:** Internet → UDM → nginx-inc `192.168.2.246`, TLS per cert-manager im Cluster. |
 | CrowdSec | **Kein hartes Gate mehr.** Phase 4 ist empfohlen, blockiert den Cutover aber nicht. |
 | `tools.kniff.eu`, `netbox.kniff.eu` | Am 11.09.2026 mit kniff01 nach victorianix umgezogen, laufen ueber edge01. Nicht mehr Teil dieses Plans. |
+| `cloud-dev.savar.de` | **Bleibt** und wird mitmigriert (Backend `nc01-dev` war am 11.09. nicht erreichbar). |
+| `home.savar.de` | **Dashboard entfaellt.** Der DNS-Name bleibt: `www.gemeinsam-fuer-halbe.de`, `phpmyadmin.jit-creatives.de`, `umdiehand.jit-creatives.de` und `gesinefranze.jit-creatives.de` zeigen per CNAME darauf. |
+| WAN-Port 8080 (Icecast) | **Bleibt offen**, nicht Teil des Cutovers. |
+| Potsdam-DR-Edge | **Aktualisieren**, siehe Abschnitt „DR-Edge Potsdam“. |
 
 Verworfene Alternativen (bewertet am 11.09.2026, hier nur zur Nachvollziehbarkeit):
 
@@ -71,7 +75,7 @@ bei Cloudflare), die GitLab-Registry-Tests und `binaergewitter.de`, `aios.tools`
    in Phase 2 und Gate.
 2. **WAN-Port 8080 ist offen** und liefert `Icecast 2.4.4` (vermutlich `.240`,
    horads). Nicht Teil der `.15`-Kette, aber bisher in keinem Inventar; beim
-   UDM-Export mit aufnehmen und bewusst entscheiden.
+   UDM-Export mit aufnehmen. **Entscheidung 11.09.: bleibt offen.**
 3. **`.15` ist VM 107 auf `pve`** (8,5 GiB). `pve` liegt bei 85 % RAM, 4 Kernen und
    zwei OSDs — die Abschaltung entlastet genau den schwaechsten Node.
 4. **Kein Host hat AAAA-Records** (alle 57 Namen am 11.09. ueber `1.1.1.1` geprueft).
@@ -80,15 +84,15 @@ bei Cloudflare), die GitLab-Registry-Tests und `binaergewitter.de`, `aios.tools`
    direkt an `lmtp:[192.168.2.247]:8024`. WAN-Port 2525 ist von aussen geschlossen.
    Postfix auf `.15` hat seit dem 10.08. keine Verbindung. mx02 fuehrt `.15` aber
    noch in `mynetworks`.
-6. **Der Kalt-Standby `traefik-edge-potsdam` (192.168.23.20) ist veraltet.** Seine
-   `host_vars` zeigen noch auf `.17`, `.66`, `.29` und `.242`. Als DR-Edge ist er in
-   diesem Zustand unbrauchbar.
+6. **Der Kalt-Standby `traefik-edge-potsdam` war veraltet** (`host_vars` auf `.17`, `.66`,
+   `.29`, `.242`). Am 11.09. neu erzeugt; der Rollout scheitert an einem IP-Konflikt auf
+   `192.168.23.20`. Siehe „DR-Edge Potsdam“.
 7. **Echte Client-IP bleibt Pflicht, auch ohne CrowdSec.** Ohne sie sehen Nextcloud
    (`jit.cloud`), Roundcube und `auth.savar.de` alle Clients als Node-IP: deren
    Brute-Force-Drosselung trifft dann alle Nutzer gleichzeitig. Phase 3 bleibt
    deshalb hartes Gate.
 8. Weitere tote bzw. zweifelhafte Eintraege, die eine Entscheidung brauchen:
-   `cloud-dev.savar.de` (502, `nc01-dev` `.220` am 11.09. nicht erreichbar),
+   `cloud-dev.savar.de` (502, `nc01-dev` `.220` am 11.09. nicht erreichbar — bleibt),
    `db.imcor.de`, `config.imcor.de`, `www.jonaks.com` (kein A-Record), der wirkungslose
    Router `roundcube` (Fallback auf `prometheus.radiotux.de:9001`, von
    `jitmail_roundcube_router` mit Prioritaet 1000 immer ueberstimmt) und die
@@ -108,11 +112,13 @@ bei Cloudflare), die GitLab-Registry-Tests und `binaergewitter.de`, `aios.tools`
 3. **steinba.ch-Mailzertifikat umbauen** (siehe Phase 2). Muss vor dem Port-80-
    Cutover stehen und vor Anfang November 2026 funktionieren (Renewal-Fenster fuer
    den Ablauf am 04.12.2026).
-4. **Offene Hosts entscheiden:** `cloud-dev.savar.de`, `home.savar.de` (Vorschlag:
-   abkuendigen, das Dashboard verschwindet mit `.15`), die drei imcor/jonaks-Namen
-   ohne A-Record.
+4. **Offene Hosts entscheiden:** nur noch die drei imcor/jonaks-Namen ohne A-Record.
+   `cloud-dev.savar.de` bleibt. Das `home.savar.de`-Dashboard entfaellt: Es haengt als
+   Docker-Label am Traefik-Container und verschwindet mit dem Traefik-Stopp in Phase 8.
+   Vorzeitig entfernen hiesse, den Container neu zu erzeugen (kurze Unterbrechung aller
+   `.15`-Hosts). Der DNS-Name `home.savar.de` bleibt als CNAME-Ziel bestehen.
 5. **UDM exportieren** und die Regeln fuer TCP 80, 443, 2525 und **8080** mit
-   Zieladressen in diesem Runbook nachtragen.
+   Zieladressen in diesem Runbook nachtragen (8080 bleibt offen).
 
 ### Vor dem naechsten Ausrollschritt
 
@@ -133,7 +139,7 @@ bei Cloudflare), die GitLab-Registry-Tests und `binaergewitter.de`, `aios.tools`
    Voraussetzung fuer den WAN-Cutover.
 10. **`cloud.naturkindergarten-moehringen.de`**: CNAME beim Provider anlegen lassen
     oder den Namen aus dem Zertifikat nehmen.
-11. **Potsdam-DR-Edge** aktualisieren oder bewusst aufgeben.
+11. **Potsdam-DR-Edge** fertigstellen (Entscheidung: aktualisieren), siehe „DR-Edge Potsdam“.
 12. Optional: **Phase 4 CrowdSec-Enforcement** im neuen Pfad.
 
 Ein WAN-Cutover-Termin wird erst nach Schritt 6 bis 9 sinnvoll gesetzt.
@@ -146,8 +152,8 @@ Internet -> UDM 192.168.2.94 -> nginx-inc 192.168.2.246
          -> legacy-proxy -> externe Backends im LAN
 ```
 
-`192.168.23.20` ist kein Bestandteil dieses Produktionspfads. Der Host ist
-ausschliesslich als Disaster-Recovery-Edge vorgesehen (siehe Schritt 11).
+Der Potsdam-Edge ist kein Bestandteil dieses Produktionspfads, sondern der
+Disaster-Recovery-Edge (siehe „DR-Edge Potsdam“).
 
 Meilensteine:
 
@@ -155,6 +161,39 @@ Meilensteine:
 2. Nicht-Web-Aufgaben von `192.168.2.15` entfernen (steinba.ch-Zertifikat, Postfix,
    Datenbanken).
 3. Die VM nach Beobachtungs- und Rollback-Frist abschalten.
+
+## DR-Edge Potsdam (CT 8020 auf u22)
+
+Entscheidung 11.09.2026: aktualisieren.
+
+Stand 11.09.2026:
+
+- `host_vars/traefik-edge-potsdam.yml` (cfgmgmt01) neu aus der Live-Konfiguration von
+  `.15` erzeugt: 19 Router, 19 Services, strukturell identisch zu `.15` ohne
+  `steinbach_cert_router` (Mailzertifikat, Cron nur auf `.15`) und den wirkungslosen
+  `roundcube`-Router. Backup `.bak-20260911`.
+- Rolle `traefik_edge`: neuer Schalter `traefik_edge_dashboard_enabled` (Default `true`),
+  Potsdam setzt `false`. edge01 per `--check --diff` unveraendert.
+- **Rollout blockiert durch IP-Konflikt.** `192.168.23.20` ist an ein anderes Geraet
+  vergeben (`espressif.localdomain`, MAC `bc:ff:4d:8e:4f:52`, vermutlich DHCP der UCG seit
+  dem Routertausch am 04.09.). Beim Probestart antworteten abwechselnd CT und ESP-Geraet;
+  Ansible brach mit `Connection refused` ab. CT wieder gestoppt, nichts ausgerollt.
+
+Vor dem Rollout: feste IP ausserhalb des UCG-DHCP-Bereichs oder Reservierung. Bei einem
+IP-Wechsel betroffen: CT-`net0`, Inventar `hosts`, `gitlab01_crowdsec_potsdam_bouncer_host`,
+`nc05_crowdsec_potsdam_bouncer_host`, ADR `0003-crowdsec-at-k8s-ingress.md`.
+
+DR-Luecken unabhaengig vom Rollout:
+
+- Keine UCG-Portfreigabe 80/443 zum Edge. Im DR-Fall zusaetzlich DNS auf `176.94.125.87`
+  umstellen; erst dann kann HTTP-01 Zertifikate ausstellen.
+- Aus Potsdam am 11.09. nicht erreichbar (Timeout, von `.15` aus erreichbar):
+  `192.168.2.6:7480` (S3), `192.168.2.30:8080` (auth), `192.168.2.217:443` (jit.cloud).
+  Filter an den Hosts oder im IPsec-Pfad pruefen.
+- Der CrowdSec-Bouncer auf dem CT zeigt noch auf die tote GitLab-LAPI `.17` (Restart-Schleife).
+  Kein Gate; wie bei edge01 umstellen oder deaktivieren.
+- Nach dem `.246`-Cutover laesst sich der DR-Edge stark vereinfachen (TCP-Passthrough 443 →
+  `.246`), weil der Cluster TLS dann selbst terminiert.
 
 ## Aktueller Bestand auf docker15
 
@@ -202,8 +241,8 @@ der VM nur dann gesichert, wenn Schritt 2 sie als relevant einstuft.
 | `cloud.savar.de`, `jit.cloud`, `cloud.daec-berlin.de` | `https .217` | ok | `legacy-proxy/jitcloud` | RFC2136 | migrieren |
 | `cloud.steinba.ch` | `https .217` | ok | `legacy-proxy/jitcloud` | HTTP-01 in-place | migrieren |
 | `cloud.naturkindergarten-moehringen.de` | `https .217` | ok | `legacy-proxy/jitcloud` | RFC2136 Follow | blockiert (CNAME fehlt) |
-| `cloud-dev.savar.de` | `.246` → `.220` | **tot (502)** | `legacy-proxy/cloud-dev` | RFC2136 | **entscheiden** |
-| `home.savar.de` | Traefik-Dashboard | — | — | — | Vorschlag: abkuendigen |
+| `cloud-dev.savar.de` | `.246` → `.220` | **tot (502)** | `legacy-proxy/cloud-dev` | RFC2136 | migrieren (bleibt) |
+| `home.savar.de` | Traefik-Dashboard | — | — | — | abkuendigen (DNS-Name bleibt als CNAME-Ziel) |
 | (Router `roundcube`) | `prometheus.radiotux.de:9001` | — | — | — | entfaellt, wirkungslos |
 
 Die Abnahme-Felder (Testpfad, Erwartung, Owner, Sign-off) werden vor der
@@ -372,7 +411,7 @@ Sichtbarkeit und Cleanup fuer jede Solver-Klasse funktionieren.
 | `legacy-proxy/jitcloud` | `cloud.savar.de`, `jit.cloud`, `cloud.daec-berlin.de` | RFC2136 | direkt | TXT E2E verifiziert |
 | `legacy-proxy/jitcloud` | `cloud.naturkindergarten-moehringen.de` | RFC2136 Follow | CNAME fehlt | blockiert |
 | `legacy-proxy/jitcloud` | `cloud.steinba.ch` | HTTP-01 in-place | Port 80 | Staging ausstehend |
-| `legacy-proxy/cloud-dev` | `cloud-dev.savar.de` | RFC2136 | direkt | Backend tot, Disposition offen |
+| `legacy-proxy/cloud-dev` | `cloud-dev.savar.de` | RFC2136 | direkt | bleibt; Backend tot, Staging ausstehend |
 | `phpmyadmin/phpmyadmin` | `dbadmin.jit.services` | ClouDNS | direkt | bestehender Produktionspfad |
 | `phpmyadmin/phpmyadmin` | `phpmyadmin.savar.de`, `phpmyadmin.jit-creatives.de` | RFC2136 | direkt | TXT E2E verifiziert |
 
@@ -498,7 +537,7 @@ Vorher:
 
 1. UniFi-Konfiguration exportieren.
 2. Regeln fuer TCP 80, 443, 2525 und 8080 mit Zieladressen dokumentieren
-   (2525 war am 11.09. von aussen bereits geschlossen).
+   (2525 war am 11.09. von aussen bereits geschlossen; 8080 bleibt offen).
 3. Rollback auf `.15` vorbereiten.
 4. Langzeitverbindungen und geplante Wartungen pruefen.
 
@@ -611,11 +650,11 @@ Stand 11.09.2026:
 | 2 | Welche Zonen sind auf dns01 autoritativ und fuer RFC2136 freigegeben? | beantwortet (E2E 30.07.), `porga.de` neu zu pruefen |
 | 3 | Cloudflare per API-Token oder CNAME-Delegation? | entfallen (keine Cloudflare-Zone mehr im Cluster) |
 | 4 | Welche Enforcement-Variante ersetzt die CrowdSec-Bouncer? | entschieden: kein Gate, spaeter optional |
-| 5 | `home.savar.de`, `tools.kniff.eu`, `netbox.kniff.eu`? | kniff umgezogen (11.09.); `home.savar.de` offen (Vorschlag abkuendigen) |
+| 5 | `home.savar.de`, `tools.kniff.eu`, `netbox.kniff.eu`? | entschieden: kniff umgezogen; `home.savar.de`-Dashboard entfaellt (11.09.) |
 | 6 | Aufbewahrung Mailman-Altbestand und Legacy-DB-Backups? | **offen** |
 | 7 | DNS-01 fuer `gemeinsam-fuer-halbe.de` vor dem 10.09.? | entfallen (Alt-Certificate geloescht, Traefik liefert bis zum Cutover) |
 | 8 | Wie wird das steinba.ch-Mailzertifikat kuenftig bezogen und verteilt? | **neu, offen** |
-| 9 | `cloud-dev.savar.de` weiterbetreiben oder abkuendigen? | **neu, offen** |
+| 9 | `cloud-dev.savar.de` weiterbetreiben oder abkuendigen? | entschieden: bleibt (11.09.) |
 | 10 | `db.imcor.de`, `config.imcor.de`, `www.jonaks.com` (kein A-Record) im Zertifikat behalten? | **neu, offen** |
-| 11 | Soll WAN-Port 8080 (Icecast) offen bleiben? | **neu, offen** |
-| 12 | Potsdam-DR-Edge aktualisieren oder aufgeben? | **neu, offen** |
+| 11 | Soll WAN-Port 8080 (Icecast) offen bleiben? | entschieden: bleibt offen (11.09.) |
+| 12 | Potsdam-DR-Edge aktualisieren oder aufgeben? | entschieden: aktualisieren; Rollout blockiert (IP-Konflikt `.20`) |
