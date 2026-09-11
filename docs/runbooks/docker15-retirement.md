@@ -33,10 +33,11 @@ Verworfene Alternativen (bewertet am 11.09.2026, hier nur zur Nachvollziehbarkei
 | Schritt | Ergebnis |
 |---|---|
 | Umgezogene und tote Router auf `.15` entfernt | 9 Router, 11 Services (Backup `dynamic_conf.yml.bak-20260911-cleanup`). Inode unveraendert; alle 22 verbleibenden Hosts liefern vorher/nachher identische Statuscodes; keine Traefik-Fehler. |
-| Cluster-Gegenstueck | PR #143: `legacy-proxy` gitlab, gitlab-registry, aios, aios-test und die App `binaergewitter` entfernt. **Offen: Merge, manueller Sync, EndpointSlices loeschen** (siehe PR). |
+| Cluster-Gegenstueck | PR #143 gemergt (`1bb654c`): `legacy-proxy` gitlab, gitlab-registry, aios, aios-test und die App `binaergewitter` entfernt. `app-legacy-proxy` manuell mit Prune gesynct (`Synced/Healthy`), 4 EndpointSlices geloescht, Namespace `binaergewitter` weg; alle verbleibenden Hosts ueber `.15` mit unveraenderten Statuscodes. |
 | Toter CrowdSec-Bouncer auf `.15` | `crowdsec-firewall-bouncer.service` (LAPI `192.168.2.17:8087`, seit dem GitLab-Umzug unerreichbar) gestoppt und deaktiviert. Der nc05-Bouncer laeuft weiter. |
 | Haengende HTTP-01-Challenges | Die verwaisten `Certificate/wordpress-tls` in `wordpress-1`/`wordpress-2` (nicht in Git, von keinem Ingress referenziert) geloescht. Alle vier Challenges nach 53 Tagen weg, keine `cm-acme-http-solver`-Ingresses mehr. |
 | UDM-NAT-Ist-Stand | Per SSH ueber `pve` gelesen (`iptables -t nat`), in Phase 6 dokumentiert. |
+| Legacy-Datenbanken | Alle vier gedumpt, age-verschluesselt nach Garage-S3 Potsdam, Test-Restore mit identischen Zeilenzahlen (Phase 7). |
 
 Entfernte Router und warum:
 
@@ -106,13 +107,9 @@ bei Cloudflare), die GitLab-Registry-Tests und `binaergewitter.de`, `aios.tools`
 
 ### Sofort, unabhaengig vom Cutover
 
-1. **PR #143 mergen**, danach `app-legacy-proxy` mit Prune syncen und
-   `kubectl -n legacy-proxy delete endpointslice gitlab gitlab-registry aios aios-test`.
-   Pruefen, dass der Namespace `binaergewitter` verschwindet.
-2. **Legacy-Datenbanken sichern.** `mailman-mailman-database-1`, `db` (mysql 5.7),
-   `wordpress-db1`, `wordpress-db2`: Dump, Checksumme, verschluesselte Ablage,
-   Test-Restore. Kein Client erreichbar (am 11.09. erneut 0 Verbindungen auf
-   3306/5432), also ohne Wartungsfenster.
+1. ~~PR #143 mergen und nacharbeiten~~ — erledigt 11.09.2026.
+2. ~~Legacy-Datenbanken sichern~~ — erledigt 11.09.2026 (Phase 7). Offen nur die
+   Aufbewahrungsfrist (Review-Frage 6).
 3. **steinba.ch-Mailzertifikat umbauen** (siehe Phase 2). Muss vor dem Port-80-
    Cutover stehen und vor Anfang November 2026 funktionieren (Renewal-Fenster fuer
    den Ablauf am 04.12.2026).
@@ -210,9 +207,9 @@ Stand 11.09.2026:
 | steinba.ch-Mailzertifikat | Traefik-Router + Cron nach mail05 | Ersatzkette im Cluster liefert und verteilt ein gueltiges Zertifikat | neu, offen |
 | Postfix | aktiv, seit 10.08. ohne Verbindung; mx02 liefert direkt an `.247` | keine produktive Verbindung, Queue leer | nur Stopp und `mynetworks` auf mx02 |
 | CrowdSec | nc05-Bouncer aktiv, GitLab-Bouncer seit 11.09. deaktiviert | kein Gate | optional Ersatz (Phase 4) |
-| Mailman-Postgres | laeuft, kein Port, keine Verbindung | Archiv + Ende der Rollback-Frist | Dump, Test-Restore, Frist |
-| WordPress-MariaDBs | zwei Container, kein Port, Webcontainer gestoppt | Dumps, Aufbewahrung | Dump, Aufbewahrung |
-| XWiki-MySQL (`db`) | laeuft, kein Port, XWiki gestoppt | Dump, Aufbewahrung | Dump, Aufbewahrung |
+| Mailman-Postgres | laeuft, kein Port, keine Verbindung | Archiv + Ende der Rollback-Frist | gesichert + Restore geprueft (11.09.); Frist offen |
+| WordPress-MariaDBs | zwei Container, kein Port, Webcontainer gestoppt | Dumps, Aufbewahrung | gesichert + Restore geprueft (11.09.); Aufbewahrung offen |
+| XWiki-MySQL (`db`) | laeuft, kein Port, XWiki gestoppt; Datenbank leer (0 Tabellen) | Dump, Aufbewahrung | gesichert (11.09.); Aufbewahrung offen |
 
 Daneben liegen rund 20 gestoppte Container-Leichen (paperless, mailman-web/-core,
 odoo, mastodon-db, nextcloud-db, wg-easy, xwiki u. a.). Sie haben keinen Einfluss
@@ -610,6 +607,30 @@ Port 2525 wird niemals direkt auf LMTP weitergeleitet.
 
 ### Legacy-Datenbanken
 
+Stand 11.09.2026: **Schritte 1–4 erledigt.**
+
+| Datenbank | Objekt (`backups/docker15-legacy/20260911/`) | gz | Tabellen / Zeilen | Test-Restore |
+|---|---|---:|---|---|
+| Mailman (postgres, `pg_dumpall`) | `mailman.sql.gz.age` | 11,9 MB | 61 / 45.097 | identisch |
+| XWiki (mysql 5.7, `db`) | `xwiki.sql.gz.age` | 517 B | 0 / 0 (leer) | identisch |
+| WordPress gemeinsam-fuer-halbe (`wordpress-db1`) | `wordpress-gemeinsamfuerhalbe.sql.gz.age` | 1,39 MB | 28 / 1.571 | identisch |
+| WordPress jugendbeauftragter (`wordpress-db2`) | `wordpress-jugendbeauftragter.sql.gz.age` | 121 KB | 12 / 781 | identisch |
+
+- Ablage: Garage-S3 Potsdam (`192.168.23.21:3900`, Region `garage-potsdam`), Bucket
+  `backups`, eigener Key `docker15-legacy-dumps` (RW). Die Zugangsdatei auf `.15` wurde
+  nach dem Upload geloescht.
+- Verschluesselung: `age` auf den SOPS-Recipient
+  `age17x04ga87qyu9lzcuja9k83z90veew9cez7jusul4y5xyr09xaejs9rq755`. Ver- und Entschluesseln
+  nur auf dem Laptop (`~/.config/sops/age/keys.txt`); unverschluesselt lag nichts auf Platte.
+- Integritaet: `MANIFEST.tsv` (sha256 von gz-Klartext und age-Datei) und
+  `source-rowcounts.tar.gz` (exakte Zeilenzahlen je Tabelle an der Quelle).
+- Test-Restore: aus Garage gelesen, entschluesselt, sha256 gegen Manifest, eingespielt in
+  isolierte Wegwerf-Container (`--network none`, gleiche Images), Zeilenzahlen je Tabelle
+  identisch, 0 Importfehler, Container entfernt.
+- Restore:
+  `rclone cat garage:backups/docker15-legacy/20260911/<name>.sql.gz.age | age -d -i ~/.config/sops/age/keys.txt | gunzip | <psql|mysql|mariadb>`
+- Offen: Aufbewahrungs- und Loeschdatum (Review-Frage 6), danach Schritt 6.
+
 Fuer jede der vier Datenbanken:
 
 1. Konsistenten Dump und Dateisystem-Backup erstellen.
@@ -675,7 +696,7 @@ Stand 11.09.2026:
 | 3 | Cloudflare per API-Token oder CNAME-Delegation? | entfallen (keine Cloudflare-Zone mehr im Cluster) |
 | 4 | Welche Enforcement-Variante ersetzt die CrowdSec-Bouncer? | entschieden: kein Gate, spaeter optional |
 | 5 | `home.savar.de`, `tools.kniff.eu`, `netbox.kniff.eu`? | entschieden: kniff umgezogen; `home.savar.de`-Dashboard entfaellt (11.09.) |
-| 6 | Aufbewahrung Mailman-Altbestand und Legacy-DB-Backups? | **offen** |
+| 6 | Aufbewahrung Mailman-Altbestand und Legacy-DB-Backups? | **offen** (Dumps liegen seit 11.09. in Garage) |
 | 7 | DNS-01 fuer `gemeinsam-fuer-halbe.de` vor dem 10.09.? | entfallen (Alt-Certificate geloescht, Traefik liefert bis zum Cutover) |
 | 8 | Wie wird das steinba.ch-Mailzertifikat kuenftig bezogen und verteilt? | **neu, offen** |
 | 9 | `cloud-dev.savar.de` weiterbetreiben oder abkuendigen? | entschieden: bleibt (11.09.) |
