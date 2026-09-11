@@ -86,6 +86,19 @@ spec:
           name: hubble-relay-client-certs
           namespace: kube-system
           jsonPointers: [/data]
+        # Webhook-Zertifikat des VictoriaMetrics-Operators: gleiches Muster wie die
+        # Hubble-PKI oben. Der Chart erzeugt CA und Zertifikat beim Rendern neu, jeder
+        # Build desselben Commits liefert andere Bytes -> Dauer-OutOfSync. Secret und
+        # das dazu passende caBundle bleiben deshalb live stehen.
+        - group: ""
+          kind: Secret
+          name: vm-k8s-stack-victoria-metrics-operator-validation
+          namespace: monitoring
+          jsonPointers: [/data]
+        - group: admissionregistration.k8s.io
+          kind: ValidatingWebhookConfiguration
+          name: vm-k8s-stack-victoria-metrics-operator-admission
+          jqPathExpressions: [".webhooks[]?.clientConfig.caBundle"]
         # Der API-Server materialisiert in JEDEM eingebetteten PVC-Template eines
         # StatefulSets apiVersion, kind und status — unabhaengig von volumeMode,
         # das seit #48 explizit in Git steht. Betrifft hier authentik-valkey.
