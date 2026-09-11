@@ -36,6 +36,7 @@ Verworfene Alternativen (bewertet am 11.09.2026, hier nur zur Nachvollziehbarkei
 | Cluster-Gegenstueck | PR #143: `legacy-proxy` gitlab, gitlab-registry, aios, aios-test und die App `binaergewitter` entfernt. **Offen: Merge, manueller Sync, EndpointSlices loeschen** (siehe PR). |
 | Toter CrowdSec-Bouncer auf `.15` | `crowdsec-firewall-bouncer.service` (LAPI `192.168.2.17:8087`, seit dem GitLab-Umzug unerreichbar) gestoppt und deaktiviert. Der nc05-Bouncer laeuft weiter. |
 | Haengende HTTP-01-Challenges | Die verwaisten `Certificate/wordpress-tls` in `wordpress-1`/`wordpress-2` (nicht in Git, von keinem Ingress referenziert) geloescht. Alle vier Challenges nach 53 Tagen weg, keine `cm-acme-http-solver`-Ingresses mehr. |
+| UDM-NAT-Ist-Stand | Per SSH ueber `pve` gelesen (`iptables -t nat`), in Phase 6 dokumentiert. |
 
 Entfernte Router und warum:
 
@@ -97,6 +98,9 @@ bei Cloudflare), die GitLab-Registry-Tests und `binaergewitter.de`, `aios.tools`
    Router `roundcube` (Fallback auf `prometheus.radiotux.de:9001`, von
    `jitmail_roundcube_router` mit Prioritaet 1000 immer ueberstimmt) und die
    Middleware `cors-headers` (nur noch ungenutzt).
+9. **Sieben veraltete UDM-Portfreigaben** zeigen auf abgeschaltete oder umgezogene Ziele
+   (`.17`, `.29`, `.66`, `.15`-FTP/-Registry), siehe Phase 6. Wird eine dieser IPs per DHCP
+   neu vergeben, landet Internetverkehr auf einem fremden Geraet.
 
 ## Naechste Schritte
 
@@ -117,8 +121,9 @@ bei Cloudflare), die GitLab-Registry-Tests und `binaergewitter.de`, `aios.tools`
    Docker-Label am Traefik-Container und verschwindet mit dem Traefik-Stopp in Phase 8.
    Vorzeitig entfernen hiesse, den Container neu zu erzeugen (kurze Unterbrechung aller
    `.15`-Hosts). Der DNS-Name `home.savar.de` bleibt als CNAME-Ziel bestehen.
-5. **UDM exportieren** und die Regeln fuer TCP 80, 443, 2525 und **8080** mit
-   Zieladressen in diesem Runbook nachtragen (8080 bleibt offen).
+5. **UDM:** Ist-Stand der NAT-Regeln am 11.09. gelesen und in Phase 6 eingetragen. Offen:
+   UniFi-Konfigurationsexport als Rollback-Beleg und das Entfernen der sieben veralteten
+   Portfreigaben im Controller (nicht per SSH, der Controller ueberschreibt das).
 
 ### Vor dem naechsten Ausrollschritt
 
@@ -187,9 +192,9 @@ DR-Luecken unabhaengig vom Rollout:
 
 - Keine UCG-Portfreigabe 80/443 zum Edge. Im DR-Fall zusaetzlich DNS auf `176.94.125.87`
   umstellen; erst dann kann HTTP-01 Zertifikate ausstellen.
-- Aus Potsdam am 11.09. nicht erreichbar (Timeout, von `.15` aus erreichbar):
-  `192.168.2.6:7480` (S3), `192.168.2.30:8080` (auth), `192.168.2.217:443` (jit.cloud).
-  Filter an den Hosts oder im IPsec-Pfad pruefen.
+- ~~Aus Potsdam nicht erreichbar: S3, auth, jit.cloud~~ — Messfehler durch den IP-Konflikt
+  (Antworten gingen teils an das ESP-Geraet). Von cfgmgmt01 (`192.168.23.19`) sind am 11.09.
+  alle Backends erreichbar; nc05 erlaubt `192.168.23.20` ausdruecklich.
 - Der CrowdSec-Bouncer auf dem CT zeigt noch auf die tote GitLab-LAPI `.17` (Restart-Schleife).
   Kein Gate; wie bei edge01 umstellen oder deaktivieren.
 - Nach dem `.246`-Cutover laesst sich der DR-Edge stark vereinfachen (TCP-Passthrough 443 →
@@ -540,6 +545,25 @@ Vorher:
    (2525 war am 11.09. von aussen bereits geschlossen; 8080 bleibt offen).
 3. Rollback auf `.15` vorbereiten.
 4. Langzeitverbindungen und geplante Wartungen pruefen.
+
+UDM-Ist-Stand 11.09.2026 (NAT-Regeln auf WAN `eth7`, identisch gespiegelt auf `ppp0`):
+
+| WAN-Port | Ziel | Bewertung |
+|---|---|---|
+| 80, 443 | `192.168.2.15` | Gegenstand dieses Cutovers |
+| 8080 | `192.168.2.240:8080` (Icecast) | bleibt (Entscheidung 11.09.) |
+| 2525 | — | existiert nicht mehr |
+| 5050 | `192.168.2.15:5050` | **veraltet**, Registry laeuft ueber edge01 → entfernen |
+| 21, 30000–30010 | `192.168.2.15` | **veraltet**, proftpd-Container seit Monaten gestoppt → entfernen |
+| 22617 | `192.168.2.17:22` | **veraltet**, GitLab seit 26.08. unter `88.198.107.9:22617` → entfernen |
+| 2299 | `192.168.2.66:22` | **veraltet**, Auphonic-SFTP seit 28.08. unter `88.198.107.9:2299` → entfernen |
+| 2233 | `192.168.2.29:22` | **veraltet**, kniff01 seit 11.09. unter `88.198.107.9:2233` → entfernen |
+| 2001 | `192.168.2.29:8000` | **veraltet**, kniff01 migriert → entfernen |
+
+Nicht Teil dieses Plans, zur Vollstaendigkeit: 22→`.21`, 2211→`.30:22`, 2255→`.170:22`,
+2277→`.23:22`, 2288→`.10:22`, 25→`.209`, 110/143/465/587/993/995/4190→`.34`,
+11333/6379/26379→`.230`, 3306→`.32`, 5000/5222/5269/5281→`.14`, 53/853→`.236`,
+5353→`.10:53`, 8000→`.238`, 8089→`192.168.23.18`, 25565→`.241`.
 
 Cutover-Reihenfolge:
 
