@@ -127,7 +127,21 @@ bei Cloudflare), die GitLab-Registry-Tests und `binaergewitter.de`, `aios.tools`
 ### Vor dem naechsten Ausrollschritt
 
 6. **ArgoCD-Freeze aufloesen** und die sechs Apps bereinigen. Ohne diesen Schritt
-   rollt ein Merge nichts aus und ein Git-Revert repariert nichts.
+   rollt ein Merge nichts aus und ein Git-Revert repariert nichts. Analyse 11.09.2026
+   (`argocd app diff --core`, Repo-Server-Fix vom 24.08. ist live):
+
+   | App | Diff | Risiko beim Sync | Vorgehen |
+   |---|---|---|---|
+   | `app-mastodon` | seit 24.08. in Loeschung; Job `mastodon-db-prepare` haengt am `argocd.argoproj.io/hook-finalizer`; ApplicationSet schliesst die App aus | keins, nicht produktiv | Hook-Finalizer vom Job entfernen |
+   | `infra-mariadb-operator` | nur Tracking-Annotationen (Git steht schon auf `mariadb-system`) + 3 vom VM-Operator konvertierte `VMServiceScrape` als extraneous | gering | VM-Operator-Konverter mit ArgoCD-Ignore-Annotationen, dann Sync |
+   | `infra-monitoring` | Webhook-Zertifikat wird beim Rendern neu erzeugt (Dauer-Drift); 4 Scrape-Services wandern von `monitoring` nach `kube-system` | gering | Webhook-Zertifikat stabilisieren (cert-manager oder `ignoreDifferences`), dann Sync |
+   | `app-nextcloud-yealink-phonebook` | Synced, Degraded (Platzhalter-Passwort) | keins | Secret setzen oder bewusst so lassen |
+   | `infra-cilium` | nur Checksummen-Annotation; `cilium-config` unterscheidet sich in 3 leeren Schluesseln (`debug-verbose`, `nodeport-addresses`, `policy-cidr-match-mode`) | **rollender Neustart aller Cilium-Agenten** ohne funktionale Aenderung | Wartungsfenster, mit Cilium 1.20 und Phase 3 zusammenlegen |
+   | `infra-cnpg` | Chart 0.23.0 → 0.29.0 = Operator **1.25.0 → 1.30.0** (Renovate-Merge 24.08., nie ausgerollt), CRDs, Webhooks | **Neustart aller 6 Postgres-Cluster, alle mit nur 1 Instanz** | eigenes Wartungsfenster; vorher Backups fuer `crowdsec-pg` und `expense-pg` einrichten (haben keine) |
+
+   Reihenfolge: mastodon → mariadb-operator → monitoring → yealink. Das fleet-weite
+   `automated` erst aktivieren, wenn cilium und cnpg gesynct sind — sonst rollt Auto-Sync
+   beide sofort aus.
 7. **PRs #79/#80 nach #143 neu aufsetzen.** Beide Branches liegen hinter `main` und
    enthalten TLS-Aenderungen fuer die entfernten Ingresses sowie den
    Cloudflare-Solver samt `cloudflare-api-key`. Rebase auf `main`, beides entfernen,
