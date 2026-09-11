@@ -1,5 +1,13 @@
 victoria-metrics-operator:
   enabled: true
+  # Der Operator konvertiert ServiceMonitor/PodMonitor (cnpg, mariadb-operator) in
+  # VMServiceScrape/VMPodScrape und kopiert dabei die ArgoCD-Tracking-Annotation.
+  # ArgoCD haelt die Kopien dann fuer "extraneous" und wuerde sie prunen, der
+  # Operator legt sie sofort neu an -> Dauer-OutOfSync. Mit diesem Schalter setzt
+  # der Operator IgnoreExtraneous + Prune=false auf die konvertierten Objekte.
+  env:
+    - name: VM_PROMETHEUSCONVERTERADDARGOCDIGNOREANNOTATIONS
+      value: "true"
   # Measured ~62-83Mi RSS on keller-main (kubectl top, 2026-07-28).
   resources:
     requests: { cpu: 20m, memory: 64Mi }
