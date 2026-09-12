@@ -1,9 +1,12 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: wordpress-2
-# Instanz "halbe". Öffentlich über den .15-Traefik (TLS dort, HTTP zum Cluster)
-# -> HTTP-only, sonst 301-Loop. Für Cluster-direktes TLS: Router 443 -> .246 +
-# tls/issuer wieder ergänzen.
+# Instanz "halbe". Läuft noch über den .15-Traefik, hat seit PR #149 aber ein
+# eigenes Cluster-Zertifikat (wordpress-tls für www.gemeinsam-fuer-halbe.de +
+# Apex). redirect-to-https steht seit 12.09.2026 auf "true": die Annotation
+# entscheidet an X-Forwarded-Proto (von Traefik auf "https" gesetzt), nicht am
+# Schema — die alte Loop-Sorge galt für ssl-redirect, das bis zum 443-Cutover
+# "false" bleibt.
 resources:
   - ../../../base/wordpress
 patches:
@@ -11,7 +14,7 @@ patches:
     patch: |
       - op: replace
         path: /metadata/annotations/nginx.org~1redirect-to-https
-        value: "false"
+        value: "true"
       - op: replace
         path: /spec/tls/0/hosts/0
         value: www.gemeinsam-fuer-halbe.de

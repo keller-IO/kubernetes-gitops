@@ -1,11 +1,15 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: kimai
-# kimai.savar.de wird öffentlich über den .15-Traefik erreicht, der TLS
-# terminiert und HTTP zum Cluster proxied. Deshalb HTTP-only (kein TLS/kein
-# Redirect) — sonst 301-Loop (nginx würde HTTP->HTTPS umleiten, Traefik wieder
-# HTTP proxien ...). Für Cluster-direktes TLS: Router 443 -> .246 + tls/issuer
-# wieder ergänzen.
+# kimai.savar.de läuft noch über den .15-Traefik, hat seit PR #149 aber ein
+# eigenes Cluster-Zertifikat (kimai-tls, cert-manager). redirect-to-https steht
+# seit 12.09.2026 auf "true".
+# Die alte 301-Loop-Sorge galt nur für ssl-redirect: das entscheidet am Schema
+# und würde hinter einem TLS-terminierenden Proxy tatsächlich endlos umleiten.
+# redirect-to-https entscheidet dagegen an X-Forwarded-Proto, das Traefik auf
+# "https" setzt — also kein Redirect, solange .15 davorsteht. Live geprüft am
+# 12.09. an elf bereits umgestellten Hosts: kein einziger nginx-Redirect.
+# ssl-redirect bleibt bis zum 443-Cutover "false".
 resources:
   - ../../../base/kimai
 patches:
@@ -13,7 +17,7 @@ patches:
     patch: |
       - op: replace
         path: /metadata/annotations/nginx.org~1redirect-to-https
-        value: "false"
+        value: "true"
       - op: replace
         path: /spec/tls/0/hosts/0
         value: kimai.savar.de

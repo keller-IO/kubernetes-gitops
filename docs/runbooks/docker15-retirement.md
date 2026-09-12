@@ -515,11 +515,36 @@ Nach erfolgreicher TLS-Abnahme, noch vor dem WAN-Cutover, wird
 bleibt nur bis zum 443-Cutover `false` und wird aktiviert, bevor Port 80 auf `.246`
 zeigt.
 
-**Erledigt 12.09.2026.** Bilanz im Repo: 24 × `"true"`, 3 × bewusst weiterhin `"false"`.
-Vorher empirisch abgesichert, dass die Annahme ueberhaupt stimmt: `lists.jitmail.de`,
-`kimai.savar.de` und `paperless.savar.de` stehen laengst auf `"true"`, laufen ueber `.15`
-und liefern saubere App-Redirects statt einer Schleife — `X-Forwarded-Proto` wird also
-korrekt ausgewertet.
+**Erledigt 12.09.2026**, in zwei Schritten.
+
+> **⚠️ Korrektur eines Fehlschlusses (gleicher Tag).** Der erste Beleg in diesem Abschnitt
+> war wertlos: als Zeugen dafuer, dass `"true"` hinter `.15` loop-frei laeuft, hatte ich
+> `lists.jitmail.de`, `kimai.savar.de` und `paperless.savar.de` genommen — ausgerechnet
+> drei Hosts, deren **Overlay die Annotation auf `"false"` patcht**. Ihre 301/302 waren
+> App-Redirects und bewiesen nichts. **Lehre: `grep` in `apps/base/` zeigt nicht den
+> gerenderten Stand.** Massgeblich ist das Overlay bzw. `kubectl get ingress -o
+> jsonpath='{.metadata.annotations}'`.
+
+**Der tragfaehige Beleg**, nachgeholt nach dem Sync an elf tatsaechlich umgestellten
+Hosts ueber `.15`: `s3.savar.de`, `status.jit-creatives.de`, `expense.porga.de`,
+`mgmt02.jit-creatives.de`, `spam.savar.de`, `cloud-dev.savar.de`, `office.savar.de`,
+`matomo.jit.services` ohne jede Umleitung; `imcor.de` → `/de/`,
+`umdiehand.jit-creatives.de` → `/index.php/login`, `auth.savar.de` → Keycloak-Console.
+Also ausschliesslich App-Redirects, **kein einziger nginx-Redirect und keine Schleife**.
+Der Grund ist die Semantik der Annotation: `redirect-to-https` entscheidet an
+`X-Forwarded-Proto` (Traefik setzt `https`), waehrend `ssl-redirect` am Schema
+entscheidet — Letzteres wuerde hinter einem TLS-terminierenden Proxy tatsaechlich
+endlos umleiten und bleibt deshalb bis zum 443-Cutover `"false"`.
+
+**Schritt 1 (PR #152):** sieben der neun `legacy-proxy`-Ingresses sowie collabora-savar,
+gatus-public, expense-tracker und matomo in `apps/base/`.
+
+**Schritt 2 (Folge-PR):** die fuenf Overlays `kimai`, `mailman`, `paperless-ngx`,
+`wordpress-1` und `wordpress-2`, die die Annotation per JSON-Patch auf `"false"`
+gezogen hatten. Alle fuenf haben seit #149 ein eigenes Zertifikat (`kimai-tls`,
+`mailman-tls`, `paperless-tls`, je ein `wordpress-tls`), deren TLS-Hosts die Rules
+vollstaendig abdecken. Die Kommentare dort stammten aus der HTTP-only-Ära und
+behaupteten noch, TLS und Issuer muessten „wieder ergaenzt" werden — mit korrigiert.
 
 **Diese drei bleiben `"false"`, bis ihre Zertifikate existieren:**
 
