@@ -1,9 +1,11 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: mailman
-# lists.jitmail.de öffentlich über den .15-Traefik (TLS dort, HTTP zum Cluster)
-# -> HTTP-only, sonst 301-Loop. Für Cluster-direktes TLS: Router 443 -> .246 +
-# tls/issuer wieder ergänzen.
+# lists.jitmail.de läuft noch über den .15-Traefik, hat seit PR #149 aber ein
+# eigenes Cluster-Zertifikat (mailman-tls). redirect-to-https steht seit
+# 12.09.2026 auf "true": die Annotation entscheidet an X-Forwarded-Proto (von
+# Traefik auf "https" gesetzt), nicht am Schema — die alte Loop-Sorge galt für
+# ssl-redirect, das bis zum 443-Cutover "false" bleibt.
 resources:
   - ../../../base/mailman
 patches:
@@ -11,7 +13,7 @@ patches:
     patch: |
       - op: replace
         path: /metadata/annotations/nginx.org~1redirect-to-https
-        value: "false"
+        value: "true"
       - op: replace
         path: /spec/tls/0/hosts/0
         value: lists.jitmail.de

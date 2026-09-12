@@ -9,7 +9,7 @@ patches:
     patch: |
       - op: replace
         path: /metadata/annotations/nginx.org~1redirect-to-https
-        value: "false"
+        value: "true"
       - op: replace
         path: /spec/rules/0/host
         value: paperless.savar.de
