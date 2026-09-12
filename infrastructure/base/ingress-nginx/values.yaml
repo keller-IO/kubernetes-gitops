@@ -1,6 +1,22 @@
 controller:
-  kind: deployment
-  replicaCount: 2
+  # DaemonSet statt Deployment (Phase 3, 12.09.2026). Grund: Cilium-L2-Announcements
+  # sind NICHT endpoint-aware — der Announcer kann eine Node OHNE nginx-Pod sein, die
+  # den Traffic dann verwirft. Genau das war der Ausfall am 22.07. nach dem
+  # wrk3-Rebuild. Ein DaemonSet auf ALLEN Nodes stellt sicher, dass jede moegliche
+  # Announcer-Node einen lokalen Pod hat — die Voraussetzung dafuer,
+  # externalTrafficPolicy spaeter auf Local zu ziehen und die echte Client-IP zu
+  # erhalten. replicaCount entfaellt, es ist bei kind: daemonset wirkungslos.
+  kind: daemonset
+  # cp1-3 tragen node-role.kubernetes.io/control-plane:NoSchedule. Ohne diese
+  # Toleration laeuft dort kein Pod, waehrend die L2-Policy `default-l2` (ohne
+  # nodeSelector) sie trotzdem zum Announcer waehlen kann ⇒ exakt die Luecke von oben.
+  # Die Alternative waere ein nodeSelector in der CiliumL2AnnouncementPolicy — die
+  # liegt aber in infrastructure/base/cilium/ und damit in der App `infra-cilium`,
+  # deren Sync alle Cilium-Agenten neu startet und deshalb ein Wartungsfenster braucht.
+  tolerations:
+    - key: node-role.kubernetes.io/control-plane
+      operator: Exists
+      effect: NoSchedule
   # Chart default already sets requests: {cpu:100m, memory:128Mi} — but only as
   # an unversioned default, with no memory limit. Made explicit here (matches
   # measured 65-116Mi RSS on keller-main, kubectl top, 2026-07-28; homelab's
@@ -12,10 +28,17 @@ controller:
     limits: { memory: 256Mi }
   service:
     type: LoadBalancer # requires Cilium LB-IPAM or MetalLB pool — see PRODUCTION-READINESS.md
-    # Cluster statt (Chart-Default) Local: der Cilium-L2-Announcer kann ein Node
-    # OHNE nginx-Pod sein (nginx läuft nur auf einem Node) — mit Local würde der
-    # den Traffic verwerfen (Ausfall am 22.07. nach wrk3-Rebuild). Cluster routet
-    # intern zu nginx. Trade-off: Client-Source-IP wird SNAT'd.
+    annotations:
+      # .246 fest pinnen. Ohne das vergibt Cilium LB-IPAM irgendeine freie Adresse aus
+      # dem Pool .246-.249 (infrastructure/base/cilium/lb-ipam.yaml), waehrend die
+      # UDM-DNAT-Regel fest auf .246 zeigt. mailman-lmtp .247 ist laengst so gepinnt.
+      lbipam.cilium.io/ips: "192.168.2.246"
+    # NOCH Cluster, bewusst. Der Ausfall am 22.07. entstand mit Local, WEIL nur auf
+    # einer Node ein nginx-Pod lief; mit dem DaemonSet oben ist diese Bedingung weg.
+    # Umgestellt wird trotzdem erst, wenn der Kanarienvogel auf .249 (eigener
+    # LoadBalancer mit Local auf dieselben Pods) bewiesen hat, dass die Quell-IP von
+    # aussen wirklich ankommt. Solange hier Cluster steht, wird sie weiter SNAT'ed —
+    # und set-real-ip-from unten bleibt noetig.
     externalTrafficPolicy: Cluster
   config:
     # ACHTUNG: nginx-inc-Chart erwartet die Werte unter config.entries — flache
