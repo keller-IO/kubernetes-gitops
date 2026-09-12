@@ -113,8 +113,22 @@ und ueber den Zustand der `Backup`-Objekte.
 ohne Ziel ins Leere — in 24 Stunden keine einzige `wal-archive`-Logzeile, die Zaehler in
 `pg_stat_archiver` sind daher irrefuehrend. Einziger Schutz sind derzeit die logischen Dumps
 vom 11.09.2026 (age-verschluesselt auf cfgmgmt01 unter
-`/root/backups/cnpg-pre130-20260911/`). **Offen: beide Cluster wie die anderen vier an
-Garage anbinden.**
+`/root/backups/cnpg-pre130-20260911/`).
+
+**Erledigt am 12.09.2026 (PR #147):** beide Cluster haengen jetzt wie die anderen vier an
+Garage — `s3://backups/cnpg-crowdsec/` und `s3://backups/cnpg-expense/`, Retention 30d,
+ScheduledBackups um 02:10 und 02:20 (versetzt zu den bestehenden um 02:00). Statt den
+vorhandenen `cnpg-backups`-Key zu teilen, hat jeder Cluster einen **eigenen Garage-Key**
+(`cnpg-crowdsec`, `cnpg-expense`) mit RW nur auf den Bucket `backups`, abgelegt als
+sops-Secret.
+
+Nachweis nach dem Sync: `ContinuousArchiving=True`, `pg_stat_archiver` zaehlt real hoch
+(`expense-pg` stand vorher dauerhaft bei 17 archivierten Dateien), und das erste
+On-demand-`Backup` ist bei beiden `completed`.
+
+**Beim Pruefen Geduld:** Secret und `spec.backup` sind unmittelbar nach dem Sync noch nicht
+sichtbar (ksops-Generator und Reconcile brauchen ein paar Sekunden). Zu frueh gelesen sieht
+das nach „Secret not found“ und leerem `destinationPath` aus.
 
 ### Offene Beobachtung: WAL-Archivierung schlug am 12.09. kurz fehl
 
