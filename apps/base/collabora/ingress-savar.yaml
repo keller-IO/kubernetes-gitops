@@ -26,7 +26,7 @@ metadata:
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.org/ssl-redirect: "false"
-    nginx.org/redirect-to-https: "false"
+    nginx.org/redirect-to-https: "true"
     # MUSS dem Service-Namen entsprechen, sonst verwirft NGINX den GESAMTEN
     # Ingress (NIC 5.x validiert strikt) — siehe docs/learnings/
     # nginx-ingress-5x-annotation-strictness.md

@@ -486,6 +486,19 @@ Zielkette:
 Frist: Das aktuelle Zertifikat laeuft am 04.12.2026 ab; Traefik erneuert ab etwa
 Anfang November. Wird Port 80 vorher umgestellt, muss die Zielkette schon stehen.
 
+**Entscheidung Ingos 12.09.2026: der Umbau reicht nach dem Cutover.** Damit wird das
+Mailzertifikat zum vierten Nachzuegler und faellt in dieselbe Nacharbeit wie
+`stream.horads.de` & Co. — nach dem Cutover loest HTTP-01 im Cluster, das Zertifikat
+wird dort ausgestellt und von einem neuen Mechanismus an mail05 verteilt.
+
+> **Die Frist bleibt trotzdem scharf, nur an anderer Stelle.** Solange Port 80 noch auf
+> `.15` zeigt, erneuert Traefik weiter — die Kette ist also nicht akut gefaehrdet. Kippt
+> sie, kippt sie am Cutover-Tag: **ab dem Moment, in dem Port 80 auf `.246` zeigt, kann
+> `.15` das Zertifikat nicht mehr erneuern.** Findet der Cutover nach Anfang November
+> statt, muss der Umbau im selben Wartungsfenster mit erledigt sein, sonst laeuft das
+> Zertifikat am 04.12.2026 ab und Mailclients brechen mit Zertifikatsfehlern ab.
+> Aufnehmen in die Cutover-Checkliste, nicht als separate Baustelle fuehren.
+
 ### Zertifikate ohne Redirect-Loop ausstellen
 
 Alle bisher HTTP-only betriebenen Ingresses erhalten Issuer und `spec.tls`.
@@ -501,6 +514,28 @@ Nach erfolgreicher TLS-Abnahme, noch vor dem WAN-Cutover, wird
 `X-Forwarded-Proto`; Traefik setzt `https`, also kein Loop). `nginx.org/ssl-redirect`
 bleibt nur bis zum 443-Cutover `false` und wird aktiviert, bevor Port 80 auf `.246`
 zeigt.
+
+**Erledigt 12.09.2026.** Bilanz im Repo: 24 × `"true"`, 3 × bewusst weiterhin `"false"`.
+Vorher empirisch abgesichert, dass die Annahme ueberhaupt stimmt: `lists.jitmail.de`,
+`kimai.savar.de` und `paperless.savar.de` stehen laengst auf `"true"`, laufen ueber `.15`
+und liefern saubere App-Redirects statt einer Schleife — `X-Forwarded-Proto` wird also
+korrekt ausgewertet.
+
+**Diese drei bleiben `"false"`, bis ihre Zertifikate existieren:**
+
+| Ingress | Grund |
+|---|---|
+| `legacy-proxy/horads` | `stream.horads.de` hat kein Zertifikat (und bewusst keinen Issuer) |
+| `legacy-proxy/jitcloud` | enthaelt `cloud.steinba.ch` und `cloud.naturkindergarten-moehringen.de` ohne Zertifikat |
+| `roundcube/roundcube-jitmail` | enthaelt `mail.steinba.ch` ohne Zertifikat |
+
+> **Warum das zwingend ist:** Die Annotation wirkt pro Ingress, nicht pro Host. Stuende
+> sie hier auf `"true"`, wuerde nach dem Cutover erstens jeder Klartext-Aufruf dieser
+> Namen auf ein `https` ohne gueltiges Zertifikat umgeleitet — und zweitens, schwerer
+> wiegend, **auch die HTTP-01-Challenge selbst**: cert-manager fragt
+> `/.well-known/acme-challenge/…` ueber Port 80 an, der Redirect wuerde sie beantworten
+> statt der Token-Datei, und die Ausstellung scheiterte dauerhaft. Reihenfolge ist also:
+> Cutover → Zertifikate ziehen → **dann erst** diese drei auf `"true"` nachziehen.
 
 Vor dem NAT-Wechsel muessen beide Pfade funktionieren:
 
