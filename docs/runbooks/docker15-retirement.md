@@ -88,8 +88,7 @@ bei Cloudflare), die GitLab-Registry-Tests und `binaergewitter.de`, `aios.tools`
    Postfix auf `.15` hat seit dem 10.08. keine Verbindung. mx02 fuehrt `.15` aber
    noch in `mynetworks`.
 6. **Der Kalt-Standby `traefik-edge-potsdam` war veraltet** (`host_vars` auf `.17`, `.66`,
-   `.29`, `.242`). Am 11.09. neu erzeugt; der Rollout scheitert an einem IP-Konflikt auf
-   `192.168.23.20`. Siehe „DR-Edge Potsdam“.
+   `.29`, `.242`). Am 11.09. neu erzeugt, am 12.09. ausgerollt. Siehe „DR-Edge Potsdam“.
 7. **Echte Client-IP bleibt Pflicht, auch ohne CrowdSec.** Ohne sie sehen Nextcloud
    (`jit.cloud`), Roundcube und `auth.savar.de` alle Clients als Node-IP: deren
    Brute-Force-Drosselung trifft dann alle Nutzer gleichzeitig. Phase 3 bleibt
@@ -157,7 +156,8 @@ bei Cloudflare), die GitLab-Registry-Tests und `binaergewitter.de`, `aios.tools`
    Voraussetzung fuer den WAN-Cutover.
 10. **`cloud.naturkindergarten-moehringen.de`**: CNAME beim Provider anlegen lassen
     oder den Namen aus dem Zertifikat nehmen.
-11. **Potsdam-DR-Edge** fertigstellen (Entscheidung: aktualisieren), siehe „DR-Edge Potsdam“.
+11. ~~Potsdam-DR-Edge fertigstellen~~ — erledigt 12.09.2026. Offen bleiben dort nur der
+    CrowdSec-Bouncer auf der toten GitLab-LAPI und die fehlenden UCG-Forwards 80/443.
 12. Optional: **Phase 4 CrowdSec-Enforcement** im neuen Pfad.
 
 Ein WAN-Cutover-Termin wird erst nach Schritt 6 bis 9 sinnvoll gesetzt.
@@ -192,14 +192,17 @@ Stand 11.09.2026:
   `roundcube`-Router. Backup `.bak-20260911`.
 - Rolle `traefik_edge`: neuer Schalter `traefik_edge_dashboard_enabled` (Default `true`),
   Potsdam setzt `false`. edge01 per `--check --diff` unveraendert.
-- **Rollout blockiert durch IP-Konflikt.** `192.168.23.20` ist an ein anderes Geraet
-  vergeben (`espressif.localdomain`, MAC `bc:ff:4d:8e:4f:52`, vermutlich DHCP der UCG seit
-  dem Routertausch am 04.09.). Beim Probestart antworteten abwechselnd CT und ESP-Geraet;
-  Ansible brach mit `Connection refused` ab. CT wieder gestoppt, nichts ausgerollt.
+- **Rollout erledigt am 12.09.2026.** Der IP-Konflikt auf `192.168.23.20` (ESP-Geraet per
+  UCG-DHCP) ist nach der Pool-Umstellung weg; MAC-Gegenprobe vor dem Start zeigte die
+  CT-MAC. `--check --diff` und Rollout sauber (`failed=0`), Traefik laeuft mit **19 Routern**
+  und ohne Dashboard-Label. SNI-Tests gegen `.20` liefern dieselben Statuscodes wie ueber
+  `.15` (kimai 302, lists 301, www.jit-creatives 200, s3 200, cloud 302, imcor 301).
+  Danach wieder gestoppt (Kalt-Standby).
 
-Vor dem Rollout: feste IP ausserhalb des UCG-DHCP-Bereichs oder Reservierung. Bei einem
-IP-Wechsel betroffen: CT-`net0`, Inventar `hosts`, `gitlab01_crowdsec_potsdam_bouncer_host`,
-`nc05_crowdsec_potsdam_bouncer_host`, ADR `0003-crowdsec-at-k8s-ingress.md`.
+Der UCG-DHCP-Bereich wurde am 11./12.09. verkleinert. **Merkregel fuer Potsdam:** vor dem
+Start eines lange gestoppten Gastes `ip neigh show <ip>` gegen die MAC aus `pct config`
+halten — ein IP-Konflikt aeussert sich als `Connection refused` mitten im Ansible-Lauf.
+CT 8004 (`.12`) ist derselbe Fall und noch ungeprueft.
 
 DR-Luecken unabhaengig vom Rollout:
 
@@ -719,4 +722,4 @@ Stand 11.09.2026:
 | 9 | `cloud-dev.savar.de` weiterbetreiben oder abkuendigen? | entschieden: bleibt (11.09.) |
 | 10 | `db.imcor.de`, `config.imcor.de`, `www.jonaks.com` (kein A-Record) im Zertifikat behalten? | entschieden: behalten, A-Records angelegt |
 | 11 | Soll WAN-Port 8080 (Icecast) offen bleiben? | entschieden: bleibt offen (11.09.) |
-| 12 | Potsdam-DR-Edge aktualisieren oder aufgeben? | entschieden: aktualisieren; Rollout blockiert (IP-Konflikt `.20`) |
+| 12 | Potsdam-DR-Edge aktualisieren oder aufgeben? | erledigt 12.09.: aktualisiert und ausgerollt |
