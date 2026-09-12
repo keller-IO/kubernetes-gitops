@@ -33,13 +33,18 @@ controller:
       # dem Pool .246-.249 (infrastructure/base/cilium/lb-ipam.yaml), waehrend die
       # UDM-DNAT-Regel fest auf .246 zeigt. mailman-lmtp .247 ist laengst so gepinnt.
       lbipam.cilium.io/ips: "192.168.2.246"
-    # NOCH Cluster, bewusst. Der Ausfall am 22.07. entstand mit Local, WEIL nur auf
-    # einer Node ein nginx-Pod lief; mit dem DaemonSet oben ist diese Bedingung weg.
-    # Umgestellt wird trotzdem erst, wenn der Kanarienvogel auf .249 (eigener
-    # LoadBalancer mit Local auf dieselben Pods) bewiesen hat, dass die Quell-IP von
-    # aussen wirklich ankommt. Solange hier Cluster steht, wird sie weiter SNAT'ed —
-    # und set-real-ip-from unten bleibt noetig.
-    externalTrafficPolicy: Cluster
+    # Local erhaelt die echte Client-IP: kein SNAT, der TCP-Peer ist der Absender.
+    # Der Ausfall am 22.07. entstand mit Local, WEIL nur auf einer Node ein
+    # nginx-Pod lief und der Cilium-L2-Announcer eine Node ohne Pod sein kann. Mit
+    # dem DaemonSet oben ist diese Bedingung beseitigt — jede Node hat einen Pod.
+    # Am 12.09.2026 vor der Umstellung gemessen (Kanarienvogel auf .249, gleiche
+    # Pods, nur eTP Local): ueber .246/Cluster kamen 3 von 6 Anfragen als
+    # 10.244.6.29 an — die CiliumInternalIP von wrk4, dem L2-Announcer — ueber
+    # .249/Local dagegen 6 von 6 mit der echten Quell-IP, aus zwei Subnetzen.
+    # ⚠️ Bedingung, die bestehen bleiben MUSS: nginx laeuft als DaemonSet auf ALLEN
+    # Nodes inkl. der tolerierten Control-Plane. Wer das zurueckdreht (Deployment,
+    # nodeSelector, entfernte Toleration), reisst hier ein schwarzes Loch auf.
+    externalTrafficPolicy: Local
   config:
     # ACHTUNG: nginx-inc-Chart erwartet die Werte unter config.entries — flache
     # Keys hier werden ignoriert (ConfigMap bleibt leer, nginx nutzt Defaults).
@@ -61,11 +66,15 @@ controller:
       # (b) externalTrafficPolicy: Cluster die Source-IP SNAT'ed (s. o.).
       # Folge bisher: Access-Logs, Rate-Limits und CrowdSec sehen praktisch nur
       # eine einzige IP.
-      # set-real-ip-from = die Peers, denen wir den XFF-Header glauben. Wegen des
-      # SNAT ist der TCP-Peer NICHT .15, sondern die announcende Node — daher das
-      # ganze LAN-/24 (Traefik .15, Nodes und LB-Pool .246-.249 liegen alle darin,
-      # siehe infrastructure/base/cilium/lb-ipam.yaml). Bewusst kein Pod-CIDR:
-      # erst verifizieren, ob nginx überhaupt Pod-Adressen als Peer sieht.
+      # set-real-ip-from = die Peers, denen wir den XFF-Header glauben.
+      # Seit externalTrafficPolicy: Local (12.09.2026) ist der TCP-Peer wieder der
+      # echte Absender: bei Verkehr ueber den .15-Traefik also .15 selbst (liegt im
+      # /24, XFF wird geglaubt -> echte Internet-IP), bei direktem Verkehr der
+      # Client. Angenehmer Nebeneffekt fuer den Cutover: eine Internet-IP liegt
+      # NICHT im /24, ihr selbstgesetztes XFF wird also nicht geglaubt — die
+      # Spoofing-Luecke, die unter Cluster entstanden waere, schliesst sich von
+      # selbst. Haerter waere nur noch 192.168.2.15/32; danach ist aber Schluss,
+      # weil nach dem Cutover niemand mehr XFF setzen darf.
       set-real-ip-from: "192.168.2.0/24"
       real-ip-header: "X-Forwarded-For"
       real-ip-recursive: "True"
