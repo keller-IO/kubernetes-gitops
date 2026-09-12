@@ -1,0 +1,46 @@
+# Staging-Proben: weisen nach, dass jede DNS-01-Solver-Klasse TXT-Records setzen,
+# oeffentlich sichtbar machen und wieder aufraeumen kann — bevor irgendein
+# Produktionszertifikat angefordert wird.
+#
+# Bewusst KEINE HTTP-01-Probe: horads.de und steinba.ch koennen erst validieren,
+# wenn WAN-Port 80 auf .246 zeigt (Phase 6 des docker15-Runbooks).
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: dns01-staging-cloudns
+  namespace: cert-manager
+spec:
+  secretName: dns01-staging-cloudns-tls
+  dnsNames:
+    - dns01-staging.jit.services
+  issuerRef:
+    name: letsencrypt-staging
+    kind: ClusterIssuer
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: dns01-staging-rfc2136
+  namespace: cert-manager
+spec:
+  secretName: dns01-staging-rfc2136-tls
+  dnsNames:
+    - dns01-staging.savar.de
+  issuerRef:
+    name: letsencrypt-staging
+    kind: ClusterIssuer
+---
+# Prueft zusaetzlich die CNAME-Delegation (_acme-challenge -> acme.jit-creatives.de).
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: dns01-staging-rfc2136-follow
+  namespace: cert-manager
+spec:
+  secretName: dns01-staging-rfc2136-follow-tls
+  dnsNames:
+    - db.imcor.de
+  issuerRef:
+    name: letsencrypt-staging
+    kind: ClusterIssuer

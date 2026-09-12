@@ -4,23 +4,23 @@ metadata:
     name: cloudns-credentials
     namespace: cert-manager
 stringData:
-    auth_id: ENC[AES256_GCM,data:c0cDQKU=,iv:TNv92zWp3DHuvIgAnLrfJnruJgBkVM0bXzBWS6JsyNE=,tag:HEH7I66/nV6GxJ5k/6kz4A==,type:str]
-    auth_password: ENC[AES256_GCM,data:55uyYiULBqodoBc4,iv:/hVlfu84NCuvBZE2ozVZqpTXLdMwDEVWeXfaOM7Xtyk=,tag:P2Z+J/T07TiRKdKdzKxPpQ==,type:str]
+    auth_id: ENC[AES256_GCM,data:GF8b6b0=,iv:fgJTTbl204L0Hg3AqTD5x3TNuvpdmBXaup+Qae8TadY=,tag:kmZoLYEDIbIvWA9k36VUcA==,type:str]
+    auth_password: ENC[AES256_GCM,data:htL4Zctr/9RKwQdD,iv:cUUen+7tvxs1GxURVaDfKLCnXPKwj38hpf0NH8SiiMU=,tag:ewNywEzUXL7IXB3IKYBnDg==,type:str]
 type: Opaque
 sops:
     age:
         - enc: |
             -----BEGIN AGE ENCRYPTED FILE-----
-            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSA0SlVZY0I1WXhoTTJIYytW
-            OXNXOHNxcjIyMVlHbjlpd0ZnMGJyTU1NUHdjCndCa0xqS09DaFNBRFVFL2pob1hl
-            RjZ6NU1TRkpBbmNnb3I4L3ljL29CdE0KLS0tIGp2QUlzeGExVDJRNmU4ellKQTBQ
-            ZFI1WmsrVEozT2lacWJhUW1ZSGdzZWMKzzDXyBywA+5cjtBnswphGuMjQL+JIdoG
-            52P1H3wleXvMOi8VzfsxPcDBOpxqz1gntuRdD/Ocsu421ChHJAjk7g==
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBob2Faei9vZHdkVmVpRWcz
+            cDBzNE9hbG5wSkZCRlIyRkJwV0tvaXV4bW5vCmhvckhvQW52VVFVUUVYN2p5cFpy
+            NHNtKzdwV1VQbTh0UGM5c2tpVnByWncKLS0tIHJxUXd2dWNvd09RdGpzVitWQ1Q4
+            bW1ZWVFFSXMwcndoaS8xSEk4cUw3ZWcKwMCuJDFrscvA9xa8d99r5XhBPTIN8Q1U
+            Kkpig0usN63Br11N06cO2Mk7H0w6fQrM/WT4s4tTdD/H0w0QVOmDWw==
             -----END AGE ENCRYPTED FILE-----
           recipient: age17x04ga87qyu9lzcuja9k83z90veew9cez7jusul4y5xyr09xaejs9rq755
     encrypted_regex: ^(data|stringData)$
-    lastmodified: "2026-09-06T06:15:12Z"
-    mac: ENC[AES256_GCM,data:7GosltbQ8oIYzebMbX1CWIiLl2HginYfcTY771mRnTqcFn4LlPxxw0wYZu3O2S5zRLf5T27DYRyh3joX+Hc7oP3DEdAslJ9UNZdqvsIS4P3N+dORGxUdeiLddNCTfSUpbAOGn+0gg5R46kmE1FpBVSdtmjqHz/lfc2mZx21SR5M=,iv:1gIS5NChvyajTYvmpqkUs3Bw4U1l7n97sQLPI8W/5Mc=,tag:ecYgyrklxOqqqx5aVGBg8g==,type:str]
+    lastmodified: "2026-09-12T08:08:09Z"
+    mac: ENC[AES256_GCM,data:gs2EOnpmn3YOyTUhyEbvdhbGO1fwLXuTAsVVSn2DjO9IoypPcMtqaR10uD208fkKWC544B9C9rKFYtRlFJufqjmCDTYVBZmJ3LYWN95MUvvHLCmfxXO2oehBUEoPvHGlHXtBRwCDKiUVkynXCbMsbFXaQ4IQJXSEMVBduWgyK6Q=,iv:JM/tAUT396pk8M2EO3pCD+2VeMMoeupL0epKglNtJ2E=,tag:WeyG+mObtjl0Qz6img/y3w==,type:str]
     version: 3.13.3
 ---
 apiVersion: cert-manager.io/v1
@@ -52,21 +52,121 @@ spec:
               selector:
                 dnsZones:
                     - savar.de
+                    - jit-creatives.de
+                    - jitcreatives.de
+                    - jitmail.de
+                    - gemeinsam-fuer-halbe.de
+                    - jugendbeauftragter-halbe.de
+                    - jit.cloud
+                    - daec-berlin.de
+                    - porga.de
+            - dns01:
+                cnameStrategy: Follow
+                rfc2136:
+                    nameserver: dns01.jit-creatives.de:53
+                    tsigAlgorithm: HMACSHA256
+                    tsigKeyName: cert-manager.
+                    tsigSecretSecretRef:
+                        name: rfc2136-tsig
+                        key: secret
+              selector:
+                dnsZones:
+                    - imcor.de
+                    - jonaks.com
+                    - naturkindergarten-moehringen.de
             - http01:
                 ingress:
                     ingressClassName: nginx
+              selector:
+                dnsZones:
+                    - horads.de
+                    - steinba.ch
 sops:
     age:
         - enc: |
             -----BEGIN AGE ENCRYPTED FILE-----
-            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSA0SlVZY0I1WXhoTTJIYytW
-            OXNXOHNxcjIyMVlHbjlpd0ZnMGJyTU1NUHdjCndCa0xqS09DaFNBRFVFL2pob1hl
-            RjZ6NU1TRkpBbmNnb3I4L3ljL29CdE0KLS0tIGp2QUlzeGExVDJRNmU4ellKQTBQ
-            ZFI1WmsrVEozT2lacWJhUW1ZSGdzZWMKzzDXyBywA+5cjtBnswphGuMjQL+JIdoG
-            52P1H3wleXvMOi8VzfsxPcDBOpxqz1gntuRdD/Ocsu421ChHJAjk7g==
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBob2Faei9vZHdkVmVpRWcz
+            cDBzNE9hbG5wSkZCRlIyRkJwV0tvaXV4bW5vCmhvckhvQW52VVFVUUVYN2p5cFpy
+            NHNtKzdwV1VQbTh0UGM5c2tpVnByWncKLS0tIHJxUXd2dWNvd09RdGpzVitWQ1Q4
+            bW1ZWVFFSXMwcndoaS8xSEk4cUw3ZWcKwMCuJDFrscvA9xa8d99r5XhBPTIN8Q1U
+            Kkpig0usN63Br11N06cO2Mk7H0w6fQrM/WT4s4tTdD/H0w0QVOmDWw==
             -----END AGE ENCRYPTED FILE-----
           recipient: age17x04ga87qyu9lzcuja9k83z90veew9cez7jusul4y5xyr09xaejs9rq755
     encrypted_regex: ^(data|stringData)$
-    lastmodified: "2026-09-06T06:15:12Z"
-    mac: ENC[AES256_GCM,data:7GosltbQ8oIYzebMbX1CWIiLl2HginYfcTY771mRnTqcFn4LlPxxw0wYZu3O2S5zRLf5T27DYRyh3joX+Hc7oP3DEdAslJ9UNZdqvsIS4P3N+dORGxUdeiLddNCTfSUpbAOGn+0gg5R46kmE1FpBVSdtmjqHz/lfc2mZx21SR5M=,iv:1gIS5NChvyajTYvmpqkUs3Bw4U1l7n97sQLPI8W/5Mc=,tag:ecYgyrklxOqqqx5aVGBg8g==,type:str]
+    lastmodified: "2026-09-12T08:08:09Z"
+    mac: ENC[AES256_GCM,data:gs2EOnpmn3YOyTUhyEbvdhbGO1fwLXuTAsVVSn2DjO9IoypPcMtqaR10uD208fkKWC544B9C9rKFYtRlFJufqjmCDTYVBZmJ3LYWN95MUvvHLCmfxXO2oehBUEoPvHGlHXtBRwCDKiUVkynXCbMsbFXaQ4IQJXSEMVBduWgyK6Q=,iv:JM/tAUT396pk8M2EO3pCD+2VeMMoeupL0epKglNtJ2E=,tag:WeyG+mObtjl0Qz6img/y3w==,type:str]
+    version: 3.13.3
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+    name: letsencrypt-staging
+spec:
+    acme:
+        email: admin@jit.services
+        server: https://acme-staging-v02.api.letsencrypt.org/directory
+        privateKeySecretRef:
+            name: letsencrypt-staging-account
+        solvers:
+            - dns01:
+                webhook:
+                    groupName: acme.jit.services
+                    solverName: cloudns
+              selector:
+                dnsZones:
+                    - jit.services
+            - dns01:
+                rfc2136:
+                    nameserver: dns01.jit-creatives.de:53
+                    tsigAlgorithm: HMACSHA256
+                    tsigKeyName: cert-manager.
+                    tsigSecretSecretRef:
+                        name: rfc2136-tsig
+                        key: secret
+              selector:
+                dnsZones:
+                    - savar.de
+                    - jit-creatives.de
+                    - jitcreatives.de
+                    - jitmail.de
+                    - gemeinsam-fuer-halbe.de
+                    - jugendbeauftragter-halbe.de
+                    - jit.cloud
+                    - daec-berlin.de
+                    - porga.de
+            - dns01:
+                cnameStrategy: Follow
+                rfc2136:
+                    nameserver: dns01.jit-creatives.de:53
+                    tsigAlgorithm: HMACSHA256
+                    tsigKeyName: cert-manager.
+                    tsigSecretSecretRef:
+                        name: rfc2136-tsig
+                        key: secret
+              selector:
+                dnsZones:
+                    - imcor.de
+                    - jonaks.com
+                    - naturkindergarten-moehringen.de
+            - http01:
+                ingress:
+                    ingressClassName: nginx
+              selector:
+                dnsZones:
+                    - horads.de
+                    - steinba.ch
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBob2Faei9vZHdkVmVpRWcz
+            cDBzNE9hbG5wSkZCRlIyRkJwV0tvaXV4bW5vCmhvckhvQW52VVFVUUVYN2p5cFpy
+            NHNtKzdwV1VQbTh0UGM5c2tpVnByWncKLS0tIHJxUXd2dWNvd09RdGpzVitWQ1Q4
+            bW1ZWVFFSXMwcndoaS8xSEk4cUw3ZWcKwMCuJDFrscvA9xa8d99r5XhBPTIN8Q1U
+            Kkpig0usN63Br11N06cO2Mk7H0w6fQrM/WT4s4tTdD/H0w0QVOmDWw==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age17x04ga87qyu9lzcuja9k83z90veew9cez7jusul4y5xyr09xaejs9rq755
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-09-12T08:08:09Z"
+    mac: ENC[AES256_GCM,data:gs2EOnpmn3YOyTUhyEbvdhbGO1fwLXuTAsVVSn2DjO9IoypPcMtqaR10uD208fkKWC544B9C9rKFYtRlFJufqjmCDTYVBZmJ3LYWN95MUvvHLCmfxXO2oehBUEoPvHGlHXtBRwCDKiUVkynXCbMsbFXaQ4IQJXSEMVBduWgyK6Q=,iv:JM/tAUT396pk8M2EO3pCD+2VeMMoeupL0epKglNtJ2E=,tag:WeyG+mObtjl0Qz6img/y3w==,type:str]
     version: 3.13.3
