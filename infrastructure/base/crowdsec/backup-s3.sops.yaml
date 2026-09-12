@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Secret
+metadata:
+    name: crowdsec-backup-s3
+    namespace: crowdsec
+type: Opaque
+stringData:
+    ACCESS_KEY_ID: ENC[AES256_GCM,data:9lbt1NJbvENeLx4ot4tVDXZad+s64Boh9M4=,iv:YDemV9HsEL6mLxnQI61yfQtS2WYD+nGNZy8soaUOgFs=,tag:OzJA1Iemy6YuDR2cjAwugw==,type:str]
+    SECRET_ACCESS_KEY: ENC[AES256_GCM,data:AUnBnY6YusV9zLBMbwdM23cf6LmpAPl07RIF6jAopGusyU1XVzjbgd+JzludNZ5zEWrF6DVcHQox8i3fZsrgIw==,iv:7+HqJgRwd7+Q0YA9xpNPzmUBhGS5vTvNvhuRhSaVSHo=,tag:qeDeQe+SwiNPPExReu/UDQ==,type:str]
+    region: ENC[AES256_GCM,data:Lx2dFYiXSXqkOMQs/I0=,iv:5MQyf3N6YD4jlD/5RXsDKGJOHaPO/NmMErTgI9BS9xc=,tag:w/nsyLyFrawds+C2mlj4HQ==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSA1VG9TOXFyWlZLcGY3T1Qx
+            RlA3Ris3dldmZDJvUmowOE9LTVdNN1NsV2djCmE0Rlhia29wVXQ4Y2RBeUxOWGw0
+            a0xKYkdnM3hYV3hhOEk5TXdOTS9xa0EKLS0tIGdrNll3WHN3MUx2SVkwSFZYMno5
+            VEFNR1NTMGRIbzVGczQ2UDYvSnFJcUEKtejk1C3H7uioWpWW6Pcp4dY2JwUSC8gu
+            c6q32NbwF5yQ96jtG47KPjNXQ8Xm5e/HxZ4O3TH7jgT+rhBhcOBtDQ==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age17x04ga87qyu9lzcuja9k83z90veew9cez7jusul4y5xyr09xaejs9rq755
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-09-12T07:38:13Z"
+    mac: ENC[AES256_GCM,data:I+XZPfB9tCrhCBIoiwJDmcdScnHvET3x1MY/QW1V/lC4ZbnHREraAGzxehywZ99PX36kFyoZpEmA+XbZr6zF7ohrmoutsAu333v7ojMSnq4R13LbI+nwxOMyDjpMVduafUiUEwPncsgNy0ftR8xtarReuq9xecC90hsBBJDheUA=,iv:ZC2bzHWBBlb01FWnnD9b6P/ua63X7JNPYgl/0Fjo61c=,tag:QDcE+NxBclV+iCJhQi2Atw==,type:str]
+    version: 3.13.3

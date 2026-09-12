@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Secret
+metadata:
+    name: expense-backup-s3
+    namespace: expense-tracker
+type: Opaque
+stringData:
+    ACCESS_KEY_ID: ENC[AES256_GCM,data:dl8uaE8LWS0vjXiv8KaF2t4Q0RBpPExXiyc=,iv:d3XGJHPQSKj9Nbtk6B++L05GPcc7dbvruXS+0WkF2lg=,tag:clYDJNO1pd8aYxG0solrRA==,type:str]
+    SECRET_ACCESS_KEY: ENC[AES256_GCM,data:kLcHT7v02mq9ebLwEkbkaqeuQbu7eFvjjZ/Knp6XAAt8D6zPyAqppU7m8xFr/oFun0LIxSPdRURDKgUgeycAiw==,iv:27xskmFtzbtsp8X9Lt7oVPI+CCYC9AuGg5yWDb2GHP4=,tag:yrck2ooeVI68mlMivlcwRw==,type:str]
+    region: ENC[AES256_GCM,data:ehONq2/HS5gVd9Dh5bk=,iv:HaX7jeSFOJVgQaKkcXf7yH8bY6hbbez3XvSyrXxw8Ak=,tag:vgb1Uzz/+f0UCiHUEctOBQ==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSAwaURyTUJoY1FoWXc5bnVL
+            QWRnbmxoQXNmR2R0d1VYU2UraUpYbjJxcUNVCjZHblA0NFIyWXZ6dWFWT01waUZW
+            d2xpeHF1ZnpNaDI5ZmVXcnhDMW43SU0KLS0tIHE0eFZUNEp5ZUFiQkVJMU9MbHJj
+            MUd6cnJKRU11ZjVkRXFnTnk4YktXVTAKBiH+WBzedgjwBSyc4bkCZK6KxZBSgbPa
+            wTn/i8xl3Vhz3sukAmwtAgPXljYdB+O+3TqkLyONqhQ7bVYsvGdWBw==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age17x04ga87qyu9lzcuja9k83z90veew9cez7jusul4y5xyr09xaejs9rq755
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-09-12T07:38:14Z"
+    mac: ENC[AES256_GCM,data:/SE7stwuJBavt+FnMriNK6JijhT6fC9dfvauiXKSKYobhbIbp0mbbD2Z0goL4OHTM9OJTnLkcfbSmJf8MNz5MOIJAh4uLctUqPx6MBU6AigyW7jaMHLMSh6AId2cc0UT8Ss2knp+kf4HOyM8wxRnl/S4x50Ufbhc/s7/ranGBvI=,iv:htdi70wSh4u7l2ma9HyfRjkAp7Hg3gVwbJbHwCybyvs=,tag:ALybKeqBalLND2Jpb+keCg==,type:str]
+    version: 3.13.3

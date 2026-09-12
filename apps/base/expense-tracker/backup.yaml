@@ -1,0 +1,10 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: expense-pg
+  namespace: expense-tracker
+spec:
+  schedule: "0 20 2 * * *" # 6-field (CNPG = Sekunden zuerst): taeglich 02:20, versetzt zu den uebrigen
+  backupOwnerReference: self
+  cluster:
+    name: expense-pg

@@ -28,19 +28,18 @@ spec:
       owner: expenses
       secret:
         name: expense-db-app
-  # Backup nach Garage-S3 analog zu den uebrigen Apps. Bewusst erst
-  # aktivieren, wenn der Bucket-Pfad existiert — ein totes Archive-Target
-  # staut WALs, bis die Disk voll ist.
-  # backup:
-  #   retentionPolicy: "30d"
-  #   barmanObjectStore:
-  #     destinationPath: s3://backups/cnpg-expense/
-  #     endpointURL: http://192.168.23.21:3900
-  #     s3Credentials:
-  #       accessKeyId: { name: expense-backup-s3, key: ACCESS_KEY_ID }
-  #       secretAccessKey: { name: expense-backup-s3, key: SECRET_ACCESS_KEY }
-  #       region: { name: expense-backup-s3, key: region }
-  #     wal: { compression: gzip }
-  #     data: { compression: gzip }
+  # Backup nach Garage-S3 analog zu den uebrigen Apps, aktiviert am 12.09.2026
+  # mit eigenem Garage-Key cnpg-expense (RW nur auf den Bucket backups).
+  backup:
+    retentionPolicy: "30d"
+    barmanObjectStore:
+      destinationPath: s3://backups/cnpg-expense/
+      endpointURL: http://192.168.23.21:3900
+      s3Credentials:
+        accessKeyId: { name: expense-backup-s3, key: ACCESS_KEY_ID }
+        secretAccessKey: { name: expense-backup-s3, key: SECRET_ACCESS_KEY }
+        region: { name: expense-backup-s3, key: region } # Garage erzwingt Region-Match bei HeadBucket
+      wal: { compression: gzip }
+      data: { compression: gzip }
   monitoring:
     enablePodMonitor: true
