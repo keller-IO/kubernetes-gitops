@@ -4,14 +4,20 @@ resources:
   requests: { cpu: 50m, memory: 32Mi }
   limits: { memory: 64Mi }
 
-# TLS terminates on the external .15 Traefik and traffic reaches nginx over HTTP.
+# Cluster-TLS per DNS-01 (jit-creatives.de). Der Redirect bleibt aus, solange der
+# vorgeschaltete .15-Traefik HTTP weiterreicht.
 ingress:
   enabled: true
   annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.org/ssl-redirect: "false"
     nginx.org/redirect-to-https: "false"
   hosts:
     - status.jit-creatives.de
+  tls:
+    - secretName: gatus-public-tls
+      hosts:
+        - status.jit-creatives.de
 
 config:
   ui:

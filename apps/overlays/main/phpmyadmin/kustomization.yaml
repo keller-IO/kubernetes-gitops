@@ -32,3 +32,9 @@ patches:
                     name: phpmyadmin
                     port:
                       number: 80
+      - op: add
+        path: /spec/tls/0/hosts/-
+        value: phpmyadmin.savar.de
+      - op: add
+        path: /spec/tls/0/hosts/-
+        value: phpmyadmin.jit-creatives.de

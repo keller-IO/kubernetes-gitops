@@ -24,7 +24,7 @@ metadata:
   name: collabora-office-savar
   namespace: collabora
   annotations:
-    # HTTP-only: TLS terminiert am vorgelagerten .15-Traefik (wie bisher).
+    cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.org/ssl-redirect: "false"
     nginx.org/redirect-to-https: "false"
     # MUSS dem Service-Namen entsprechen, sonst verwirft NGINX den GESAMTEN
@@ -40,6 +40,10 @@ metadata:
     nginx.org/client-max-body-size: "0"
 spec:
   ingressClassName: nginx
+  tls:
+    - hosts:
+        - office.savar.de
+      secretName: collabora-office-savar-tls
   rules:
     - host: office.savar.de
       http:

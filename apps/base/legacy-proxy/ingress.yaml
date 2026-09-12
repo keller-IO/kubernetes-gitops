@@ -1,6 +1,11 @@
-# HTTP-only Reverse-Proxy-Routen (TLS upstream am .15-Traefik/Router, wie bisher).
-# Cutover zu Cluster-TLS: cert-manager-Issuer + tls-Block ergänzen, sobald die
-# Domains öffentlich auf .246 zeigen.
+# Reverse-Proxy-Routen fuer den docker15-Cutover. Cluster-TLS wird VOR dem
+# Routerwechsel ausgestellt (DNS-01), die HTTPS-Redirects bleiben bis dahin aus —
+# sonst loopt der vorgeschaltete .15-Traefik.
+#
+# Bewusst OHNE Issuer: stream.horads.de (HTTP-01, loest erst wenn WAN:80 auf .246
+# zeigt). Ebenso fehlt cloud.naturkindergarten-moehringen.de im jitcloud-Zertifikat,
+# solange der _acme-challenge-CNAME beim Provider fehlt — ein scheiternder Name
+# reisst sonst die gesamte Anforderung mit.
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -8,11 +13,19 @@ metadata:
   name: mgmt02
   namespace: legacy-proxy
   annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.org/ssl-redirect: "false"
     nginx.org/redirect-to-https: "false"
     nginx.org/client-max-body-size: "0" # keine Upload-Grenze (Web/FTP)
 spec:
   ingressClassName: nginx
+  tls:
+    - hosts:
+        - www.jit-creatives.de
+        - mgmt02.jit-creatives.de
+        - www.jitcreatives.de
+        - ftp.jit-creatives.de
+      secretName: mgmt02-tls
   rules:
     - host: www.jit-creatives.de
       http:
@@ -33,11 +46,17 @@ metadata:
   name: umdiehand
   namespace: legacy-proxy
   annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.org/ssl-redirect: "false"
     nginx.org/redirect-to-https: "false"
     nginx.org/client-max-body-size: "0" # Nextcloud: keine Upload-Grenze
 spec:
   ingressClassName: nginx
+  tls:
+    - hosts:
+        - umdiehand.jit-creatives.de
+        - gesinefranze.jit-creatives.de
+      secretName: umdiehand-tls
   rules:
     - host: umdiehand.jit-creatives.de
       http:
@@ -73,10 +92,15 @@ metadata:
   name: spam
   namespace: legacy-proxy
   annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.org/ssl-redirect: "false"
     nginx.org/redirect-to-https: "false"
 spec:
   ingressClassName: nginx
+  tls:
+    - hosts:
+        - spam.savar.de
+      secretName: spam-tls
   rules:
     - host: spam.savar.de
       http:
@@ -88,12 +112,22 @@ metadata:
   name: imcor
   namespace: legacy-proxy
   annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.org/ssl-redirect: "false"
     nginx.org/redirect-to-https: "false"
     # Backend spricht selbst HTTPS (.21:443) -> re-encrypt zum Upstream
     nginx.org/ssl-services: "imcor"
 spec:
   ingressClassName: nginx
+  tls:
+    - hosts:
+        - imcor.de
+        - www.imcor.de
+        - db.imcor.de
+        - config.imcor.de
+        - jonaks.com
+        - www.jonaks.com
+      secretName: imcor-tls
   rules:
     - host: imcor.de
       http:
@@ -120,10 +154,16 @@ metadata:
   name: auth
   namespace: legacy-proxy
   annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.org/ssl-redirect: "false"
     nginx.org/redirect-to-https: "false"
 spec:
   ingressClassName: nginx
+  tls:
+    - hosts:
+        - auth.savar.de
+        - auth2.savar.de
+      secretName: auth-tls
   rules:
     - host: auth.savar.de
       http:
@@ -148,6 +188,7 @@ metadata:
   name: s3
   namespace: legacy-proxy
   annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.org/ssl-redirect: "false"
     nginx.org/redirect-to-https: "false"
     # S3: grosse Objekte streamen, nicht puffern; lange Multipart-Transfers
@@ -157,6 +198,11 @@ metadata:
     nginx.org/proxy-send-timeout: "3600s"
 spec:
   ingressClassName: nginx
+  tls:
+    - hosts:
+        - s3.savar.de
+        - s3.jit-creatives.de
+      secretName: s3-tls
   rules:
     - host: s3.savar.de
       http:
@@ -171,6 +217,7 @@ metadata:
   name: jitcloud
   namespace: legacy-proxy
   annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.org/ssl-redirect: "false"
     nginx.org/redirect-to-https: "false"
     # Backend spricht selbst HTTPS (.217:443) -> re-encrypt zum Upstream
@@ -181,6 +228,12 @@ metadata:
     nginx.org/proxy-send-timeout: "3600s"
 spec:
   ingressClassName: nginx
+  tls:
+    - hosts:
+        - cloud.savar.de
+        - jit.cloud
+        - cloud.daec-berlin.de
+      secretName: jitcloud-tls
   rules:
     - host: cloud.savar.de
       http:
@@ -206,6 +259,7 @@ metadata:
   name: cloud-dev
   namespace: legacy-proxy
   annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.org/ssl-redirect: "false"
     nginx.org/redirect-to-https: "false"
     nginx.org/ssl-services: "cloud-dev"
@@ -219,6 +273,10 @@ metadata:
     nginx.org/proxy-send-timeout: "3600s"
 spec:
   ingressClassName: nginx
+  tls:
+    - hosts:
+        - cloud-dev.savar.de
+      secretName: cloud-dev-tls
   rules:
     - host: cloud-dev.savar.de
       http:

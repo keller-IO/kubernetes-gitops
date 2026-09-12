@@ -11,6 +11,7 @@ metadata:
     # redirect-to-https bleibt aus: TLS terminiert bereits Traefik auf
     # 192.168.2.15 und reicht Klartext-HTTP an :80 weiter. Ein zweiter
     # Redirect hier ergaebe eine Schleife (gleiches Muster wie paperless).
+    cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.org/redirect-to-https: "false"
     nginx.org/ssl-redirect: "false"
     # Muss zu MAX_UPLOAD_BYTES passen, sonst schneidet nginx den
@@ -25,8 +26,12 @@ metadata:
     nginx.org/proxy-buffers: "8 16k"
 spec:
   ingressClassName: nginx
-  # Kein tls:-Block und kein cert-manager: das oeffentliche Zertifikat fuer
-  # expense.porga.de stellt Traefik per HTTP-01 aus.
+  # Cluster-TLS per DNS-01: die Zone porga.de ist auf dns01 seit dem 12.09.2026
+  # fuer den cert-manager-TSIG freigegeben (update-policy zonesub TXT).
+  tls:
+    - hosts:
+        - expense.porga.de
+      secretName: expense-tracker-tls
   rules:
     - host: expense.porga.de
       http:
