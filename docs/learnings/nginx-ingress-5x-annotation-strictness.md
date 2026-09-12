@@ -62,9 +62,11 @@ kubectl get ingress -A --no-headers | grep -v cm-acme | awk '{print $4}' \
     done
 ```
 
-Wichtig: Die `legacy-proxy`-Hosts laufen bewusst **HTTP-only** (TLS terminiert am
-`.15`-Traefik). Ein reiner HTTPS-Test meldet dort `000` (TLS `unrecognized name`)
-und sieht wie ein Totalausfall aus, obwohl alles läuft — immer auch Port 80 testen.
+Während der docker15-Migration besitzen die bereits per DNS-01 lösbaren
+`legacy-proxy`-Hosts Cluster-Zertifikate, aber noch keine HTTPS-Redirects. Namen
+mit fehlender externer CNAME-Delegation bleiben HTTP-only und können bei einem
+direkten HTTPS-Test weiterhin `unrecognized name` liefern. Deshalb Port 80 und
+Port 443 getrennt gegen den erwarteten Migrationsstatus testen.
 
 ## Behebung
 
