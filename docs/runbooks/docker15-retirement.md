@@ -95,6 +95,34 @@ Nebenbefund: `gemeinsam-fuer-halbe.de` ist an der Registry **nicht mehr zu Cloud
 delegiert**, sondern auf `ns/ns3.jitcreatives.de` — der lange offene NS-Wechsel ist
 vollzogen. Damit wirken dns01-Aenderungen fuer diese Zone jetzt auch oeffentlich.
 
+### Nachzuegler-Zertifikate nach dem Cutover
+
+**Entscheidung Ingo, 12.09.2026:** Die vier beim TLS-Rollout ausgesparten Namen werden
+**unmittelbar nach dem Port-80-Cutover per HTTP-01 ausgestellt**. Kein DNS-01, kein
+Provider-Kontakt, kein Warten auf fremde CNAME-Eintraege.
+
+| Name | Ingress | Warum erst nach dem Cutover |
+|---|---|---|
+| `stream.horads.de` | legacy-proxy | HTTP-01 loest erst, wenn Port 80 auf `.246` zeigt |
+| `mail.steinba.ch` | roundcube | dito |
+| `cloud.steinba.ch` | legacy-proxy | dito |
+| `cloud.naturkindergarten-moehringen.de` | legacy-proxy | CNAME beim Provider fehlt; HTTP-01 umgeht das Problem statt es zu loesen |
+
+Voraussetzungen, die vorher stehen muessen:
+
+1. Der HTTP-01-Solver im ClusterIssuer wird um `naturkindergarten-moehringen.de`
+   erweitert (dann drei Zonen, weiterhin explizit begrenzt, kein Catch-all).
+2. Port 80 zeigt auf `.246` und `nginx.org/ssl-redirect` steht fuer diese Hosts auf
+   `false`, sonst beantwortet nginx die ACME-Anfrage mit einem Redirect und die
+   Challenge scheitert. Jeder betroffene Ingress traegt
+   `acme.cert-manager.io/http01-edit-in-place: "true"`.
+3. **Erst einzeln ausstellen, dann zusammenfassen.** Jeder Name bekommt zunaechst ein
+   eigenes `Certificate`; ein scheiternder Name soll kein bestehendes Sammelzertifikat
+   mitreissen.
+
+Reihenfolge im Cutover-Fenster: NAT umstellen → Erreichbarkeit von `.246:80` von aussen
+pruefen → die vier Zertifikate anfordern → per SAN-Pruefung abnehmen (nicht per CN).
+
 ### Unveraendert gegenueber 01.09.2026
 
 | Bereich | Live-Befund 11.09.2026 |
@@ -195,8 +223,10 @@ vollzogen. Damit wirken dns01-Aenderungen fuer diese Zone jetzt auch oeffentlich
 9. **Phase 3 Plattformentscheidung** (Cilium DSR/Hybrid gegen endpoint-aware L2),
    gemeinsam mit dem anstehenden Cilium-Update auf `1.20.0`. Groesster Einzelposten,
    Voraussetzung fuer den WAN-Cutover.
-10. **`cloud.naturkindergarten-moehringen.de`**: CNAME beim Provider anlegen lassen
-    oder den Namen aus dem Zertifikat nehmen.
+10. ~~`cloud.naturkindergarten-moehringen.de`: CNAME beim Provider anlegen lassen oder
+    den Namen aus dem Zertifikat nehmen.~~ — **entschieden 12.09.2026: per HTTP-01
+    direkt nach dem Cutover ausstellen.** Kein Provider-Kontakt noetig. Siehe
+    „Nachzuegler-Zertifikate nach dem Cutover“.
 11. ~~Potsdam-DR-Edge fertigstellen~~ — erledigt 12.09.2026. Offen bleiben dort nur der
     CrowdSec-Bouncer auf der toten GitLab-LAPI und die fehlenden UCG-Forwards 80/443.
 12. Optional: **Phase 4 CrowdSec-Enforcement** im neuen Pfad.
@@ -374,6 +404,12 @@ cert-manager ausgestellt; Traefik-ACME-Dateien werden nicht importiert.
 5. `horads.de` und `steinba.ch` verwenden mangels Provider-Zugriff HTTP-01. Der
    Solver ist explizit auf diese beiden Zonen begrenzt; jeder betroffene Ingress setzt
    `acme.cert-manager.io/http01-edit-in-place: "true"`.
+6. **Entscheidung 12.09.2026: `naturkindergarten-moehringen.de` kommt dazu.** Statt
+   beim Provider einen CNAME fuer `_acme-challenge` erwirken zu lassen, wird
+   `cloud.naturkindergarten-moehringen.de` nach dem Cutover ebenfalls per HTTP-01
+   ausgestellt. Der HTTP-01-Solver umfasst danach **drei** Zonen: `horads.de`,
+   `steinba.ch`, `naturkindergarten-moehringen.de`. Die Begrenzung bleibt explizit —
+   kein Catch-all.
 
 Eine CNAME-Delegation gilt pro angefordertem DNS-Namen. Vor der Solver-Zuordnung
 jeder Zone wird die oeffentliche NS-Delegation unmittelbar vor dem Rollout erneut
@@ -471,10 +507,11 @@ Sichtbarkeit und Cleanup fuer jede Solver-Klasse funktionieren.
 > **Stand 12.09.2026:** Sofern unten nicht ausdruecklich anders vermerkt, ist jede Zeile
 > dieser Matrix **ausgestellt und gegen `.246` per SAN-Pruefung abgenommen**. Die
 > Spalte „Status“ gibt den Stand *vor* dem Rollout wieder und bleibt als Historie stehen.
-> Ausgenommen und weiterhin offen sind die vier bewusst ohne Issuer gelassenen Namen:
-> `stream.horads.de`, `mail.steinba.ch`, `cloud.steinba.ch` (HTTP-01 loest erst nach dem
-> Port-80-Cutover) und `cloud.naturkindergarten-moehringen.de` (CNAME fehlt beim
-> Provider). Grund: ein einziger scheiternder Name reisst das gesamte Zertifikat mit.
+> Ausgenommen sind die vier bewusst ohne Issuer gelassenen Namen: `stream.horads.de`,
+> `mail.steinba.ch`, `cloud.steinba.ch` und `cloud.naturkindergarten-moehringen.de`.
+> Grund: ein einziger scheiternder Name reisst das gesamte Zertifikat mit.
+> **Entscheidung 12.09.2026: alle vier werden direkt nach dem Cutover per HTTP-01
+> ausgestellt** — siehe „Nachzuegler-Zertifikate nach dem Cutover“.
 
 | Ingress | DNS-Namen | Solver | Delegation | Status |
 |---|---|---|---|---|
