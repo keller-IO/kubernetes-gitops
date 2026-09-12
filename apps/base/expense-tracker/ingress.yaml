@@ -12,7 +12,7 @@ metadata:
     # 192.168.2.15 und reicht Klartext-HTTP an :80 weiter. Ein zweiter
     # Redirect hier ergaebe eine Schleife (gleiches Muster wie paperless).
     cert-manager.io/cluster-issuer: letsencrypt-prod
-    nginx.org/redirect-to-https: "false"
+    nginx.org/redirect-to-https: "true"
     nginx.org/ssl-redirect: "false"
     # Muss zu MAX_UPLOAD_BYTES passen, sonst schneidet nginx den
     # Beleg-Upload ab, bevor die App eine saubere Meldung liefern kann.

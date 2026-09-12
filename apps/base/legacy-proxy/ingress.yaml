@@ -15,7 +15,7 @@ metadata:
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.org/ssl-redirect: "false"
-    nginx.org/redirect-to-https: "false"
+    nginx.org/redirect-to-https: "true"
     nginx.org/client-max-body-size: "0" # keine Upload-Grenze (Web/FTP)
 spec:
   ingressClassName: nginx
@@ -48,7 +48,7 @@ metadata:
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.org/ssl-redirect: "false"
-    nginx.org/redirect-to-https: "false"
+    nginx.org/redirect-to-https: "true"
     nginx.org/client-max-body-size: "0" # Nextcloud: keine Upload-Grenze
 spec:
   ingressClassName: nginx
@@ -94,7 +94,7 @@ metadata:
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.org/ssl-redirect: "false"
-    nginx.org/redirect-to-https: "false"
+    nginx.org/redirect-to-https: "true"
 spec:
   ingressClassName: nginx
   tls:
@@ -114,7 +114,7 @@ metadata:
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.org/ssl-redirect: "false"
-    nginx.org/redirect-to-https: "false"
+    nginx.org/redirect-to-https: "true"
     # Backend spricht selbst HTTPS (.21:443) -> re-encrypt zum Upstream
     nginx.org/ssl-services: "imcor"
 spec:
@@ -156,7 +156,7 @@ metadata:
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.org/ssl-redirect: "false"
-    nginx.org/redirect-to-https: "false"
+    nginx.org/redirect-to-https: "true"
 spec:
   ingressClassName: nginx
   tls:
@@ -190,7 +190,7 @@ metadata:
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.org/ssl-redirect: "false"
-    nginx.org/redirect-to-https: "false"
+    nginx.org/redirect-to-https: "true"
     # S3: grosse Objekte streamen, nicht puffern; lange Multipart-Transfers
     nginx.org/client-max-body-size: "0"
     nginx.org/proxy-buffering: "false"
@@ -261,7 +261,7 @@ metadata:
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.org/ssl-redirect: "false"
-    nginx.org/redirect-to-https: "false"
+    nginx.org/redirect-to-https: "true"
     nginx.org/ssl-services: "cloud-dev"
     nginx.org/websocket-services: "cloud-dev-push"
     # Traefik hat /push bisher per StripPrefix entfernt. Das servicebezogene

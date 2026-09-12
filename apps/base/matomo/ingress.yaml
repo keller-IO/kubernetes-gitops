@@ -9,7 +9,7 @@ metadata:
     # per HTTP an den Cluster durch (first-party /stats/). Ein Redirect wuerde
     # diesen Pfad brechen. Die Oberflaeche ist ohnehin nur intern erreichbar.
     nginx.org/ssl-redirect: "false"
-    nginx.org/redirect-to-https: "false"
+    nginx.org/redirect-to-https: "true"
     nginx.org/client-max-body-size: "10m"
 spec:
   ingressClassName: nginx
