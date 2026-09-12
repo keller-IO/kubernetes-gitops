@@ -1,12 +1,14 @@
 # Abschaltplan fuer docker15 (192.168.2.15)
 
-Status: Phase 1 inventarisiert und bereinigt; **Phase 2 am 12.09.2026 ausgerollt** —
-alle Cluster-Zertifikate sind ausgestellt und werden von nginx-inc ausgeliefert.
-Offen bleiben Phase 3 (echte Client-IP) und der WAN-Cutover. Zielbild am 11.09.2026
-bestaetigt.
+Status: Phase 1 inventarisiert und bereinigt; **Phase 2 und Phase 3 am 12.09.2026
+ausgerollt** — alle Cluster-Zertifikate sind ausgestellt und werden von nginx-inc
+ausgeliefert, `redirect-to-https` ist aktiv, und `.246` liefert die echte Client-IP
+(DaemonSet + `externalTrafficPolicy: Local`). Offen bleiben drei Abnahmekriterien der
+Phase 3, die Fehlerinjektion brauchen, das steinba.ch-Mailzertifikat und der
+WAN-Cutover selbst. Zielbild am 11.09.2026 bestaetigt.
 
-Planstand: 2026-09-12 (TLS-Rollout; vorherige Staende 2026-09-11, 2026-09-01 und
-2026-07-30).
+Planstand: 2026-09-12 (TLS-Rollout, redirect-to-https, Source-IP; vorherige Staende
+2026-09-11, 2026-09-01 und 2026-07-30).
 
 ## Statusrevision 11.09.2026
 
@@ -645,46 +647,98 @@ pruefen, bevor das zugehoerige Ingress-TLS aktiviert wird. Ein blosses
 
 ## Phase 3: `.246` pinnen und echte Client-IP erhalten
 
-Hartes Gate — nicht wegen CrowdSec, sondern wegen der IP-basierten Schutz- und
+**✅ ERLEDIGT am 12.09.2026** (PRs #154 und #155). Ingo hat Variante A gewaehlt.
+
+Hartes Gate war dies nicht wegen CrowdSec, sondern wegen der IP-basierten Schutz- und
 Drosselmechanismen der Anwendungen (Nextcloud-Brute-Force-Schutz, Roundcube,
-`auth.savar.de`). Mit SNAT saehen diese alle Clients als dieselbe Node-IP.
+`auth.savar.de`): mit SNAT sahen diese alle Clients als eine Adresse.
 
-Der nginx-Service besitzt live `.246`, die IP ist aber nicht deklarativ gepinnt
-(Pool `.246-.249`). Sie wird am Service fixiert. Die globale `default-l2`-Policy wird
-durch explizite Policies fuer die benoetigten LoadBalancer ersetzt; Mailman `.247`
-muss weiter angekuendigt werden. Vorher alle LoadBalancer-IPs und L2-Leases
-inventarisieren.
+### Das Problem, gemessen statt vermutet
 
-`externalTrafficPolicy: Local` ist keine einfache Loesung: Cilium-L2 kann die VIP auf
-einem Node ohne lokalen nginx-Pod announcen — genau das verursachte bereits einen
-Ausfall (22.07.2026).
+`externalTrafficPolicy: Local` erhaelt die Quell-IP, ist aber mit Cilium-L2-Announcements
+unvertraeglich: **L2 ist nicht endpoint-aware** und kuendigt die VIP auch auf Nodes ohne
+lokalen Pod an, die den Verkehr dann verwerfen. Genau das war der Ausfall am 22.07.2026
+nach dem wrk3-Rebuild, woraufhin auf `Cluster` zurueckgestellt wurde.
 
-Der Cluster verwendet Cilium `1.16.5` mit SNAT/VXLAN. DSR/Hybrid ist eine clusterweite
-CNI- und ggf. Tunnelmigration mit eigenem Wartungs- und Rollbackplan. Sie sollte mit
-dem anstehenden Update auf `1.20.0` zusammen geplant werden.
+Vor der Umstellung mit einem Kanarienvogel auf `.249` gemessen — dieselben Pods, einziger
+Unterschied die Policy:
 
-Zu vergleichen:
+| Ziel | Ergebnis |
+|---|---|
+| `.246` (`Cluster`) | 3 von 6 Anfragen kamen als `10.244.6.29` an — die **CiliumInternalIP von wrk4**, also des L2-Announcers |
+| `.249` (`Local`) | **6 von 6** mit echter Quell-IP, aus zwei verschiedenen Subnetzen |
 
-1. Cilium DSR/Hybrid mit `externalTrafficPolicy: Cluster` und erhaltener Source-IP
-   (Kompatibilitaet, MTU, Geneve/native Routing, Upgrade-Pfad, Rollback).
-2. Ein endpoint-aware L2-LoadBalancer, der `externalTrafficPolicy: Local` zuverlaessig
-   unterstuetzt.
+Unter `Cluster` wird also genattet, was die announcende Node verlaesst. Die Adresse ist
+keine Node-IP, sondern eine Pod-CIDR-Adresse — wer nach `192.168.2.8x` sucht, uebersieht
+das SNAT.
 
-Erst nach der Entscheidung dient `.249` als Canary-IP, mit temporaerem, dokumentiertem
-UDM-Portforward fuer echte externe Tests.
+### Was umgesetzt wurde
 
-Abnahmekriterien des Canary:
+1. **nginx-inc von `kind: deployment` auf `daemonset`** (Chart 2.6.4), mit Toleration fuer
+   `node-role.kubernetes.io/control-plane:NoSchedule`. Damit hat **jede** Node, die `.246`
+   ankuendigen koennte, einen lokalen Pod — die Bedingung des 22.07.-Ausfalls ist
+   beseitigt, nicht umgangen. 7 Pods auf 7 Nodes, je 100m/128Mi.
+2. **`.246` per `lbipam.cilium.io/ips` gepinnt.** Vorher ungepinnt im Pool `.246-.249`,
+   waehrend die UDM-DNAT-Regel fest darauf zeigt.
+3. **`externalTrafficPolicy: Local`** — erst danach, und erst nach dem Kanarienvogel.
+
+**Der entscheidende Vorteil dieser Variante:** alles liegt in `infra-ingress-nginx`
+(`Synced/Healthy`). **Kein Cilium-Sync, kein Agenten-Neustart, kein Wartungsfenster** —
+Phase 3 ist damit vom Cilium-1.20-Upgrade entkoppelt, das bisher der lange Balken war.
+
+Verworfen wurde **DSR**: es braucht `bpf-lb-mode=dsr`, und bei `routing-mode: tunnel` mit
+`tunnel-protocol: vxlan` verlangt DSR Geneve-Dispatch, also eine Umstellung des
+Cluster-Tunnelprotokolls — ein ungleich groesserer Eingriff bei gleichem Agenten-Neustart.
+Ebenfalls verworfen wurde Variante B (DaemonSet nur auf Workern plus `nodeSelector` in der
+`CiliumL2AnnouncementPolicy`): sauberer getrennt, aber die Policy liegt in
+`infrastructure/base/cilium/lb-ipam.yaml` und damit im Wartungsfenster.
+
+### Messergebnis nach der Umstellung
+
+| Pruefung | Ergebnis |
+|---|---|
+| Quell-IP auf `.246` | **12 von 12** echte IP, kein SNAT mehr |
+| Ausfall beim Wechsel auf `Local` | **0 von 60** Messpunkten |
+| Ausfall beim Wechsel Deployment→DaemonSet | 1 von 90 Messpunkten (~2 s) |
+| Regression (8 oeffentliche Hosts) | unveraendert 200 |
+
+### ⚠️ Bedingung, die bestehen bleiben MUSS
+
+nginx laeuft als **DaemonSet auf ALLEN Nodes**, inklusive der tolerierten Control-Plane.
+Wer das zurueckdreht — zurueck auf Deployment, ein `nodeSelector`, eine entfernte
+Toleration — reisst unter `Local` ein schwarzes Loch auf, weil Cilium-L2 weiterhin nicht
+endpoint-aware ist. Der Kommentar in `infrastructure/base/ingress-nginx/values.yaml` sagt
+das an Ort und Stelle.
+
+Eine **PodDisruptionBudget waere hier wirkungslos** und wurde bewusst nicht ergaenzt:
+`kubectl drain` verlangt bei DaemonSet-Pods `--ignore-daemonsets` und ueberspringt sie
+dann, es findet also gar keine Eviction statt, die eine PDB konsultieren koennte. Der
+wirksame Hebel ist die Rolling-Update-Strategie (`maxUnavailable: 1`) plus Readiness-Probe.
+
+### Abnahmekriterien
 
 ```text
-echte externe IPv4 im nginx-Log
-keine Uebernahme eines gespooften X-Forwarded-For
-funktionierender Wechsel des L2-Lease-Holders
-kein Ausfall bei nginx-Pod- oder Node-Neustart
-korrekter Rueckweg ohne asymmetrisches Routing
+[x] echte externe IPv4 im nginx-Log
+[ ] keine Uebernahme eines gespooften X-Forwarded-For
+[ ] funktionierender Wechsel des L2-Lease-Holders
+[ ] kein Ausfall bei nginx-Pod- oder Node-Neustart
+[x] korrekter Rueckweg ohne asymmetrisches Routing
 ```
 
-Nach dem Direkt-Cutover darf nginx nicht weiter beliebige XFF-Werte aus
-`192.168.2.0/24` akzeptieren (heute `set-real-ip-from: 192.168.2.0/24`).
+Die drei offenen Punkte brauchen **absichtliche Fehlerinjektion** (L2-Lease loeschen, Pod
+auf der announcenden Node killen) und stehen noch aus; Skript dafuer liegt bereit. Sie
+sind die Wiederholung des 22.07.-Szenarios und damit der eigentliche Beweis, dass die
+Konstruktion haelt.
+
+### Zum Spoofing nach dem Cutover
+
+`set-real-ip-from: 192.168.2.0/24` bleibt vorerst. Unter `Cluster` waere das am
+Cutover-Tag zur Luecke geworden — der TCP-Peer waere eine Node aus genau diesem `/24`
+gewesen, also haette nginx jedem Client sein selbstgesetztes `X-Forwarded-For` geglaubt.
+**Unter `Local` schliesst sich das von selbst:** eine Internet-IP liegt nicht im `/24` und
+wird damit nicht als vertrauenswuerdiger Proxy behandelt. Verkehr ueber den `.15`-Traefik
+kommt weiterhin von `192.168.2.15`, dessen XFF also korrekt uebernommen wird. Haerten
+liesse sich das noch auf `192.168.2.15/32`; nach dem Cutover darf niemand mehr XFF setzen.
 
 ## Phase 4: CrowdSec-Enforcement (optional)
 
