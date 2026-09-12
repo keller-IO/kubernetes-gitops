@@ -110,8 +110,15 @@ Provider-Kontakt, kein Warten auf fremde CNAME-Eintraege.
 
 Voraussetzungen, die vorher stehen muessen:
 
-1. Der HTTP-01-Solver im ClusterIssuer wird um `naturkindergarten-moehringen.de`
-   erweitert (dann drei Zonen, weiterhin explizit begrenzt, kein Catch-all).
+1. **`naturkindergarten-moehringen.de` wird im ClusterIssuer verschoben, nicht
+   hinzugefuegt.** Die Zone steht heute bereits in Solver 3 (DNS-01 rfc2136,
+   `cnameStrategy: Follow`, gemeinsam mit `imcor.de` und `jonaks.com`) — und scheitert
+   genau dort, weil der `_acme-challenge`-CNAME beim Provider fehlt. Sie muss aus
+   Solver 3 **entfernt** und in den HTTP-01-Solver eingetragen werden. Stuende sie in
+   beiden, gewaenne weiterhin der DNS-01-Follow-Solver und nichts waere gewonnen.
+   Endstand: Solver 3 = `imcor.de` + `jonaks.com`; HTTP-01-Solver = `horads.de` +
+   `steinba.ch` + `naturkindergarten-moehringen.de`, weiterhin explizit begrenzt,
+   kein Catch-all.
 2. Port 80 zeigt auf `.246` und `nginx.org/ssl-redirect` steht fuer diese Hosts auf
    `false`, sonst beantwortet nginx die ACME-Anfrage mit einem Redirect und die
    Challenge scheitert. Jeder betroffene Ingress traegt
@@ -404,11 +411,14 @@ cert-manager ausgestellt; Traefik-ACME-Dateien werden nicht importiert.
 5. `horads.de` und `steinba.ch` verwenden mangels Provider-Zugriff HTTP-01. Der
    Solver ist explizit auf diese beiden Zonen begrenzt; jeder betroffene Ingress setzt
    `acme.cert-manager.io/http01-edit-in-place: "true"`.
-6. **Entscheidung 12.09.2026: `naturkindergarten-moehringen.de` kommt dazu.** Statt
-   beim Provider einen CNAME fuer `_acme-challenge` erwirken zu lassen, wird
-   `cloud.naturkindergarten-moehringen.de` nach dem Cutover ebenfalls per HTTP-01
-   ausgestellt. Der HTTP-01-Solver umfasst danach **drei** Zonen: `horads.de`,
-   `steinba.ch`, `naturkindergarten-moehringen.de`. Die Begrenzung bleibt explizit —
+6. **Entscheidung 12.09.2026: `naturkindergarten-moehringen.de` wechselt auf HTTP-01.**
+   Statt beim Provider einen CNAME fuer `_acme-challenge` erwirken zu lassen, wird
+   `cloud.naturkindergarten-moehringen.de` nach dem Cutover per HTTP-01 ausgestellt.
+   **Achtung, die Zone ist bereits im Issuer** — sie steht in Solver 3 (DNS-01
+   `cnameStrategy: Follow`) und muss von dort **weg**, sonst greift weiter der
+   DNS-01-Pfad, der ohne den fehlenden CNAME nicht funktioniert. Danach: Follow-Solver
+   nur noch `imcor.de` + `jonaks.com`, HTTP-01-Solver **drei** Zonen (`horads.de`,
+   `steinba.ch`, `naturkindergarten-moehringen.de`). Die Begrenzung bleibt explizit —
    kein Catch-all.
 
 Eine CNAME-Delegation gilt pro angefordertem DNS-Namen. Vor der Solver-Zuordnung
