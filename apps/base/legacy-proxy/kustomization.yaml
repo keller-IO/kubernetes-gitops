@@ -8,3 +8,10 @@ resources:
   - namespace.yaml
   - external-backends.yaml
   - ingress.yaml
+
+# ⚠️ TEMPORAER bis nach dem docker15-Cutover: vorgeladene Zertifikate aus dem
+# Traefik-ACME-Store, damit stream.horads.de und die beiden cloud-Aliase im
+# Moment des UDM-Schwenks nicht ohne Zertifikat dastehen. Siehe
+# preload-horads.sops.yaml.
+generators:
+  - ./secret-generator.yaml

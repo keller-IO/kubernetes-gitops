@@ -29,16 +29,6 @@ spec:
                 name: roundcube
                 port:
                   number: 80
-    - host: mail.steinba.ch
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: roundcube
-                port:
-                  number: 80
     - host: webmail01.jit-creatives.de
       http:
         paths:
@@ -70,6 +60,41 @@ spec:
                 port:
                   number: 80
     - host: www.jitmail.de
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: roundcube
+                port:
+                  number: 80
+---
+# ⚠️ TEMPORAER bis nach dem docker15-Cutover.
+# mail.steinba.ch gehoert zum roundcube-jitmail-Ingress, braucht aber ein eigenes
+# Objekt: jener traegt die cert-manager-Annotation, und sobald der Name dort im
+# tls-Block stuende, wuerde cert-manager sofort HTTP-01-Challenges starten — die
+# vor dem Cutover zwangslaeufig scheitern, weil Traefik auf .15 Port 80
+# abfaengt. Deshalb hier OHNE Annotation, mit dem vorgeladenen Zertifikat.
+# NACH dem Cutover: Host zurueck in roundcube-jitmail (rules UND tls), dieses
+# Objekt samt Secret und Generator-Eintrag loeschen.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: roundcube-jitmail-preload
+  namespace: roundcube
+  annotations:
+    nginx.org/ssl-redirect: "false"
+    nginx.org/redirect-to-https: "false"
+    nginx.org/client-max-body-size: "25m"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - mail.steinba.ch
+      secretName: roundcube-jitmail-preload-tls
+  rules:
+    - host: mail.steinba.ch
       http:
         paths:
           - path: /

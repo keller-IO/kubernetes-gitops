@@ -81,6 +81,15 @@ metadata:
     nginx.org/proxy-send-timeout: "3600s"
 spec:
   ingressClassName: nginx
+  # ⚠️ TEMPORAER: vorgeladenes Zertifikat aus dem Traefik-ACME-Store, damit der
+  # Stream im Moment des UDM-Schwenks nicht abreisst. BEWUSST ohne
+  # cert-manager-Annotation — sonst scheitern HTTP-01-Challenges schon vor dem
+  # Cutover, weil Traefik auf .15 Port 80 abfaengt. Nach dem Cutover:
+  # Annotation ergaenzen, cert-manager uebernimmt, dann Secret entfernen.
+  tls:
+    - hosts:
+        - stream.horads.de
+      secretName: horads-preload-tls
   rules:
     - host: stream.horads.de
       http:
@@ -241,12 +250,6 @@ spec:
     - host: jit.cloud
       http:
         paths: [{ path: /, pathType: Prefix, backend: { service: { name: jitcloud, port: { number: 443 } } } }]
-    - host: cloud.naturkindergarten-moehringen.de
-      http:
-        paths: [{ path: /, pathType: Prefix, backend: { service: { name: jitcloud, port: { number: 443 } } } }]
-    - host: cloud.steinba.ch
-      http:
-        paths: [{ path: /, pathType: Prefix, backend: { service: { name: jitcloud, port: { number: 443 } } } }]
     - host: cloud.daec-berlin.de
       http:
         paths: [{ path: /, pathType: Prefix, backend: { service: { name: jitcloud, port: { number: 443 } } } }]
@@ -287,3 +290,39 @@ spec:
           - path: /
             pathType: Prefix
             backend: { service: { name: cloud-dev, port: { number: 443 } } }
+---
+# ⚠️ TEMPORAER bis nach dem docker15-Cutover.
+# Diese beiden Namen gehoeren inhaltlich zum jitcloud-Ingress, brauchen aber ein
+# eigenes Objekt: jitcloud traegt die cert-manager-Annotation, und sobald sie
+# dort in einem tls-Block stuenden, wuerde cert-manager fuer sie sofort
+# HTTP-01-Challenges starten — die vor dem Cutover zwangslaeufig scheitern, weil
+# Traefik auf .15 Port 80 abfaengt. Deshalb hier OHNE Annotation, mit dem
+# vorgeladenen Zertifikat.
+# NACH dem Cutover: beide Hosts zurueck in den jitcloud-Ingress (rules UND tls),
+# dieses Objekt samt Secret und Generator-Eintrag loeschen.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: jitcloud-preload
+  namespace: legacy-proxy
+  annotations:
+    nginx.org/ssl-redirect: "false"
+    nginx.org/redirect-to-https: "false"
+    nginx.org/ssl-services: "jitcloud"
+    nginx.org/client-max-body-size: "0"
+    nginx.org/proxy-read-timeout: "3600s"
+    nginx.org/proxy-send-timeout: "3600s"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - cloud.steinba.ch
+        - cloud.naturkindergarten-moehringen.de
+      secretName: jitcloud-preload-tls
+  rules:
+    - host: cloud.steinba.ch
+      http:
+        paths: [{ path: /, pathType: Prefix, backend: { service: { name: jitcloud, port: { number: 443 } } } }]
+    - host: cloud.naturkindergarten-moehringen.de
+      http:
+        paths: [{ path: /, pathType: Prefix, backend: { service: { name: jitcloud, port: { number: 443 } } } }]
