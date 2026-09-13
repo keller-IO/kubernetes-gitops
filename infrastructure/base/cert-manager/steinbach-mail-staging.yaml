@@ -1,0 +1,29 @@
+# Staging-Probe fuer die steinba.ch-Mailnamen.
+#
+# Warum ueberhaupt: die Zone steinba.ch liegt bei hosttech und ist fuer uns nicht
+# aenderbar — DNS-01 faellt damit aus, es geht NUR HTTP-01. Bisher konnte das
+# ausschliesslich der Traefik auf 192.168.2.15, weil dorthin der WAN-Port 80
+# zeigte. Seit dem Cutover am 13.09.2026 landet Port 80 auf 192.168.2.246, also
+# im Cluster — erst dadurch kann cert-manager diese Namen validieren.
+#
+# Diese Probe weist genau das nach, BEVOR ein Produktionszertifikat angefordert
+# wird. Sie belegt den HTTP-01-Solver (Selector dnsZones: steinba.ch) und damit
+# den gesamten Weg: oeffentliches DNS (CNAME auf mail.jitcreatives.de ->
+# 87.191.135.42) -> UDM-DNAT auf .246 -> nginx -> cert-manager-Solver.
+#
+# Nach erfolgreichem Nachweis wird diese Datei zusammen mit dem Produktivzertifikat
+# entfernt.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: steinbach-mail-staging
+  namespace: cert-manager
+spec:
+  secretName: steinbach-mail-staging-tls
+  dnsNames:
+    - imap.steinba.ch
+    - pop.steinba.ch
+    - smtp.steinba.ch
+  issuerRef:
+    name: letsencrypt-staging
+    kind: ClusterIssuer
