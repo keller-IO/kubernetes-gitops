@@ -366,26 +366,58 @@ gezielte Eingriffe an einzelnen Nodes trotzdem die bessere Reihenfolge.
 46 Tagen. Alle neuen Pods stehen bei 0. Ob das Muster wiederkehrt, ist zu beobachten —
 die Ursache wurde nicht untersucht.
 
-### 4. Das Monitoring ist schon vor dem Cutover rot
+### 4. ✅ Erledigt: Monitoring bereinigt (13.09.2026, PR #164)
 
-Gatus meldet **4 von 20 Endpunkten rot**, drei davon erwartet und keiner stummgeschaltet:
-
-| Endpunkt | Ursache | Entscheidung |
+| Instanz | vorher | nachher |
 |---|---|---|
-| `forgejo` (`git.jit.services`) | Deployment bewusst auf `replicas: 0` in Git, ArgoCD meldet das korrekt als `Synced/Healthy` | zurueckholen oder Check entfernen |
-| `nextcloud-dev` (`cloud-dev.savar.de`) | Backend `nc01-dev` `.220` antwortet nicht (13.09. erneut geprueft), bekannt seit 11.09. | Host bleibt laut Entscheidung vom 11.09. — dann den Check anpassen, nicht den Host |
-| `wordpress-3` (`site3.jit.services`) | **seit 27.07.2026 bewusst auf `replicas: 0`**: das Deployment verlangt einen ServiceAccount `wordpress`, den es im Namespace nie gab ⇒ `FailedCreate`, nie ein Pod. Bewusst nur skaliert statt das Overlay zu entfernen, weil die AppSet-Apps mit `prune: true` laufen und ein Entfernen PVC, MariaDB und Backups mitloeschen wuerde | **Reaktivieren heisst zweierlei:** den `replicas: 0`-Patch entfernen **und** den fehlenden ServiceAccount anlegen. Sonst Check entfernen |
-| `mastodon` | kein Status (App am 11.09. entfernt) | Check entfernen |
+| `status.jit.services` | 4 von 20 rot | **0 von 14 rot** |
+| `status.jit-creatives.de` | 2 von 13 rot | **1 von 12 rot** |
 
-**Empfehlung: vor dem Cutover bereinigen.** Wer unter einem dauerhaft roten Monitor
-umschaltet, erkennt den echten Ausfall nicht — genau die Luecke, die den Standortausfall
-am 04.09. unbemerkt liess.
+Entfernt wurden die vier Checks auf bewusst abgeschaltete Dienste — `forgejo` und
+`wordpress-3` (beide `replicas: 0` in Git), `mastodon` (App am 11.09. entfernt) und
+`nextcloud-dev` (Backend `192.168.2.220` tot). **Jeder Eintrag ist durch einen Kommentar
+ersetzt, der sagt, wann er zurueckzuholen ist** — nicht ersatzlos geloescht. Bei
+`wordpress-3` steht dort ausdruecklich, dass Reaktivieren zweierlei heisst: den
+`replicas: 0`-Patch entfernen **und** den fehlenden ServiceAccount anlegen.
+
+> **🔴 Der eigentliche Ertrag: dabei kam ein echter Ausfall zum Vorschein.** Der
+> verbleibende rote Punkt ist **GitLab** — `https://gitlab.jit-creatives.de/` liefert
+> **500** aus GitLabs eigener Fehlerseite (`server: nginx`, `x-gitlab-meta`), die
+> Health-Endpunkte `404`. Traefik auf edge01 routet korrekt, der DNS zeigt richtig; die
+> Anwendung dahinter erbricht sich. **Das ging im Rauschen der vier bekannten roten Punkte
+> unter.** Eigene Baustelle, hier nicht angefasst — aber genau der Fall, den die Luecke im
+> Monitoring am 04.09. schon einmal verdeckt hat.
 
 ### 5. Erst danach: der Termin
 
-Sinnvoll planbar, sobald 2 bis 4 stehen. Zum Fenster gehoeren auf Ingos Seite: die sieben
-veralteten UDM-Portfreigaben entfernen, der UniFi-Konfigurationsexport als Rollback-Beleg
-und der eigentliche DNAT-Schwenk 80/443 von `.15` auf `.246`.
+Punkte 2 bis 4 sind am 13.09.2026 erledigt. Was fuer einen Termin noch fehlt, liegt bei
+Ingo:
+
+**⚠️ Die UDM-Bereinigung ist unvollstaendig (Stand 13.09.2026 geprueft).** Entfernt sind
+`22617`→`.17`, `2299`→`.66`, `5050`→`.15` und `30000-30010`→`.15`. **Vier Regeln zeigen
+weiter auf Ziele, die per TCP-Test alle tot sind:**
+
+| Port | Ziel | Status |
+|---|---|---|
+| 8443 | `192.168.2.17:8443` | TOT |
+| 2233 | `192.168.2.29:22` | TOT |
+| 2001 | `192.168.2.29:8000` | TOT |
+| 21 | `192.168.2.15:21` | TOT |
+
+**`21 → 192.168.2.15:21` ist der gefaehrlichste davon:** mit dem Abschalten von docker15
+wird `.15` frei, und dann landet Internet-Verkehr auf Port 21 bei dem Geraet, das die IP
+per DHCP zugeteilt bekommt. **Vor dem `.15`-Shutdown entfernen, nicht erst danach.**
+
+Ausserdem offen: der UniFi-Konfigurationsexport als Rollback-Beleg und der eigentliche
+DNAT-Schwenk 80/443 von `.15` auf `.246`.
+
+Nur lesend pruefen laesst sich der Ist-Stand so (der Controller ueberschreibt
+SSH-Aenderungen):
+
+```text
+ssh root@192.168.2.10 "ssh root@192.168.2.94 \
+  'iptables -t nat -S UBIOS_PREROUTING_USER_HOOK | grep DNAT'"
+```
 
 ### 6. Kleineres, aber offen
 
@@ -512,15 +544,18 @@ Ausfuehrungsfreigabe ergaenzt (Phase 5).
 
 Kein WAN-Cutover, solange eines dieser Gates offen ist:
 
-- [~] Der fleet-weite ArgoCD-Auto-Sync-Freeze ist aufgehoben und alle betroffenen
-      Applications stehen `Synced/Healthy`.
-      **Zweite Haelfte erfuellt am 13.09.2026: ALLE 36 Apps stehen `Synced/Healthy`.**
-      An diesem Tag erledigt: `infra-kite` gesynct (v0.15.0, plus `startupProbe` in #161),
-      `app-nextcloud-yealink-phonebook` behoben (#160) und `infra-cilium` im Wartungsfenster
-      gesynct. **Offen ist nur noch die erste Haelfte — und die ist eine reine
-      Richtlinienfrage:** genau **eine** App hat `automated`. „Freeze aufheben“ und
-      „`automated` fleet-weit einschalten“ sind nicht dasselbe; siehe „Offene
-      Entscheidungen“, Punkt 2.
+- [x] Der fleet-weite ArgoCD-Auto-Sync-Freeze ist aufgehoben und alle betroffenen
+      Applications stehen `Synced/Healthy`. **✅ VOLLSTAENDIG ERFUELLT am 13.09.2026.**
+      Beide Haelften: alle 36 Apps `Synced/Healthy`, und alle 36 tragen wieder
+      `automated: {prune: true, selfHeal: true}` (PR #165). An diesem Tag erledigt:
+      `infra-kite` gesynct (v0.15.0, plus `startupProbe` in #161),
+      `app-nextcloud-yealink-phonebook` behoben (#160), `infra-cilium` im Wartungsfenster
+      gesynct und der Freeze aus #111 aufgehoben. Nach dem Einschalten sechs Runden lang
+      beobachtet: **0 Apps nicht gruen, 0 laufende Syncs** — es lief nichts los, weil der
+      Diff null war. Die 11 manuell gepflegten `legacy-proxy`-EndpointSlices sind
+      unberuehrt geblieben (`resource.exclusions`).
+      **⚠️ Betriebsfolge:** ab jetzt rollt jeder gemergte PR sofort aus, auch Renovate-PRs.
+      Die Pruefung liegt vollstaendig im PR.
 - [x] nginx-inc besitzt deklarativ und stabil `192.168.2.246` (12.09.2026: per
       `lbipam.cilium.io/ips` am Service gepinnt, DaemonSet 7/7).
 - [ ] Jeder produktive Traefik-Host existiert als akzeptierter Cluster-Ingress oder
