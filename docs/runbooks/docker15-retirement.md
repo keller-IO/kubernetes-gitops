@@ -5,11 +5,15 @@ von nginx-inc ausgeliefert, `redirect-to-https` ist aktiv, `.246` liefert die ec
 Client-IP (DaemonSet + `externalTrafficPolicy: Local`), der ArgoCD-Freeze ist aufgehoben
 und das Monitoring bereinigt.
 
-**Stand 13.09.2026: 10 der 13 harten Gates sind erfuellt.** Offen sind noch **zwei** —
-die vollstaendige Anwendungs-Abnahmematrix und die aufeinander abgestimmten
-Rollback-Pfade fuer UDM und Git. Das dritte offene Kaestchen (CrowdSec-Enforcement) ist
-ausdruecklich **kein** Gate. Beides Verbleibende ist Arbeit, keine Technik: die Plattform
-steht. Zielbild am 11.09.2026 bestaetigt.
+**Stand 13.09.2026: 11 der 13 harten Gates sind erfuellt.** Offen ist nur noch **eines**:
+die vollstaendige Anwendungs-Abnahmematrix — und davon auch nur die Haelfte, die
+Zugangsdaten braucht (Anmeldungen, Upload, WebDAV, WebSocket). Der automatisierbare Teil
+ist am 13.09. als Referenzlauf gegen `.15` gefahren und dokumentiert. Das zweite offene
+Kaestchen (CrowdSec-Enforcement) ist ausdruecklich **kein** Gate.
+
+Die Zertifikate der vier Namen ohne cert-manager-Abdeckung sind vorgeladen, `.246` liefert
+also ab der ersten Sekunde nach dem Schwenk fuer **jeden** Host ein gueltiges Zertifikat.
+Zielbild am 11.09.2026 bestaetigt.
 
 **➡️ Was jetzt noch eine Entscheidung braucht, steht gebuendelt unter
 „Offene Entscheidungen (Stand 13.09.2026)“.** Zwei Punkte dort loesen Widersprueche im
@@ -413,8 +417,8 @@ ssh root@192.168.2.10 "ssh root@192.168.2.94 \
   'iptables -t nat -S UBIOS_PREROUTING_USER_HOOK | grep DNAT'"
 ```
 
-Ausserdem offen: der UniFi-Konfigurationsexport als Rollback-Beleg und der eigentliche
-DNAT-Schwenk 80/443 von `.15` auf `.246`.
+Der UniFi-Konfigurationsexport als Rollback-Beleg ist am 13.09.2026 angelegt. Offen ist
+damit nur noch der eigentliche DNAT-Schwenk 80/443 von `.15` auf `.246`.
 
 Nur lesend pruefen laesst sich der Ist-Stand so (der Controller ueberschreibt
 SSH-Aenderungen):
@@ -621,8 +625,12 @@ Kein WAN-Cutover, solange eines dieser Gates offen ist:
       Cutover auf `192.168.2.15/32` verengen, danach entfernen. Details unter Phase 3,
       „Abnahmekriterien“.
 - [ ] Die vollstaendige Anwendungs-Abnahmematrix ist erfolgreich.
-- [ ] UDM-Rollback und Git-Rollback sind vorbereitet und widersprechen sich nicht bei
-      HTTPS-Redirects.
+- [x] UDM-Rollback und Git-Rollback sind vorbereitet und widersprechen sich nicht bei
+      HTTPS-Redirects. **Erfuellt (13.09.2026):** der UniFi-Konfigurationsexport als
+      Rollback-Beleg liegt vor, und die beiden Pfade sind unter „Cutover-Reihenfolge und
+      Rollback“ ausdruecklich gegeneinander geordnet — Fenster A nur UDM, Fenster B Git
+      zuerst. Der Widerspruch, den eine freie Reihenfolge erzeugt haette (Redirect-
+      Schleife), ist dort mit Ursache beschrieben.
 - [x] Fuer jeden Host sind IPv4 und IPv6 inventarisiert; kein produktives AAAA
       (11.09.2026).
 - [x] Es haengen keine `pending`-Challenges und keine verwaisten
@@ -1215,6 +1223,51 @@ noch behoben, wird zurueckgerollt. Alles Uebrige hat Zeit und wird im Betrieb na
 Damit „war das vorher schon so?" im Fenster nicht diskutiert werden muss: **dieselbe Matrix
 einmal ueber `.15` durchfahren und die Ergebnisse festhalten.** Ohne diese Referenz kostet
 jeder vorbestehende 401/403/502 im Fenster unnoetige Minuten.
+
+### Referenzlauf vom 13.09.2026 (Zustand VOR dem Cutover)
+
+Ueber den aktuellen Pfad (`.15`) gemessen, damit im Fenster nicht diskutiert werden muss,
+ob ein Wert vorher schon so war.
+
+**Alle 42 externen Hosts:** HTTP erreichbar, `ssl_verify_result=0`, angefragter Name
+jeweils **im SAN** des gelieferten Zertifikats. Kein Zertifikat laeuft im Cutover-Fenster
+ab (frueheste Ablaeufe: 20.–31.10.2026).
+
+**Die drei Abweichungen sind vorbestehend — kein Rollback-Grund:**
+
+| Host | Wert | Ursache |
+|---|---|---|
+| `jonaks.com` | **403** | kommt vom Apache auf `.21` selbst, nicht vom Proxy |
+| `expense.porga.de` | **401** | Authentifizierung, so gewollt |
+| `cloud-dev.savar.de` | **502** | Backend `nc01-dev` (`.220`) antwortet seit dem 11.09. nicht |
+
+**Prio 1 — die Sollwerte fuer nachher:**
+
+| Prueflinge | Referenzwert 13.09.2026 |
+|---|---|
+| `stream.horads.de`, Mount `/horads` | **1.017.800 Bytes in 30 s**, **12 Hoerer** gleichzeitig |
+| Nextcloud, alle fuenf Hosts, `/status.php` | `installed=true`, `maintenance=false`, **Version 33.0.7** |
+| Roundcube (`roundcube.savar.de`, `mail.steinba.ch`, `jitmail.de`) | Titel `J.I.T. - Mail :: Welcome to J.I.T. - Mail` |
+
+**Prio 2 — Referenzwerte:**
+
+| Pruefling | Referenzwert |
+|---|---|
+| `office.savar.de` `/hosting/discovery` und `/hosting/capabilities` | je **200**, `capabilities` liefert JSON mit `convert-to available` |
+| `lists.jitmail.de` | 200, landet auf `/postorius/lists/`, **7.661 Bytes** |
+| `paperless.savar.de` | 200, landet auf `/accounts/login/`, **9.007 Bytes** |
+| `kimai.savar.de` | Titel `Kimai` |
+| `phpmyadmin.savar.de` | Titel `phpMyAdmin` |
+| `jugendbeauftragter-halbe.de` und `gemeinsam-fuer-halbe.de`, je `/wp-admin/` | **200 nach genau 1 Umleitung** — keine Schleife |
+| `s3.savar.de` | 200 |
+
+> **⚠️ Was dieser Referenzlauf NICHT abdeckt** — und was im Fenster von Hand geprueft
+> werden muss, weil es Zugangsdaten braucht: Anmeldung bei Nextcloud, Roundcube, Keycloak,
+> Paperless, Kimai und phpMyAdmin; Datei-Upload und WebDAV-`PROPFIND` bei Nextcloud;
+> Mailversand mit Anhang bei Roundcube; und der **echte WebSocket-Test bei Collabora**.
+> Letzterer geht nur aus einer Dokumentsitzung heraus — ein synthetisches Upgrade auf
+> `/cool/adminws` liefert erwartungsgemaess **403**, weil der Pfad Authentifizierung
+> verlangt, und beweist damit nichts.
 
 ## Rollback: Ausloesekriterien
 
