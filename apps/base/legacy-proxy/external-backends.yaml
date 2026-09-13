@@ -205,6 +205,26 @@ endpoints:
   - addresses: ["192.168.2.220"]
     conditions: { ready: true }
 ---
+# Nextcloud Talk HPB -> talk01 192.168.2.215:80. Nginx on talk01 strips the
+# /standalone-signaling/ prefix before proxying to the signaling container.
+apiVersion: v1
+kind: Service
+metadata: { name: cloud-dev-talk-hpb, namespace: legacy-proxy }
+spec:
+  ports: [{ name: http, port: 80, targetPort: 80 }]
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: cloud-dev-talk-hpb
+  namespace: legacy-proxy
+  labels: { kubernetes.io/service-name: cloud-dev-talk-hpb }
+addressType: IPv4
+ports: [{ name: http, port: 80 }]
+endpoints:
+  - addresses: ["192.168.2.215"]
+    conditions: { ready: true }
+---
 # Nextcloud notify_push -> nc01-dev 192.168.2.220:7867 (HTTP/WebSocket)
 apiVersion: v1
 kind: Service

@@ -302,6 +302,35 @@ spec:
             pathType: Prefix
             backend: { service: { name: cloud-dev, port: { number: 443 } } }
 ---
+# Nextcloud Talk HPB. TLS terminates in the cluster; talk01 serves HTTP only and
+# performs the signaling path rewrite before forwarding to its container.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: cloud-dev-talk-hpb
+  namespace: legacy-proxy
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.org/ssl-redirect: "true"
+    nginx.org/redirect-to-https: "true"
+    nginx.org/websocket-services: "cloud-dev-talk-hpb"
+    nginx.org/proxy-buffering: "false"
+    nginx.org/proxy-read-timeout: "3600s"
+    nginx.org/proxy-send-timeout: "3600s"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - signal.cloud-dev.savar.de
+      secretName: cloud-dev-talk-hpb-tls
+  rules:
+    - host: signal.cloud-dev.savar.de
+      http:
+        paths:
+          - path: /standalone-signaling/
+            pathType: Prefix
+            backend: { service: { name: cloud-dev-talk-hpb, port: { number: 80 } } }
+---
 # ⚠️ TEMPORAER bis nach dem docker15-Cutover.
 # Diese beiden Namen gehoeren inhaltlich zum jitcloud-Ingress, brauchen aber ein
 # eigenes Objekt: jitcloud traegt die cert-manager-Annotation, und sobald sie
