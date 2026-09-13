@@ -276,8 +276,13 @@ Schreibrecht auf mail05 entsteht:
 
 | Variante | Vorteil | Nachteil |
 |---|---|---|
-| Cron auf `cfgmgmt01` liest das Kubernetes-Secret (`kubectl get secret`) | uebernimmt `steinbach-cert-deploy.sh` fast unveraendert, nur die Quelle aendert sich | cfgmgmt01 braucht dauerhaft Cluster-Zugriff |
-| CronJob im Cluster mit SSH-Key auf mail05 | laeuft dort, wo das Secret entsteht | neuer SSH-Key mit Schreibrecht auf mail05 |
+| **✅ GEWAEHLT (13.09.2026): Cron auf `cfgmgmt01` liest das Kubernetes-Secret (`kubectl get secret`)** | uebernimmt `steinbach-cert-deploy.sh` fast unveraendert, nur die Quelle aendert sich; kein neuer Schreibzugriff auf mail05 | cfgmgmt01 braucht dauerhaft Cluster-Zugriff (hat es ohnehin) |
+| ~~CronJob im Cluster mit SSH-Key auf mail05~~ (verworfen) | laeuft dort, wo das Secret entsteht | neuer SSH-Key mit Schreibrecht auf mail05 |
+
+**Damit ist 1b vollstaendig entschieden.** Umsetzung nach dem Cutover, als Pflichteintrag
+der Cutover-Checkliste. Offene Detailpunkte fuer die Umsetzung: welcher Kubernetes-Zugang
+auf cfgmgmt01 verwendet wird (eigener ServiceAccount mit Leserecht nur auf dieses Secret
+statt des vollen Kubeconfigs) und wohin der bisherige `.15`-Cron abgeschaltet wird.
 
 ⚠️ **Die Frist bleibt unabhaengig davon scharf:** ab dem Port-80-Schwenk kann `.15` nicht
 mehr erneuern, das Zertifikat laeuft am **04.12.2026** ab. Faellt der Cutover hinter
@@ -613,11 +618,15 @@ Zielkette:
 
 1. Ein eigener Ingress (oder `Certificate` mit HTTP-01-Solver) fuer die drei Namen
    im Cluster, Solver auf `steinba.ch` begrenzt. Kein ausgelieferter Inhalt auf 443.
-2. Die Verteilung an mail05 zieht vom `.15`-Cron auf einen Mechanismus, der das
-   Kubernetes-Secret liest — z. B. derselbe Skriptablauf auf `cfgmgmt01` mit
-   `kubectl get secret`, oder ein CronJob im Cluster mit SSH-Key auf mail05.
+2. Die Verteilung an mail05 zieht vom `.15`-Cron auf **denselben Skriptablauf auf
+   `cfgmgmt01`, der das Kubernetes-Secret per `kubectl get secret` liest**
+   (Entscheidung 13.09.2026; die Variante „CronJob im Cluster mit SSH-Key auf mail05“ ist
+   verworfen, weil sie einen neuen Schreibzugriff auf mail05 erfordert haette).
    Das Skript `/usr/local/sbin/steinbach-cert-deploy.sh` (SNI-Map-Erzeugung,
-   Hash-Vergleich) wird dafuer uebernommen, nur die Quelle aendert sich.
+   Hash-Vergleich) wird uebernommen, nur die Quelle aendert sich. Fuer den Zugriff einen
+   eigenen ServiceAccount mit Leserecht ausschliesslich auf dieses Secret anlegen, nicht
+   das volle Kubeconfig verwenden. Den Cron auf `.15` dabei abschalten, sonst laufen zwei
+   Verteiler gegeneinander.
 3. Einmal vollstaendig durchspielen (Staging-Zertifikat an mail05 → `openssl s_client
    -starttls imap` pruefen → zurueck auf Produktion), bevor Port 80 umgestellt wird.
 
