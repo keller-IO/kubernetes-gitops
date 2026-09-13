@@ -88,13 +88,25 @@ spec:
             - /spec/storage/waitForVolumeResize
             - /spec/passwordSecretKeyRef/generate
             - /spec/rootPasswordSecretKeyRef/generate
-      # Auto-sync TEMPORARILY disabled fleet-wide (#111): the repo-server can't
-      # render helmCharts-apps right now, so once it's fixed every one of these
-      # would auto-sync+prune simultaneously instead of app-by-app. This template
-      # has no per-app override. Re-enable (restore `automated: {prune: true,
-      # selfHeal: true}`) once the repo-server fix lands AND each app's drift has
-      # been reviewed — see docs/learnings/argocd-helm-rendering-kaputt.md.
+      # Auto-sync wieder aktiv seit 13.09.2026. Beide Bedingungen des Freeze von
+      # #111 sind erfuellt: der Repo-Server-Fix ist am 24.08.2026 gelandet, und
+      # die Drift jeder App wurde zwischen dem 11. und 13.09. einzeln geprueft
+      # und ausgeraeumt — alle 36 Apps standen beim Einschalten auf
+      # Synced/Healthy, der Diff war also null. Genau deshalb konnte hier nichts
+      # "gleichzeitig losrennen", was beim Freeze die Sorge war.
+      # Siehe docs/learnings/argocd-helm-rendering-kaputt.md und den
+      # docker15-Abschaltplan, Abschnitt "Offene Entscheidungen".
+      #
+      # ⚠️ Folge, die man kennen muss: ab jetzt rollt JEDER gemergte PR sofort
+      # aus, auch Renovate-PRs. Die Pruefung verschiebt sich damit vollstaendig
+      # in den PR — nach dem Merge sieht niemand mehr hin. prune loescht
+      # Ressourcen, die aus Git verschwinden; EndpointSlices sind davon
+      # ausgenommen (resource.exclusions in argocd-cm), die manuell gepflegten
+      # legacy-proxy-Slices bleiben also unangetastet.
       syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
         syncOptions:
           - CreateNamespace=true
           - ServerSideApply=true
