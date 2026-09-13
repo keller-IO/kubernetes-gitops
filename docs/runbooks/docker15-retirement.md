@@ -276,8 +276,13 @@ Schreibrecht auf mail05 entsteht:
 
 | Variante | Vorteil | Nachteil |
 |---|---|---|
-| Cron auf `cfgmgmt01` liest das Kubernetes-Secret (`kubectl get secret`) | uebernimmt `steinbach-cert-deploy.sh` fast unveraendert, nur die Quelle aendert sich | cfgmgmt01 braucht dauerhaft Cluster-Zugriff |
-| CronJob im Cluster mit SSH-Key auf mail05 | laeuft dort, wo das Secret entsteht | neuer SSH-Key mit Schreibrecht auf mail05 |
+| **✅ GEWAEHLT (13.09.2026): Cron auf `cfgmgmt01` liest das Kubernetes-Secret (`kubectl get secret`)** | uebernimmt `steinbach-cert-deploy.sh` fast unveraendert, nur die Quelle aendert sich; kein neuer Schreibzugriff auf mail05 | cfgmgmt01 braucht dauerhaft Cluster-Zugriff (hat es ohnehin) |
+| ~~CronJob im Cluster mit SSH-Key auf mail05~~ (verworfen) | laeuft dort, wo das Secret entsteht | neuer SSH-Key mit Schreibrecht auf mail05 |
+
+**Damit ist 1b vollstaendig entschieden.** Umsetzung nach dem Cutover, als Pflichteintrag
+der Cutover-Checkliste. Offene Detailpunkte fuer die Umsetzung: welcher Kubernetes-Zugang
+auf cfgmgmt01 verwendet wird (eigener ServiceAccount mit Leserecht nur auf dieses Secret
+statt des vollen Kubeconfigs) und wohin der bisherige `.15`-Cron abgeschaltet wird.
 
 ⚠️ **Die Frist bleibt unabhaengig davon scharf:** ab dem Port-80-Schwenk kann `.15` nicht
 mehr erneuern, das Zertifikat laeuft am **04.12.2026** ab. Faellt der Cutover hinter
@@ -299,13 +304,14 @@ ihn fleet-weit aufzuheben ist eine eigene Risikoentscheidung und sollte nicht al
 Nebenwirkung des Cutovers passieren.
 
 **Ingos Frage vom 13.09.2026: „Wann kann man das Freeze-Gate aufheben?“ — Antwort: an
-einem Abend.** Aufgeschluesselt nach dem, was jeweils wirklich fehlt:
+einem Abend. Zwei der drei Punkte sind noch am selben Tag erledigt worden; es fehlt
+allein das Cilium-Fenster.** Aufgeschluesselt nach dem, was jeweils wirklich fehlt:
 
 | App | Was fehlt | Aufwand | Wer |
 |---|---|---|---|
-| `infra-kite` | Sync des Renovate-Bumps auf Chart `0.15.0`; der laufende Pod ist 33 Tage alt, also noch der Stand davor | ~1 Minute, ein einzelner Pod, internes Werkzeug | jederzeit machbar |
-| `app-nextcloud-yealink-phonebook` | echtes Passwort. Zwei Pods haengen seit 33 bzw. 34 Tagen auf `0/1`, die App ist seit ueber einem Monat funktionslos | Minuten, sobald das Passwort vorliegt | Ingo: Passwort **oder** Entscheidung „App entfernen“ |
-| `infra-cilium` | Sync. Es weichen nur **zwei** Ressourcen ab (`ConfigMap/cilium-config`, `DaemonSet/cilium`); funktional aendert sich nichts, der Preis ist ein rollender Neustart aller Cilium-Agenten | kurzes Fenster | Fenster mit Ingo |
+| ~~`infra-kite`~~ | **✅ erledigt 13.09.2026.** Auf Chart `0.15.0` gesynct. Dabei fiel auf, dass der Pod zweimal neu startete: bis „Kite server started on port 8080“ vergehen je nach Lauf 3 bis ueber 40 s, waehrend die Liveness nur 40 s toleriert. Mit **PR #161** per Kustomize-Patch ein `startupProbe` (30 × 5 s) nachgeruestet — das Chart kennt den Schluessel in `values.yaml` nicht. Danach `1/1` nach 10 s mit **0 Neustarts** | — | — |
+| ~~`app-nextcloud-yealink-phonebook`~~ | **✅ erledigt 13.09.2026.** Ursache war nicht ein Platzhalter, sondern ein von Nextcloud mit **401** abgelehntes App-Passwort; `/healthz` lieferte deshalb dauerhaft 503. Behoben mit **PR #160** (neues App-Passwort). Da die App nur alle `REFRESH_INTERVAL=900` s neu authentifiziert, wurde der Pod erst rund 15 min nach dem Sync ready — `refreshed phonebook with 17 contacts`, danach `Synced/Healthy` | — | — |
+| `infra-cilium` | Sync. Es weichen nur **zwei** Ressourcen ab (`ConfigMap/cilium-config`, `DaemonSet/cilium`); funktional aendert sich nichts, der Preis ist ein rollender Neustart aller Cilium-Agenten | kurzes Fenster | **das Einzige, was noch fehlt** |
 
 **⚠️ Neu seit dem 12.09. und beim Cilium-Sync zu beachten:** `.246` laeuft jetzt ueber
 L2-Announcements mit `externalTrafficPolicy: Local`. Startet der Cilium-Agent auf der
@@ -474,11 +480,12 @@ Ausfuehrungsfreigabe ergaenzt (Phase 5).
 Kein WAN-Cutover, solange eines dieser Gates offen ist:
 
 - [ ] Der fleet-weite ArgoCD-Auto-Sync-Freeze ist aufgehoben und alle betroffenen
-      Applications stehen `Synced/Healthy`. **Stand 13.09.2026: 3 von 36 Apps offen** —
-      `infra-kite` (OutOfSync, alle 8 Ressourcen, Renovate-Bump kite v0.15.0 aus #142 nie
-      gesynct), `app-nextcloud-yealink-phonebook` (Degraded, Platzhalter-Passwort),
-      `infra-cilium` (OutOfSync, Sync startet alle Agenten neu). Genau **eine** App hat
-      heute `automated`.
+      Applications stehen `Synced/Healthy`. **Stand 13.09.2026 nachmittags: nur noch
+      `infra-cilium` offen — 35 von 36 Apps sind gruen.** Erledigt am selben Tag:
+      `infra-kite` gesynct (v0.15.0) und `app-nextcloud-yealink-phonebook` behoben.
+      Es fehlt also allein das Wartungsfenster fuer Cilium. Genau **eine** App hat
+      weiterhin `automated` — zum Unterschied zwischen „Freeze aufheben“ und „`automated`
+      einschalten“ siehe „Offene Entscheidungen“, Punkt 2.
 - [x] nginx-inc besitzt deklarativ und stabil `192.168.2.246` (12.09.2026: per
       `lbipam.cilium.io/ips` am Service gepinnt, DaemonSet 7/7).
 - [ ] Jeder produktive Traefik-Host existiert als akzeptierter Cluster-Ingress oder
@@ -613,11 +620,15 @@ Zielkette:
 
 1. Ein eigener Ingress (oder `Certificate` mit HTTP-01-Solver) fuer die drei Namen
    im Cluster, Solver auf `steinba.ch` begrenzt. Kein ausgelieferter Inhalt auf 443.
-2. Die Verteilung an mail05 zieht vom `.15`-Cron auf einen Mechanismus, der das
-   Kubernetes-Secret liest — z. B. derselbe Skriptablauf auf `cfgmgmt01` mit
-   `kubectl get secret`, oder ein CronJob im Cluster mit SSH-Key auf mail05.
+2. Die Verteilung an mail05 zieht vom `.15`-Cron auf **denselben Skriptablauf auf
+   `cfgmgmt01`, der das Kubernetes-Secret per `kubectl get secret` liest**
+   (Entscheidung 13.09.2026; die Variante „CronJob im Cluster mit SSH-Key auf mail05“ ist
+   verworfen, weil sie einen neuen Schreibzugriff auf mail05 erfordert haette).
    Das Skript `/usr/local/sbin/steinbach-cert-deploy.sh` (SNI-Map-Erzeugung,
-   Hash-Vergleich) wird dafuer uebernommen, nur die Quelle aendert sich.
+   Hash-Vergleich) wird uebernommen, nur die Quelle aendert sich. Fuer den Zugriff einen
+   eigenen ServiceAccount mit Leserecht ausschliesslich auf dieses Secret anlegen, nicht
+   das volle Kubeconfig verwenden. Den Cron auf `.15` dabei abschalten, sonst laufen zwei
+   Verteiler gegeneinander.
 3. Einmal vollstaendig durchspielen (Staging-Zertifikat an mail05 → `openssl s_client
    -starttls imap` pruefen → zurueck auf Produktion), bevor Port 80 umgestellt wird.
 
