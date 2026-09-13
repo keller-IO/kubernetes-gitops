@@ -5,6 +5,10 @@ metadata:
   namespace: roundcube
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
+    # ⚠️ ssl-redirect bleibt "false", bis die HTTP-01-Zertifikate dieses Ingress
+    # stehen. Mit "true" beantwortet nginx nach dem Cutover die ACME-Challenge auf
+    # /.well-known/acme-challenge/ mit einem 301 auf https — die Ausstellung
+    # scheitert dann dauerhaft. Siehe Runbook, "Cutover-Reihenfolge und Rollback".
     nginx.org/ssl-redirect: "false"
     nginx.org/redirect-to-https: "false"
     nginx.org/client-max-body-size: "25m"

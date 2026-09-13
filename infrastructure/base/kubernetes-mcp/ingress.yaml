@@ -5,7 +5,7 @@ metadata:
   namespace: kubernetes-mcp
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
-    nginx.org/ssl-redirect: "false"
+    nginx.org/ssl-redirect: "true"
     nginx.org/redirect-to-https: "true"
     # HTTP Basic Auth — clients send: Authorization: Basic base64(mcp:<password>)
     nginx.org/basic-auth-secret: kubernetes-mcp-basic-auth

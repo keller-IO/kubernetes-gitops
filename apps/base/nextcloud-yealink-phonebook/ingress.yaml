@@ -7,7 +7,7 @@ metadata:
     # Der Bearer-Token ist Teil des Pfads und darf nicht im zentralen Access-Log landen.
     nginx.org/location-snippets: |
       access_log off;
-    nginx.org/ssl-redirect: "false"
+    nginx.org/ssl-redirect: "true"
 spec:
   ingressClassName: nginx
   rules:

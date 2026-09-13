@@ -8,7 +8,7 @@ metadata:
   namespace: monitoring
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
-    nginx.org/ssl-redirect: "false"
+    nginx.org/ssl-redirect: "true"
     nginx.org/redirect-to-https: "true"
     nginx.org/basic-auth-secret: vmsingle-basic-auth
     nginx.org/basic-auth-realm: "VictoriaMetrics"
