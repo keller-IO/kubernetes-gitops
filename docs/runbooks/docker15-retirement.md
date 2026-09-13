@@ -1,25 +1,18 @@
 # Abschaltplan fuer docker15 (192.168.2.15)
 
-Status: Phase 1 bis 3 sind ausgerollt und abgenommen. Alle Cluster-Zertifikate werden
-von nginx-inc ausgeliefert, `redirect-to-https` ist aktiv, `.246` liefert die echte
-Client-IP (DaemonSet + `externalTrafficPolicy: Local`), der ArgoCD-Freeze ist aufgehoben
-und das Monitoring bereinigt.
+Status: **✅ WAN-Cutover vollzogen am 13.09.2026.** Die UDM leitet 80 und 443 auf
+`192.168.2.246`; `.15` ist aus dem Web-Pfad heraus. Alle 42 externen Hosts verhalten sich
+wie im Referenzlauf, `stream.horads.de` lief ohne eine einzige Unterbrechung durch, und
+die echte Client-IP kommt nachweislich an — gefaelschtes `X-Forwarded-For` wird verworfen.
 
-**Stand 13.09.2026: 11 der 13 harten Gates sind erfuellt.** Offen ist nur noch **eines**:
-die vollstaendige Anwendungs-Abnahmematrix — und davon auch nur die Haelfte, die
-Zugangsdaten braucht (Anmeldungen, Upload, WebDAV, WebSocket). Der automatisierbare Teil
-ist am 13.09. als Referenzlauf gegen `.15` gefahren und dokumentiert. Das zweite offene
-Kaestchen (CrowdSec-Enforcement) ist ausdruecklich **kein** Gate.
+**12 der 13 harten Gates sind erfuellt**; das verbleibende Kaestchen (CrowdSec-Enforcement)
+ist ausdruecklich **kein** Gate. Details und Messwerte unter „Cutover vollzogen".
 
-Die Zertifikate der vier Namen ohne cert-manager-Abdeckung sind vorgeladen, `.246` liefert
-also ab der ersten Sekunde nach dem Schwenk fuer **jeden** Host ein gueltiges Zertifikat.
-Zielbild am 11.09.2026 bestaetigt.
+Offen sind jetzt die Nacharbeiten: die vier vorgeladenen Zertifikate auf cert-manager
+umstellen (vor dem 24.10.), das steinba.ch-Mailzertifikat auf den cfgmgmt01-Cron, und
+danach `.15` beobachten und abschalten.
 
-**➡️ Was jetzt noch eine Entscheidung braucht, steht gebuendelt unter
-„Offene Entscheidungen (Stand 13.09.2026)“.** Zwei Punkte dort loesen Widersprueche im
-Plan selbst auf und verschieben, was den Cutover ueberhaupt noch blockiert.
-
-Planstand: 2026-09-13 (Gate-Nachweise; vorherige Staende 2026-09-12 mit
+Planstand: 2026-09-13 (Cutover vollzogen; vorherige Staende 2026-09-12 mit
 TLS-Rollout/redirect-to-https/Source-IP, 2026-09-11, 2026-09-01 und 2026-07-30).
 
 ## Statusrevision 11.09.2026
@@ -624,7 +617,10 @@ Kein WAN-Cutover, solange eines dieser Gates offen ist:
       innerhalb des `/24` wird XFF bewusst geglaubt (der Traefik braucht das) — nach dem
       Cutover auf `192.168.2.15/32` verengen, danach entfernen. Details unter Phase 3,
       „Abnahmekriterien“.
-- [ ] Die vollstaendige Anwendungs-Abnahmematrix ist erfolgreich.
+- [x] Die vollstaendige Anwendungs-Abnahmematrix ist erfolgreich. **Erfuellt 13.09.2026.**
+      Der automatisierbare Teil als Referenzlauf gegen `.15` und nach dem Schwenk erneut
+      gegen `.246` — **0 Abweichungen ueber alle 42 Hosts**. Die Tests mit Zugangsdaten
+      (Anmeldungen, Upload, WebDAV, Mailversand, Collabora-Dokument) hat Ingo bestaetigt.
 - [x] UDM-Rollback und Git-Rollback sind vorbereitet und widersprechen sich nicht bei
       HTTPS-Redirects. **Erfuellt (13.09.2026):** der UniFi-Konfigurationsexport als
       Rollback-Beleg liegt vor, und die beiden Pfade sind unter „Cutover-Reihenfolge und
@@ -1301,6 +1297,91 @@ Festgelegt am 13.09.2026.
 - Langsame erste Antworten durch kalte Caches
 - Abgerissene Langzeitverbindungen im Moment des NAT-Wechsels: bestehende Sessions laufen
   gegen `.15` weiter, bis sie ablaufen. Das ist erwartetes Verhalten, kein Defekt.
+
+## ✅ Cutover vollzogen am 13.09.2026
+
+Die UDM zeigt fuer 80 und 443 auf `192.168.2.246`. Ablauf und Messwerte:
+
+| Schritt | Ergebnis |
+|---|---|
+| Vorher-Schnappschuss | 36 Apps gruen, 36 Zertifikate Ready, nginx 7/7, **42 von 42 externen Hosts hatten auf `.246` bereits ein Zertifikat mit ihrem Namen im SAN** |
+| UDM-Schwenk (~10:44:50 UTC) | zwei Controller-Eintraege, Ziel `.15` → `.246` |
+| Messung, 600 Punkte ueber 25 min | **7 Abweichungen**, davon 2 durch einen eigenen Testlauf verursacht |
+| `stream.horads.de` | **0 Ausfaelle** — Prio 1 erfuellt |
+| Nextcloud | **0 Ausfaelle** |
+| `roundcube.savar.de` | **31 s**, danach von selbst zurueck |
+| Nachher-Lauf gegen die Referenz | **0 Abweichungen ueber alle 42 Hosts** |
+| `stream.horads.de` Durchsatz | **1.017.800 Bytes in 30 s** — exakt der Referenzwert |
+
+**Dass der Stream durchlief, ist das Ergebnis des Vorladens.** Ohne die drei vorgeladenen
+Zertifikate haette nginx fuer diese Namen gar keins geliefert und der TLS-Handshake waere
+abgebrochen — zum Messzeitpunkt hingen 12 Hoerer am Stream.
+
+### Echte Client-IP: unter realen Bedingungen bewiesen
+
+Von edge01 (`88.198.107.9`, echter Internet-Absender) getestet:
+
+| Test | nginx protokolliert |
+|---|---|
+| normale Anfrage | **88.198.107.9** |
+| mit gefaelschtem `X-Forwarded-For: 203.0.113.99` | **88.198.107.9** — die Faelschung wird verworfen |
+
+Damit ist Phase 3 nicht nur im Labor, sondern im Betrieb belegt.
+
+### ⚠️ Zwei Fehler, die dabei ans Licht kamen
+
+**1. HTTP-01 funktioniert fuer diese drei Ingresses noch nicht — `edit-in-place` fehlt.**
+Ein Staging-Testzertifikat fuer `stream.horads.de` scheiterte mit
+`wrong status code '404', expected '200'`. Ursache: cert-manager legt einen eigenen
+Solver-Ingress an, der denselben Host beansprucht — nginx-inc lehnt ihn mit
+`All hosts are taken by other resources` ab, und die Challenge landet beim Icecast-Backend.
+**Der Fix ist die Annotation `acme.cert-manager.io/http01-edit-in-place: "true"`**, die im
+Plan zwar erwaehnt, aber auf diesen Ingresses nie gesetzt war.
+
+**2. Der Wechsel auf cert-manager ist nicht so einfach wie gedacht — ArgoCD und
+cert-manager streiten sich um dasselbe Secret.** Traegt der Ingress die
+cert-manager-Annotation, schreibt cert-manager in genau das Secret, das der
+ksops-Generator aus Git erzeugt. Mit `selfHeal` setzt ArgoCD das binnen ~3 Minuten zurueck,
+cert-manager stellt neu aus, und so fort. Ein *neuer* Secret-Name vermeidet das, reisst
+aber zwischen Sync und Ausstellung genau die Luecke auf, die das Vorladen verhindern
+sollte.
+
+**Deshalb ist Schritt 4 bewusst verschoben.** Die vorgeladenen Zertifikate laufen bis
+**24.10. / 27.10. / 30.11.2026** — kein Zeitdruck. Und `ssl-redirect` bleibt auf den drei
+Preload-Ingresses `"false"`, blockiert die spaetere Umstellung also nicht. Sauber ist ein
+eigenes ruhiges Fenster, pro Host, mit dem `edit-in-place`-Fix.
+
+### ⚠️ Ein Fehler in der PR-Reihenfolge, korrigiert mit #173
+
+PR #169 entstand als Draft, **bevor** #170 die zertifikatslosen Namen in eigene
+Preload-Ingresses ausgelagert hat — und wurde danach nicht mehr gegen den neuen Stand
+geprueft. Dadurch standen `legacy-proxy/jitcloud` und `roundcube/roundcube-jitmail` ohne
+Not weiter auf `"false"`, obwohl sie nur noch Hosts **mit** Zertifikat trugen. Acht Hosts
+lieferten Port 80 rund 15 Minuten lang unverschluesselt und ohne Weiterleitung aus.
+Aufgefallen ist es daran, dass `roundcube.savar.de` auf HTTP schlicht mit **200** statt
+mit einer Umleitung antwortete.
+
+> **Lehre: ein vorbereiteter Draft ist kein eingefrorener Zustand.** Aendert sich zwischen
+> Vorbereitung und Merge die Struktur — und #170 hat genau das getan —, gehoert der Draft
+> erneut gegen den aktuellen Stand gerendert. Ein `kustomize build`-Vergleich haette es in
+> Sekunden gezeigt.
+
+### Endstand nach dem Cutover
+
+`ssl-redirect`: **31 Ingresses `true`, 3 `false`** (die Preload-Ingresses `horads`,
+`jitcloud-preload`, `roundcube-jitmail-preload`). Schleifentest: 1–2 Umleitungen, alle
+enden bei 200. 36 Apps gruen, 36 Zertifikate Ready, nginx 7/7 mit **0 Neustarts**.
+
+### Was jetzt noch offen ist
+
+1. **Die vier Namen auf cert-manager umstellen** (mit `edit-in-place`, eigenes Fenster,
+   vor dem 24.10.). Danach Preload-Secrets, Generatoren und die beiden Preload-Ingresses
+   entfernen — die Hosts wandern zurueck in `jitcloud` bzw. `roundcube-jitmail`.
+2. **steinba.ch-Mailzertifikat** auf den cfgmgmt01-Cron umbauen, `.15`-Cron abschalten.
+   Ablauf 04.12.2026, ab jetzt kann `.15` nicht mehr erneuern.
+3. **`.15` beobachten und abschalten** (Phasen 7 und 8).
+4. Nach dem Abschalten: `set-real-ip-from` auf `192.168.2.15/32` verengen, danach ganz
+   entfernen.
 
 ## Phase 6: UDM-Cutover
 
