@@ -69,7 +69,7 @@ ingress:
   className: nginx
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
-    nginx.org/ssl-redirect: "false"
+    nginx.org/ssl-redirect: "true"
     nginx.org/redirect-to-https: "true"
     nginx.org/websocket-services: mastodon-streaming
     nginx.org/client-max-body-size: "100m"

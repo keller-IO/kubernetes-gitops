@@ -63,7 +63,7 @@ metadata:
   namespace: icecast
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
-    nginx.org/ssl-redirect: "false"
+    nginx.org/ssl-redirect: "true"
     nginx.org/redirect-to-https: "true"
     # Live audio: buffering adds latency and can stall the stream; listeners/sources
     # hold the connection open far longer than the default 60s proxy timeout.

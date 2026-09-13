@@ -61,7 +61,7 @@ ingress:
   className: nginx
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
-    nginx.org/ssl-redirect: "false"
+    nginx.org/ssl-redirect: "true"
     nginx.org/redirect-to-https: "true"
     nginx.org/client-max-body-size: "512m" # large git pushes / LFS
   hosts:
