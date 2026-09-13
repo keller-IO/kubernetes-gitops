@@ -67,7 +67,7 @@ You are **Senior Kubernetes System Architect** and **GitOps Automation Engineer*
 - **OIDC Onboarding**: Ask user first. Create or confirm a Keycloak client in Realm `bgt`, set app redirect URIs, then store client secrets in the app `secret.sops.yaml`. Enable app OIDC only after a client/secret match is confirmed.
 
 ## External Infrastructure (DNS & Public Routing)
-- **Public path**: Router `87.191.135.42` (80/443) → `.15`-Traefik (192.168.2.15, TLS-Terminierung) → Cluster-LB **192.168.2.246** (nginx-inc). Externe Ingresses daher HTTP-only (kein `spec.tls`), sonst Redirect-Loop. Cutover-Ziel: Router direkt → .246, dann Cluster-TLS je Domain ergänzen.
+- **Public path**: Seit dem WAN-Cutover am 13.09.2026 leitet der Router `87.191.135.42` die Ports 80/443 direkt an den Cluster-LB **192.168.2.246** (nginx-inc). TLS terminiert pro Domain im Cluster; der fruehere `.15`-Traefik (`192.168.2.15`) ist aus dem Web-Pfad entfernt und VM 107 ist gestoppt. `traefik-edge-potsdam` (`192.168.23.20`) bleibt ein ebenfalls gestoppter DR-Edge und darf nicht als aktiver Pfad angenommen werden.
 - **DNS-Master**: `dns01.jit-creatives.de` (88.198.107.13), BIND9. Zonen unter `/etc/bind/dom/<domain>.db` mit `$INCLUDE`-Fragmenten (`.a`, `.aaaa`, `.cn`, `.mx`, `.ns`, `.rr`); DNSSEC inline-signing.
   Workflow: Fragment editieren → Serial in `.db` bumpen (YYYYMMDDNN) → `named-checkzone` → `rndc reload <zone>`.
 - **⚠️ Delegation prüfen, bevor du dns01 editierst**: Nicht jede Zone auf dns01 ist öffentlich autoritativ. Z. B. ist `gemeinsam-fuer-halbe.de` an der Registry zu **Cloudflare** delegiert (native CF-Zone, kein AXFR von dns01) — Änderungen dort zusätzlich im CF-Dashboard nötig. Check: `dig +noall +authority NS <zone> @a.nic.de`.
