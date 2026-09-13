@@ -769,9 +769,16 @@ nginx.org/redirect-to-https: "false"
 
 Nach erfolgreicher TLS-Abnahme, noch vor dem WAN-Cutover, wird
 `nginx.org/redirect-to-https: "true"` aktiviert (entscheidet anhand von
-`X-Forwarded-Proto`; Traefik setzt `https`, also kein Loop). `nginx.org/ssl-redirect`
-bleibt nur bis zum 443-Cutover `false` und wird aktiviert, bevor Port 80 auf `.246`
-zeigt.
+`X-Forwarded-Proto`; Traefik setzt `https`, also kein Loop).
+
+> **⚠️ KORREKTUR 13.09.2026 — hier stand die Reihenfolge falsch herum.** Der Satz lautete:
+> „`nginx.org/ssl-redirect` … wird aktiviert, **bevor** Port 80 auf `.246` zeigt.“ Das
+> erzeugt genau die Schleife, die dieser Abschnitt verhindern soll: solange `.15` davor
+> haengt, terminiert Traefik TLS und proxied **Klartext-HTTP** an `.246:80`; mit
+> `ssl-redirect: "true"` sieht nginx dort `$scheme = http`, antwortet mit 301 auf `https`,
+> der Client geht wieder ueber `.15` — endlos.
+> **Richtig ist: `ssl-redirect` wird erst AKTIVIERT, NACHDEM die UDM auf `.246` zeigt.**
+> Reihenfolge und Begruendung stehen unter „Cutover-Reihenfolge und Rollback“.
 
 **Erledigt 12.09.2026**, in zwei Schritten.
 
@@ -1060,6 +1067,99 @@ Zusaetzlich pruefen:
 - Gatus sowie nginx-, cert-manager- und Anwendungslogs.
 
 Die Hostmatrix oben wird dafuer um Testpfad, Erwartung, Owner und Sign-off ergaenzt.
+
+## Cutover-Reihenfolge und Rollback
+
+Erarbeitet am 13.09.2026, alle Aussagen am laufenden System geprueft.
+
+### Was die beiden Redirect-Annotationen wirklich tun
+
+Aus der generierten nginx-Konfiguration ausgelesen, nicht aus der Doku abgeleitet:
+
+| Annotation | erzeugte Regel | feuert wann |
+|---|---|---|
+| `nginx.org/redirect-to-https` | `if ($http_x_forwarded_proto = 'http') { return 301 https://$host$request_uri; }` | **nur** wenn der Header woertlich `http` ist |
+| `nginx.org/ssl-redirect` (Chart-Default `true`, bei uns ueberall `false`) | schema-basiert, aktuell **keine Regel im Cluster** — `$scheme` taucht in der gesamten Konfiguration ausschliesslich als `proxy_set_header X-Forwarded-Proto $scheme` auf | wenn `$scheme = http` |
+
+**Die Folge, die den ganzen Plan bestimmt:** nach dem Schwenk kommt der Verkehr direkt aus
+dem Internet und traegt **gar keinen** `X-Forwarded-Proto`. Die Bedingung
+`= 'http'` ist damit falsch — **`redirect-to-https` wird am Cutover-Tag wirkungslos.**
+Wer nur darauf baut, liefert Port 80 danach unverschluesselt und ohne Weiterleitung aus.
+Den Redirect uebernimmt ab dann `ssl-redirect` — und der darf vorher nicht an sein.
+
+Alle Ingresses hoeren uebrigens in **einem** Server-Block auf 80 und 443 gleichzeitig
+(`listen 80; listen 443 ssl;`), es gibt keinen separaten Port-80-Block.
+
+### Reihenfolge
+
+| # | Schritt | Warum genau hier |
+|---|---|---|
+| 0 | UniFi-Konfiguration exportieren | Rollback-Beleg, ist ein eigenes Gate |
+| 1 | Snapshot: Gate-Stand, `kubectl -n argocd get application`, `kubectl get certificate -A` | Vergleichsbasis fuer „war das vorher schon so?“ |
+| 2 | **UDM: die zwei Regeln fuer 80 und 443 von `192.168.2.15` auf `192.168.2.246`** | der eigentliche Schwenk |
+| 3 | Verifizieren: extern Port 80 und 443, SNI-Stichproben, echte Quell-IP im nginx-Log | |
+| 4 | Die vier HTTP-01-Zertifikate ziehen (`stream.horads.de`, `mail.steinba.ch`, `cloud.steinba.ch`, `cloud.naturkindergarten-moehringen.de`) | **muss VOR Schritt 5 passieren:** ACME braucht `/.well-known/acme-challenge/` auf Port 80 **unumgeleitet**. Mit aktivem `ssl-redirect` beantwortet nginx die Challenge mit einem 301 und die Ausstellung scheitert dauerhaft |
+| 5 | `nginx.org/ssl-redirect: "true"` fleet-weit setzen | erst jetzt — vorher Schleife (siehe Korrektur oben) |
+| 6 | `redirect-to-https: "true"` auf `legacy-proxy/horads`, `legacy-proxy/jitcloud`, `roundcube/roundcube-jitmail` nachziehen | erst wenn deren Zertifikate aus Schritt 4 stehen |
+| 7 | steinba.ch-Mailzertifikat auf den cfgmgmt01-Cron umbauen, `.15`-Cron abschalten | Frist 04.12.2026 |
+
+**Zwischen Schritt 2 und 5 wird Port 80 unverschluesselt und ohne Weiterleitung
+ausgeliefert.** Das ist bewusst so: es ist genau das Fenster, in dem ACME arbeiten kann,
+und es ist zugleich das Fenster mit dem billigsten Rollback. Kurz halten, aber nicht
+ueberspringen.
+
+### Rollback
+
+Es gibt **zwei Fenster mit unterschiedlichem Rueckweg**. Welches gilt, entscheidet allein
+die Frage: steht `ssl-redirect` schon auf `true`?
+
+**Fenster A — Schritte 2 bis 4, `ssl-redirect` noch `false`:**
+
+> **Rollback = die zwei UDM-Regeln zurueck auf `192.168.2.15`. Sonst nichts.**
+
+Eine einzige Aenderung, sofort wirksam, **ohne Git und ohne ArgoCD**. Die Cluster-Seite ist
+in diesem Fenster exakt so konfiguriert wie vor dem Cutover: `redirect-to-https` feuert
+hinter Traefik korrekt, `ssl-redirect` ist aus. **Deshalb Schritt 5 so lange wie moeglich
+hinauszoegern** — je laenger Fenster A dauert, desto billiger bleibt der Rueckweg.
+
+**Fenster B — ab Schritt 5, `ssl-redirect` steht auf `true`:**
+
+Rollback **in dieser Reihenfolge, nicht anders**:
+
+1. **Git zuerst:** Revert des `ssl-redirect`-PRs. ArgoCD hat seit 13.09.2026 `automated`
+   mit `selfHeal` — das rollt **von selbst binnen ~3 Minuten** aus, ein manueller Sync ist
+   weder noetig noch moeglich zu ueberspringen.
+2. **Warten und im Cluster nachsehen**, dass die Annotation wirklich wieder `false` ist:
+   `kubectl get ingress -A -o json | grep ssl-redirect`. Nicht auf den Merge vertrauen,
+   auf den Ist-Zustand.
+3. **Erst dann** die zwei UDM-Regeln zurueck auf `.15`.
+
+> **Die umgekehrte Reihenfolge erzeugt die Schleife.** UDM zurueck auf `.15`, waehrend
+> `ssl-redirect` noch `true` ist: Traefik terminiert TLS → proxied Klartext an `.246:80`
+> → nginx sieht `$scheme = http` → 301 auf `https` → Traefik → endlos. Alle Hosts
+> gleichzeitig tot, und der Fehler sieht aus wie ein Zertifikatsproblem.
+
+**Ein Git-Rollback allein, ohne UDM-Aenderung, ist in beiden Fenstern gefahrlos.**
+
+### Was ein Rollback NICHT zurueckholt
+
+- **Ausgestellte Zertifikate bleiben.** Harmlos, sie stoeren nicht.
+- **Die vier HTTP-01-Zertifikate aus Schritt 4 lassen sich nach dem Rollback nicht mehr
+  erneuern**, weil Port 80 wieder bei Traefik liegt. Sie halten 90 Tage — ein zweiter
+  Cutover-Versuch sollte davor stattfinden.
+- **Ist Schritt 7 schon gelaufen**, muss beim Rollback der `.15`-Cron fuer das
+  steinba.ch-Mailzertifikat wieder aktiviert werden, sonst erneuert ihn niemand.
+- **Der UniFi-Controller ueberschreibt SSH-Aenderungen.** Der Rollback muss im Controller
+  passieren, nicht per `iptables` auf der UDM.
+
+### Vorher festlegen, nicht im Ernstfall entscheiden
+
+- **Wer darf den Rollback ausloesen** und ab welchem Symptom?
+- **Wie lange wird beobachtet**, bevor Schritt 5 kommt? (Vorschlag: mindestens bis die vier
+  Zertifikate stehen und eine volle Stunde ohne Auffaelligkeit vergangen ist.)
+- **Womit wird gemessen?** Die Probe aus dem Cilium-Fenster taugt unveraendert:
+  1-s-Aufloesung auf `.246` und `.247`, dazu die Gatus-Instanzen — die sind seit dem
+  13.09. aussagekraeftig, ein roter Punkt bedeutet wieder etwas.
 
 ## Phase 6: UDM-Cutover
 
