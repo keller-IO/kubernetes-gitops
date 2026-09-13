@@ -7,8 +7,12 @@ ausgeliefert, `redirect-to-https` ist aktiv, und `.246` liefert die echte Client
 Phase 3, die Fehlerinjektion brauchen, das steinba.ch-Mailzertifikat und der
 WAN-Cutover selbst. Zielbild am 11.09.2026 bestaetigt.
 
-Planstand: 2026-09-12 (TLS-Rollout, redirect-to-https, Source-IP; vorherige Staende
-2026-09-11, 2026-09-01 und 2026-07-30).
+**➡️ Was jetzt noch eine Entscheidung braucht, steht gebuendelt unter
+„Offene Entscheidungen (Stand 13.09.2026)“.** Zwei Punkte dort loesen Widersprueche im
+Plan selbst auf und verschieben, was den Cutover ueberhaupt noch blockiert.
+
+Planstand: 2026-09-13 (offene Entscheidungen; vorherige Staende 2026-09-12 mit
+TLS-Rollout/redirect-to-https/Source-IP, 2026-09-11, 2026-09-01 und 2026-07-30).
 
 ## Statusrevision 11.09.2026
 
@@ -223,15 +227,19 @@ pruefen → die vier Zertifikate anfordern → per SAN-Pruefung abnehmen (nicht 
 8. ~~Staging zuerst~~ — erledigt 12.09.2026. Die drei Staging-Proben liefen vor den
    Produktionszertifikaten, der Catch-all-HTTP01-Solver ist auf `horads.de` und
    `steinba.ch` begrenzt.
-8a. **Naechster Schritt in dieser Kette:** `nginx.org/redirect-to-https: "true"`
-   aktivieren (siehe „Zertifikate ohne Redirect-Loop ausstellen“). Erst danach ist
-   Phase 2 wirklich abgeschlossen; `ssl-redirect` bleibt bis zum 443-Cutover `false`.
+8a. ~~`nginx.org/redirect-to-https: "true"` aktivieren~~ — erledigt 12.09.2026
+   (PRs #152 und #153). 28 Ingresses auf `"true"`, drei bewusst auf `"false"`.
+   `ssl-redirect` bleibt bis zum 443-Cutover ueberall `false`.
 
 ### Weiterhin offen und entscheidungsbeduerftig
 
-9. **Phase 3 Plattformentscheidung** (Cilium DSR/Hybrid gegen endpoint-aware L2),
-   gemeinsam mit dem anstehenden Cilium-Update auf `1.20.0`. Groesster Einzelposten,
-   Voraussetzung fuer den WAN-Cutover.
+9. ~~Phase 3 Plattformentscheidung (Cilium DSR/Hybrid gegen endpoint-aware L2),
+   gemeinsam mit dem Cilium-Update auf `1.20.0`. Groesster Einzelposten, Voraussetzung
+   fuer den WAN-Cutover.~~ — **HINFAELLIG seit 12.09.2026.** Variante A loest Phase 3
+   ohne diese Entscheidung: DaemonSet auf allen Nodes plus `externalTrafficPolicy:
+   Local`, komplett innerhalb von `infra-ingress-nginx`. Weder DSR noch ein Austausch
+   des L2-Mechanismus waren noetig. **Folge: das Cilium-1.20-Upgrade ist normale
+   Wartung und kein Cutover-Blocker mehr** — siehe „Offene Entscheidungen“.
 10. ~~`cloud.naturkindergarten-moehringen.de`: CNAME beim Provider anlegen lassen oder
     den Namen aus dem Zertifikat nehmen.~~ — **entschieden 12.09.2026: per HTTP-01
     direkt nach dem Cutover ausstellen.** Kein Provider-Kontakt noetig. Siehe
@@ -240,7 +248,101 @@ pruefen → die vier Zertifikate anfordern → per SAN-Pruefung abnehmen (nicht 
     CrowdSec-Bouncer auf der toten GitLab-LAPI und die fehlenden UCG-Forwards 80/443.
 12. Optional: **Phase 4 CrowdSec-Enforcement** im neuen Pfad.
 
-Ein WAN-Cutover-Termin wird erst nach Schritt 6 bis 9 sinnvoll gesetzt.
+~~Ein WAN-Cutover-Termin wird erst nach Schritt 6 bis 9 sinnvoll gesetzt.~~
+**Neu formuliert am 13.09.2026:** Schritt 9 ist hinfaellig, Schritt 7 und 8 sind
+erledigt. Was einen Termin heute noch blockiert, steht gebuendelt unter
+„Offene Entscheidungen“ — im Kern nur noch der ArgoCD-Freeze, der Spoof-Test und
+die Klaerung der steinba.ch-Kette.
+
+## Offene Entscheidungen (Stand 13.09.2026)
+
+Gebuendelt, was heute noch eine Entscheidung braucht. **Die Empfehlungen sind Vorschlaege,
+nicht getroffene Entscheidungen** — solange hier nichts abgehakt ist, gilt der Stand
+darueber.
+
+### 1. Widersprueche im Plan selbst
+
+**1a — Punkt 9 („Phase 3 Plattformentscheidung“) ist hinfaellig.** Bereits oben
+korrigiert. Er stand als *Voraussetzung fuer den WAN-Cutover*, obwohl Variante A Phase 3
+am 12.09. ohne ihn geloest hat.
+**Empfehlung:** so belassen und das Cilium-1.20-Upgrade als gewoehnliche Wartung planen.
+Es blockiert den Cutover nicht mehr.
+
+**1b — Das steinba.ch-Gate widerspricht der Entscheidung vom 12.09.** Das Gate verlangt,
+die Kette sei *vor* dem Cutover einmal bis mail05 durchgespielt; entschieden wurde, der
+Umbau „reicht nach dem Cutover“.
+**Empfehlung:** Gate streichen und den Punkt stattdessen als Pflichteintrag in die
+Cutover-Checkliste nehmen — **aber nur zusammen mit einer Entscheidung ueber den
+Verteilmechanismus**, denn der ist noch offen:
+
+| Variante | Vorteil | Nachteil |
+|---|---|---|
+| Cron auf `cfgmgmt01` liest das Kubernetes-Secret (`kubectl get secret`) | uebernimmt `steinbach-cert-deploy.sh` fast unveraendert, nur die Quelle aendert sich | cfgmgmt01 braucht dauerhaft Cluster-Zugriff |
+| CronJob im Cluster mit SSH-Key auf mail05 | laeuft dort, wo das Secret entsteht | neuer SSH-Key mit Schreibrecht auf mail05 |
+
+⚠️ **Die Frist bleibt unabhaengig davon scharf:** ab dem Port-80-Schwenk kann `.15` nicht
+mehr erneuern, das Zertifikat laeuft am **04.12.2026** ab. Faellt der Cutover hinter
+Anfang November, muss der Umbau im selben Fenster miterledigt sein.
+
+### 2. Gate „ArgoCD-Freeze aufheben“ — drei Teilentscheidungen
+
+| App | Lage 13.09.2026 | Empfehlung |
+|---|---|---|
+| `infra-kite` | OutOfSync, **alle 8 Ressourcen**; Renovate-Bump auf kite v0.15.0 (#142) wurde nie gesynct | syncen — internes Werkzeug, geringes Risiko, danach gruen |
+| `app-nextcloud-yealink-phonebook` | `Degraded` wegen Platzhalter-Passwort | echtes Passwort setzen **oder** die App entfernen; dauerhaft Degraded verwaessert das Gate |
+| `infra-cilium` | OutOfSync; ein Sync startet **alle** Agenten neu | eigenes Fenster, gebuendelt mit 1.20 — nach 1a **kein** Cutover-Blocker mehr |
+
+Darauf aufbauend: **`automated` fleet-weit wieder einschalten, oder manuell bleiben?**
+Heute hat genau **eine** von 36 Apps `automated`.
+**Empfehlung:** das Gate umformulieren auf „alle Apps `Synced/Healthy`, Sync darf manuell
+bleiben“. Der Freeze war eine Reaktion auf das kaputte Helm-Rendering (behoben am 24.08.);
+ihn fleet-weit aufzuheben ist eine eigene Risikoentscheidung und sollte nicht als
+Nebenwirkung des Cutovers passieren.
+
+### 3. Der Spoof-Test ist selbst ein Gate
+
+„ein Spoof-Test ist negativ“ steht woertlich in den harten Gates. Er braucht absichtliche
+Fehlerinjektion und wurde deshalb nicht ohne Freigabe gefahren. Zusammen damit gehoeren
+die beiden anderen offenen Abnahmekriterien der Phase 3 geprueft (L2-Lease-Wechsel,
+Pod-Neustart auf der announcenden Node) — es ist dieselbe Testreihe.
+**Empfehlung:** in einem ruhigen Fenster durchziehen, solange `.15` noch davorhaengt und
+ein Fehlschlag folgenlos bleibt. Ohne diesen Test ist „Phase 3 haelt“ begruendet, aber
+nicht bewiesen.
+
+### 4. Das Monitoring ist schon vor dem Cutover rot
+
+Gatus meldet **4 von 20 Endpunkten rot**, drei davon erwartet und keiner stummgeschaltet:
+
+| Endpunkt | Ursache | Entscheidung |
+|---|---|---|
+| `forgejo` (`git.jit.services`) | Deployment bewusst auf `replicas: 0` in Git | zurueckholen oder Check entfernen |
+| `nextcloud-dev` (`cloud-dev.savar.de`) | Backend `nc01-dev` `.220` nicht erreichbar (bekannt seit 11.09.) | Host bleibt laut Entscheidung — dann Check anpassen |
+| `wordpress-3` (`site3.jit.services`) | 502, Ursache ungeprueft | soll die Instanz leben? |
+| `mastodon` | kein Status (App am 11.09. entfernt) | Check entfernen |
+
+**Empfehlung: vor dem Cutover bereinigen.** Wer unter einem dauerhaft roten Monitor
+umschaltet, erkennt den echten Ausfall nicht — genau die Luecke, die den Standortausfall
+am 04.09. unbemerkt liess.
+
+### 5. Erst danach: der Termin
+
+Sinnvoll planbar, sobald 2 bis 4 stehen. Zum Fenster gehoeren auf Ingos Seite: die sieben
+veralteten UDM-Portfreigaben entfernen, der UniFi-Konfigurationsexport als Rollback-Beleg
+und der eigentliche DNAT-Schwenk 80/443 von `.15` auf `.246`.
+
+### 6. Kleineres, aber offen
+
+- Zwei ueberholte Branches auf GitHub: `feat/docker15-ingress-tls` (27 eigene Commits),
+  `feat/docker15-phase12` (6). Beide PR-los und vor #143/#144/#147/#149 — loeschen oder
+  archivieren? Ihre brauchbare Doku ist laengst auf `main`.
+- cert-manager von `--dns01-recursive-nameservers-only=1.1.1.1` wegholen (mehrere Resolver
+  oder die autoritativen NS). Ein negativer Cache dort sieht wie ein Solver-Fehler aus.
+- Nach dem Cutover `set-real-ip-from` auf `192.168.2.15/32` verengen.
+- Potsdam-DR-Edge: CrowdSec-Bouncer zeigt auf die tote GitLab-LAPI; UCG-Forwards 80/443
+  fehlen.
+- CT 8004 auf `.12`: derselbe latente IP-Konflikt wie bei CT 8020, ungeprueft.
+- Vor CNPG 1.31: Migration auf das Barman-Cloud-Plugin (in-tree Barman entfaellt dort).
+- Phase 4 CrowdSec-Enforcement — ausdruecklich **kein** Gate.
 
 ## Zielbild
 
@@ -354,8 +456,13 @@ Ausfuehrungsfreigabe ergaenzt (Phase 5).
 Kein WAN-Cutover, solange eines dieser Gates offen ist:
 
 - [ ] Der fleet-weite ArgoCD-Auto-Sync-Freeze ist aufgehoben und alle betroffenen
-      Applications stehen `Synced/Healthy`.
-- [ ] nginx-inc besitzt deklarativ und stabil `192.168.2.246`.
+      Applications stehen `Synced/Healthy`. **Stand 13.09.2026: 3 von 36 Apps offen** —
+      `infra-kite` (OutOfSync, alle 8 Ressourcen, Renovate-Bump kite v0.15.0 aus #142 nie
+      gesynct), `app-nextcloud-yealink-phonebook` (Degraded, Platzhalter-Passwort),
+      `infra-cilium` (OutOfSync, Sync startet alle Agenten neu). Genau **eine** App hat
+      heute `automated`.
+- [x] nginx-inc besitzt deklarativ und stabil `192.168.2.246` (12.09.2026: per
+      `lbipam.cilium.io/ips` am Service gepinnt, DaemonSet 7/7).
 - [ ] Jeder produktive Traefik-Host existiert als akzeptierter Cluster-Ingress oder
       ist ausdruecklich zur Abschaltung freigegeben (Hostmatrix ohne „entscheiden“).
 - [ ] Jedes SNI hat auf `.246:443` ein gueltiges, `Ready=True`-Zertifikat.
@@ -363,11 +470,18 @@ Kein WAN-Cutover, solange eines dieser Gates offen ist:
       und Solver stimmen ueberein. Der Catch-all-HTTP01-Solver ist begrenzt oder entfernt.
 - [ ] Die steinba.ch-Mailzertifikatskette laeuft ohne `.15` und wurde einmal
       vollstaendig bis mail05 durchgespielt.
+      **⚠️ WIDERSPRUCH, ungeloest:** Ingo hat am 12.09.2026 entschieden, der Umbau
+      „reicht nach dem Cutover“ (siehe „Sonderfall: steinba.ch-Mailzertifikat“). Als
+      hartes Gate formuliert verlangt dieser Punkt aber das Gegenteil. Beides zugleich
+      geht nicht — Aufloesung unter „Offene Entscheidungen“, Punkt 2.
 - [ ] Kein Ingress hat ein `Rejected`-Event.
 - [ ] Alle manuell verwalteten EndpointSlices existieren mit korrekter Adresse, Port
       und Ready-Condition.
 - [ ] Die echte externe Client-IP bleibt ohne Vertrauen in beliebige Client-XFF
       erhalten; ein Spoof-Test ist negativ.
+      **Haelfte erfuellt (12.09.2026):** die Client-IP bleibt erhalten, nachgewiesen mit
+      12 von 12 Anfragen. **Der Spoof-Test selbst steht aus** — er braucht absichtliche
+      Fehlerinjektion und wurde bewusst nicht ohne Freigabe gefahren.
 - [ ] Die vollstaendige Anwendungs-Abnahmematrix ist erfolgreich.
 - [ ] UDM-Rollback und Git-Rollback sind vorbereitet und widersprechen sich nicht bei
       HTTPS-Redirects.
