@@ -80,16 +80,13 @@ config:
       url: https://metrics.jit.services/health
       interval: 60s
       conditions: ["[STATUS] == 401", "[STATUS] < 500"] # BasicAuth erwartet
-    - name: forgejo
-      group: intern (jit.services)
-      url: https://git.jit.services/api/healthz
-      interval: 60s
-      conditions: ["[STATUS] == 200"]
-    - name: mastodon
-      group: intern (jit.services)
-      url: https://social.jit.services/health
-      interval: 60s
-      conditions: ["[STATUS] == 200"]
+    # forgejo entfernt (13.09.2026): das Deployment steht in Git bewusst auf
+    # replicas: 0, ArgoCD meldet das korrekt als Synced/Healthy. Der Check war
+    # damit dauerhaft rot, ohne dass es etwas zu tun gab. Wieder aufnehmen,
+    # sobald forgejo zurueckkommt.
+    # mastodon entfernt (13.09.2026): die App wurde am 11.09. aus dem Cluster
+    # entfernt, social.jit.services existiert nicht mehr. Die oeffentliche
+    # Instanz prueft weiterhin jit.social — die laeuft und bleibt drin.
     - name: eurooffice
       group: intern (jit.services)
       url: https://eurooffice.jit.services/healthcheck
@@ -100,11 +97,10 @@ config:
       url: https://radio.jit.services/status.xsl
       interval: 60s
       conditions: ["[STATUS] == 200"]
-    - name: wordpress-3
-      group: intern (jit.services)
-      url: https://site3.jit.services
-      interval: 60s
-      conditions: ["[STATUS] == 200"]
+    # wordpress-3 entfernt (13.09.2026): seit 27.07.2026 bewusst auf replicas: 0,
+    # weil das Deployment einen ServiceAccount "wordpress" verlangt, den es im
+    # Namespace nie gab. Reaktivieren heisst: den replicas-Patch im Overlay
+    # entfernen UND den ServiceAccount anlegen — dann auch diesen Check zurueck.
     - name: kite
       group: intern (jit.services)
       url: https://kite.jit.services/healthz
@@ -125,11 +121,11 @@ config:
       url: https://lists.jitmail.de/postorius/lists/
       interval: 60s
       conditions: ["[STATUS] == 200"]
-    - name: nextcloud-dev
-      group: extern (via Legacy-Traefik)
-      url: https://cloud-dev.savar.de/status.php
-      interval: 60s
-      conditions: ["[STATUS] == 200", "[BODY].installed == true", "[BODY].maintenance == false"]
+    # nextcloud-dev entfernt (13.09.2026): das Backend nc01-dev (192.168.2.220)
+    # antwortet seit mindestens dem 11.09. nicht mehr. Der Host cloud-dev.savar.de
+    # bleibt laut Entscheidung vom 11.09. bestehen und hat ein gueltiges
+    # Zertifikat — nur das Backend dahinter laeuft nicht. Check zurueckholen,
+    # sobald .220 wieder da ist.
     - name: jugendbeauftragter-halbe
       group: extern (via Legacy-Traefik)
       url: https://jugendbeauftragter-halbe.de

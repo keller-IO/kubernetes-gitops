@@ -41,19 +41,10 @@ config:
         hide-hostname: true
         hide-conditions: true
         hide-errors: true
-    - name: Nextcloud Dev
-      group: Cloud
-      url: https://cloud-dev.savar.de/status.php
-      interval: 60s
-      conditions:
-        - "[STATUS] == 200"
-        - "[BODY].installed == true"
-        - "[BODY].maintenance == false"
-      ui:
-        hide-url: true
-        hide-hostname: true
-        hide-conditions: true
-        hide-errors: true
+    # "Nextcloud Dev" entfernt (13.09.2026): Backend nc01-dev (192.168.2.220)
+    # antwortet seit mindestens dem 11.09. nicht. Der Host bleibt bestehen, nur
+    # der Dienst dahinter laeuft nicht — ein dauerhaft roter Punkt auf der
+    # oeffentlichen Statusseite ohne Handlungsbedarf. Zurueckholen, wenn .220 lebt.
     - name: Nextcloud Office
       group: Office
       url: https://office.savar.de/hosting/discovery
