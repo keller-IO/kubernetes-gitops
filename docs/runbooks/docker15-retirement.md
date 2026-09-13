@@ -219,9 +219,12 @@ pruefen → die vier Zertifikate anfordern → per SAN-Pruefung abnehmen (nicht 
    | `infra-cilium` | nur Checksummen-Annotation; `cilium-config` unterscheidet sich in 3 leeren Schluesseln (`debug-verbose`, `nodeport-addresses`, `policy-cidr-match-mode`) | **rollender Neustart aller Cilium-Agenten** ohne funktionale Aenderung | Wartungsfenster, mit Cilium 1.20 und Phase 3 zusammenlegen |
    | `infra-cnpg` | Operator 1.25.0 → 1.30.0 | Neustart aller 6 Cluster | **erledigt 11.09. abends** (PRs #145 + Ergebnis-PR): Upgrade gefahren, ~1 min Ausfall je Cluster, `Synced/Healthy`. Backups davor und danach `completed`; `crowdsec-pg`/`expense-pg` haben weiterhin keine Sicherung ausser logischen Dumps |
 
-   Stand 12.09.2026: offen sind nur noch `infra-cilium` (Wartungsfenster) und
-   `app-nextcloud-yealink-phonebook` (Degraded, Platzhalter-Passwort). Das fleet-weite
-   `automated` erst danach aktivieren.
+   **Stand 13.09.2026: alle sechs Apps dieser Tabelle sind erledigt, und mit ihnen der
+   gesamte Bestand — 36 von 36 stehen `Synced/Healthy`.** `infra-cilium` wurde im
+   Wartungsfenster gesynct, `app-nextcloud-yealink-phonebook` mit PR #160 behoben (die
+   Ursache war ein von Nextcloud mit 401 abgelehntes App-Passwort, kein Platzhalter).
+   Das fleet-weite `automated` ist bewusst weiterhin NICHT aktiviert — das ist eine eigene
+   Risikoentscheidung, siehe „Offene Entscheidungen“, Punkt 2.
 7. ~~PRs #79/#80 nach #143 neu aufsetzen~~ — erledigt 12.09.2026 durch **PR #149**;
    beide Alt-PRs geschlossen, Cloudflare-Solver und `cloudflare-api-key` sind raus.
 8. ~~Staging zuerst~~ — erledigt 12.09.2026. Die drei Staging-Proben liefen vor den
@@ -294,7 +297,7 @@ Anfang November, muss der Umbau im selben Fenster miterledigt sein.
 |---|---|---|
 | `infra-kite` | OutOfSync, **alle 8 Ressourcen**; Renovate-Bump auf kite v0.15.0 (#142) wurde nie gesynct | syncen — internes Werkzeug, geringes Risiko, danach gruen |
 | `app-nextcloud-yealink-phonebook` | `Degraded` wegen Platzhalter-Passwort | echtes Passwort setzen **oder** die App entfernen; dauerhaft Degraded verwaessert das Gate |
-| `infra-cilium` | OutOfSync; ein Sync startet **alle** Agenten neu | eigenes Fenster, gebuendelt mit 1.20 — nach 1a **kein** Cutover-Blocker mehr |
+| ~~`infra-cilium`~~ | **✅ erledigt 13.09.2026.** Der befuerchtete Preis blieb aus: 1 s Aussetzer auf `.246`, keiner auf `.247` | — |
 
 Darauf aufbauend: **`automated` fleet-weit wieder einschalten, oder manuell bleiben?**
 Heute hat genau **eine** von 36 Apps `automated`.
@@ -303,15 +306,15 @@ bleiben“. Der Freeze war eine Reaktion auf das kaputte Helm-Rendering (behoben
 ihn fleet-weit aufzuheben ist eine eigene Risikoentscheidung und sollte nicht als
 Nebenwirkung des Cutovers passieren.
 
-**Ingos Frage vom 13.09.2026: „Wann kann man das Freeze-Gate aufheben?“ — Antwort: an
-einem Abend. Zwei der drei Punkte sind noch am selben Tag erledigt worden; es fehlt
-allein das Cilium-Fenster.** Aufgeschluesselt nach dem, was jeweils wirklich fehlt:
+**Ingos Frage vom 13.09.2026: „Wann kann man das Freeze-Gate aufheben?“ — Antwort war:
+an einem Abend. Tatsaechlich wurden alle drei Punkte am selben Tag erledigt.**
+Aufgeschluesselt, was jeweils gefehlt hatte:
 
 | App | Was fehlt | Aufwand | Wer |
 |---|---|---|---|
 | ~~`infra-kite`~~ | **✅ erledigt 13.09.2026.** Auf Chart `0.15.0` gesynct. Dabei fiel auf, dass der Pod zweimal neu startete: bis „Kite server started on port 8080“ vergehen je nach Lauf 3 bis ueber 40 s, waehrend die Liveness nur 40 s toleriert. Mit **PR #161** per Kustomize-Patch ein `startupProbe` (30 × 5 s) nachgeruestet — das Chart kennt den Schluessel in `values.yaml` nicht. Danach `1/1` nach 10 s mit **0 Neustarts** | — | — |
 | ~~`app-nextcloud-yealink-phonebook`~~ | **✅ erledigt 13.09.2026.** Ursache war nicht ein Platzhalter, sondern ein von Nextcloud mit **401** abgelehntes App-Passwort; `/healthz` lieferte deshalb dauerhaft 503. Behoben mit **PR #160** (neues App-Passwort). Da die App nur alle `REFRESH_INTERVAL=900` s neu authentifiziert, wurde der Pod erst rund 15 min nach dem Sync ready — `refreshed phonebook with 17 contacts`, danach `Synced/Healthy` | — | — |
-| `infra-cilium` | Sync. Es weichen nur **zwei** Ressourcen ab (`ConfigMap/cilium-config`, `DaemonSet/cilium`); funktional aendert sich nichts, der Preis ist ein rollender Neustart aller Cilium-Agenten | kurzes Fenster | **das Einzige, was noch fehlt** |
+| ~~`infra-cilium`~~ | **✅ erledigt 13.09.2026 im Wartungsfenster.** Gemessen mit 1-s-Aufloesung: **1 Timeout von 73** Messpunkten auf `.246`, **0** auf `.247` (LMTP). Alle 7 Agenten ersetzt, je 0 Neustarts, danach 151 Pods clusterweit ohne einen einzigen nicht bereiten | — | — |
 
 **⚠️ Neu seit dem 12.09. und beim Cilium-Sync zu beachten:** `.246` laeuft jetzt ueber
 L2-Announcements mit `externalTrafficPolicy: Local`. Startet der Cilium-Agent auf der
@@ -332,6 +335,36 @@ Node-Neustart“. Gemessen sind ~2 s, also nicht null. **Empfehlung:** Gate als 
 betrachten und stattdessen die operative Regel verbindlich machen — mit ihr sind es null.
 Wer strikt null ohne Verfahrensdisziplin will, braucht endpoint-aware Announcement (BGP)
 statt L2.
+
+### 3b. Das Cilium-Fenster (13.09.2026) — was es wirklich gekostet hat
+
+Gefahren mit durchgehender Messung auf beiden LoadBalancer-IPs, 1-s-Aufloesung:
+
+| Messung | Ergebnis |
+|---|---|
+| `.246` (HTTP, `externalTrafficPolicy: Local`) | **1 Timeout von 73** Messpunkten |
+| `.247` (Mailman-LMTP, TCP) | **0** Ausfaelle |
+| L2-Lease | **wanderte gar nicht**, durchgehend `kellerio-wrk2` |
+| Cilium-Agenten | alle 7 ersetzt, je **0** Neustarts |
+| danach | 151 Pods clusterweit, **kein einziger nicht bereit**; 36/36 Zertifikate `Ready`; alle Apps gruen |
+
+**Zwei Dinge, die vorher unklar waren und jetzt Zahlen haben:**
+- Der DaemonSet faehrt mit `maxUnavailable: 2`, nimmt also **zwei** Agenten gleichzeitig
+  herunter. Bei 7 Nodes sind das rund vier Wellen.
+- Die L2-Lease-Dauer betraegt **15 s**. Der befuerchtete Worst Case waere also ein
+  15-s-Loch gewesen, wenn der Agent auf der announcenden Node stirbt und der Lease
+  auslaeuft. Eingetreten ist er nicht: der Lease blieb die ganze Zeit bei `wrk2`, der
+  Aussetzer betrug **eine Sekunde**. Der Agent war schneller zurueck, als der Lease
+  ablief.
+
+**Konsequenz fuer den WAN-Cutover:** ein Cilium-Sync kostet nach heutiger Messung rund
+eine Sekunde auf dem Ingress-Pfad. Das ist planbar und braucht kein Sonderfenster mehr —
+die Betriebsregel aus Phase 3 (erst Lease wegschieben, dann Node anfassen) bleibt fuer
+gezielte Eingriffe an einzelnen Nodes trotzdem die bessere Reihenfolge.
+
+**Nebenbefund:** vor dem Rollout trug ein Agent (`cilium-mmq5m`) **280 Neustarts** in
+46 Tagen. Alle neuen Pods stehen bei 0. Ob das Muster wiederkehrt, ist zu beobachten —
+die Ursache wurde nicht untersucht.
 
 ### 4. Das Monitoring ist schon vor dem Cutover rot
 
@@ -479,13 +512,15 @@ Ausfuehrungsfreigabe ergaenzt (Phase 5).
 
 Kein WAN-Cutover, solange eines dieser Gates offen ist:
 
-- [ ] Der fleet-weite ArgoCD-Auto-Sync-Freeze ist aufgehoben und alle betroffenen
-      Applications stehen `Synced/Healthy`. **Stand 13.09.2026 nachmittags: nur noch
-      `infra-cilium` offen — 35 von 36 Apps sind gruen.** Erledigt am selben Tag:
-      `infra-kite` gesynct (v0.15.0) und `app-nextcloud-yealink-phonebook` behoben.
-      Es fehlt also allein das Wartungsfenster fuer Cilium. Genau **eine** App hat
-      weiterhin `automated` — zum Unterschied zwischen „Freeze aufheben“ und „`automated`
-      einschalten“ siehe „Offene Entscheidungen“, Punkt 2.
+- [~] Der fleet-weite ArgoCD-Auto-Sync-Freeze ist aufgehoben und alle betroffenen
+      Applications stehen `Synced/Healthy`.
+      **Zweite Haelfte erfuellt am 13.09.2026: ALLE 36 Apps stehen `Synced/Healthy`.**
+      An diesem Tag erledigt: `infra-kite` gesynct (v0.15.0, plus `startupProbe` in #161),
+      `app-nextcloud-yealink-phonebook` behoben (#160) und `infra-cilium` im Wartungsfenster
+      gesynct. **Offen ist nur noch die erste Haelfte — und die ist eine reine
+      Richtlinienfrage:** genau **eine** App hat `automated`. „Freeze aufheben“ und
+      „`automated` fleet-weit einschalten“ sind nicht dasselbe; siehe „Offene
+      Entscheidungen“, Punkt 2.
 - [x] nginx-inc besitzt deklarativ und stabil `192.168.2.246` (12.09.2026: per
       `lbipam.cilium.io/ips` am Service gepinnt, DaemonSet 7/7).
 - [ ] Jeder produktive Traefik-Host existiert als akzeptierter Cluster-Ingress oder
