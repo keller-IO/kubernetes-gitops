@@ -8,9 +8,10 @@ die echte Client-IP kommt nachweislich an — gefaelschtes `X-Forwarded-For` wir
 **12 der 13 harten Gates sind erfuellt**; das verbleibende Kaestchen (CrowdSec-Enforcement)
 ist ausdruecklich **kein** Gate. Details und Messwerte unter „Cutover vollzogen".
 
-Offen sind jetzt die Nacharbeiten: die vier vorgeladenen Zertifikate auf cert-manager
-umstellen (vor dem 24.10.), das steinba.ch-Mailzertifikat auf den cfgmgmt01-Cron, und
-danach `.15` beobachten und abschalten.
+Offen sind jetzt noch: die vier vorgeladenen Zertifikate auf cert-manager
+umstellen (vor dem 24.10.) und `.15` beobachten und abschalten. Das
+steinba.ch-Mailzertifikat ist **seit dem 13.09.2026 erledigt** — es wird jetzt
+im Cluster ausgestellt und von cfgmgmt01 nach mail05 ausgerollt.
 
 Planstand: 2026-09-13 (Cutover vollzogen; vorherige Staende 2026-09-12 mit
 TLS-Rollout/redirect-to-https/Source-IP, 2026-09-11, 2026-09-01 und 2026-07-30).
@@ -1112,7 +1113,76 @@ ausgeliefert.** Das ist bewusst so: es ist genau das Fenster, in dem ACME arbeit
 und es ist zugleich das Fenster mit dem billigsten Rollback. Kurz halten, aber nicht
 ueberspringen.
 
-### Rollback
+### ✅ steinba.ch-Zertifikatskette umgezogen — 13.09.2026
+
+**Die letzte funktionale Abhaengigkeit von `.15` ist aufgeloest.**
+
+Die Zone `steinba.ch` liegt bei hosttech und ist fuer uns nicht aenderbar —
+DNS-01 faellt aus, es geht **nur HTTP-01**, und das konnte nur, wer den WAN-Port
+80 hat. Bis zum Cutover war das der Traefik auf `.15`; seither zeigt Port 80 auf
+`192.168.2.246`. **`.15` konnte damit nicht mehr erneuern** und waere ab etwa
+**04.11.2026** still ins Leere gelaufen — Ablauf der drei Namen am 04.12.
+
+### Vorgehen
+
+1. **Staging zuerst** (PR #175): ein Staging-Zertifikat wies nach, dass HTTP-01
+   fuer die drei Namen durch den Cluster kommt — **ausgestellt in 41 Sekunden**.
+   Damit war der ganze Weg belegt, ohne Produktions-Rate-Limits zu verbrauchen:
+   oeffentliches DNS (CNAME auf `mail.jitcreatives.de` → `87.191.135.42`) →
+   UDM-DNAT auf `.246` → nginx → HTTP-01-Solver (`dnsZones: [horads.de,
+   steinba.ch]`, war bereits vorhanden).
+2. **Produktivzertifikat** (PR #176): `Certificate steinbach-mail` im Namespace
+   `cert-manager`, Issuer `CN=YR1`, gueltig bis **12.12.2026**.
+3. **Zugang fuer cfgmgmt01**: ServiceAccount `steinbach-cert-reader` mit
+   **ausschliesslich `get` auf genau dieses eine Secret** — kein `list`, kein
+   `watch`, kein anderer Namespace. Nachgeprueft per `kubectl auth can-i`:
+   `get secret/steinbach-mail-tls` → yes, `list secret` → no, fremdes Secret → no.
+   Langlebiger Token als explizites Secret, weil ServiceAccounts seit Kubernetes
+   1.24 keinen mehr von sich aus anlegen.
+4. **Auslieferung**: Rolle `jit.steinbach_cert` auf cfgmgmt01, Playbook
+   `playbooks/steinbach_cert.yml`, taeglich 04:47. Liest das Secret per `curl`
+   ueber die API (`kubectl` ist dort nicht installiert und wird auch nicht
+   gebraucht) und rollt nach mail05 aus — dieselben Dateien und derselbe Reload
+   wie zuvor.
+5. **Erst danach** den Cron auf `.15` abgeschaltet.
+
+### Verifiziert
+
+Alle vier Dienste liefern das neue Zertifikat: **993 (IMAP), 995 (POP3),
+465 (SMTPS), 587 (STARTTLS)**, jeweils `notAfter=Dec 12 15:40:02 2026`. Das
+Hauptzertifikat `mail.jit-creatives.de` ist unberuehrt. Der zweite Lauf meldet
+`unveraendert` — der Cron startet also nicht taeglich ohne Grund Dienste neu.
+Die Rolle ist idempotent (`changed=0` im zweiten Lauf). Der Stand von vorher
+liegt als Sicherung unter `/root/steinbach-cert-backup-20260913` auf mail05.
+
+### Zwei Sicherungen, die die alte Fassung nicht hatte
+
+Das Skript **weigert sich, ein Staging-Zertifikat auszurollen**, und prueft, dass
+**Schluessel und Zertifikat zusammengehoeren** (Vergleich der oeffentlichen
+Schluessel). Beides wuerde sonst still TLS auf dem Mailserver brechen.
+
+### Wichtig beim Nachbauen
+
+- In der `sni_map` ist der **WERT das base64-kodierte Schluesselmaterial, kein
+  Pfad** — ein Pfad quittiert Postfix mit `malformed BASE64 value` und faellt
+  still aufs Standardzertifikat zurueck.
+- `combined.pem` ist **privkey vor fullchain**. Postfix will fuer SNI eine Datei
+  mit beidem, Dovecot dagegen beides getrennt — deshalb wird beides ausgeliefert.
+- **Token und CA stehen bewusst nicht im Repo**, der Token ist eine
+  Cluster-Berechtigung. Die Rolle prueft nur ihr Vorhandensein und nennt im
+  `fail_msg`, wie man sie holt.
+
+### ⚠️ Eigener Fehler beim Abschalten
+
+Beim Deaktivieren des alten Cron ist mein `sed` am Trennzeichen gescheitert
+(`#` war zugleich Delimiter und Inhalt) — und die kaputte Ausgabe ging trotzdem
+in `crontab -`, wodurch die crontab auf `.15` kurz leer war. Dort stand nur
+dieser eine Job, es ging nichts anderes verloren, und der Zustand wurde
+bewusst dokumentiert wiederhergestellt. **Merkregel: neue crontab erst in eine
+Datei schreiben, pruefen, dann `crontab <datei>` — niemals eine Pipeline
+ungeprueft in `crontab -` laufen lassen.**
+
+## Rollback
 
 Es gibt **zwei Fenster mit unterschiedlichem Rueckweg**. Welches gilt, entscheidet allein
 die Frage: steht `ssl-redirect` schon auf `true`?
@@ -1497,7 +1567,8 @@ Die Mailman-Alt-Datenbank bleibt bis zum Ende der Mailman-Rollback-Frist erhalte
 
 1. Direkten `.246`-Betrieb mindestens sieben Tage beobachten.
 2. Traefik auf `.15` stoppen; VM bleibt eingeschaltet.
-3. steinba.ch-Cron auf `.15` deaktivieren (Zielkette muss bereits geliefert haben).
+3. ~~steinba.ch-Cron auf `.15` deaktivieren~~ — **erledigt 13.09.2026**, siehe
+   „steinba.ch-Zertifikatskette umgezogen" weiter unten.
 4. Postfix, nc05-Bouncer und Legacy-Datenbanken stoppen.
 5. Weitere 72 Stunden beobachten.
 6. VM-Snapshot sowie externe Konfigurations- und Datenbackups erstellen.
