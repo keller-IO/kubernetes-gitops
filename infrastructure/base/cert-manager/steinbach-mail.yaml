@@ -1,0 +1,85 @@
+# Zertifikat fuer die steinba.ch-Mailnamen, ausgestellt im Cluster.
+#
+# Warum hier und nicht mehr auf 192.168.2.15: die Zone steinba.ch liegt bei
+# hosttech und ist fuer uns nicht aenderbar - DNS-01 faellt aus, es geht NUR
+# HTTP-01. Bisher konnte ausschliesslich der Traefik auf .15 validieren, weil
+# dorthin der WAN-Port 80 zeigte. Seit dem Cutover am 13.09.2026 landet Port 80
+# auf 192.168.2.246, also im Cluster. Der Cron auf .15 laeuft zwar noch, kann
+# aber nicht mehr erneuern.
+#
+# Der Weg ist mit einem Staging-Zertifikat belegt (PR #175, ausgestellt in 41 s):
+# oeffentliches DNS (CNAME -> mail.jitcreatives.de -> 87.191.135.42) ->
+# UDM-DNAT auf .246 -> nginx -> HTTP-01-Solver (Selector dnsZones: steinba.ch).
+#
+# Das Secret wird von cfgmgmt01 gelesen und nach mail05 (192.168.2.34)
+# ausgerollt; siehe ServiceAccount weiter unten und
+# /usr/local/sbin/steinbach-cert-deploy.sh dort.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: steinbach-mail
+  namespace: cert-manager
+spec:
+  secretName: steinbach-mail-tls
+  dnsNames:
+    - imap.steinba.ch
+    - pop.steinba.ch
+    - smtp.steinba.ch
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+---
+# Lesezugang fuer cfgmgmt01 (192.168.23.19). Bewusst so eng wie moeglich:
+# nur "get" auf GENAU dieses eine Secret, kein list, kein watch, kein Zugriff
+# auf andere Namespaces. Damit kann der Token nichts weiter als das
+# Mailzertifikat lesen.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: steinbach-cert-reader
+  namespace: cert-manager
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: steinbach-cert-reader
+  namespace: cert-manager
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["steinbach-mail-tls"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: steinbach-cert-reader
+  namespace: cert-manager
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: steinbach-cert-reader
+subjects:
+  - kind: ServiceAccount
+    name: steinbach-cert-reader
+    namespace: cert-manager
+---
+# Langlebiger Token. Seit Kubernetes 1.24 legt der ServiceAccount von sich aus
+# keinen mehr an; fuer einen Verbraucher ausserhalb des Clusters ist ein
+# explizites Token-Secret der vorgesehene Weg. Das Feld data.token wird vom
+# TokenController befuellt, steht also NICHT in Git.
+#
+# Das ist NICHT der Konflikt, der beim Cutover aufgetreten ist. Dort schrieb
+# cert-manager in ein Secret, dessen data der ksops-Generator aus Git erzeugt -
+# selfHeal setzte es zurueck, cert-manager stellte neu aus, und das im Kreis.
+# Hier gibt Git ueberhaupt kein data vor. ArgoCD wendet per Drei-Wege-Merge an,
+# und Felder, die ein anderer Controller ergaenzt und die nie in der
+# last-applied-Annotation standen, bleiben dabei unangetastet.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: steinbach-cert-reader-token
+  namespace: cert-manager
+  annotations:
+    kubernetes.io/service-account.name: steinbach-cert-reader
+type: kubernetes.io/service-account-token
