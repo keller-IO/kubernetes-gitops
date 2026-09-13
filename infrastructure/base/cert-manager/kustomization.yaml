@@ -7,6 +7,7 @@ kind: Kustomization
 # bekommen den App-Destination-Namespace von ArgoCD.
 resources:
   - ./dns01-staging-probes.yaml
+  - ./steinbach-mail-staging.yaml
 helmCharts:
   - name: cert-manager
     repo: https://charts.jetstack.io
