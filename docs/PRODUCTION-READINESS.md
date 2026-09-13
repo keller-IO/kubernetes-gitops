@@ -111,12 +111,11 @@ alle `**/ingress.yaml` & Chart-`values.yaml` (`hosts:`), `apps/overlays/main/clu
       bekommt externe IP.
 - [ ] DNS-Records (A/AAAA bzw. CNAME) für alle Hosts aus `cluster-config.yaml` auf die LB-IP.
 - [ ] Wildcard-DNS `*.DEINE-DOMAIN.tld` optional für weniger Pflege.
-- [ ] Direkten WAN-Cutover auf `192.168.2.246` und Abschaltung von
-      `192.168.2.15` nach `docs/runbooks/docker15-retirement.md` vorbereiten.
-      Harte Gates sind vollständiges Cluster-TLS via DNS-01, erhaltene und
-      spoof-resistente Client-IP, CrowdSec-Enforcement sowie die Ablösung von
-      Postfix und Legacy-Datenbanken auf `.15`. `192.168.23.20` bleibt reiner
-      DR-Edge für ein mögliches Routing über Potsdam.
+- [x] Direkter WAN-Cutover auf `192.168.2.246` am 13.09.2026 vollzogen;
+      `192.168.2.15` ist aus dem Web-Pfad entfernt und VM 107 gestoppt. Details
+      und Abnahmemessungen stehen in `docs/runbooks/docker15-retirement.md`.
+      `192.168.23.20` bleibt ein gestoppter DR-Edge fuer ein moegliches Routing
+      ueber Potsdam.
 
 **Beispiel** — Cilium LB-IPAM-Pool:
 ```yaml

@@ -1,11 +1,11 @@
-# Reverse-Proxy-Routen fuer den docker15-Cutover. Cluster-TLS wird VOR dem
-# Routerwechsel ausgestellt (DNS-01), die HTTPS-Redirects bleiben bis dahin aus —
-# sonst loopt der vorgeschaltete .15-Traefik.
+# Reverse-Proxy-Routen nach dem docker15-Cutover. Seit dem 13.09.2026 gehen die
+# WAN-Ports 80/443 direkt auf den Cluster-LB; TLS terminiert im Cluster.
 #
-# Bewusst OHNE Issuer: stream.horads.de (HTTP-01, loest erst wenn WAN:80 auf .246
-# zeigt). Ebenso fehlt cloud.naturkindergarten-moehringen.de im jitcloud-Zertifikat,
-# solange der _acme-challenge-CNAME beim Provider fehlt — ein scheiternder Name
-# reisst sonst die gesamte Anforderung mit.
+# Bewusst noch OHNE Issuer: stream.horads.de verwendet bis zur separaten
+# HTTP-01-Migration das vorgeladene Zertifikat. Ebenso fehlt
+# cloud.naturkindergarten-moehringen.de im jitcloud-Zertifikat, solange der
+# _acme-challenge-CNAME beim Provider fehlt — ein scheiternder Name reisst sonst
+# die gesamte Anforderung mit.
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -72,7 +72,7 @@ metadata:
   namespace: legacy-proxy
   annotations:
     # ⚠️ ssl-redirect bleibt "false", bis die HTTP-01-Zertifikate dieses Ingress
-    # stehen. Mit "true" beantwortet nginx nach dem Cutover die ACME-Challenge auf
+    # stehen. Mit "true" beantwortet nginx die ACME-Challenge auf
     # /.well-known/acme-challenge/ mit einem 301 auf https — die Ausstellung
     # scheitert dann dauerhaft. Siehe Runbook, "Cutover-Reihenfolge und Rollback".
     nginx.org/ssl-redirect: "false"
@@ -85,11 +85,10 @@ metadata:
     nginx.org/proxy-send-timeout: "3600s"
 spec:
   ingressClassName: nginx
-  # ⚠️ TEMPORAER: vorgeladenes Zertifikat aus dem Traefik-ACME-Store, damit der
-  # Stream im Moment des UDM-Schwenks nicht abreisst. BEWUSST ohne
-  # cert-manager-Annotation — sonst scheitern HTTP-01-Challenges schon vor dem
-  # Cutover, weil Traefik auf .15 Port 80 abfaengt. Nach dem Cutover:
-  # Annotation ergaenzen, cert-manager uebernimmt, dann Secret entfernen.
+  # ⚠️ TEMPORAER: vorgeladenes Zertifikat aus dem frueheren Traefik-ACME-Store.
+  # Fuer die ausstehende Migration zunaechst die cert-manager-Annotation mit
+  # deaktiviertem Redirect ergaenzen; nach erfolgreicher Ausstellung das
+  # Preload-Secret entfernen und den Redirect aktivieren.
   tls:
     - hosts:
         - stream.horads.de
@@ -232,7 +231,7 @@ metadata:
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
     # ⚠️ ssl-redirect bleibt "false", bis die HTTP-01-Zertifikate dieses Ingress
-    # stehen. Mit "true" beantwortet nginx nach dem Cutover die ACME-Challenge auf
+    # stehen. Mit "true" beantwortet nginx die ACME-Challenge auf
     # /.well-known/acme-challenge/ mit einem 301 auf https — die Ausstellung
     # scheitert dann dauerhaft. Siehe Runbook, "Cutover-Reihenfolge und Rollback".
     # Seit PR #170 traegt dieser Ingress nur noch Hosts MIT Zertifikat
@@ -265,8 +264,8 @@ spec:
       http:
         paths: [{ path: /, pathType: Prefix, backend: { service: { name: jitcloud, port: { number: 443 } } } }]
 ---
-# cloud-dev.savar.de bleibt auf den Dev-VMs. TLS terminiert am vorgeschalteten
-# Traefik; dieser Ingress uebernimmt den kompletten Reverse-Proxy-Pfad im Cluster.
+# cloud-dev.savar.de bleibt auf den Dev-VMs. TLS terminiert direkt an diesem
+# Ingress; der Hauptpfad wird per HTTPS zum Nextcloud-Backend re-encryptet.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -331,15 +330,13 @@ spec:
             pathType: Prefix
             backend: { service: { name: cloud-dev-talk-hpb, port: { number: 80 } } }
 ---
-# ⚠️ TEMPORAER bis nach dem docker15-Cutover.
+# ⚠️ TEMPORAER auch nach dem docker15-Cutover.
 # Diese beiden Namen gehoeren inhaltlich zum jitcloud-Ingress, brauchen aber ein
 # eigenes Objekt: jitcloud traegt die cert-manager-Annotation, und sobald sie
 # dort in einem tls-Block stuenden, wuerde cert-manager fuer sie sofort
-# HTTP-01-Challenges starten — die vor dem Cutover zwangslaeufig scheitern, weil
-# Traefik auf .15 Port 80 abfaengt. Deshalb hier OHNE Annotation, mit dem
-# vorgeladenen Zertifikat.
-# NACH dem Cutover: beide Hosts zurueck in den jitcloud-Ingress (rules UND tls),
-# dieses Objekt samt Secret und Generator-Eintrag loeschen.
+# Challenges starten. Die noch offenen Voraussetzungen stehen im Runbook.
+# Danach beide Hosts zurueck in den jitcloud-Ingress (rules UND tls) verschieben
+# und dieses Objekt samt Secret und Generator-Eintrag loeschen.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
