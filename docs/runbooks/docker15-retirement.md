@@ -268,12 +268,11 @@ am 12.09. ohne ihn geloest hat.
 **Empfehlung:** so belassen und das Cilium-1.20-Upgrade als gewoehnliche Wartung planen.
 Es blockiert den Cutover nicht mehr.
 
-**1b — Das steinba.ch-Gate widerspricht der Entscheidung vom 12.09.** Das Gate verlangt,
-die Kette sei *vor* dem Cutover einmal bis mail05 durchgespielt; entschieden wurde, der
-Umbau „reicht nach dem Cutover“.
-**Empfehlung:** Gate streichen und den Punkt stattdessen als Pflichteintrag in die
-Cutover-Checkliste nehmen — **aber nur zusammen mit einer Entscheidung ueber den
-Verteilmechanismus**, denn der ist noch offen:
+**1b — ✅ ENTSCHIEDEN am 13.09.2026: „ja nach dem Cutover“.** Das Gate ist gestrichen,
+der Punkt ist Pflichteintrag der Cutover-Checkliste. **Weiterhin offen ist allein der
+Verteilmechanismus** — meine Empfehlung ist der Cron auf `cfgmgmt01`, weil er
+`steinbach-cert-deploy.sh` fast unveraendert weiterverwendet und kein neuer SSH-Key mit
+Schreibrecht auf mail05 entsteht:
 
 | Variante | Vorteil | Nachteil |
 |---|---|---|
@@ -299,15 +298,34 @@ bleiben“. Der Freeze war eine Reaktion auf das kaputte Helm-Rendering (behoben
 ihn fleet-weit aufzuheben ist eine eigene Risikoentscheidung und sollte nicht als
 Nebenwirkung des Cutovers passieren.
 
-### 3. Der Spoof-Test ist selbst ein Gate
+**Ingos Frage vom 13.09.2026: „Wann kann man das Freeze-Gate aufheben?“ — Antwort: an
+einem Abend.** Aufgeschluesselt nach dem, was jeweils wirklich fehlt:
 
-„ein Spoof-Test ist negativ“ steht woertlich in den harten Gates. Er braucht absichtliche
-Fehlerinjektion und wurde deshalb nicht ohne Freigabe gefahren. Zusammen damit gehoeren
-die beiden anderen offenen Abnahmekriterien der Phase 3 geprueft (L2-Lease-Wechsel,
-Pod-Neustart auf der announcenden Node) — es ist dieselbe Testreihe.
-**Empfehlung:** in einem ruhigen Fenster durchziehen, solange `.15` noch davorhaengt und
-ein Fehlschlag folgenlos bleibt. Ohne diesen Test ist „Phase 3 haelt“ begruendet, aber
-nicht bewiesen.
+| App | Was fehlt | Aufwand | Wer |
+|---|---|---|---|
+| `infra-kite` | Sync des Renovate-Bumps auf Chart `0.15.0`; der laufende Pod ist 33 Tage alt, also noch der Stand davor | ~1 Minute, ein einzelner Pod, internes Werkzeug | jederzeit machbar |
+| `app-nextcloud-yealink-phonebook` | echtes Passwort. Zwei Pods haengen seit 33 bzw. 34 Tagen auf `0/1`, die App ist seit ueber einem Monat funktionslos | Minuten, sobald das Passwort vorliegt | Ingo: Passwort **oder** Entscheidung „App entfernen“ |
+| `infra-cilium` | Sync. Es weichen nur **zwei** Ressourcen ab (`ConfigMap/cilium-config`, `DaemonSet/cilium`); funktional aendert sich nichts, der Preis ist ein rollender Neustart aller Cilium-Agenten | kurzes Fenster | Fenster mit Ingo |
+
+**⚠️ Neu seit dem 12.09. und beim Cilium-Sync zu beachten:** `.246` laeuft jetzt ueber
+L2-Announcements mit `externalTrafficPolicy: Local`. Startet der Cilium-Agent auf der
+**announcenden** Node neu, kann die VIP-Ankuendigung kurz aussetzen — der Cilium-Sync
+beruehrt damit erstmals den Ingress-Pfad. Deshalb **vor** dem Cutover fahren, mitmessen,
+und die operative Regel aus Phase 3 anwenden: erst den L2-Lease wegschieben, dann die
+betroffene Node anfassen.
+
+### 3. ✅ Erledigt: die Abnahme-Testreihe ist gefahren (13.09.2026)
+
+Ingo hat die Fehlerinjektion freigegeben. Ergebnis: **Spoof-Test negativ, L2-Lease-Wechsel
+verlustfrei (0 von 45), Pod-Neustart auf der announcenden Node ~2 s (1 von 45).**
+Messwerte und die daraus folgende operative Regel — **erst den Lease wegschieben, dann den
+Pod neu starten** — stehen unter Phase 3, „Abnahmekriterien“.
+
+**Offen bleibt nur die Bewertung:** das Gate lautet „kein Ausfall bei nginx-Pod- oder
+Node-Neustart“. Gemessen sind ~2 s, also nicht null. **Empfehlung:** Gate als erfuellt
+betrachten und stattdessen die operative Regel verbindlich machen — mit ihr sind es null.
+Wer strikt null ohne Verfahrensdisziplin will, braucht endpoint-aware Announcement (BGP)
+statt L2.
 
 ### 4. Das Monitoring ist schon vor dem Cutover rot
 
@@ -468,20 +486,24 @@ Kein WAN-Cutover, solange eines dieser Gates offen ist:
 - [ ] Jedes SNI hat auf `.246:443` ein gueltiges, `Ready=True`-Zertifikat.
 - [ ] Eine versionierte Host-zu-Solver-Matrix deckt jedes Zertifikat ab; Challenge-Typ
       und Solver stimmen ueberein. Der Catch-all-HTTP01-Solver ist begrenzt oder entfernt.
-- [ ] Die steinba.ch-Mailzertifikatskette laeuft ohne `.15` und wurde einmal
-      vollstaendig bis mail05 durchgespielt.
-      **⚠️ WIDERSPRUCH, ungeloest:** Ingo hat am 12.09.2026 entschieden, der Umbau
-      „reicht nach dem Cutover“ (siehe „Sonderfall: steinba.ch-Mailzertifikat“). Als
-      hartes Gate formuliert verlangt dieser Punkt aber das Gegenteil. Beides zugleich
-      geht nicht — Aufloesung unter „Offene Entscheidungen“, Punkt 2.
+- ~~[ ] Die steinba.ch-Mailzertifikatskette laeuft ohne `.15` und wurde einmal
+      vollstaendig bis mail05 durchgespielt.~~
+      **GESTRICHEN am 13.09.2026 (Entscheidung Ingo: „ja nach dem Cutover“).** Der
+      Widerspruch zum Gate ist damit aufgeloest. Der Punkt ist **kein Gate mehr, aber
+      Pflichteintrag in der Cutover-Checkliste** (Phase 6) — ab dem Port-80-Schwenk kann
+      `.15` nicht mehr erneuern, Ablauf 04.12.2026. **Noch offen: der Verteilmechanismus**
+      (Cron auf cfgmgmt01 vs. CronJob im Cluster), siehe „Offene Entscheidungen“ 1b.
 - [ ] Kein Ingress hat ein `Rejected`-Event.
 - [ ] Alle manuell verwalteten EndpointSlices existieren mit korrekter Adresse, Port
       und Ready-Condition.
-- [ ] Die echte externe Client-IP bleibt ohne Vertrauen in beliebige Client-XFF
+- [x] Die echte externe Client-IP bleibt ohne Vertrauen in beliebige Client-XFF
       erhalten; ein Spoof-Test ist negativ.
-      **Haelfte erfuellt (12.09.2026):** die Client-IP bleibt erhalten, nachgewiesen mit
-      12 von 12 Anfragen. **Der Spoof-Test selbst steht aus** — er braucht absichtliche
-      Fehlerinjektion und wurde bewusst nicht ohne Freigabe gefahren.
+      **Erfuellt (13.09.2026).** Client-IP-Erhalt mit 12 von 12 Anfragen belegt; der
+      Spoof-Test negativ: ein Absender ausserhalb `192.168.2.0/24` konnte mit
+      gefaelschtem `X-Forwarded-For` keine fremde IP unterschieben. **Einschraenkung:**
+      innerhalb des `/24` wird XFF bewusst geglaubt (der Traefik braucht das) — nach dem
+      Cutover auf `192.168.2.15/32` verengen, danach entfernen. Details unter Phase 3,
+      „Abnahmekriterien“.
 - [ ] Die vollstaendige Anwendungs-Abnahmematrix ist erfolgreich.
 - [ ] UDM-Rollback und Git-Rollback sind vorbereitet und widersprechen sich nicht bei
       HTTPS-Redirects.
@@ -833,16 +855,41 @@ wirksame Hebel ist die Rolling-Update-Strategie (`maxUnavailable: 1`) plus Readi
 
 ```text
 [x] echte externe IPv4 im nginx-Log
-[ ] keine Uebernahme eines gespooften X-Forwarded-For
-[ ] funktionierender Wechsel des L2-Lease-Holders
-[ ] kein Ausfall bei nginx-Pod- oder Node-Neustart
+[x] keine Uebernahme eines gespooften X-Forwarded-For
+[x] funktionierender Wechsel des L2-Lease-Holders
+[~] kein Ausfall bei nginx-Pod- oder Node-Neustart  -> ~2 s gemessen, nicht null
 [x] korrekter Rueckweg ohne asymmetrisches Routing
 ```
 
-Die drei offenen Punkte brauchen **absichtliche Fehlerinjektion** (L2-Lease loeschen, Pod
-auf der announcenden Node killen) und stehen noch aus; Skript dafuer liegt bereit. Sie
-sind die Wiederholung des 22.07.-Szenarios und damit der eigentliche Beweis, dass die
-Konstruktion haelt.
+**Testreihe am 13.09.2026 gefahren** (Ingo hat die Fehlerinjektion freigegeben; Skript
+`p3-abnahme.sh`). Ergebnisse:
+
+| Kriterium | Messung | Urteil |
+|---|---|---|
+| Spoof-XFF, Absender **ausserhalb** `192.168.2.0/24` (`192.168.9.81`, gefaelschtes `X-Forwarded-For: 203.0.113.66`) | nginx protokollierte 3× `192.168.9.81` | **bestanden** — der gefaelschte Wert wird verworfen |
+| Spoof-XFF, Absender **innerhalb** (`192.168.2.15` = der Traefik, `X-Forwarded-For: 203.0.113.77`) | nginx protokollierte 3× `203.0.113.77` | **so gewollt** — der vertraute Proxy darf die echte Client-IP durchgeben |
+| L2-Lease-Wechsel (Lease geloescht, Neuwahl erzwungen) | Halter `wrk4` → `wrk2`, neuer Halter hatte einen Pod, **0 von 45** Messpunkten ungleich 200 | **bestanden, verlustfrei** |
+| Pod-Neustart auf der announcenden Node | **1 von 45** Messpunkten (~2 s), heilte selbst | **nicht null** |
+
+Der L2-Lease-Wechsel ist damit genau das 22.07.-Szenario — und es traegt jetzt ohne einen
+einzigen Fehlversuch.
+
+**⚠️ Der Preis von `Local`, gemessen:** stirbt der nginx-Pod auf der **announcenden** Node,
+ist `.246` fuer ~2 s tot. Cilium-L2 ist nicht endpoint-aware, schwenkt also nicht weg,
+solange die Node selbst lebt. Unter `Cluster` waere das 0 gewesen (der Verkehr waere
+weitergeroutet worden). Das ist der bewusst eingekaufte Kompromiss.
+
+**Operative Regel, die daraus folgt — und die den Preis auf null druckt:** Bei geplanten
+nginx-Aenderungen **zuerst den L2-Lease von der betroffenen Node wegschieben**
+(`kubectl -n kube-system delete lease cilium-l2announce-ingress-nginx-nginx-ingress-controller`,
+Neuwahl ist laut Messung verlustfrei), **danach** den Pod neu starten. Wer die Reihenfolge
+umdreht, kauft sich pro Node einen Aussetzer ein — bei einem Rolling Update des DaemonSets
+also einen, wenn die Reihe die announcende Node trifft.
+
+**Restrisiko beim Spoofing:** vertraut wird das **ganze** `/24`. Jeder Host im LAN kann
+damit eine beliebige Client-IP behaupten. Extern ist das wirkungslos (eine Internet-IP
+liegt nicht im `/24`), intern aber offen — der Grund, `set-real-ip-from` nach dem Cutover
+auf `192.168.2.15/32` zu verengen und danach ganz zu entfernen.
 
 ### Zum Spoofing nach dem Cutover
 
