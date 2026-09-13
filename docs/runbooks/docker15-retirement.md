@@ -315,9 +315,9 @@ Gatus meldet **4 von 20 Endpunkten rot**, drei davon erwartet und keiner stummge
 
 | Endpunkt | Ursache | Entscheidung |
 |---|---|---|
-| `forgejo` (`git.jit.services`) | Deployment bewusst auf `replicas: 0` in Git | zurueckholen oder Check entfernen |
-| `nextcloud-dev` (`cloud-dev.savar.de`) | Backend `nc01-dev` `.220` nicht erreichbar (bekannt seit 11.09.) | Host bleibt laut Entscheidung — dann Check anpassen |
-| `wordpress-3` (`site3.jit.services`) | 502, Ursache ungeprueft | soll die Instanz leben? |
+| `forgejo` (`git.jit.services`) | Deployment bewusst auf `replicas: 0` in Git, ArgoCD meldet das korrekt als `Synced/Healthy` | zurueckholen oder Check entfernen |
+| `nextcloud-dev` (`cloud-dev.savar.de`) | Backend `nc01-dev` `.220` antwortet nicht (13.09. erneut geprueft), bekannt seit 11.09. | Host bleibt laut Entscheidung vom 11.09. — dann den Check anpassen, nicht den Host |
+| `wordpress-3` (`site3.jit.services`) | **seit 27.07.2026 bewusst auf `replicas: 0`**: das Deployment verlangt einen ServiceAccount `wordpress`, den es im Namespace nie gab ⇒ `FailedCreate`, nie ein Pod. Bewusst nur skaliert statt das Overlay zu entfernen, weil die AppSet-Apps mit `prune: true` laufen und ein Entfernen PVC, MariaDB und Backups mitloeschen wuerde | **Reaktivieren heisst zweierlei:** den `replicas: 0`-Patch entfernen **und** den fehlenden ServiceAccount anlegen. Sonst Check entfernen |
 | `mastodon` | kein Status (App am 11.09. entfernt) | Check entfernen |
 
 **Empfehlung: vor dem Cutover bereinigen.** Wer unter einem dauerhaft roten Monitor
