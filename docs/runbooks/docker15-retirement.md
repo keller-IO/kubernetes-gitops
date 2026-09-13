@@ -1,17 +1,21 @@
 # Abschaltplan fuer docker15 (192.168.2.15)
 
-Status: Phase 1 inventarisiert und bereinigt; **Phase 2 und Phase 3 am 12.09.2026
-ausgerollt** — alle Cluster-Zertifikate sind ausgestellt und werden von nginx-inc
-ausgeliefert, `redirect-to-https` ist aktiv, und `.246` liefert die echte Client-IP
-(DaemonSet + `externalTrafficPolicy: Local`). Offen bleiben drei Abnahmekriterien der
-Phase 3, die Fehlerinjektion brauchen, das steinba.ch-Mailzertifikat und der
-WAN-Cutover selbst. Zielbild am 11.09.2026 bestaetigt.
+Status: Phase 1 bis 3 sind ausgerollt und abgenommen. Alle Cluster-Zertifikate werden
+von nginx-inc ausgeliefert, `redirect-to-https` ist aktiv, `.246` liefert die echte
+Client-IP (DaemonSet + `externalTrafficPolicy: Local`), der ArgoCD-Freeze ist aufgehoben
+und das Monitoring bereinigt.
+
+**Stand 13.09.2026: 10 der 13 harten Gates sind erfuellt.** Offen sind noch **zwei** —
+die vollstaendige Anwendungs-Abnahmematrix und die aufeinander abgestimmten
+Rollback-Pfade fuer UDM und Git. Das dritte offene Kaestchen (CrowdSec-Enforcement) ist
+ausdruecklich **kein** Gate. Beides Verbleibende ist Arbeit, keine Technik: die Plattform
+steht. Zielbild am 11.09.2026 bestaetigt.
 
 **➡️ Was jetzt noch eine Entscheidung braucht, steht gebuendelt unter
 „Offene Entscheidungen (Stand 13.09.2026)“.** Zwei Punkte dort loesen Widersprueche im
 Plan selbst auf und verschieben, was den Cutover ueberhaupt noch blockiert.
 
-Planstand: 2026-09-13 (offene Entscheidungen; vorherige Staende 2026-09-12 mit
+Planstand: 2026-09-13 (Gate-Nachweise; vorherige Staende 2026-09-12 mit
 TLS-Rollout/redirect-to-https/Source-IP, 2026-09-11, 2026-09-01 und 2026-07-30).
 
 ## Statusrevision 11.09.2026
@@ -393,20 +397,21 @@ ersetzt, der sagt, wann er zurueckzuholen ist** — nicht ersatzlos geloescht. B
 Punkte 2 bis 4 sind am 13.09.2026 erledigt. Was fuer einen Termin noch fehlt, liegt bei
 Ingo:
 
-**⚠️ Die UDM-Bereinigung ist unvollstaendig (Stand 13.09.2026 geprueft).** Entfernt sind
-`22617`→`.17`, `2299`→`.66`, `5050`→`.15` und `30000-30010`→`.15`. **Vier Regeln zeigen
-weiter auf Ziele, die per TCP-Test alle tot sind:**
+**✅ Die UDM-Bereinigung ist abgeschlossen (13.09.2026 nachgeprueft).** Von den
+urspruenglich sieben veralteten Freigaben ist keine mehr da; auch die vier, die beim
+ersten Nachzaehlen noch standen (`8443`→`.17`, `2233`→`.29`, `2001`→`.29`, `21`→`.15`),
+sind entfernt. **Von den 30 verbliebenen Forwards zeigen auf `.15` nur noch `80` und
+`443`** — also genau das, was der Cutover selbst umlegt.
 
-| Port | Ziel | Status |
-|---|---|---|
-| 8443 | `192.168.2.17:8443` | TOT |
-| 2233 | `192.168.2.29:22` | TOT |
-| 2001 | `192.168.2.29:8000` | TOT |
-| 21 | `192.168.2.15:21` | TOT |
+⚠️ **Merkregel aus diesem Vorgang:** „ist umgesetzt“ wurde hier zweimal gemeldet und war
+beim ersten Mal nur teilweise richtig. Der Ist-Stand laesst sich in Sekunden lesen, also
+lesen statt glauben — der UniFi-Controller ueberschreibt SSH-Aenderungen, ein Blick ist
+aber gefahrlos:
 
-**`21 → 192.168.2.15:21` ist der gefaehrlichste davon:** mit dem Abschalten von docker15
-wird `.15` frei, und dann landet Internet-Verkehr auf Port 21 bei dem Geraet, das die IP
-per DHCP zugeteilt bekommt. **Vor dem `.15`-Shutdown entfernen, nicht erst danach.**
+```text
+ssh root@192.168.2.10 "ssh root@192.168.2.94 \
+  'iptables -t nat -S UBIOS_PREROUTING_USER_HOOK | grep DNAT'"
+```
 
 Ausserdem offen: der UniFi-Konfigurationsexport als Rollback-Beleg und der eigentliche
 DNAT-Schwenk 80/443 von `.15` auf `.246`.
@@ -558,11 +563,36 @@ Kein WAN-Cutover, solange eines dieser Gates offen ist:
       Die Pruefung liegt vollstaendig im PR.
 - [x] nginx-inc besitzt deklarativ und stabil `192.168.2.246` (12.09.2026: per
       `lbipam.cilium.io/ips` am Service gepinnt, DaemonSet 7/7).
-- [ ] Jeder produktive Traefik-Host existiert als akzeptierter Cluster-Ingress oder
+- [x] Jeder produktive Traefik-Host existiert als akzeptierter Cluster-Ingress oder
       ist ausdruecklich zur Abschaltung freigegeben (Hostmatrix ohne „entscheiden“).
-- [ ] Jedes SNI hat auf `.246:443` ein gueltiges, `Ready=True`-Zertifikat.
-- [ ] Eine versionierte Host-zu-Solver-Matrix deckt jedes Zertifikat ab; Challenge-Typ
+      **Erfuellt (13.09.2026), maschinell gegengerechnet.** Die 46 Live-Hosts auf `.15`
+      (aus `dynamic_conf.yml` und den Docker-Labels) gegen die 56 Hosts der
+      Cluster-Ingresses gehalten: **42 haben einen Cluster-Ingress**, die vier uebrigen
+      sind entschiedene Faelle — `home.savar.de` (Traefik-Dashboard, entfaellt laut
+      Entscheidung 11.09.; der DNS-Name bleibt, weil vier Hosts per CNAME darauf zeigen)
+      sowie `imap/pop/smtp.steinba.ch` (liefern keinen Inhalt aus, der Router existiert
+      nur fuer den HTTP-01-Bezug des Mailzertifikats; Umbau nach dem Cutover).
+      **Kein offenes „entscheiden“ mehr.**
+      ⚠️ Beim Nachrechnen nicht `comm` verwenden: Python-`sorted()` und Shell-`sort`
+      kollationieren unterschiedlich, `comm` meldet dann „nicht sortiert“ und liefert
+      Hosts in beiden Listen gleichzeitig — ein stiller Fehlbefund.
+- [x] Jedes SNI hat auf `.246:443` ein gueltiges, `Ready=True`-Zertifikat.
+      **Erfuellt (13.09.2026).** Alle **51 TLS-Hosts** aus saemtlichen Ingresses einzeln
+      gegen `.246:443` mit SNI abgefragt: in jedem Fall steht der angefragte Name in der
+      **SAN-Liste** des tatsaechlich gelieferten Zertifikats — 51 von 51, null
+      Auffaelligkeiten. Dazu 36 `Certificate`-Objekte, alle `Ready=True`.
+      ⚠️ Nicht gegen den Subject-CN pruefen, der sagt bei Sammelzertifikaten nichts.
+- [x] Eine versionierte Host-zu-Solver-Matrix deckt jedes Zertifikat ab; Challenge-Typ
       und Solver stimmen ueberein. Der Catch-all-HTTP01-Solver ist begrenzt oder entfernt.
+      **Erfuellt (13.09.2026), gegen den laufenden ClusterIssuer gerechnet.** Vier Solver,
+      **keiner ohne Selector** — also kein Catch-all: ClouDNS-Webhook (`jit.services`),
+      RFC2136 (9 Zonen), RFC2136 mit `cnameStrategy: Follow` (imcor.de, jonaks.com,
+      naturkindergarten-moehringen.de) und HTTP-01, begrenzt auf `horads.de` + `steinba.ch`.
+      **Alle 33 ACME-Zertifikate mit ihren 53 DNS-Namen sind eindeutig genau einem Solver
+      zugeordnet**, keiner ohne Treffer, keiner mehrdeutig.
+      ⚠️ Bei so einer Pruefung fallen drei Zertifikate scheinbar durch das Raster
+      (`cert-manager-webhook-cloudns`, `netbird-...-webhook-service`): die stammen von
+      **internen CAs**, nicht von Let's Encrypt, und brauchen gar keinen Solver.
 - ~~[ ] Die steinba.ch-Mailzertifikatskette laeuft ohne `.15` und wurde einmal
       vollstaendig bis mail05 durchgespielt.~~
       **GESTRICHEN am 13.09.2026 (Entscheidung Ingo: „ja nach dem Cutover“).** Der
@@ -570,9 +600,18 @@ Kein WAN-Cutover, solange eines dieser Gates offen ist:
       Pflichteintrag in der Cutover-Checkliste** (Phase 6) — ab dem Port-80-Schwenk kann
       `.15` nicht mehr erneuern, Ablauf 04.12.2026. **Noch offen: der Verteilmechanismus**
       (Cron auf cfgmgmt01 vs. CronJob im Cluster), siehe „Offene Entscheidungen“ 1b.
-- [ ] Kein Ingress hat ein `Rejected`-Event.
-- [ ] Alle manuell verwalteten EndpointSlices existieren mit korrekter Adresse, Port
-      und Ready-Condition.
+- [x] Kein Ingress hat ein `Rejected`-Event. **Erfuellt (13.09.2026): 0 Treffer**,
+      weder ueber `--field-selector reason=Rejected` noch als Textsuche in allen Events.
+- [x] Alle manuell verwalteten EndpointSlices existieren mit korrekter Adresse, Port
+      und Ready-Condition. **Erfuellt (13.09.2026): 11 von 11 in Ordnung** — `auth`
+      (.30:8080), `cloud-dev` (.220:443), `cloud-dev-push` (.220:7867), `horads`
+      (.240:8080), `imcor` (.21:443), `jitcloud` (.217:443), `mgmt02` (.234:80), `office`
+      (.242:9980), `s3` (drei Endpoints .6/.7/.8:7480), `spam` (.230:80), `umdiehand`
+      (.20:80); jeweils Port gesetzt und `ready: true`.
+      ⚠️ **Was diese Pruefung NICHT leistet:** die `ready`-Bedingung ist bei manuellen
+      Slices eine Behauptung, kein Health-Check. `cloud-dev` zeigt auf `.220`, das seit
+      dem 11.09. nicht antwortet — die Slice ist trotzdem formal korrekt. Erreichbarkeit
+      gehoert in die Anwendungs-Abnahmematrix, nicht hierher.
 - [x] Die echte externe Client-IP bleibt ohne Vertrauen in beliebige Client-XFF
       erhalten; ein Spoof-Test ist negativ.
       **Erfuellt (13.09.2026).** Client-IP-Erhalt mit 12 von 12 Anfragen belegt; der
