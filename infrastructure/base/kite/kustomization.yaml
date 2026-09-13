@@ -12,3 +12,23 @@ helmCharts:
 
 generators:
   - ./secret-generator.yaml
+
+# startupProbe nachruesten. Das Chart (0.15.0) kennt keinen startupProbe-Schluessel in
+# values.yaml — ein Eintrag dort wird still ignoriert, geprueft per kustomize build.
+# Deshalb als Patch.
+# Grund (gemessen 13.09.2026 beim Sprung auf v0.15.0): bis "Kite server started on port
+# 8080" vergehen rund 24 s, mit Schwankung durch Prometheus-Discovery und
+# K8s-Client-Init. Die Liveness toleriert nur initialDelay 10 + 3 x 10 s = 40 s und hat
+# den Container zweimal gekillt, bevor er fertig war. Mit startupProbe ist die Liveness
+# bis zu 30 x 5 s = 150 s ausgesetzt; danach gelten die normalen Probes unveraendert.
+patches:
+  - target: { kind: Deployment, name: kite }
+    patch: |
+      - op: add
+        path: /spec/template/spec/containers/0/startupProbe
+        value:
+          httpGet:
+            path: /healthz
+            port: http
+          periodSeconds: 5
+          failureThreshold: 30
