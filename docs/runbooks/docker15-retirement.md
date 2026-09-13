@@ -1161,6 +1161,94 @@ Rollback **in dieser Reihenfolge, nicht anders**:
   1-s-Aufloesung auf `.246` und `.247`, dazu die Gatus-Instanzen — die sind seit dem
   13.09. aussagekraeftig, ein roter Punkt bedeutet wieder etwas.
 
+## Anwendungs-Abnahmematrix (externe Hosts)
+
+Erarbeitet am 13.09.2026. **Geltungsbereich: die 42 externen Hosts in 21 Ingresses**
+(`*.jit.services` bleibt aussen vor — intern und nicht Teil des WAN-Cutovers).
+
+**Prioritaeten (Entscheidung Ingo):** Prio 1 sind **Nextcloud, Roundcube und
+`stream.horads.de`** — bricht dort etwas und ist es nach **20 Minuten** weder verstanden
+noch behoben, wird zurueckgerollt. Alles Uebrige hat Zeit und wird im Betrieb nachgezogen.
+
+> **Warum ein 200 nicht reicht.** Bisher ist geprueft, dass jeder Host antwortet und das
+> richtige Zertifikat liefert. Das beweist nicht, dass der Dienst funktioniert. Beispiel
+> aus der Vorbereitung: `legacy-proxy/cloud-dev` hat eine formal einwandfreie
+> EndpointSlice mit `ready: true` — und zeigt auf ein `.220`, das seit dem 11.09. tot ist.
+> Genau solche Faelle findet nur ein funktionaler Test.
+
+### Prio 1 — diese drei entscheiden ueber Rollback
+
+| # | Host(s) | Test | Erwartung |
+|---|---|---|---|
+| 1.1 | `stream.horads.de` | `curl -s --max-time 30 -o /dev/null -w '%{size_download}' https://stream.horads.de/horads` | **> 1.000.000 Bytes**. Gemessen am 13.09.: 312 kB in 8 s (~312 kbit/s), Mount `/horads`, `audio/mpeg` |
+| 1.2 | `stream.horads.de` | `curl -s https://stream.horads.de/status-json.xsl` | JSON lesbar, Hoererzahl plausibel. Am 13.09.: **12 Hoerer live** — ein abbrechender Handshake wirft sie alle raus |
+| 1.3 | `stream.horads.de` | Dauerverbindung 60 s ohne Abbruch | `proxy-buffering: false` und `proxy-read-timeout: 3600s` muessen greifen; ein Abbruch nach ~60 s deutet auf verlorene Annotationen |
+| 1.4 | Nextcloud: `cloud.savar.de`, `jit.cloud`, `cloud.daec-berlin.de`, `cloud.steinba.ch`, `cloud.naturkindergarten-moehringen.de` | `GET /status.php` | `installed:true`, `maintenance:false`. Ueber `.246` am 13.09. bereits verifiziert (Nextcloud 33.0.7) |
+| 1.5 | Nextcloud | Anmeldung im Browser, dann eine Datei hoch- und wieder herunterladen | Upload ohne Groessenfehler (`client-max-body-size: 0`) |
+| 1.6 | Nextcloud | `PROPFIND /remote.php/dav/files/<user>/` mit Zugangsdaten | **207 Multi-Status**. Das ist der Test, den Sync-Clients wirklich fahren |
+| 1.7 | Nextcloud | Client-IP im Nextcloud-Log pruefen | echte Absender-IP, nicht die einer Node. `trusted_proxies` steht auf `192.168.2.0/24` und deckt die Nodes `.81`–`.87` ab (13.09. geprueft) |
+| 1.8 | Roundcube: `roundcube.savar.de`, `mail.steinba.ch`, `webmail01.jit-creatives.de`, `jitmail.de`, `www.jitmail.de`, `webmail.daec-berlin.de` | Anmeldung, Ordnerliste oeffnen | IMAP-Verbindung steht, Ordner werden gelistet |
+| 1.9 | Roundcube | Testmail mit Anhang (~10 MB) senden | Versand erfolgreich (`client-max-body-size: 25m`) |
+
+### Prio 2 — darf nach dem Cutover nachgezogen werden
+
+| Host(s) | Test | Worauf es ankommt |
+|---|---|---|
+| `office.savar.de` (Collabora) | Dokument in Nextcloud oeffnen und tippen | **WebSocket-Upgrade** — ein 200 auf `/` beweist gar nichts. Die Annotation `websocket-services` muss exakt den Servicenamen tragen |
+| `auth.savar.de`, `auth2.savar.de` (Keycloak) | Anmeldung an der Admin-Konsole | Die Brute-Force-Sperre sieht ab jetzt **echte** Client-IPs statt einer Sammeladresse |
+| `imcor.de`, `www.imcor.de`, `db.imcor.de`, `config.imcor.de`, `jonaks.com`, `www.jonaks.com` | Startseite | Re-Encrypt zu `.21:443` (`ssl-services`). `jonaks.com` antwortet **403 — vorbestehend**, kommt vom Apache auf `.21` selbst |
+| `www.jit-creatives.de`, `mgmt02.jit-creatives.de`, `www.jitcreatives.de`, `ftp.jit-creatives.de` | Startseite | Backend `.234:80` |
+| `s3.savar.de`, `s3.jit-creatives.de` | Bucket-Listing oder `HEAD` auf ein Objekt | Ceph RGW mit **drei** Endpoints (`.6`/`.7`/`.8:7480`) — alle drei muessen bedient werden |
+| `spam.savar.de` | rspamd-Oberflaeche | Backend `.230:80` |
+| `umdiehand.jit-creatives.de`, `gesinefranze.jit-creatives.de` | Startseite | Backend `.20:80` |
+| `lists.jitmail.de` | Postorius oeffnen, eine Liste ansehen, Archiv aufrufen | **Der LMTP-Eingang auf `.247:8024` ist vom Cutover nicht betroffen** und braucht keinen Test |
+| `paperless.savar.de` | Anmeldung, ein Dokument oeffnen | |
+| `phpmyadmin.jit-creatives.de`, `phpmyadmin.savar.de` | Anmeldung | |
+| `kimai.savar.de` | Anmeldung, eine Zeitbuchung oeffnen | |
+| `jugendbeauftragter-halbe.de` + `www.`, `gemeinsam-fuer-halbe.de` + `www.` | Startseite **und `/wp-admin/`** | wp-admin ist der klassische Schleifen-Kandidat: WordPress leitet dort anhand von `$_SERVER['HTTPS']` um, das per `WORDPRESS_CONFIG_EXTRA` fest auf `on` steht |
+| `expense.porga.de` | Anmeldung | **401 auf `/` ist erwartet**, kein Fehler |
+| `status.jit-creatives.de` | Statusseite oeffnen | Muss nach dem Cutover gruen sein — sie ist danach das Messmittel |
+| `cloud-dev.savar.de` | — | **502 ist erwartet und KEIN Regressionsbefund**: Backend `nc01-dev` (`.220`) antwortet seit dem 11.09. nicht. Entscheidung vom 11.09.: Host bleibt |
+
+### Vor dem Cutover einmal als Referenz aufnehmen
+
+Damit „war das vorher schon so?" im Fenster nicht diskutiert werden muss: **dieselbe Matrix
+einmal ueber `.15` durchfahren und die Ergebnisse festhalten.** Ohne diese Referenz kostet
+jeder vorbestehende 401/403/502 im Fenster unnoetige Minuten.
+
+## Rollback: Ausloesekriterien
+
+Festgelegt am 13.09.2026.
+
+**Sofort zurueck, ohne Diskussion:**
+
+- **Redirect-Schleife** auf irgendeinem Host — eindeutiges Symptom, eindeutige Ursache
+- **Mehr als ein unabhaengiges Problem gleichzeitig** — parallele Diagnose im Fenster geht schief
+- **Anmeldung kaputt** bei Nextcloud, Roundcube oder Keycloak
+- **`stream.horads.de` liefert keine Daten mehr** (Prio 1, und der Ausfall ist fuer Hoerer sofort spuerbar)
+
+**Zeitbox:**
+
+- **Ein einzelnes Prio-1-Problem, das nach 20 Minuten weder verstanden noch behoben ist**
+  → zurueck, in Ruhe analysieren. Der teuerste Fehler waere, im Fenster zu forschen.
+- **Prio-2-Dienste loesen keinen Rollback aus.** Sie werden im Betrieb nachgezogen.
+
+**Der nicht offensichtliche Haltepunkt:**
+
+- Solange **PR #169 (`ssl-redirect`) nicht gemergt** ist, kostet der Rueckweg **eine einzige
+  UDM-Aenderung**. Danach sind es zwei Schritte mit Wartezeit auf ArgoCD. **Vor diesem
+  Merge deshalb ein bewusster Halt:** ist zu diesem Zeitpunkt irgendetwas unklar, zurueck,
+  solange es billig ist.
+
+**Ausdruecklich KEIN Rollback-Grund:**
+
+- `expense.porga.de` antwortet mit 401, `jonaks.com` mit 403, `cloud-dev.savar.de` mit 502
+  — alle drei vorbestehend
+- GitLabs HTTP 500 — vorbestehend und unabhaengig vom Cutover
+- Langsame erste Antworten durch kalte Caches
+- Abgerissene Langzeitverbindungen im Moment des NAT-Wechsels: bestehende Sessions laufen
+  gegen `.15` weiter, bis sie ablaufen. Das ist erwartetes Verhalten, kein Defekt.
+
 ## Phase 6: UDM-Cutover
 
 Vorher:
