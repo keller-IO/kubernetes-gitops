@@ -5,9 +5,18 @@ metadata:
   namespace: matomo
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
-    # Bewusst KEINE HTTPS-Erzwingung: die nginx auf mgmt02 reicht den Tracker
-    # per HTTP an den Cluster durch (first-party /stats/). Ein Redirect wuerde
-    # diesen Pfad brechen. Die Oberflaeche ist ohnehin nur intern erreichbar.
+    # HTTPS wird erzwungen. Die nginx auf mgmt02 (192.168.2.234) spricht den
+    # Cluster fuer den first-party-Tracker /stats/ seit dem 14.09.2026 per
+    # HTTPS an (proxy_ssl_server_name on; proxy_ssl_name matomo.jit.services).
+    #
+    # Historie: bis zum 12./13.09.2026 standen beide Werte auf "false", weil
+    # mgmt02 damals per HTTP anlieferte. Die Sammel-PRs #152 und #169 stellten
+    # sie auf "true" und brachen damit /stats/ — der Tracker lief in einen
+    # Redirect auf matomo.jit.services, das oeffentlich auf eine RFC1918-Adresse
+    # zeigt und von aussen nicht erreichbar ist. Ergebnis: vom 13. bis 14.09.
+    # wurde kein einziger Besuch gezaehlt.
+    #
+    # NICHT auf "false" zuruecksetzen — stattdessen mgmt02 auf HTTPS lassen.
     nginx.org/ssl-redirect: "true"
     nginx.org/redirect-to-https: "true"
     nginx.org/client-max-body-size: "10m"
