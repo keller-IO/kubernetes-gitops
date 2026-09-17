@@ -26,7 +26,8 @@ configs:
       hs.message = "ClusterProxy reconciled"
       return hs
     timeout.reconciliation: 180s
-    users.anonymous.enabled: "true"
+    # Kein anonymer Zugriff — Lesen nur nach Login.
+    users.anonymous.enabled: "false"
   rbac:
     policy.default: role:readonly
   params:
