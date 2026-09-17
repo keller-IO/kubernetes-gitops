@@ -1,3 +1,6 @@
+# Liefert argocd-cm.url (OIDC-Redirect-Basis). Ingress kommt aus ingress.yaml.
+global:
+  domain: argocd.jit.services
 configs:
   cm:
     # Native kustomize handles BOTH helm inflation and the KSOPS exec plugin (SOPS
@@ -28,8 +31,24 @@ configs:
     timeout.reconciliation: 180s
     # Kein anonymer Zugriff — Lesen nur nach Login.
     users.anonymous.enabled: "false"
+    # Login ueber den externen Keycloak (ADR 0002). Der lokale admin bleibt als
+    # Notzugang, falls auth01 ausfaellt. Secret: argocd-oidc (secret.sops.yaml).
+    oidc.config: |
+      name: Keycloak
+      issuer: https://auth.savar.de/realms/bgt
+      clientID: argocd
+      clientSecret: $argocd-oidc:clientSecret
+      requestedScopes: [openid, profile, email]
+      enablePKCEAuthentication: true # Client verlangt S256
   rbac:
-    policy.default: role:readonly
+    # Rechte nur ueber Keycloak-Gruppen (groups-Claim vom Mapper am Client, ohne
+    # volle Gruppenpfade). Kein Default: Realm bgt enthaelt per Federation auch
+    # alle Mailkonten — "angemeldet" allein darf nichts sehen.
+    policy.default: ""
+    policy.csv: |
+      g, argocd-viewers, role:readonly
+      g, argocd-admins, role:admin
+    scopes: "[groups]"
   params:
     server.insecure: true # TLS terminated at NGINX Ingress
 # Requests/limits per component. Sized from measured usage on keller-main

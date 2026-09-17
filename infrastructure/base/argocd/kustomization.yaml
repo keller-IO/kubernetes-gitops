@@ -12,3 +12,5 @@ helmCharts:
     valuesFile: values.yaml
 resources:
   - ingress.yaml
+generators:
+  - ./secret-generator.yaml
