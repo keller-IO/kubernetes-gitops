@@ -31,7 +31,7 @@ spec:
         - name: gitlab-registry
       containers:
         - name: app
-          image: registry.jit-creatives.de/jit/flurfunk:CHANGE_ME   # CHANGE ME: echten Image-Tag setzen (Git-SHA o. ä.)
+          image: registry.jit-creatives.de/tommy/flurfunk:d315460   # Tag = Git-SHA des flurfunk-Repos, gepusht am 18.09.2026
           env:
             - name: APP_TZ
               value: "Europe/Berlin"
