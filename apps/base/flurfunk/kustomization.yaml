@@ -1,0 +1,20 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: flurfunk
+resources:
+  - namespace.yaml
+  - pvc.yaml
+  - service.yaml
+  - deployment.yaml
+  - ingress.yaml
+
+# Secrets bewusst NICHT Teil dieses Kustomize-Builds: fehlen noch, siehe
+# deployment.yaml (envFrom) und imagePullSecrets. Vor dem ersten Deploy
+# manuell ergänzen (analog apps/base/expense-tracker/{secret-generator,
+# secret.sops}.yaml):
+#   - secret-generator.yaml (kind: ksops) mit files: [./secret.sops.yaml]
+#   - secret.sops.yaml mit zwei Secrets in diesem Namespace:
+#       flurfunk-secrets (Opaque): SECRET_KEY, ADMIN_PASSWORD,
+#                                   optional NTFY_URL, NTFY_TOKEN
+#       gitlab-registry (kubernetes.io/dockerconfigjson): Registry-Credential
+#     danach: just encrypt apps/base/flurfunk/secret.sops.yaml

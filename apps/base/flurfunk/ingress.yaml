@@ -1,0 +1,33 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: flurfunk
+  namespace: flurfunk
+  annotations:
+    # Ingress-Controller ist nginx-inc (nginx.org/ingress-controller), NICHT
+    # community-ingress-nginx — nginx.ingress.kubernetes.io/*-Annotationen
+    # würden hier still ignoriert (siehe apps/base/expense-tracker/ingress.yaml).
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.org/redirect-to-https: "true"
+    nginx.org/ssl-redirect: "true"
+    nginx.org/client-max-body-size: "12m"   # Bild-Uploads im Aufgaben-Editor, App-Limit 8 MB
+    nginx.org/proxy-read-timeout: "60s"
+spec:
+  ingressClassName: nginx
+  # DNS-01: die Zone porga.de ist auf dns01 bereits für den cert-manager-TSIG
+  # freigegeben (siehe apps/base/expense-tracker/ingress.yaml) — für das
+  # Zertifikat ist kein manueller DNS-Schritt nötig, nur der A/CNAME-Eintrag
+  # für den Host selbst.
+  tls:
+    - hosts: [flurfunk.porga.de]   # CHANGE ME falls ein anderer Hostname gewünscht ist
+      secretName: flurfunk-tls
+  rules:
+    - host: flurfunk.porga.de   # CHANGE ME
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: flurfunk
+                port: { name: http }

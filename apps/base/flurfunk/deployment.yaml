@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flurfunk
+  namespace: flurfunk
+  labels:
+    app.kubernetes.io/name: flurfunk
+spec:
+  # RWO-Volume + SQLite im Prozess: exakt 1 Replica, siehe README.md des Repos
+  # (backend/app/scheduler.py läuft ausserdem in-process, ein zweiter Pod würde
+  # Erinnerungen doppelt verschicken).
+  replicas: 1
+  strategy:
+    type: Recreate   # RWO-Volume wird erst freigegeben, dann neu gemountet
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: flurfunk
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: flurfunk
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      imagePullSecrets:
+        - name: gitlab-registry
+      containers:
+        - name: app
+          image: registry.jit-creatives.de/jit/flurfunk:CHANGE_ME   # CHANGE ME: echten Image-Tag setzen (Git-SHA o. ä.)
+          env:
+            - name: APP_TZ
+              value: "Europe/Berlin"
+            - name: ADMIN_USERNAME
+              value: "admin"
+            - name: DATABASE_URL
+              value: "sqlite:////data/app.db"
+          envFrom:
+            # SECRET_KEY, ADMIN_PASSWORD, optional NTFY_URL/NTFY_TOKEN.
+            # Noch manuell anzulegen: secret-generator.yaml (kind: ksops) +
+            # secret.sops.yaml analog apps/base/expense-tracker, mit den
+            # Secrets "flurfunk-secrets" (Opaque) und "gitlab-registry"
+            # (kubernetes.io/dockerconfigjson) in diesem Namespace.
+            - secretRef:
+                name: flurfunk-secrets
+          ports:
+            - name: http
+              containerPort: 8000
+          readinessProbe:
+            httpGet: { path: /api/health, port: http }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /api/health, port: http }
+            initialDelaySeconds: 20
+            periodSeconds: 30
+          volumeMounts:
+            - { name: data, mountPath: /data }
+            - { name: tmp, mountPath: /tmp }
+          resources:
+            requests: { cpu: 50m, memory: 96Mi }
+            limits: { memory: 256Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: flurfunk-data
+        - name: tmp
+          emptyDir: { sizeLimit: 128Mi }

@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: flurfunk-data
+  namespace: flurfunk
+spec:
+  # ceph-rbd (RWO): SQLite braucht ohnehin exakt 1 Replica (siehe deployment.yaml),
+  # RWX ist hier nicht nötig. Im Cluster läuft laut apps/base/expense-tracker/pvc.yaml
+  # ausserdem nur der RBD-Provisioner, ein ceph-fs-PVC bliebe dauerhaft Pending.
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: ceph-rbd
+  resources:
+    requests:
+      storage: 2Gi   # SQLite-DB + Bild-Uploads aus dem Aufgaben-Editor
