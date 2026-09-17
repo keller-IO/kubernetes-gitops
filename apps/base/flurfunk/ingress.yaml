@@ -14,15 +14,18 @@ metadata:
     nginx.org/proxy-read-timeout: "60s"
 spec:
   ingressClassName: nginx
-  # DNS-01: die Zone porga.de ist auf dns01 bereits für den cert-manager-TSIG
-  # freigegeben (siehe apps/base/expense-tracker/ingress.yaml) — für das
-  # Zertifikat ist kein manueller DNS-Schritt nötig, nur der A/CNAME-Eintrag
-  # für den Host selbst.
+  # ACHTUNG (noch ungelöst, siehe Chat): wohngut.net steht NICHT in den
+  # dnsZones-Selektoren des letsencrypt-prod-ClusterIssuer (weder beim
+  # rfc2136-DNS-01-Solver noch beim http01-Solver) — obwohl die Zone laut
+  # SOA/NS bereits auf dns01/ns3.jitcreatives.de gehostet wird. Ohne
+  # passenden Solver-Eintrag bleibt die Certificate-Order für diesen Host
+  # hängen (No solver found). Muss vor dem ersten Deploy in
+  # infrastructure/base/cert-manager ergänzt werden.
   tls:
-    - hosts: [flurfunk.porga.de]   # CHANGE ME falls ein anderer Hostname gewünscht ist
+    - hosts: [app.wohngut.net]
       secretName: flurfunk-tls
   rules:
-    - host: flurfunk.porga.de   # CHANGE ME
+    - host: app.wohngut.net
       http:
         paths:
           - path: /
