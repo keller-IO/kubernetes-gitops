@@ -18,6 +18,12 @@ Format und Kriterien: siehe AGENTS.md → „Operational Learnings".
   ein echter Cross-Node-I/O-Test bestaetigt die Recovery.
 - [NIC 5.x verwirft Ingress bei ungueltiger Annotation](nginx-ingress-5x-annotation-strictness.md)
   — `proxy-buffering: "off"` statt `"false"` legte radio.jit.services still auf 404.
+- [Flurfunk: DNS/TLS-Kette mit drei unabhaengigen Fehlern](flurfunk-dns-and-http01-chain.md)
+  — kaputte BIND-Zonen-Stanza, negatives dnsmasq-Caching, und HTTP-01 kollidiert
+  mit dem eigenen Ingress beim nginx.org-Controller (Fix: DNS-01 statt Mergeable-Ingress).
+- [root-app.yaml: eigene include-Liste greift nicht automatisch](root-app-self-reference-not-auto-applied.md)
+  — eine neue Application in der include-Liste braucht nach dem Merge einen
+  einmaligen manuellen `kubectl apply -f clusters/main/root-app.yaml`.
 - [Paperless-CLI ausserhalb von s6](paperless-cli-without-s6.md) — die
   Convenience-Wrapper erwarten `/init`; Kubernetes-Jobs rufen `manage.py`
   stattdessen explizit als Benutzer `paperless` auf.
