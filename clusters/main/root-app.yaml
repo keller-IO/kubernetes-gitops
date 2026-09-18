@@ -14,7 +14,7 @@ spec:
     path: clusters/main
     directory:
       recurse: false
-      include: "{projects.yaml,appset-infrastructure.yaml,appset-apps.yaml}"
+      include: "{projects.yaml,appset-infrastructure.yaml,appset-apps.yaml,app-flurfunk.yaml}"
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
