@@ -1,7 +1,10 @@
-# Replace the age public key with yours: age-keygen -y < ~/.config/sops/age/keys.txt
+# Recipients: age-keygen -y < ~/.config/sops/age/keys.txt
+# Nach dem Ergaenzen/Entfernen eines Empfaengers ALLE verschluesselten Dateien
+# neu verschluesseln: sops updatekeys -y <datei>  (siehe docs/runbooks/sops-recipients.md)
 creation_rules:
     # (^|/)[^/]+\.sops\... statt .*\.sops\... — sonst matcht die Regex auch
     # diese Konfigdatei selbst und `sops -e -i .sops.yaml` zerstört sie.
     - path_regex: (^|/)[^/]+\.sops\.ya?ml$
       encrypted_regex: ^(data|stringData)$
-      age: age17x04ga87qyu9lzcuja9k83z90veew9cez7jusul4y5xyr09xaejs9rq755
+      age: >-
+        age17x04ga87qyu9lzcuja9k83z90veew9cez7jusul4y5xyr09xaejs9rq755,age1hjq0mgzc2npw9lhtwr49qqrfvkxzc2ss8qu7e06fk5n84qm7xs7qrgxfxa
