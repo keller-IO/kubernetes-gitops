@@ -8,13 +8,12 @@ resources:
   - deployment.yaml
   - ingress.yaml
 
-# Secrets bewusst NICHT Teil dieses Kustomize-Builds: fehlen noch, siehe
-# deployment.yaml (envFrom) und imagePullSecrets. Vor dem ersten Deploy
-# manuell ergänzen (analog apps/base/expense-tracker/{secret-generator,
-# secret.sops}.yaml):
-#   - secret-generator.yaml (kind: ksops) mit files: [./secret.sops.yaml]
-#   - secret.sops.yaml mit zwei Secrets in diesem Namespace:
-#       flurfunk-secrets (Opaque): SECRET_KEY, ADMIN_PASSWORD,
-#                                   optional NTFY_URL, NTFY_TOKEN
-#       gitlab-registry (kubernetes.io/dockerconfigjson): Registry-Credential
-#     danach: just encrypt apps/base/flurfunk/secret.sops.yaml
+generators:
+  - ./secret-generator.yaml
+
+# NTFY_URL/NTFY_TOKEN (optionale Push-Benachrichtigungen) sind bewusst nicht
+# gesetzt -- bei Bedarf in secret.sops.yaml ergänzen (just decrypt, editieren,
+# just encrypt). Achtung: der lokale age-Key (~/.config/sops/age/keys.txt)
+# entspricht NICHT dem echten Cluster-Key (argocd-sops-age im argocd-
+# Namespace) -- Entschlüsseln/Bearbeiten geht erst, wenn der richtige
+# private Key lokal vorliegt (siehe Chat-Verlauf, 18.09.2026).

@@ -40,11 +40,7 @@ spec:
             - name: DATABASE_URL
               value: "sqlite:////data/app.db"
           envFrom:
-            # SECRET_KEY, ADMIN_PASSWORD, optional NTFY_URL/NTFY_TOKEN.
-            # Noch manuell anzulegen: secret-generator.yaml (kind: ksops) +
-            # secret.sops.yaml analog apps/base/expense-tracker, mit den
-            # Secrets "flurfunk-secrets" (Opaque) und "gitlab-registry"
-            # (kubernetes.io/dockerconfigjson) in diesem Namespace.
+            # SECRET_KEY, ADMIN_PASSWORD (generiert), siehe secret.sops.yaml.
             - secretRef:
                 name: flurfunk-secrets
           ports:
