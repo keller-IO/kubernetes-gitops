@@ -1,0 +1,28 @@
+# Flurfunk (Hausgemeinschafts-App) liegt komplett auf gitlab.jit-creatives.de --
+# Quellcode, Image UND Kubernetes-Manifeste. Bewusst NICHT Teil der
+# appset-apps.yaml-Auto-Erkennung (die nur apps/overlays/main/* in DIESEM
+# Repo einsammelt): eine eigene, einzelne Application, damit hier nur ein
+# Zeiger liegt, keine Flurfunk-spezifischen Inhalte.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: app-flurfunk
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  project: apps
+  source:
+    repoURL: https://gitlab.jit-creatives.de/tommy/flurfunk.git
+    targetRevision: main
+    path: k8s
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: flurfunk
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
