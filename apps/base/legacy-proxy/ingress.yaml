@@ -175,12 +175,17 @@ spec:
     - hosts:
         - auth.savar.de
         - auth2.savar.de
+        - login.jit-creatives.de
       secretName: auth-tls
   rules:
     - host: auth.savar.de
       http:
         paths: [{ path: /, pathType: Prefix, backend: { service: { name: auth, port: { number: 8080 } } } }]
     - host: auth2.savar.de
+      http:
+        paths: [{ path: /, pathType: Prefix, backend: { service: { name: auth, port: { number: 8080 } } } }]
+    # Zweite oeffentliche Domain fuer denselben Keycloak (JIT-Branding).
+    - host: login.jit-creatives.de
       http:
         paths: [{ path: /, pathType: Prefix, backend: { service: { name: auth, port: { number: 8080 } } } }]
 ---
