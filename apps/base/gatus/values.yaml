@@ -121,6 +121,22 @@ config:
       url: https://lists.jitmail.de/postorius/lists/
       interval: 60s
       conditions: ["[STATUS] == 200"]
+    # Keycloak (Realm bgt) unter beiden Domains. Der Issuer folgt dem
+    # angefragten Host, daher wird er je Domain mitgeprueft.
+    - name: keycloak auth.savar.de
+      group: auth
+      url: https://auth.savar.de/realms/bgt/.well-known/openid-configuration
+      interval: 60s
+      conditions:
+        - "[STATUS] == 200"
+        - "[BODY].issuer == https://auth.savar.de/realms/bgt"
+    - name: keycloak login.jit-creatives.de
+      group: auth
+      url: https://login.jit-creatives.de/realms/bgt/.well-known/openid-configuration
+      interval: 60s
+      conditions:
+        - "[STATUS] == 200"
+        - "[BODY].issuer == https://login.jit-creatives.de/realms/bgt"
     # nextcloud-dev entfernt (13.09.2026): das Backend nc01-dev (192.168.2.220)
     # antwortet seit mindestens dem 11.09. nicht mehr. Der Host cloud-dev.savar.de
     # bleibt laut Entscheidung vom 11.09. bestehen und hat ein gueltiges
