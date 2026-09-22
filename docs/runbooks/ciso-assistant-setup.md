@@ -74,6 +74,11 @@ Absender `noreply@jit-creatives.de`: SPF `include:jitcreatives.de` erlaubt
 4. Zu Beginn gemessen (`kubectl top`, erster Start inkl. Migration): Backend
    349Mi/970m (Migration), Huey 485Mi, Frontend **375Mi** bei 512Mi-Limit,
    Postgres 51Mi.
+5. `/login` lieferte danach **502**: nginx meldete `upstream sent too big header`,
+   weil SvelteKit dort 5,4 KB Antwort-Header schickt (Link-Preloads, zwei
+   Cookies) und der Standardpuffer 4k ist. Fix in #201:
+   `nginx.org/proxy-buffer-size: "16k"` und `proxy-buffers: "8 16k"`, wie bei
+   expense-tracker. Im selben PR: Frontend 384Mi/768Mi, Huey-Request 512Mi.
 
 Bekannte Anlauf-Meldungen beim allerersten Start, beide harmlos: Huey meldet
 `OperationalError: connection is bad` bzw. `relation "automation_workflowinstance"
@@ -168,9 +173,8 @@ Quelladresse.
   `rclone sync`-CronJob RGW → Garage Potsdam (`s3://backup-ciso-assistant/evidence/`,
   mit `--backup-dir`, damit Löschungen nicht sofort mitgespiegelt werden).
   Dann die Garage-Quota (derzeit 20 GiB) um die 20 GiB der RGW-Quota erhöhen.
-- **Frontend-Speicher**: 375Mi gemessen bei 192Mi Request und 512Mi Limit. Das
-  Limit ist knapp, nach einer Woche Betrieb mit `kubectl top` neu messen und
-  Request/Limit anheben. Huey liegt mit 485Mi über seinem Request von 384Mi.
+- **Resources** nach #201 (Frontend 384Mi/768Mi, Huey-Request 512Mi) nach einer
+  Woche Betrieb mit `kubectl top` gegenprüfen.
 - **SSO in der App eintragen** (Einstellungen → SSO) und mit einem Keycloak-Benutzer
   testen; danach prüfen, was ein neuer Benutzer ohne Gruppenzuweisung sieht.
 - **Expliziter A-Record** `grc.jit.services` bei ClouDNS, damit künftige
