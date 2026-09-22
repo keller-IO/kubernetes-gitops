@@ -1,0 +1,35 @@
+# Ceph-RGW-Zugang (cloud64, http://192.168.2.7:7480), eigener RGW-User
+# ciso-assistant mit max-buckets=1 und 20-GiB-User-Quota, angelegt 22.09.2026.
+apiVersion: v1
+kind: Secret
+metadata:
+    name: ciso-assistant-s3
+    namespace: ciso-assistant
+type: Opaque
+stringData:
+    AWS_ACCESS_KEY_ID: ENC[AES256_GCM,data:qj1/5KrChtIhyqgKQSoPCN7JjaI=,iv:n+kBjgQku7vZWhqqJ6PK2ERX8Ip42IzUQE1g2LJhD24=,tag:MkodxNKp8q6XU7ZbYWsp6Q==,type:str]
+    AWS_SECRET_ACCESS_KEY: ENC[AES256_GCM,data:cwyDvOWaWxNZwAKRhdy5Fv2hoDSthh5oOleA6pypfNTE2DlrDaHXAQ==,iv:idHhaRz7MkVWezImO5bU83rPFkUe/6mjQ7XLU4nRYlc=,tag:h/V/ef+FfW1lbhA9Hlatkg==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBJUmJUSkNKcVpaMDd4MmVS
+            WGFjbzlLQllpeHpjS2JLZFFvT1NTcmdvN2wwCjNPMGloelc4RXhDSTVCalUrQ25P
+            dDg3NFdIU0gwdkhkSkgyQWdYYVNiVnMKLS0tIEx5bDhsY1RJNUtITG91TXpKU3c2
+            MTBsNWE2ZTZHL1BKaStXQVgwdmQ1ZEUKI564PofYDBnX+m0y81s1/aCS9hb5EgRz
+            /wmCa6oc3oLKnjfTfbyER1hLt/y4PAToQ/LCnqXCPmaWORWo7yR/6A==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age17x04ga87qyu9lzcuja9k83z90veew9cez7jusul4y5xyr09xaejs9rq755
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBvcEFwVW9JMS9XSTU4Z2hm
+            bFNVUGF1WnNFa1ZkdGhOV3JhZUt5OVlHOFRZCmZKT3FtUjBhUGtJMDJaRzZKaFZE
+            RmpIVnBKRXlJRUtoOFF3aXZWQWtzOU0KLS0tIHdGRDJEVmpqbDViQ0g1bHNGeExw
+            bVZjOVVCM1IzaHU4RllyTVBMTk14R0UKkFa4CIUEQgptOgeR2qzcEvsAgR3pV6ja
+            BSTrGZa7pGVcINNXgn0/X3X9ESdUi0lc6R18Tv60n5/8YG3zjwHTzQ==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1hjq0mgzc2npw9lhtwr49qqrfvkxzc2ss8qu7e06fk5n84qm7xs7qrgxfxa
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-09-22T08:08:22Z"
+    mac: ENC[AES256_GCM,data:fdifuH9cQ5aTcMkjXM6PDdlOPOTOnd9c4iAlDb/isbY1dAdO2j10XrlRkkJEV59IEQth1UsEE+nuZQ2ozA5Lhj6LJNp7EW6EvFL3pdfxs29Z6Uw014gv2A4EaxOySrpLtPmD2TG47PsGX/YJYvz2FnBfgXqdhX8uqXJdA27/BCU=,iv:dbkQOXBCMrZcNHA5wMH9kpxjsRxKikYktLUMj7OdVJ0=,tag:rX9DFQsOfaWLBbqqJgIs/Q==,type:str]
+    version: 3.13.3

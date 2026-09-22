@@ -12,6 +12,8 @@ namespace: ciso-assistant
 #     erzwingt der Ingress zusaetzlich eine IP-Allowlist (values.yaml).
 #   - Postgres via CNPG statt SQLite/Bitnami-Subchart (letzterer ist im Chart
 #     deprecated).
+#   - Evidenzen im Ceph-RGW-Bucket ciso-assistant-evidence (S3), kein PVC.
+#   - Mail ueber mx02 (192.168.2.209:25, IP-Relay).
 #   - SSO (Keycloak, Realm bgt) wird in der App-UI konfiguriert, nicht per
 #     Helm — siehe docs/runbooks/ciso-assistant-setup.md.
 helmCharts:
@@ -25,18 +27,6 @@ resources:
   - namespace.yaml
   - database.yaml
   - backup.yaml
-
-patches:
-  # Backend haelt das RWO-PVC fuer Evidenzen (localStorage). Bei RollingUpdate
-  # haengt der neue Pod, sobald er auf einem anderen Node landet (Multi-Attach).
-  # Recreate von Anfang an setzen: nachtraeglich umgestellt scheitert der Sync
-  # unter ServerSideApply am bereits defaulteten spec.strategy.rollingUpdate.
-  - target: { kind: Deployment, name: ciso-assistant-backend }
-    patch: |
-      - op: add
-        path: /spec/strategy
-        value:
-          type: Recreate
 
 generators:
   - ./secret-generator.yaml

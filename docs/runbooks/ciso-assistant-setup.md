@@ -20,7 +20,8 @@ nginx-inc ── IP-Allowlist (server-snippets) ── TLS via cert-manager DNS-
    ├─ /      → ciso-assistant-frontend  (SvelteKit)
    └─ /api/  → ciso-assistant-backend   (Django/Gunicorn + Huey-Sidecar)
                   ├─ ciso-assistant-pg-rw  (CNPG, Backup → Garage s3://backups/cnpg-ciso-assistant/)
-                  └─ PVC ciso-assistant-localstorage  (Evidenzen, ceph-rbd, RWO)
+                  ├─ Ceph-RGW http://192.168.2.7:7480, Bucket ciso-assistant-evidence (Evidenzen)
+                  └─ mx02 192.168.2.209:25 (SMTP-Relay, Absender noreply@jit-creatives.de)
 ```
 
 **Nur intern erreichbar, per IP-Allowlist erzwungen.** `*.jit.services` löst
@@ -30,6 +31,33 @@ App aus dem Internet. Erlaubt sind `192.168.0.0/16`, `10.0.0.0/8` und
 `100.64.0.0/10` (NetBird), alles andere bekommt 403. Das funktioniert, weil
 `$remote_addr` seit `externalTrafficPolicy: Local` die echte Client-IP ist und
 XFF nur aus `192.168.2.0/24` geglaubt wird.
+
+## Evidenzen auf Ceph-RGW
+
+Anhänge liegen nicht auf einem PVC, sondern im RGW-Bucket
+`ciso-assistant-evidence`. RGW läuft als einzelne Instanz auf `cloud64` und
+trägt bereits GitLab, `invoices` und `jitmgmt`. Das Backend bleibt dadurch
+zustandslos, und Downloads laufen mit Rechteprüfung über das Backend; Browser
+greifen nie direkt auf RGW zu.
+
+- RGW-User `ciso-assistant`: `max-buckets=1`, User-Quota 20 GiB (angelegt 22.09.2026).
+  Keys in `apps/base/ciso-assistant/s3.sops.yaml`.
+- Belegung: `radosgw-admin bucket stats --bucket=ciso-assistant-evidence` (auf cloud64).
+- Quota ändern: `radosgw-admin quota set --quota-scope=user --uid=ciso-assistant --max-size=<n>G`.
+- ⚠️ Kein Offsite-Backup. Der Bucket liegt im selben Ceph wie alles andere in Halbe.
+
+## Mail
+
+Versand über mx02 (`192.168.2.209:25`) per IP-Relay (`mynetworks`), genau wie bei
+Mailman. Pod-Traffic wird auf die Node-IP genattet, deshalb müssen **alle**
+kellerIO-Nodes in `mx_gateway_trusted_clients` stehen (cfgmgmt01
+`group_vars/mx_gateways.yml`, Playbook `playbooks/mx_gateways_without_base.yml`).
+wrk5 (`.88`) fehlte dort und wurde am 22.09.2026 auf mx02 und mx03 ergänzt.
+**Bei jedem neuen Node nachziehen**, sonst scheitert Mail je nach Scheduling mit
+`554 5.7.1 Relay access denied`.
+
+Absender `noreply@jit-creatives.de`: SPF `include:jitcreatives.de` erlaubt
+`87.191.135.42` (mx02-NAT).
 
 ## Vor dem Merge
 
@@ -52,6 +80,12 @@ XFF nur aus `192.168.2.0/24` geglaubt wird.
 - Lokaler Admin: E-Mail und Passwort stehen in
   `sops -d apps/base/ciso-assistant/secret.sops.yaml` (`ciso-assistant-django`).
   Er ist der Notfallzugang neben SSO; das Passwort nach dem ersten Login ändern.
+- Mail testen: *Einstellungen → Allgemein* bzw. Passwort-Reset für einen
+  Testbenutzer auslösen, danach auf mx02
+  `grep noreply@jit-creatives.de /var/log/mail.log | tail`.
+- Evidenz testen: an einer Maßnahme einen Anhang hochladen und wieder
+  herunterladen, dann auf cloud64 `radosgw-admin bucket stats --bucket=ciso-assistant-evidence`
+  (`num_objects` > 0).
 - Wenn der Admin nach dem Login keine Administrationsrechte hat: CISO
   Assistant nimmt Superuser erst beim nächsten `migrate` in die Gruppe
   `BI-UG-ADM` auf, also beim nächsten Pod-Start. Dann einmal den Backend-Pod
@@ -98,11 +132,8 @@ Quelladresse.
 
 ## Offen
 
-- **SMTP** ist nicht konfiguriert (Chart-Default `smtp.server.local`).
-  Passwort-Reset-Mails und Benachrichtigungen funktionieren erst mit einem
-  Relay; dafür `backend.config.smtp.*` und ein `existingSecret` setzen.
-- **Evidenz-PVC** `ciso-assistant-localstorage` liegt nicht im CNPG-Backup.
-  Vor produktiver Nutzung einen VolumeSnapshot-/Offsite-Weg festlegen, siehe
-  [backup-restore.md](backup-restore.md) (RBD-PVC-Snapshots).
+- **Evidenz-Bucket ohne Offsite-Kopie.** Vorschlag: nächtlicher
+  `rclone sync`-CronJob RGW → Garage Potsdam (`s3://backups/ciso-assistant-evidence/`,
+  mit `--backup-dir`, damit Löschungen nicht sofort mitgespiegelt werden).
 - **Resources** sind Startwerte ohne Messung; nach einer Woche per
   `kubectl top` nachziehen.

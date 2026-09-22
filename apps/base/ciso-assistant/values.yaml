@@ -10,13 +10,24 @@ global:
 backend:
   config:
     # Leer lassen. Mit gesetzter Adresse legt CISO Assistant beim `migrate`
-    # einen Superuser OHNE Passwort an (Passwort nur per Mail-Link, SMTP gibt
-    # es hier noch nicht) — und das anschliessende createsuperuser mit
-    # Passwort scheitert dann an der schon vergebenen Adresse. Der Admin
-    # kommt stattdessen ueber DJANGO_SUPERUSER_* aus dem Secret (env unten).
+    # einen Superuser OHNE Passwort an (Passwort nur per Mail-Link) — und das
+    # anschliessende createsuperuser mit Passwort scheitert dann an der schon
+    # vergebenen Adresse. Der Admin kommt stattdessen ueber DJANGO_SUPERUSER_*
+    # aus dem Secret (env unten), unabhaengig davon, ob Mail gerade zugestellt wird.
     emailAdmin: ""
     databaseType: externalPgsql
     djangoExistingSecretKey: ciso-assistant-django
+    # Ausgehende Mail (Passwort-Reset, Benachrichtigungen) ueber mx02, IP-Relay
+    # via mynetworks wie bei Mailman. Pod-Traffic NATet auf die Node-IP, deshalb
+    # muessen ALLE Nodes in mx_gateway_trusted_clients stehen (cfgmgmt01
+    # group_vars/mx_gateways.yml) -- wrk5 (.88) fehlte dort bis 22.09.2026.
+    # Klartext-SMTP bleibt im LAN; STARTTLS scheitert an der IP-Adresse gegen
+    # das Zertifikat mx02.jitcreatives.de. Absender-SPF: jit-creatives.de ->
+    # include:jitcreatives.de -> ip4:87.191.135.42 (mx02-NAT).
+    smtp:
+      host: 192.168.2.209
+      port: 25
+      defaultFrom: "CISO Assistant <noreply@jit-creatives.de>"
   env:
     # startup.sh: `createsuperuser --noinput`, sobald DJANGO_SUPERUSER_EMAIL
     # gesetzt ist; bei jedem weiteren Start ein harmloser "already exists"-Fehler.
@@ -27,20 +38,38 @@ backend:
     - name: DJANGO_SUPERUSER_PASSWORD
       valueFrom:
         secretKeyRef: { name: ciso-assistant-django, key: superuser-password }
-  persistence:
-    # Evidenzen/Anhaenge (Default waere db/attachments im Container = fluechtig).
-    # Liegt NICHT im CNPG-Backup — siehe PRODUCTION-READINESS.md.
-    localStorage:
-      enabled: true
-      size: 5Gi
-      storageClass: ceph-rbd
-      accessMode: ReadWriteOnce
+    # Evidenzen/Anhaenge auf Ceph-RGW (S3) statt auf einem RWO-PVC: das Backend
+    # bleibt zustandslos, und RGW traegt bereits GitLab, invoices und jitmgmt.
+    # Auslieferung laeuft ueber das Backend (Rechtepruefung), Browser sprechen
+    # RGW nie direkt an. IP-Endpoint => botocore nimmt Path-Style.
+    - { name: USE_S3, value: "True" }
+    - { name: AWS_S3_ENDPOINT_URL, value: "http://192.168.2.7:7480" }
+    - { name: AWS_S3_REGION_NAME, value: default }
+    - { name: AWS_STORAGE_BUCKET_NAME, value: ciso-assistant-evidence }
+    - name: AWS_ACCESS_KEY_ID
+      valueFrom:
+        secretKeyRef: { name: ciso-assistant-s3, key: AWS_ACCESS_KEY_ID }
+    - name: AWS_SECRET_ACCESS_KEY
+      valueFrom:
+        secretKeyRef: { name: ciso-assistant-s3, key: AWS_SECRET_ACCESS_KEY }
   # Startwerte ohne Messung (neue App); nach der ersten Betriebswoche per
   # `kubectl top` nachziehen. Gunicorn laeuft mit 3 Workern.
   resources:
     requests: { cpu: 200m, memory: 768Mi }
     limits: { memory: 1536Mi }
   huey:
+    # Huey erzeugt Exporte/Reports und braucht denselben Storage wie das Backend.
+    env:
+      - { name: USE_S3, value: "True" }
+      - { name: AWS_S3_ENDPOINT_URL, value: "http://192.168.2.7:7480" }
+      - { name: AWS_S3_REGION_NAME, value: default }
+      - { name: AWS_STORAGE_BUCKET_NAME, value: ciso-assistant-evidence }
+      - name: AWS_ACCESS_KEY_ID
+        valueFrom:
+          secretKeyRef: { name: ciso-assistant-s3, key: AWS_ACCESS_KEY_ID }
+      - name: AWS_SECRET_ACCESS_KEY
+        valueFrom:
+          secretKeyRef: { name: ciso-assistant-s3, key: AWS_SECRET_ACCESS_KEY }
     resources:
       requests: { cpu: 50m, memory: 384Mi }
       limits: { memory: 1Gi }
