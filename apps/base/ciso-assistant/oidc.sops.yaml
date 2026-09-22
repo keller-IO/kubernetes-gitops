@@ -1,0 +1,38 @@
+# Keycloak-Client ciso-assistant (Realm bgt), angelegt 22.09.2026.
+# Wird NICHT in einen Pod gemountet: CISO Assistant liest SSO-Einstellungen aus
+# seiner DB (Einstellungen -> SSO). Liegt hier nach Repo-Konvention als Referenz;
+# Original auf auth01:/root/ciso-assistant-oidc-client-secret.
+apiVersion: v1
+kind: Secret
+metadata:
+    name: ciso-assistant-oidc
+    namespace: ciso-assistant
+type: Opaque
+stringData:
+    issuer: ENC[AES256_GCM,data:4MgeFSSKPK3wje22+Xmyj4DHu42zCUt0yqLzxGvPfPsDrZH+oMhgrLQ=,iv:vL71VaVPJyuuWNqXGTGKAVmtSumIbr5HwkQJMzS1ztk=,tag:6bObphJ7dbcrq9s8g15BOQ==,type:str]
+    client-id: ENC[AES256_GCM,data:VG+rbnWtWEhXP8+qs4g=,iv:K7ARGlZmX+0CM6Autrhr+UUHK3zzM2XVAFOOpihzdKQ=,tag:G0qWhvVPEsEh7FL/v3oarg==,type:str]
+    client-secret: ENC[AES256_GCM,data:4tJENNYFddmTVgAtnczrkP2wn1Es0sYjvVcNnnioXl1Pqh03/yqTCETt88a/taAfUTH55Q/g+NgE+4TzbHwGow==,iv:sTt84ZTA/0ByQehbGiDRYPzaHmlzyAfruL1bbbXPKjo=,tag:pMFVQ3Tbt5rQURmjA3H6Tw==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBZMEVhT2pKeG1xMy92bDFS
+            SUJhS1lhUFVXK0VTV0pKdU94aU9aZHRETW1FCnh1SWlHdk41bXFLSXlVbXJFZGJy
+            NXhMMi80M0lPU2lHNnd1dExhT2RaRlkKLS0tIHArR2J1QnMraDVyMmJEeCtqQ2Nn
+            eFhwakVYemQvSzdocVFyN25iU21UU0kKFNNLx+COuaKTmuyvOXbqOkjKOap916jw
+            Pj52ezUVWGeg1BH6xgNrdRw2wag7OWevHtfyl+4ho7F7nNTE6h+83w==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age17x04ga87qyu9lzcuja9k83z90veew9cez7jusul4y5xyr09xaejs9rq755
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSB2cElPSTJDU2t1ZEIydkU0
+            eXduS2JmS2I4WDcza1VqdEljWVg5bmdHVUhFCkM3SXdWemlHMkUzMU1yU0VWMlA3
+            eWRsQk9CL0R4aG1vNXdYQnYwcmdibFUKLS0tIHNFZU85SnZ5b3pGNFhSS3Y5UjIy
+            UVJLZ0E3RUU0VXQwVDRpN1gvelZBWEEK+TEToLqfBHVZ75e5PWJmOW2opX/cFm9d
+            SApew7NDyiLHiQ4pjd7dshO377+6n2N6cHcsPvk/58YaAT2ceX7XyA==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1hjq0mgzc2npw9lhtwr49qqrfvkxzc2ss8qu7e06fk5n84qm7xs7qrgxfxa
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-09-22T08:42:12Z"
+    mac: ENC[AES256_GCM,data:02Kvfq8lL6Gz6dCwhXmKRA/opvuXwGKxhnWkFh2tjDvz2Bv1EWrvBexW4VYax7HL23+jWlcDWzP4e57Q2lEoxz/proqQ2xhaa0MgiKN96ENFOSERXqUV+xbuXgqxjtwuD6oEHBjgtpIU+ARZN9TOi5SaXTtnIo0Ci8LNV/yVLD8=,iv:lH/tu/dpftc2H07Uw2dhmXwMSr34IwVocgbdJtAl+SA=,tag:MsQmX5vparKDt+FvoC+CQA==,type:str]
+    version: 3.13.3
