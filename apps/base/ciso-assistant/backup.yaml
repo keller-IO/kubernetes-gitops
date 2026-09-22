@@ -1,0 +1,10 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: ciso-assistant-pg
+  namespace: ciso-assistant
+spec:
+  schedule: "0 40 2 * * *" # 6-field (CNPG = Sekunden zuerst): taeglich 02:40, versetzt zu den uebrigen
+  backupOwnerReference: self
+  cluster:
+    name: ciso-assistant-pg

@@ -1,0 +1,41 @@
+# ⚠️ PLATZHALTER — vor dem Merge fuellen und verschluesseln:
+#   Garage-Key auf 192.168.23.21 anlegen (docs/runbooks/backup-restore.md):
+#     G=$(docker ps -qf name=garage | head -1)
+#     docker exec $G /garage key create cnpg-ciso-assistant
+#     docker exec $G /garage bucket allow --read --write backups --key cnpg-ciso-assistant
+#   Werte eintragen: sops apps/base/ciso-assistant/backup-s3.sops.yaml
+#   (Datei ist mit REPLACE_ME verschluesselt, damit KSOPS/CI bauen koennen.)
+apiVersion: v1
+kind: Secret
+metadata:
+    name: ciso-assistant-backup-s3
+    namespace: ciso-assistant
+type: Opaque
+stringData:
+    ACCESS_KEY_ID: ENC[AES256_GCM,data:4j5YopPNrwHCWg==,iv:gvC7I5YkiARK+NsWnb9STRXG1vTr8P/t5E17JwG3ex8=,tag:RZXoCuhXc+CseBrXIK3V9Q==,type:str]
+    SECRET_ACCESS_KEY: ENC[AES256_GCM,data:aMI1+8+ocwvAGg==,iv:1FcNnk0uSquFj6I9xATTmtLJU498GhX/CyMoyrXPJO4=,tag:TtjBzfhvGKOVNRFhX648Fg==,type:str]
+    region: ENC[AES256_GCM,data:P4ry5Ey30c78BQWJJZE=,iv:arko/7yQ+QBNyIdmGovJdXeKgXK3B5JEL0xt8mLRoyU=,tag:giqDdgUEk6/xgujJtfS7cQ==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBveTMwdW50NXdicVRXNkR0
+            MEZjQmsvTTVtWERnMEo5REw0cFZsV0k3aGtVClplVUtlamY3d040K3hmWnY0SnZi
+            UlM5M2hYS2lVcEdtdWZCTCs5V3FTSXcKLS0tIGt1WUxDNEUvY20vY0ppQm5FZXBn
+            bmVvczNiUDhXNEZUL29OWWtQTnJLVzAKqupeLEi7SNbiQWC8N2gFygslHVKanIMv
+            L8YJ3hsXfP3TkEf0lR3O3pilYryEpjdJxb1oN9f3kJgtyIe+1gn45Q==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age17x04ga87qyu9lzcuja9k83z90veew9cez7jusul4y5xyr09xaejs9rq755
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBoN1hJWUd3cHJwRFpuNkRl
+            TVRRTHFtUWlCS1hPQnVldWU2SU5GOHZPcVJ3CkhoU0pMbkdqd1p5Tkl3d1lhL0M5
+            TElHQWpxQ3ZzeWRFeDVZR3V1SDdST3cKLS0tIGRvc2VaVGdqT3M2RHNyQUZzb3V0
+            NHpVbnVvTEdOWU4vUyt1WDhPVEM1dkUKALSzaDpO/Z+sg3M/7Hxke9HA8MBQb8g+
+            RzCySgmhKOSH3FFjXKxN0eUeS583CQZX+j5BJCgbvVmIUh9Uhbpegg==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1hjq0mgzc2npw9lhtwr49qqrfvkxzc2ss8qu7e06fk5n84qm7xs7qrgxfxa
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-09-22T06:59:56Z"
+    mac: ENC[AES256_GCM,data:yl1FLUWDif4e0enP2IYMbQWjClQwo6/39UbhTkvy+wGXfj4Icu8uNWzB4jGvyJn9djuwAJb20aUknUlTWzpKzAVe9LRepnWo4alBgtml7v5WTeX7/MuiRgm3OoyB+aEIPjcCo6GShcJO5yRW79Q44XGRUiskzMkwE4652kiikqk=,iv:z6zzhqNwMZa4ctOTJlp0cPSU1sOXgd0pAyu9u2xyslY=,tag:+6q4HJ2zdcXt5fw4WL8sxw==,type:str]
+    version: 3.13.3
