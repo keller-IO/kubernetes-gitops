@@ -36,8 +36,14 @@ Dumps dürfen nicht dort abgelegt werden; Dumps direkt in den Cluster streamen.
 - **Medien-Retention muss im Ziel neu gebaut werden.** Chart 1.0.3 bringt
   keinen CronJob dafür mit; der wöchentliche Cron des Altservers hat im Ziel
   kein Gegenstück. Ohne Ersatz wächst der Remote-Cache im RGW unbegrenzt.
-  Eigener CronJob (`tootctl media remove`, `tootctl preview_cards remove`)
-  spätestens mit dem Cutover-PR, sonst füllt er Ceph.
+  Eigener CronJob spätestens mit dem Cutover-PR, sonst füllt er Ceph.
+  **Schärfer parametrisieren als auf dem Altserver:** dessen Cron läuft zwar
+  (zuletzt 13.09. und 20.09.), trotzdem liegen dort 514.064 Cache-Dateien älter
+  als 30 Tage. Ursache sind die Defaults — `media remove` fasst ohne
+  `--prune-profiles` die Avatare und Header entfernter Profile nicht an, und
+  `preview_cards remove` löscht erst ab 180 Tagen. Empfehlung für den CronJob:
+  `media remove --days 7 --prune-profiles`, `preview_cards remove --days 30`
+  und periodisch `media remove-orphans`.
 - Migration und Upgrade werden nicht vermischt: Images sind auf **4.5.18**
   gepinnt, identisch zur Bestandsinstanz. Chart 1.0.3 bringt appVersion 4.6.3
   mit; das Upgrade folgt separat nach stabiler Betriebsphase.
