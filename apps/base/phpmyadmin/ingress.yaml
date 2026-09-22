@@ -8,6 +8,19 @@ metadata:
     nginx.org/ssl-redirect: "true"
     nginx.org/redirect-to-https: "true"
     nginx.org/client-max-body-size: "64m"
+    # Nur interne Netze (wie ciso-assistant). *.jit.services loest zwar auf die
+    # LAN-Adresse .246 auf, der Router leitet 443 aber auf denselben LB. Am
+    # 22.09.2026 von extern (Hetzner) mit gesetztem Host-Header geprueft: HTTP 200.
+    # $remote_addr ist die echte Client-IP (externalTrafficPolicy: Local); XFF
+    # wird nur aus 192.168.2.0/24 geglaubt.
+    #   192.168.0.0/16  LAN Halbe, Potsdam (.23)
+    #   10.0.0.0/8      Pod-Netz (gatus), victorianix
+    #   100.64.0.0/10   NetBird
+    nginx.org/server-snippets: |
+      allow 192.168.0.0/16;
+      allow 10.0.0.0/8;
+      allow 100.64.0.0/10;
+      deny all;
 spec:
   ingressClassName: nginx
   tls:
