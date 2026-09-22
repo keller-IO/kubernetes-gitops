@@ -184,9 +184,9 @@ endpoints:
   - addresses: ["192.168.2.217"]
     conditions: { ready: true }
 ---
-# cloud-dev (Nextcloud-Dev, HTTPS-Backend) -> nc01-dev 192.168.2.220:443
-# nc02-dev bleibt draussen, solange 192.168.2.221 nicht erreichbar ist und noch
-# nicht derselbe Release-Stand nachgewiesen wurde.
+# cloud-dev (Nextcloud-Dev, HTTPS-Backend) -> nc01-dev 192.168.2.220:443 und
+# nc02-dev 192.168.2.221:443. Beide Nodes teilen PHP-Sessions ueber Redis
+# (cfgmgmt01 playbooks/nc_dev_runtime.yml); Sticky Sessions sind nicht noetig.
 apiVersion: v1
 kind: Service
 metadata: { name: cloud-dev, namespace: legacy-proxy }
@@ -203,6 +203,8 @@ addressType: IPv4
 ports: [{ name: https, port: 443 }]
 endpoints:
   - addresses: ["192.168.2.220"]
+    conditions: { ready: true }
+  - addresses: ["192.168.2.221"]
     conditions: { ready: true }
 ---
 # Nextcloud Talk HPB -> talk01 192.168.2.215:80. Nginx on talk01 strips the
