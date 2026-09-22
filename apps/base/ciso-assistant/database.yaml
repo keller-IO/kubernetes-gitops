@@ -29,14 +29,14 @@ spec:
       owner: ciso-assistant
       secret:
         name: ciso-assistant-db-app
-  # Backup nach Garage-S3 analog zu den uebrigen Apps, mit eigenem Garage-Key
-  # (RW nur auf den Bucket backups). ⚠️ Erst mergen, wenn backup-s3.sops.yaml
-  # echte Credentials traegt: ein kaputtes Archive-Target staut WALs, bis die
-  # Disk voll ist.
+  # Backup nach Garage-S3 in einen EIGENEN Bucket mit eigenem Key (RW nur auf
+  # diesen Bucket, 20 GiB Quota). Garage kennt keine Prefix-Rechte: ein Key auf
+  # dem gemeinsamen Bucket backups koennte die Backups aller Apps loeschen.
+  # Schema siehe docs/runbooks/backup-restore.md, Abschnitt Secrets.
   backup:
     retentionPolicy: "30d"
     barmanObjectStore:
-      destinationPath: s3://backups/cnpg-ciso-assistant/
+      destinationPath: s3://backup-ciso-assistant/cnpg/
       endpointURL: http://192.168.23.21:3900
       s3Credentials:
         accessKeyId: { name: ciso-assistant-backup-s3, key: ACCESS_KEY_ID }

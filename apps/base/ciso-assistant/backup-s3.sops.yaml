@@ -1,10 +1,5 @@
-# ⚠️ PLATZHALTER — vor dem Merge fuellen und verschluesseln:
-#   Garage-Key auf 192.168.23.21 anlegen (docs/runbooks/backup-restore.md):
-#     G=$(docker ps -qf name=garage | head -1)
-#     docker exec $G /garage key create cnpg-ciso-assistant
-#     docker exec $G /garage bucket allow --read --write backups --key cnpg-ciso-assistant
-#   Werte eintragen: sops apps/base/ciso-assistant/backup-s3.sops.yaml
-#   (Datei ist mit REPLACE_ME verschluesselt, damit KSOPS/CI bauen koennen.)
+# Garage-Key backup-ciso-assistant: RW nur auf Bucket backup-ciso-assistant
+# (docs/runbooks/backup-restore.md, Abschnitt Secrets).
 apiVersion: v1
 kind: Secret
 metadata:
@@ -12,30 +7,30 @@ metadata:
     namespace: ciso-assistant
 type: Opaque
 stringData:
-    ACCESS_KEY_ID: ENC[AES256_GCM,data:4j5YopPNrwHCWg==,iv:gvC7I5YkiARK+NsWnb9STRXG1vTr8P/t5E17JwG3ex8=,tag:RZXoCuhXc+CseBrXIK3V9Q==,type:str]
-    SECRET_ACCESS_KEY: ENC[AES256_GCM,data:aMI1+8+ocwvAGg==,iv:1FcNnk0uSquFj6I9xATTmtLJU498GhX/CyMoyrXPJO4=,tag:TtjBzfhvGKOVNRFhX648Fg==,type:str]
-    region: ENC[AES256_GCM,data:P4ry5Ey30c78BQWJJZE=,iv:arko/7yQ+QBNyIdmGovJdXeKgXK3B5JEL0xt8mLRoyU=,tag:giqDdgUEk6/xgujJtfS7cQ==,type:str]
+    ACCESS_KEY_ID: ENC[AES256_GCM,data:eZNO5to8O3KttBfdCsKqYcdoU5xgwl/F5YA=,iv:DFupkV5GrSJIz74yUGm0woAQKGt+SlAOe14iLmZp5hE=,tag:t6Qr7h856XyWy5COHSwvZw==,type:str]
+    SECRET_ACCESS_KEY: ENC[AES256_GCM,data:p0X5GXLvM6AUrLIFLs51D437gJyc2rgyAnPa4Eawu9GgKk/AN0XJH28CTsDoLlCrF6c1Q9yU7WsFuj5Dim6twA==,iv:W5u2mgux4lZhmUXbtF7G1Inlsc+TAZQqw2combkPhho=,tag:YbddKwbllWPJAUTlNEBF/A==,type:str]
+    region: ENC[AES256_GCM,data:wi/xMA7AGm9mmHfYyNI=,iv:WusOty4jJS/U8rvd1saStHbSAEAdUym7P2oyTmTnJTA=,tag:yJM8f/i9kTOQX8+X3MLGXA==,type:str]
 sops:
     age:
         - enc: |
             -----BEGIN AGE ENCRYPTED FILE-----
-            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBveTMwdW50NXdicVRXNkR0
-            MEZjQmsvTTVtWERnMEo5REw0cFZsV0k3aGtVClplVUtlamY3d040K3hmWnY0SnZi
-            UlM5M2hYS2lVcEdtdWZCTCs5V3FTSXcKLS0tIGt1WUxDNEUvY20vY0ppQm5FZXBn
-            bmVvczNiUDhXNEZUL29OWWtQTnJLVzAKqupeLEi7SNbiQWC8N2gFygslHVKanIMv
-            L8YJ3hsXfP3TkEf0lR3O3pilYryEpjdJxb1oN9f3kJgtyIe+1gn45Q==
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBvZmVxSDdnTnFFb1NDMnBs
+            NXN0YSs1dU9oYTB0dm5BdzBGQUF4elFmWWprCk15ZVJtNHdzSi9RUlo1aFFmMU1O
+            enlIODR5TWE0SEVJN0E0UmZSSnd1UVUKLS0tIGhoeWJoenlyUHRUbm1zaG1FVnJQ
+            NmxLOTFEeDVVRFFaWS93VmZ6L2xFVk0KiofZ4AEChDk2EaPIQAocF7YGGCVQaeph
+            sfkqvOWtblrYc1VjSLQbTpEOYobXHOCaPYWjNHnDHQFUquGpQVlW+Q==
             -----END AGE ENCRYPTED FILE-----
           recipient: age17x04ga87qyu9lzcuja9k83z90veew9cez7jusul4y5xyr09xaejs9rq755
         - enc: |
             -----BEGIN AGE ENCRYPTED FILE-----
-            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBoN1hJWUd3cHJwRFpuNkRl
-            TVRRTHFtUWlCS1hPQnVldWU2SU5GOHZPcVJ3CkhoU0pMbkdqd1p5Tkl3d1lhL0M5
-            TElHQWpxQ3ZzeWRFeDVZR3V1SDdST3cKLS0tIGRvc2VaVGdqT3M2RHNyQUZzb3V0
-            NHpVbnVvTEdOWU4vUyt1WDhPVEM1dkUKALSzaDpO/Z+sg3M/7Hxke9HA8MBQb8g+
-            RzCySgmhKOSH3FFjXKxN0eUeS583CQZX+j5BJCgbvVmIUh9Uhbpegg==
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBFOUVYcWFVcjJCQ1R3T3c1
+            TU5hai8zajdkanBRUFJpNnBPVXZLbUpNRjJVClltbzRpVXNERWNOY1JCTE84UFpv
+            OHlDSlFac0ZLYU13Z2NXNmd6YzJUMUkKLS0tIHdQZTA1b3NHLzluUWRlRHdRRXVL
+            d1NaRUNLVEVTRTZQcGFsY1Y5dkM4NGsK4ujcNFtq/cHC8xGa6SIdBAuB4v39RnBQ
+            PaGmbvABxmWgTG3DHfJ+BEcDkoFdGSQvh+zJBQr9M+ezpvL26zR9wQ==
             -----END AGE ENCRYPTED FILE-----
           recipient: age1hjq0mgzc2npw9lhtwr49qqrfvkxzc2ss8qu7e06fk5n84qm7xs7qrgxfxa
     encrypted_regex: ^(data|stringData)$
-    lastmodified: "2026-09-22T06:59:56Z"
-    mac: ENC[AES256_GCM,data:yl1FLUWDif4e0enP2IYMbQWjClQwo6/39UbhTkvy+wGXfj4Icu8uNWzB4jGvyJn9djuwAJb20aUknUlTWzpKzAVe9LRepnWo4alBgtml7v5WTeX7/MuiRgm3OoyB+aEIPjcCo6GShcJO5yRW79Q44XGRUiskzMkwE4652kiikqk=,iv:z6zzhqNwMZa4ctOTJlp0cPSU1sOXgd0pAyu9u2xyslY=,tag:+6q4HJ2zdcXt5fw4WL8sxw==,type:str]
+    lastmodified: "2026-09-22T08:17:15Z"
+    mac: ENC[AES256_GCM,data:TnZj0eETnJkcJv+dmgU0xUayVjO577VFidtlkzlhbO2vVc9tfCUoz6mb5N2S5UpFxCYOfQTXiOFI3eNxxq/rDlPh7oN8t5gFOvF1Tdb4RhAgZoRFTeKaB+qVwxdkYkGwg0v2gaB1bTiAPWhH6SFW3pyoQcXY0SFkgoOaCwOWNU8=,iv:AH16yzDejNnRJKascFA7f01xOleI/XHzuSPqJOcdCzk=,tag:4k/0sX/vAEt83kBKXpYmJg==,type:str]
     version: 3.13.3

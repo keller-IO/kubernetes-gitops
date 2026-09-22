@@ -71,18 +71,92 @@ Aufräumen ist deshalb immer ein expliziter, geprüfter Vorgang.
 
 ## Secrets
 
-Pro App ein SOPS-Secret `<app>-backup-s3` (`apps/base/<app>/secret.sops.yaml`) mit
-`ACCESS_KEY_ID` / `SECRET_ACCESS_KEY`. Alle nutzen denselben Garage-Key
-`cnpg-backups` (Key-ID `GK4abeaff…`), der nur read/write auf den `backups`-Bucket
-hat. Klartext ansehen: `sops -d apps/base/roundcube/secret.sops.yaml`.
+### Standard für neue Backups (seit 22.09.2026): ein Bucket und ein Key pro App
 
-Neuen/rotierten Key erzeugen (auf `192.168.23.21`):
+Garage vergibt Rechte **nur pro Bucket**, nicht pro Prefix. Jeder Key auf dem
+gemeinsamen Bucket `backups` kann deshalb die Backups *aller* Apps lesen,
+überschreiben und löschen. Neue Backups bekommen daher:
+
+- Bucket `backup-<app>` mit Quota,
+- Key `backup-<app>`, **nur `--read --write`** auf diesen Bucket (kein `--owner`),
+- Pfade im Bucket nach Art: `cnpg/`, `mariadb/`, `evidence/` …,
+- SOPS-Secret `<app>-backup-s3` mit `ACCESS_KEY_ID`, `SECRET_ACCESS_KEY`, `region`.
+
+Anlegen (auf `192.168.23.21`):
 ```bash
 G=$(docker ps -qf name=garage | head -1)
-docker exec $G /garage key create cnpg-backups
-docker exec $G /garage bucket allow --read --write backups --key cnpg-backups
-# neuen Key in alle apps/base/*/secret.sops.yaml (backup-s3) eintragen + sops -e
+docker exec $G /garage bucket create backup-<app>
+docker exec $G /garage bucket set-quotas --max-size 20GiB backup-<app>
+docker exec $G /garage key create backup-<app>
+docker exec $G /garage bucket allow --read --write backup-<app> --key backup-<app>
 ```
+
+Secret befüllen, ohne dass der Klartext im Terminal oder auf der Platte landet
+(im Repo-Root ausführen; `.sops.yaml` greift über `--filename-override`):
+```bash
+F=apps/base/<app>/backup-s3.sops.yaml   # bzw. secret.sops.yaml
+ssh root@192.168.23.21 'docker exec $(docker ps -qf name=garage | head -1) \
+    /garage key info --show-secret backup-<app>' \
+  | awk -F': *' '/^Key ID/{id=$2} /^Secret key/{sk=$2} END{
+      print "apiVersion: v1\nkind: Secret\nmetadata:\n    name: <app>-backup-s3\n    namespace: <ns>\ntype: Opaque\nstringData:"
+      print "    ACCESS_KEY_ID: " id "\n    SECRET_ACCESS_KEY: " sk "\n    region: garage-potsdam"}' \
+  | sops -e --filename-override "$F" --input-type yaml --output-type yaml /dev/stdin > "$F.new" \
+  && mv "$F.new" "$F"
+```
+Liegt das Backup-Secret in einer gemeinsamen `secret.sops.yaml`, stattdessen
+`sops <datei>` öffnen und die drei Werte von Hand ersetzen.
+
+Vor dem Merge den Key mit `curl --aws-sigv4 "aws:amz:garage-potsdam:s3"` prüfen:
+PUT/GET/DELETE im eigenen Bucket → 200/204, LIST auf `backups` → **403**.
+
+Referenz: `ciso-assistant` (PR #198) → `s3://backup-ciso-assistant/cnpg/`.
+
+### Ist-Stand der Keys (live 22.09.2026)
+
+| Key | Rechte | Nutzer |
+|---|---|---|
+| `cnpg-backups` (`GK4abeaff…`) | **RWO** auf `backups` | roundcube, paperless, forgejo, mailman, mastodon (CNPG); kimai, wordpress-1/-2/-3, matomo (MariaDB) |
+| `cnpg-crowdsec`, `cnpg-expense` | RW auf `backups` | je ein CNPG-Cluster, aber auf dem gemeinsamen Bucket |
+| `docker15-legacy-dumps` | RW auf `backups` | einmalige .15-Dumps unter `docker15-legacy/` |
+| `default access key` | **RWO** auf `backups` | beim Garage-Setup angelegt, kein bekannter Nutzer |
+| `hass-backup` | RWO auf `hass-backups` | Home Assistant, schon ein eigener Bucket |
+| `backup-ciso-assistant` | RW auf `backup-ciso-assistant` | neues Schema |
+
+Klartext eines Secrets ansehen: `sops -d apps/base/roundcube/secret.sops.yaml`.
+
+### Migrationsplan für die bestehenden Apps
+
+Pro App ein eigener PR, damit ein Fehler nur eine App trifft:
+
+1. Bucket und Key `backup-<app>` nach obigem Schema anlegen und per curl prüfen.
+2. Ein PR ändert Secret und Ziel gleichzeitig:
+   - CNPG: `destinationPath: s3://backup-<app>/cnpg/`. Der neue Pfad ist leer,
+     deshalb schlägt `barman-cloud-check-wal-archive` nicht an.
+   - MariaDB: `bucket: backup-<app>`, `prefix: mariadb` (WordPress:
+     `mariadb-wordpress-N` bleibt je Instanz als Prefix). Das Feld ist auf dem
+     bestehenden Backup-CR **immutable**: nach dem Merge das CR löschen,
+     ArgoCD legt es neu an.
+3. Nach dem Sync sofort ein Base-Backup anstoßen (siehe „manuelles
+   Base-Backup“) und `ContinuousArchiving=True` sowie Objekte im neuen Bucket
+   prüfen. Erst dann die nächste App angehen.
+4. Der alte Prefix unter `backups/` bleibt 30 Tage als PITR-Fallback liegen. Ein
+   Restore von dort braucht den alten Key `cnpg-backups`.
+
+Reihenfolge nach Risiko: mastodon (kein aktiver DB-Pod) → matomo → kimai →
+wordpress-1/-2/-3 → forgejo → paperless → mailman → roundcube; dann crowdsec
+und expense (nur Bucket-Umzug, Key neu nach Schema).
+
+Abschluss, frühestens 30 Tage nach der letzten Umstellung und nach je einem
+**echten Restore-Test** aus einem neuen Bucket:
+
+- Die alten Prefixe `cnpg-*`/`mariadb-*` in `backups` löschen.
+- Die Keys `cnpg-backups`, `cnpg-crowdsec` und `cnpg-expense` mit
+  `garage bucket deny` entziehen und dann `garage key delete`.
+- `default access key`: Owner-Recht auf `backups` entziehen, danach löschen.
+- `docker15-legacy/`: entweder in einen eigenen Bucket umziehen oder nach
+  Ablauf der .15-Karenz löschen. Danach ist `backups` leer und kann weg.
+- Buckets und Keys im Garage-Setup-Repo (`cfgmgmt01:/root/ansible/garage-s3`,
+  bisher ohne Git) als idempotente Tasks abbilden. Derzeit ist alles Handarbeit.
 
 ## Konfiguration (GitOps)
 
@@ -185,8 +259,8 @@ MariaDB (kimai-mariadb, wordpress-mariadb ×3)
   sonst schreiben alle drei in denselben Ordner.
 - **Format:** `backup.<timestamp>.gzip.sql` (ein logischer Dump je Lauf).
 - **Retention:** 30 Tage (`maxRetention: 720h`). **Zeitplan:** täglich 02:00.
-- **Config:** `apps/base/<app>/backup.yaml`. Secrets: `<app>-backup-s3` (derselbe
-  Garage-Key wie CNPG). Endpoint OHNE Schema (`192.168.23.21:3900`), `tls.enabled: false`.
+- **Config:** `apps/base/<app>/backup.yaml`. Secrets: `<app>-backup-s3` (bisher derselbe
+  Garage-Key wie CNPG, Umstellung siehe Abschnitt Secrets). Endpoint OHNE Schema (`192.168.23.21:3900`), `tls.enabled: false`.
 
 > ⚠️ `spec.storage.s3.bucket` und `.endpoint` sind auf einem bestehenden Backup-CR
 > **immutable**. Ändert man das Ziel, muss das alte CR erst gelöscht werden
@@ -260,8 +334,9 @@ Instanz-Prefix (`mariadb-wordpress-1` etc.) im jeweiligen Namespace.
 
 ## Bekannte Grenzen / offen
 
-- Der `cnpg-backups`-Garage-Key hat Zugriff auf den gesamten `backups`-Bucket
-  (alle App-Prefixe, CNPG + MariaDB). Für strengere Trennung: pro App eigener Key.
+- Der `cnpg-backups`-Garage-Key hat **RWO** auf den gesamten `backups`-Bucket
+  (alle App-Prefixe, CNPG + MariaDB). Umstellung auf je einen Bucket und Key pro
+  App: siehe Abschnitt Secrets.
 - MariaDB = nur logische Dumps (kein PITR). Für PITR wäre der `PhysicalBackup`-CRD
   + Binlog nötig.
 - Restore je einmal echt testen (CNPG **und** MariaDB) → nach dem ersten grünen

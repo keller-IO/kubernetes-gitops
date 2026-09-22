@@ -19,7 +19,7 @@ Browser (LAN / Potsdam / NetBird)
 nginx-inc ── IP-Allowlist (server-snippets) ── TLS via cert-manager DNS-01/ClouDNS
    ├─ /      → ciso-assistant-frontend  (SvelteKit)
    └─ /api/  → ciso-assistant-backend   (Django/Gunicorn + Huey-Sidecar)
-                  ├─ ciso-assistant-pg-rw  (CNPG, Backup → Garage s3://backups/cnpg-ciso-assistant/)
+                  ├─ ciso-assistant-pg-rw  (CNPG, Backup → Garage s3://backup-ciso-assistant/cnpg/)
                   ├─ Ceph-RGW http://192.168.2.7:7480, Bucket ciso-assistant-evidence (Evidenzen)
                   └─ mx02 192.168.2.209:25 (SMTP-Relay, Absender noreply@jit-creatives.de)
 ```
@@ -61,15 +61,11 @@ Absender `noreply@jit-creatives.de`: SPF `include:jitcreatives.de` erlaubt
 
 ## Vor dem Merge
 
-1. **Garage-Key für das DB-Backup** anlegen (auf `192.168.23.21`, siehe
-   [backup-restore.md](backup-restore.md)) und eintragen:
-   ```bash
-   G=$(docker ps -qf name=garage | head -1)
-   docker exec $G /garage key create cnpg-ciso-assistant
-   docker exec $G /garage bucket allow --read --write backups --key cnpg-ciso-assistant
-   sops apps/base/ciso-assistant/backup-s3.sops.yaml   # REPLACE_ME ersetzen
-   ```
-   Ohne echte Credentials staut CNPG die WALs, bis die Disk voll ist.
+1. ~~Garage-Bucket und -Key für das DB-Backup~~ erledigt am 22.09.2026:
+   Bucket `backup-ciso-assistant` (20 GiB Quota), Key `backup-ciso-assistant`
+   (`GKb113705f…`) mit RW nur auf diesen Bucket, verschlüsselt in
+   `apps/base/ciso-assistant/backup-s3.sops.yaml`. Probe mit dem Key:
+   PUT/GET/LIST/DELETE im eigenen Bucket 200/204, LIST/PUT auf `backups` 403.
 2. **Keycloak-Client** im Realm `bgt` anlegen (siehe unten). Das Secret
    landet nicht in Git, es wird in der App-UI eingetragen.
 
@@ -133,7 +129,8 @@ Quelladresse.
 ## Offen
 
 - **Evidenz-Bucket ohne Offsite-Kopie.** Vorschlag: nächtlicher
-  `rclone sync`-CronJob RGW → Garage Potsdam (`s3://backups/ciso-assistant-evidence/`,
+  `rclone sync`-CronJob RGW → Garage Potsdam (`s3://backup-ciso-assistant/evidence/`,
   mit `--backup-dir`, damit Löschungen nicht sofort mitgespiegelt werden).
+  Dann die Garage-Quota (derzeit 20 GiB) um die 20 GiB der RGW-Quota erhöhen.
 - **Resources** sind Startwerte ohne Messung; nach einer Woche per
   `kubectl top` nachziehen.
