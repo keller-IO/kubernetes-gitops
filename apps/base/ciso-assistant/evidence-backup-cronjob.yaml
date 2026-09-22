@@ -1,0 +1,101 @@
+# Offsite-Kopie der Evidenzen: Ceph-RGW (Halbe, eine Instanz auf cloud64) ->
+# Garage Potsdam, Bucket backup-ciso-assistant, Pfad evidence/.
+#
+#   evidence/current/          Spiegel des RGW-Buckets (rclone sync)
+#   evidence/archive/<Datum>/  von sync geloeschte/ueberschriebene Dateien
+#                              (--backup-dir), nach 30 Tagen entfernt
+#
+# Loeschungen im RGW (Versehen, kompromittierter Account) landen damit nicht
+# sofort offsite, sondern bleiben 30 Tage im Archiv -- gleiche Frist wie die
+# CNPG-Retention. Scheitert das Listing der Quelle, bricht rclone sync die
+# Loeschphase ab ("not deleting files as there were IO errors").
+#
+# Zugaenge: ciso-assistant-s3 (RGW-User ciso-assistant, lesend genutzt) und
+# ciso-assistant-backup-s3 (Garage-Key backup-ciso-assistant, RW nur auf den
+# eigenen Bucket). Quota des Garage-Buckets: 50 GiB (20 GiB Evidenz + DB + Archiv).
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ciso-assistant-evidence-offsite
+  namespace: ciso-assistant
+  labels:
+    app.kubernetes.io/name: ciso-assistant
+    app.kubernetes.io/component: evidence-offsite
+spec:
+  schedule: "30 3 * * *" # nach dem CNPG-Base-Backup (02:40)
+  timeZone: Europe/Berlin
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 10800
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: ciso-assistant
+            app.kubernetes.io/component: evidence-offsite
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            seccompProfile: { type: RuntimeDefault }
+          containers:
+            - name: rclone
+              image: rclone/rclone:1.75.1 # renovate: image=rclone/rclone
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -eu
+                  STAMP=$(date -u +%Y-%m-%dT%H%M%SZ)
+                  rclone sync rgw:ciso-assistant-evidence garage:backup-ciso-assistant/evidence/current \
+                    --backup-dir "garage:backup-ciso-assistant/evidence/archive/${STAMP}" \
+                    --checksum --stats-one-line --stats 0 -v
+                  rclone delete garage:backup-ciso-assistant/evidence/archive --min-age 30d --rmdirs -v
+                  rclone size garage:backup-ciso-assistant/evidence/current
+              env:
+                - { name: HOME, value: /tmp }
+                - { name: RCLONE_CONFIG, value: /tmp/rclone.conf } # existiert nicht (harmloser NOTICE); Remotes kommen aus RCLONE_CONFIG_*
+                - { name: RCLONE_CACHE_DIR, value: /tmp/cache }
+                # Quelle: Ceph-RGW
+                - { name: RCLONE_CONFIG_RGW_TYPE, value: s3 }
+                - { name: RCLONE_CONFIG_RGW_PROVIDER, value: Ceph }
+                - { name: RCLONE_CONFIG_RGW_ENDPOINT, value: "http://192.168.2.7:7480" }
+                - { name: RCLONE_CONFIG_RGW_REGION, value: default }
+                - { name: RCLONE_CONFIG_RGW_FORCE_PATH_STYLE, value: "true" }
+                # Beide Keys duerfen keine Buckets anlegen (RGW max-buckets=1, Garage
+                # nur RW). Ohne no_check_bucket versucht rclone vor jedem Upload
+                # CreateBucket und scheitert mit TooManyBuckets bzw. 403.
+                - { name: RCLONE_CONFIG_RGW_NO_CHECK_BUCKET, value: "true" }
+                - name: RCLONE_CONFIG_RGW_ACCESS_KEY_ID
+                  valueFrom: { secretKeyRef: { name: ciso-assistant-s3, key: AWS_ACCESS_KEY_ID } }
+                - name: RCLONE_CONFIG_RGW_SECRET_ACCESS_KEY
+                  valueFrom: { secretKeyRef: { name: ciso-assistant-s3, key: AWS_SECRET_ACCESS_KEY } }
+                # Ziel: Garage Potsdam
+                - { name: RCLONE_CONFIG_GARAGE_TYPE, value: s3 }
+                - { name: RCLONE_CONFIG_GARAGE_PROVIDER, value: Other }
+                - { name: RCLONE_CONFIG_GARAGE_ENDPOINT, value: "http://192.168.23.21:3900" }
+                - { name: RCLONE_CONFIG_GARAGE_FORCE_PATH_STYLE, value: "true" }
+                - { name: RCLONE_CONFIG_GARAGE_NO_CHECK_BUCKET, value: "true" }
+                - name: RCLONE_CONFIG_GARAGE_REGION
+                  valueFrom: { secretKeyRef: { name: ciso-assistant-backup-s3, key: region } }
+                - name: RCLONE_CONFIG_GARAGE_ACCESS_KEY_ID
+                  valueFrom: { secretKeyRef: { name: ciso-assistant-backup-s3, key: ACCESS_KEY_ID } }
+                - name: RCLONE_CONFIG_GARAGE_SECRET_ACCESS_KEY
+                  valueFrom: { secretKeyRef: { name: ciso-assistant-backup-s3, key: SECRET_ACCESS_KEY } }
+              resources:
+                requests: { cpu: 50m, memory: 64Mi }
+                limits: { memory: 512Mi }
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: { drop: ["ALL"] }
+              volumeMounts:
+                - { name: tmp, mountPath: /tmp }
+          volumes:
+            - name: tmp
+              emptyDir: { sizeLimit: 256Mi }

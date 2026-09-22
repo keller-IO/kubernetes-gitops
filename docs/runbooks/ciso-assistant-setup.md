@@ -44,7 +44,23 @@ greifen nie direkt auf RGW zu.
   Keys in `apps/base/ciso-assistant/s3.sops.yaml`.
 - Belegung: `radosgw-admin bucket stats --bucket=ciso-assistant-evidence` (auf cloud64).
 - Quota ändern: `radosgw-admin quota set --quota-scope=user --uid=ciso-assistant --max-size=<n>G`.
-- ⚠️ Kein Offsite-Backup. Der Bucket liegt im selben Ceph wie alles andere in Halbe.
+- **Offsite-Kopie** (seit #202): CronJob `ciso-assistant-evidence-offsite`, täglich
+  03:30 (Europe/Berlin), rclone 1.75.1 → Garage `backup-ciso-assistant`:
+  - `evidence/current/` ist der Spiegel des RGW-Buckets (`rclone sync --checksum`).
+  - `evidence/archive/<UTC-Zeit>/` enthält, was sync gelöscht oder überschrieben
+    hat (`--backup-dir`). Einträge älter als 30 Tage werden entfernt, gleiche
+    Frist wie die CNPG-Retention.
+  - Beide Remotes brauchen `no_check_bucket=true`: Sonst versucht rclone vor jedem
+    Upload `CreateBucket` und scheitert an `max-buckets=1` (RGW,
+    `TooManyBuckets`) bzw. am reinen RW-Key (Garage).
+  - Garage-Quota dafür am 22.09.2026 von 20 auf 50 GiB erhöht.
+  - Vor dem Merge lokal mit demselben Image geprüft (Nicht-Root, schreibgeschütztes
+    Dateisystem): Testobjekt gespiegelt, nach der Löschung im RGW ins Archiv
+    verschoben, danach entfernt.
+  - Restore einer Datei: `rclone copyto garage:backup-ciso-assistant/evidence/current/<pfad> rgw:ciso-assistant-evidence/<pfad>`
+    (Remotes wie im CronJob per `RCLONE_CONFIG_*`).
+  - Status: `kubectl -n ciso-assistant get jobs -l app.kubernetes.io/component=evidence-offsite`.
+    ⚠️ Ein Fehlschlag löst noch keinen Alert aus.
 
 ## Mail
 
@@ -169,10 +185,8 @@ Quelladresse.
 
 ## Offen
 
-- **Evidenz-Bucket ohne Offsite-Kopie.** Vorschlag: nächtlicher
-  `rclone sync`-CronJob RGW → Garage Potsdam (`s3://backup-ciso-assistant/evidence/`,
-  mit `--backup-dir`, damit Löschungen nicht sofort mitgespiegelt werden).
-  Dann die Garage-Quota (derzeit 20 GiB) um die 20 GiB der RGW-Quota erhöhen.
+- **Kein Alert bei fehlgeschlagener Offsite-Kopie** (CronJob-Fehler sind nur in
+  `kubectl get jobs` sichtbar). Alert auf `kube_job_status_failed` einrichten.
 - **Resources** nach #201 (Frontend 384Mi/768Mi, Huey-Request 512Mi) nach einer
   Woche Betrieb mit `kubectl top` gegenprüfen.
 - **SSO in der App eintragen** (Einstellungen → SSO) und mit einem Keycloak-Benutzer

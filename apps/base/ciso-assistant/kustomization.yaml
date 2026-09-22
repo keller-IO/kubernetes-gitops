@@ -27,6 +27,7 @@ resources:
   - namespace.yaml
   - database.yaml
   - backup.yaml
+  - evidence-backup-cronjob.yaml
 
 generators:
   - ./secret-generator.yaml
