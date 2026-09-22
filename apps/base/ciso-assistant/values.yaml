@@ -70,14 +70,17 @@ backend:
       - name: AWS_SECRET_ACCESS_KEY
         valueFrom:
           secretKeyRef: { name: ciso-assistant-s3, key: AWS_SECRET_ACCESS_KEY }
+    # Gemessen am 22.09.2026: 485Mi im Leerlauf.
     resources:
-      requests: { cpu: 50m, memory: 384Mi }
+      requests: { cpu: 50m, memory: 512Mi }
       limits: { memory: 1Gi }
 
 frontend:
+  # Gemessen am 22.09.2026 kurz nach dem Start: 375-381Mi (vorher 192Mi Request,
+  # 512Mi Limit -- zu knapp fuer Lastspitzen, OOM-Kill waere die Folge).
   resources:
-    requests: { cpu: 50m, memory: 192Mi }
-    limits: { memory: 512Mi }
+    requests: { cpu: 50m, memory: 384Mi }
+    limits: { memory: 768Mi }
 
 externalPgsql:
   host: ciso-assistant-pg-rw
@@ -98,6 +101,12 @@ ingress:
     # Muss zu frontend.config.bodySizeLimit (50M) passen, sonst schneidet nginx
     # Evidenz-Uploads ab (Controller-Default ist 10m).
     nginx.org/client-max-body-size: "50m"
+    # SvelteKit schickt auf /login grosse Antwort-Header (Link-Preloads, CSRF-
+    # und Sprach-Cookies). Mit dem Default-Puffer (4k/8k) brach nginx beim Go-Live
+    # am 22.09.2026 jeden /login-Aufruf mit "upstream sent too big header" (502) ab.
+    # Gleicher Fix wie bei expense-tracker.
+    nginx.org/proxy-buffer-size: "16k"
+    nginx.org/proxy-buffers: "8 16k"
     # Nur interne Netze. *.jit.services loest zwar auf .246 (RFC1918) auf, der
     # Router leitet 443 aber auf genau diesen LB — wer den Host-Header setzt,
     # kaeme sonst von aussen an VVT und Risikoregister.
