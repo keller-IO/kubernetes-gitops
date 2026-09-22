@@ -34,3 +34,6 @@ Format und Kriterien: siehe AGENTS.md → „Operational Learnings".
   ein Xapian-Benchmark sind der belastbare Weg.
 - [Yealink T46S: OEM-Firmware blockiert Remote Phone Book](yealink-t46s-oem-phonebook.md)
   — funktionierender Fallback ist der einmalige Import ins lokale Telefonbuch.
+- [*.jit.services: DNS-01 macht Wildcard-Namen unauflösbar](wildcard-dns01-empty-non-terminal.md)
+  — `_acme-challenge.<name>` macht `<name>` zum leeren Knoten, die Wildcard greift nicht;
+  `NODATA` bleibt bis zu 3600 s im Cache. Fix: expliziter A-Record je Name.

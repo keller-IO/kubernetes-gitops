@@ -1,6 +1,6 @@
 # CISO Assistant — Inbetriebnahme (VVT / GRC)
 
-Stand: 2026-09-22
+Stand: 2026-09-22. **In Betrieb seit 22.09.2026** (PR #198, Merge `15dba48`).
 
 CISO Assistant (intuitem, Community Edition, AGPL) ist das Werkzeug für das
 **Verzeichnis von Verarbeitungstätigkeiten** nach Art. 30 DSGVO. Das
@@ -59,15 +59,32 @@ wrk5 (`.88`) fehlte dort und wurde am 22.09.2026 auf mx02 und mx03 ergänzt.
 Absender `noreply@jit-creatives.de`: SPF `include:jitcreatives.de` erlaubt
 `87.191.135.42` (mx02-NAT).
 
-## Vor dem Merge
+## Inbetriebnahme 22.09.2026
 
-1. ~~Garage-Bucket und -Key für das DB-Backup~~ erledigt am 22.09.2026:
-   Bucket `backup-ciso-assistant` (20 GiB Quota), Key `backup-ciso-assistant`
-   (`GKb113705f…`) mit RW nur auf diesen Bucket, verschlüsselt in
-   `apps/base/ciso-assistant/backup-s3.sops.yaml`. Probe mit dem Key:
-   PUT/GET/LIST/DELETE im eigenen Bucket 200/204, LIST/PUT auf `backups` 403.
-2. **Keycloak-Client** im Realm `bgt` anlegen (siehe unten). Das Secret
-   landet nicht in Git, es wird in der App-UI eingetragen.
+1. Garage-Bucket und -Key für das DB-Backup: Bucket `backup-ciso-assistant`
+   (20 GiB Quota), Key `backup-ciso-assistant` (`GKb113705f…`) mit RW nur auf
+   diesen Bucket, verschlüsselt in `apps/base/ciso-assistant/backup-s3.sops.yaml`.
+   Probe mit dem Key: PUT/GET/LIST/DELETE im eigenen Bucket 200/204, LIST/PUT auf
+   `backups` 403.
+2. Merge von #198, ArgoCD-Sync: nach ca. 3 Minuten `Synced/Healthy`, Zertifikat
+   per DNS-01 ausgestellt, CNPG `Cluster in healthy state`, WAL-Archivierung
+   (`ContinuousArchiving`) aktiv. Die erste `ScheduledBackup` läuft um 02:40.
+3. Keycloak-Client `ciso-assistant` im Realm `bgt` angelegt (siehe unten). Probe:
+   korrekte Redirect-URI → Login-Formular (200), fremde Redirect-URI → 400.
+4. Zu Beginn gemessen (`kubectl top`, erster Start inkl. Migration): Backend
+   349Mi/970m (Migration), Huey 485Mi, Frontend **375Mi** bei 512Mi-Limit,
+   Postgres 51Mi.
+
+Bekannte Anlauf-Meldungen beim allerersten Start, beide harmlos: Huey meldet
+`OperationalError: connection is bad` bzw. `relation "automation_workflowinstance"
+does not exist`, solange Postgres hochfährt bzw. das Backend noch migriert. Das
+Backend protokolliert einmal `TypeError: issubclass() arg 1 must be a class`
+aus der Warteschleife des Startskripts, bevor die DB bereit ist.
+
+**Namensauflösung direkt nach dem Sync:** `grc.jit.services` war im LAN bis zu
+einer Stunde nicht auflösbar (`NODATA` aus dem Negativ-Cache). Ursache und
+Abhilfe siehe
+[learnings/wildcard-dns01-empty-non-terminal.md](../learnings/wildcard-dns01-empty-non-terminal.md).
 
 ## Erster Start
 
@@ -89,7 +106,11 @@ Absender `noreply@jit-creatives.de`: SPF `include:jitcreatives.de` erlaubt
 
 ## Keycloak (OIDC)
 
-Client im Realm `bgt` (Admin-Konsole `https://login.jit-creatives.de`):
+Client `ciso-assistant` im Realm `bgt`, angelegt am 22.09.2026 per Admin-API.
+Das Client-Secret liegt auf auth01 in `/root/ciso-assistant-oidc-client-secret`
+(0600) und nach Repo-Konvention verschlüsselt in
+`apps/base/ciso-assistant/oidc.sops.yaml` (Secret `ciso-assistant-oidc`, in keinen
+Pod gemountet, weil die App SSO aus ihrer DB liest).
 
 | Feld | Wert |
 |------|------|
@@ -103,11 +124,26 @@ Client im Realm `bgt` (Admin-Konsole `https://login.jit-creatives.de`):
 | Valid post logout redirect URIs | `https://grc.jit.services/login` |
 | Web origins | `https://grc.jit.services` |
 
+Vorgehen, weil die Zugangsdaten eines dauerhaften Admin-Service-Accounts nicht
+vorliegen (siehe auth01-Doku): In `/opt/auth.savar.de` einen temporären Client
+anlegen mit `docker compose run --rm --no-deps -T -e X=<secret> keycloak
+bootstrap-admin service --client-id tmp-… --client-secret:env=X </dev/null`, damit
+per Client-Credentials ein Token holen, den Client über
+`POST /admin/realms/bgt/clients` anlegen und den temporären Client wieder löschen.
+
+⚠️ **Das Skript nicht per `ssh host 'bash -s' < skript.sh` ausführen.**
+`docker compose run` erbt dann stdin und verschluckt den Rest des Skripts. Der
+erste Versuch endete so ohne Fehlermeldung direkt nach dem Container-Start und
+hinterließ einen verwaisten `tmp-…`-Admin-Client im Master-Realm (beim zweiten
+Lauf gelöscht). Das Skript per `scp` kopieren und als Datei ausführen, und für
+`docker compose run` immer `</dev/null` setzen.
+
 Dann in CISO Assistant unter *Einstellungen → SSO*:
 
 - Provider: OpenID Connect
 - Server URL: `https://login.jit-creatives.de/realms/bgt`
-- Client ID / Secret: aus Keycloak (*Credentials*)
+- Client ID: `ciso-assistant`, Secret: `sops -d apps/base/ciso-assistant/oidc.sops.yaml`
+  (oder `ssh root@192.168.2.30 cat /root/ciso-assistant-oidc-client-secret`)
 
 Benutzer werden beim ersten SSO-Login angelegt. Rechte vergibt ein Admin in
 CISO Assistant über Benutzergruppen; nach dem ersten SSO-Login prüfen, was ein
@@ -132,5 +168,10 @@ Quelladresse.
   `rclone sync`-CronJob RGW → Garage Potsdam (`s3://backup-ciso-assistant/evidence/`,
   mit `--backup-dir`, damit Löschungen nicht sofort mitgespiegelt werden).
   Dann die Garage-Quota (derzeit 20 GiB) um die 20 GiB der RGW-Quota erhöhen.
-- **Resources** sind Startwerte ohne Messung; nach einer Woche per
-  `kubectl top` nachziehen.
+- **Frontend-Speicher**: 375Mi gemessen bei 192Mi Request und 512Mi Limit. Das
+  Limit ist knapp, nach einer Woche Betrieb mit `kubectl top` neu messen und
+  Request/Limit anheben. Huey liegt mit 485Mi über seinem Request von 384Mi.
+- **SSO in der App eintragen** (Einstellungen → SSO) und mit einem Keycloak-Benutzer
+  testen; danach prüfen, was ein neuer Benutzer ohne Gruppenzuweisung sieht.
+- **Expliziter A-Record** `grc.jit.services` bei ClouDNS, damit künftige
+  Zertifikatserneuerungen die Auflösung nicht mehr unterbrechen.
