@@ -16,7 +16,8 @@ Stand: 22.09.2026 (Erstaufnahme 28.07.2026)
 | Daten | 558 User (1 mit 2FA), 31 aktive im Monat; ca. 327.000 Accounts, 10,1 Mio. Statuses |
 | Redis | 87 MB, 126.000 Keys (inkl. Dead-/Retry-Sets) |
 | Elasticsearch | aktiv, Index `public_statuses` 1,8 GB, gesamt ca. 2,1 GB |
-| Medien | lokales `public/system` auf eigenem Datenträger (302 GB belegt); lokale Attachments nur 713 MB, der Rest ist Remote-Cache |
+| Medien | lokales `public/system` auf eigenem Datenträger (302 GB belegt); lokale Attachments 713 MB, Remote-Cache **272 GB** |
+| Medien-Retention | wöchentlicher Cron des Users `mastodon`: `tootctl media remove` und `tootctl preview_cards remove` |
 | Public Routing | Cloudflare-Tunnel: `cloudflared` (Token-verwaltet) auf mastodon02 → nginx `:80` |
 | SMTP | `mail.jit-creatives.de:587` |
 | Host | 4 vCPU, 6,3 GiB RAM |
@@ -32,6 +33,11 @@ Dumps dürfen nicht dort abgelegt werden; Dumps direkt in den Cluster streamen.
   Remote-Inhalte werden normal gecacht.
 - `mastodon-pg` läuft mit **einer Instanz** plus WAL-Archiv, wie alle anderen
   CNPG-Cluster. Drei Instanzen erst nach der Migration neu bewerten.
+- **Medien-Retention muss im Ziel neu gebaut werden.** Chart 1.0.3 bringt
+  keinen CronJob dafür mit; der wöchentliche Cron des Altservers hat im Ziel
+  kein Gegenstück. Ohne Ersatz wächst der Remote-Cache im RGW unbegrenzt.
+  Eigener CronJob (`tootctl media remove`, `tootctl preview_cards remove`)
+  spätestens mit dem Cutover-PR, sonst füllt er Ceph.
 - Migration und Upgrade werden nicht vermischt: Images sind auf **4.5.18**
   gepinnt, identisch zur Bestandsinstanz. Chart 1.0.3 bringt appVersion 4.6.3
   mit; das Upgrade folgt separat nach stabiler Betriebsphase.
@@ -194,5 +200,7 @@ sein.
 ## Phase 5: Nacharbeit
 
 - Altserver etwa zwei Wochen gestoppt, aber unverändert vorhalten.
+- Medien-Retention im Cluster überwachen: erster CronJob-Lauf und
+  RGW-Bucket-Wachstum prüfen.
 - Restore-Test aus `backup-mastodon`.
 - Danach mastodon02 stilllegen; Mastodon-Upgrade auf 4.6 separat.
