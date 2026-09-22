@@ -1,0 +1,36 @@
+# Garage-Key backup-mastodon: RW nur auf Bucket backup-mastodon
+# (docs/runbooks/backup-restore.md, Abschnitt Secrets).
+apiVersion: v1
+kind: Secret
+metadata:
+    name: mastodon-backup-s3
+    namespace: mastodon
+type: Opaque
+stringData:
+    ACCESS_KEY_ID: ENC[AES256_GCM,data:M/PdKYWs/JMnUGKcjA7oQFaFUyQnkHK/ehc=,iv:MhbhFkD4FtlMWCeMMNcBmG/3OOukGfl0nz3rGLqLyKg=,tag:Bs+io5mShyo8JZ08GPDkPQ==,type:str]
+    SECRET_ACCESS_KEY: ENC[AES256_GCM,data:HksglgTLXmkOsfM6yc6OReieDu8glcYw47HMZ79xFrgdrKRAx+rehGKPpBghdwjm9MWpaCTNoG12D477u+Vj3Q==,iv:xndFaGS0wIMLxnBGZkx0XHpJis9qrjH9vLRvO0SpYYk=,tag:wfz4MtkUqmQXTX9BUh+npQ==,type:str]
+    region: ENC[AES256_GCM,data:Pd3I62L4Cji9n0BB8Fg=,iv:EeFsZDfA2b+R15luibLCE4zEEbO8rwSfWqcIZNFQ+8M=,tag:YBXUzrmqWryOkHa1Kgf2fA==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBPb2l2NWxaK3c2dXZwNHBa
+            TnN6Q1VNZWEwbFZwcWRlUGdnaVNYZlpkNjFNCm1SSDZKd1RpRU5wYzBodmhuNXY2
+            aHByWUFRQ3NoQUxaSVBvRW5ScDljeXMKLS0tIHZsRWhSZmxtYi9RSmxyWlFkMHMw
+            aFZGbzd1WnEzTkVyRlE1bGdxRmc2ZzgKkAKGb5vVdTXtmO3OCzsdM+v+nZPvEe07
+            ngasSMa4y/vS8bi+miz/pAijlo2tvAW7oN8MyVxugNctN7nC/D/3pQ==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age17x04ga87qyu9lzcuja9k83z90veew9cez7jusul4y5xyr09xaejs9rq755
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBMdWVnZWVMV1NJMW9sSEla
+            aG9GV29BV0k3RW0xSXk2L2ltSFgvc3hyejA0CmxrK0lwenJCK3lCLzN1VjhCalFX
+            WW14QzJmeWdTa1M4VjFzdEQyWWFHaW8KLS0tIENRRHBMSTRLTHR3YXpGS0xmd3Jw
+            QVFHTGhmZTlNR3czZjg0amhvbytsc00KwTrHYzclVdT+cDRN4UaeI2gRaaI1RmuV
+            Mg3Rblx7duwQMMMm8srwrwi+NlkyFRAC4EzqEuf5IcRewdJJUei6PQ==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1hjq0mgzc2npw9lhtwr49qqrfvkxzc2ss8qu7e06fk5n84qm7xs7qrgxfxa
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-09-22T08:23:51Z"
+    mac: ENC[AES256_GCM,data:tLiqeFRtgaVvmrdixdIDHyPIr+Z46g4QPfnrBCDDUeGZ+0mMu0Sf9pEx32GTQv0XwqDZs4S0Xdb4wNlgJ+aKi/zQEXvYPkztDsfCNufzEkWvvfhE58ZId7jWuTzH0PZH5JGyttc9LQTX+dISF/h+MXCA1Ky10DyRgCD1a5gHxCI=,iv:hmLdmLi/F5QbnyUSOO/1Q4x7RoQQoXohasz7DBCR0V8=,tag:0ymc0PfDf6PS/pct5KCypg==,type:str]
+    version: 3.13.3

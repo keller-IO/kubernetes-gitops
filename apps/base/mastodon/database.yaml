@@ -24,13 +24,15 @@ spec:
       owner: mastodon
       secret:
         name: mastodon-db-app
-  # Kontinuierliches Backup nach Garage-S3 (192.168.23.21, Bucket backups).
-  # WICHTIG: erst reaktiviert, seit das externe S3 existiert (13.07.) — ein
-  # kaputtes Archive-Target würde WALs stauen bis die Disk voll ist.
+  # Kontinuierliches Backup nach Garage-S3 (192.168.23.21) in den EIGENEN Bucket
+  # backup-mastodon mit eigenem Key (RW nur darauf, 20 GiB Quota; Secret in
+  # backup-s3.sops.yaml). Garage kennt keine Prefix-Rechte, deshalb kein
+  # gemeinsamer Bucket mehr. WICHTIG: ein kaputtes Archive-Target würde WALs
+  # stauen, bis die Disk voll ist.
   backup:
     retentionPolicy: "30d"
     barmanObjectStore:
-      destinationPath: s3://backups/cnpg-mastodon/
+      destinationPath: s3://backup-mastodon/cnpg/
       endpointURL: http://192.168.23.21:3900
       s3Credentials:
         accessKeyId: { name: mastodon-backup-s3, key: ACCESS_KEY_ID }
