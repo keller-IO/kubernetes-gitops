@@ -1,0 +1,32 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: ciso-assistant
+# CISO Assistant (intuitem, Community Edition, AGPL) — GRC-Plattform mit
+# DSGVO-Modul fuer das Verzeichnis von Verarbeitungstaetigkeiten (Art. 30),
+# Zwecke, Empfaenger, Drittlandtransfers, Betroffenenanfragen und Datenpannen.
+#
+# Datenschutz-Architektur (Entscheidung 22.09.2026):
+#   - Oberflaeche NUR intern unter grc.jit.services. Die Wildcard zeigt zwar
+#     auf die LAN-Adresse .246, der Router leitet 443 aber auf denselben LB —
+#     mit gesetztem Host-Header waere die App also doch oeffentlich. Deshalb
+#     erzwingt der Ingress zusaetzlich eine IP-Allowlist (values.yaml).
+#   - Postgres via CNPG statt SQLite/Bitnami-Subchart (letzterer ist im Chart
+#     deprecated).
+#   - Evidenzen im Ceph-RGW-Bucket ciso-assistant-evidence (S3), kein PVC.
+#   - Mail ueber mx02 (192.168.2.209:25, IP-Relay).
+#   - SSO (Keycloak, Realm bgt) wird in der App-UI konfiguriert, nicht per
+#     Helm — siehe docs/runbooks/ciso-assistant-setup.md.
+helmCharts:
+  - name: ciso-assistant
+    repo: oci://ghcr.io/intuitem/helm-charts/ce
+    version: 0.12.3 # renovate: helm
+    releaseName: ciso-assistant
+    namespace: ciso-assistant
+    valuesFile: values.yaml
+resources:
+  - namespace.yaml
+  - database.yaml
+  - backup.yaml
+
+generators:
+  - ./secret-generator.yaml

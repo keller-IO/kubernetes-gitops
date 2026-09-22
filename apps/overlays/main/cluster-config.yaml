@@ -30,3 +30,4 @@ data:
   host_phpmyadmin: dbadmin.jit.services
   host_nextcloud_yealink_phonebook: phonebook.jit.services
   host_nextcloud_dev: cloud-dev.savar.de
+  host_ciso_assistant: grc.jit.services # intern, IP-Allowlist im Ingress

@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ciso-assistant
+  labels:
+    app.kubernetes.io/name: ciso-assistant
+    # Eigener Namespace statt CreateNamespace=true: der haette keine
+    # PodSecurity-Labels (Ursache des crowdsec-agent-Vorfalls 2026-07-28).
+    # enforce 'baseline' wie bei den uebrigen Apps: das Backend-Image laeuft
+    # als root (kein USER im Dockerfile) und erfuellt 'restricted' nicht.
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted

@@ -1,0 +1,36 @@
+# Garage-Key backup-ciso-assistant: RW nur auf Bucket backup-ciso-assistant
+# (docs/runbooks/backup-restore.md, Abschnitt Secrets).
+apiVersion: v1
+kind: Secret
+metadata:
+    name: ciso-assistant-backup-s3
+    namespace: ciso-assistant
+type: Opaque
+stringData:
+    ACCESS_KEY_ID: ENC[AES256_GCM,data:eZNO5to8O3KttBfdCsKqYcdoU5xgwl/F5YA=,iv:DFupkV5GrSJIz74yUGm0woAQKGt+SlAOe14iLmZp5hE=,tag:t6Qr7h856XyWy5COHSwvZw==,type:str]
+    SECRET_ACCESS_KEY: ENC[AES256_GCM,data:p0X5GXLvM6AUrLIFLs51D437gJyc2rgyAnPa4Eawu9GgKk/AN0XJH28CTsDoLlCrF6c1Q9yU7WsFuj5Dim6twA==,iv:W5u2mgux4lZhmUXbtF7G1Inlsc+TAZQqw2combkPhho=,tag:YbddKwbllWPJAUTlNEBF/A==,type:str]
+    region: ENC[AES256_GCM,data:wi/xMA7AGm9mmHfYyNI=,iv:WusOty4jJS/U8rvd1saStHbSAEAdUym7P2oyTmTnJTA=,tag:yJM8f/i9kTOQX8+X3MLGXA==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBvZmVxSDdnTnFFb1NDMnBs
+            NXN0YSs1dU9oYTB0dm5BdzBGQUF4elFmWWprCk15ZVJtNHdzSi9RUlo1aFFmMU1O
+            enlIODR5TWE0SEVJN0E0UmZSSnd1UVUKLS0tIGhoeWJoenlyUHRUbm1zaG1FVnJQ
+            NmxLOTFEeDVVRFFaWS93VmZ6L2xFVk0KiofZ4AEChDk2EaPIQAocF7YGGCVQaeph
+            sfkqvOWtblrYc1VjSLQbTpEOYobXHOCaPYWjNHnDHQFUquGpQVlW+Q==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age17x04ga87qyu9lzcuja9k83z90veew9cez7jusul4y5xyr09xaejs9rq755
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBFOUVYcWFVcjJCQ1R3T3c1
+            TU5hai8zajdkanBRUFJpNnBPVXZLbUpNRjJVClltbzRpVXNERWNOY1JCTE84UFpv
+            OHlDSlFac0ZLYU13Z2NXNmd6YzJUMUkKLS0tIHdQZTA1b3NHLzluUWRlRHdRRXVL
+            d1NaRUNLVEVTRTZQcGFsY1Y5dkM4NGsK4ujcNFtq/cHC8xGa6SIdBAuB4v39RnBQ
+            PaGmbvABxmWgTG3DHfJ+BEcDkoFdGSQvh+zJBQr9M+ezpvL26zR9wQ==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1hjq0mgzc2npw9lhtwr49qqrfvkxzc2ss8qu7e06fk5n84qm7xs7qrgxfxa
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-09-22T08:17:15Z"
+    mac: ENC[AES256_GCM,data:TnZj0eETnJkcJv+dmgU0xUayVjO577VFidtlkzlhbO2vVc9tfCUoz6mb5N2S5UpFxCYOfQTXiOFI3eNxxq/rDlPh7oN8t5gFOvF1Tdb4RhAgZoRFTeKaB+qVwxdkYkGwg0v2gaB1bTiAPWhH6SFW3pyoQcXY0SFkgoOaCwOWNU8=,iv:AH16yzDejNnRJKascFA7f01xOleI/XHzuSPqJOcdCzk=,tag:4k/0sX/vAEt83kBKXpYmJg==,type:str]
+    version: 3.13.3
