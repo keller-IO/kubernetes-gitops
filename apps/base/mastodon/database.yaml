@@ -33,12 +33,35 @@ spec:
       # 64 GiB, davon sind nach dem Restore rund 15 GB belegt.
       max_wal_size: "4GB"
       checkpoint_timeout: "15min"
+  # PHYSISCHE Migration statt logischem Dump (Entscheidung 23.09.2026): Quelle
+  # und Ziel sind beide PG 16.14 auf Debian Bookworm, also gleiche Major-Version
+  # und gleiche glibc-Kollation. Die Indizes kommen fertig mit, statt nach dem
+  # Laden neu gebaut zu werden — der logische Probelauf brauchte dafuer 3 h 59.
+  # Der Cluster laeuft zunaechst als Replica-Cluster und folgt mastodon02
+  # per Streaming; der Cutover ist dann nur noch eine Promotion.
   bootstrap:
-    initdb:
-      database: mastodon
-      owner: mastodon
-      secret:
-        name: mastodon-db-app
+    pg_basebackup:
+      source: mastodon02
+  replica:
+    enabled: true
+    source: mastodon02
+  # PROMOTION beim Cutover: replica.enabled auf false setzen, NACHDEM die
+  # Bestandsinstanz gestoppt und der letzte WAL angekommen ist. Danach traegt
+  # die Rolle mastodon noch das Kennwort der QUELLE — mit dem Wert aus
+  # mastodon-db-app per ALTER ROLE angleichen, sonst kommt die App nicht rein.
+  externalClusters:
+    - name: mastodon02
+      connectionParameters:
+        host: "192.168.2.233"
+        port: "5432"
+        user: streaming_replica
+        dbname: postgres
+        # Die Quelle hat ssl=on (Debian-Snakeoil). require verschluesselt, ohne
+        # ein Zertifikat zu pruefen, das es hier nicht zu pruefen gibt.
+        sslmode: require
+      password:
+        name: mastodon-source-replica
+        key: password
   # Kontinuierliches Backup nach Garage-S3 (192.168.23.21) in den EIGENEN Bucket
   # backup-mastodon mit eigenem Key (RW nur darauf, 20 GiB Quota; Secret in
   # backup-s3.sops.yaml). Garage kennt keine Prefix-Rechte, deshalb kein

@@ -1,0 +1,36 @@
+# Kennwort der Replikationsrolle streaming_replica auf mastodon02
+# (192.168.2.233). Nur fuer die physische Migration nach kellerIO; die Rolle
+# hat REPLICATION und LOGIN, aber keine Rechte an mastodon_production.
+apiVersion: v1
+kind: Secret
+metadata:
+    name: mastodon-source-replica
+    namespace: mastodon
+type: kubernetes.io/basic-auth
+stringData:
+    username: ENC[AES256_GCM,data:laGnuju/o3ahDopjbFhfz/Y=,iv:k2BxzDpTtgkXJwVo8JtESinr+LsvGj0ypcmy720I6Zo=,tag:Wx3C2HstS5ztKj6u/d0j7g==,type:str]
+    password: ENC[AES256_GCM,data:fvyXmTmhqk5Gze3+RHs0TZvm6mHABqscT1QJWgaRYmiGZRRtdN+Dag==,iv:fR1jSywklD5s7A3cg6WyW5B4PVbjHyWRLROHfTjHcYc=,tag:dDjq1zh0SQX+Cq4muly/LQ==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBrUERDaWJoeFpMKzdRWGQ5
+            R0lOZzlCSjZGNG5mWFRQY3F1ZUcxeWFSOEU4CkdNYmNyRVhOYll0ZHNFNTkzekxz
+            V05WakNhOGtJZFU5Vk95SkMvTFFPTEEKLS0tIDRWc09ReXVoRWs2SFZhZ1crTksx
+            Q1NNNVQwWktjVDk4ZTduUUlsRVlRWm8KPrZPHqisVUx1naWe7I/y97UkhUFCUHdZ
+            sSiPKI6t9srkRMMNqlnkiOYlx1nyDWDsUXA1wfPL8L96AB8D9BCM+A==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age17x04ga87qyu9lzcuja9k83z90veew9cez7jusul4y5xyr09xaejs9rq755
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBVTTA5WmlmRW1CUHBYTXdu
+            SkNxbEpNWjcyd0tPZ1lUdEdtT1lMS1dmZ0FrCi9SZitIWDBnV3FtaVhjMEhpVmtO
+            dTQ3RHQ4czlTcTRXdU9YaE1YVXM2b3cKLS0tIEFMNGRFcjM2aDdVNm1HcUpNNTRy
+            VitMRFdPOGV4V3RlRVcwU21BbG45dUkKxG4G6gjUXH2Q5POaLldqYlpmSyaesv3V
+            3cIQcjIWOY4Ocr/FZ/dmIc9oOgCJKQYvarzDOnK0OM//TYLxWdusjA==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1hjq0mgzc2npw9lhtwr49qqrfvkxzc2ss8qu7e06fk5n84qm7xs7qrgxfxa
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-09-23T11:27:18Z"
+    mac: ENC[AES256_GCM,data:9JvYmp1f62Q9nkz58Tk6ZeSOZCAIsjeI+0mdz1WJMCKflhXFDGdi3Ott/IFWmahlQa2tm8bNMyliM2PnBmAhMxtREhmjJs+FAqzMl0WAoDuIRhY7PE1g5SGVDHWvPB8W9r6RjEmiJuO+1I4ixFKgeC9ces0PNbi6xT+i0zHdDj8=,iv:FaBDwxSCEpTGtYBE2pm365RIGEis2Bnlx36ELycCrcw=,tag:UtiWIj2Gw0Aun5uMCiCc2A==,type:str]
+    version: 3.13.3
