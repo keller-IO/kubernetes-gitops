@@ -33,6 +33,13 @@ Dumps dürfen nicht dort abgelegt werden; Dumps direkt in den Cluster streamen.
   Remote-Inhalte werden normal gecacht.
 - `mastodon-pg` läuft mit **einer Instanz** plus WAL-Archiv, wie alle anderen
   CNPG-Cluster. Drei Instanzen erst nach der Migration neu bewerten.
+- **Physische statt logischer Migration** (Entscheidung 23.09.2026, gemessen):
+  Der logische Weg (`pg_dump | pg_restore`, einfädig) brauchte **3 h 59 min**,
+  weil 10,1 Mio. Zeilen eingefügt und 309 Indizes neu gebaut werden müssen. Die
+  physische Kopie per `pg_basebackup` brauchte **31 min** — die Indizes kommen
+  fertig mit. Ein Dump über S3 hätte nichts geändert: der Aufwand liegt im
+  Restore, nicht im Transport. Seitdem folgt der Cluster mastodon02 als
+  Replica-Cluster, der Cutover ist nur noch eine Promotion.
 - **Medien-Retention muss im Ziel neu gebaut werden.** Chart 1.0.3 bringt
   keinen CronJob dafür mit; der wöchentliche Cron des Altservers hat im Ziel
   kein Gegenstück. Ohne Ersatz wächst der Remote-Cache im RGW unbegrenzt.
@@ -203,47 +210,57 @@ ins Leere. Mit Alias-Host erzeugt Mastodon `:s3_alias_url`, also
 `https://jit.social/system/<pfad>` ohne Bucket im Pfad — die Ingress-Route muss
 das auf den Bucket-Pfad `/jit-social-media/` abbilden.
 
-## Phase 3: Probe
+## Phase 3: Replik aufgebaut (erledigt 23.09.2026)
 
-1. Exclude in `clusters/main/appset-apps.yaml` per PR entfernen; Sync
-   beobachten. Alle Workloads bleiben bei 0 Replikaten.
-2. CNPG-Cluster, Backup-Status und Valkey-PVC prüfen.
-3. Restore-Probe, gestreamt, ohne Zwischendatei auf der vollen Root-Platte:
+1. ✅ Exclude aus `clusters/main/appset-apps.yaml` entfernt (#207); Sync legte
+   Secrets, Services, CNPG-Cluster und PVCs an, alle Workloads auf 0.
+2. ✅ Quelle vorbereitet: Rolle `streaming_replica` (REPLICATION, LOGIN),
+   `pg_hba`-Einträge **nur** für die acht kellerIO-Nodes `192.168.2.81`–`.88`
+   als `hostssl` mit `scram-sha-256`, `listen_addresses` per Drop-in
+   `conf.d/10-kellerio-migration.conf`. Sicherung: `pg_hba.conf.bak-20260923`.
+   Für `listen_addresses` war ein PostgreSQL-Neustart nötig; Mastodon kam
+   danach sauber zurück (HTTP 200, eine Fehlerzeile im Log).
+   **Beides nach der Migration zurückbauen.**
+3. ✅ Verbindung aus einem Cluster-Pod geprüft: normale Verbindung mit TLS und
+   Replikationsverbindung (`IDENTIFY_SYSTEM`) erfolgreich.
+4. ✅ Cluster per `bootstrap.pg_basebackup` neu aufgebaut: **31 min 3 s** für
+   21 GB. Danach `in_recovery=true`, WAL-Receiver `streaming`, empfangene und
+   angewendete LSN identisch, 309 Indizes vorhanden.
 
-   ```bash
-   time ssh root@192.168.2.233 \
-     "sudo -u postgres pg_dump -Fc -Z1 mastodon_production" \
-     | kubectl exec -i -n mastodon mastodon-pg-1 -- \
-       pg_restore -U postgres -d mastodon --no-owner --role=mastodon --no-privileges
-   ```
-
-   Die Dauer bestimmt das Wartungsfenster. Ist sie zu lang, bringt nur ein
-   paralleler Restore etwas: Dump als Verzeichnis (`-Fd -j2`) auf den
-   **Medien-Datenträger** `/home/mastodon/live/public` (dort sind 140 GB frei,
-   auf `/` nicht), dann in den Pod kopieren und mit `pg_restore -j4`
-   einspielen. Niemals nach `/` auf mastodon02.
-4. Nur für den Test Web auf eine Replik skalieren, ohne Sidekiq und ohne
-   Ingress, Zugriff per Port-Forward: Login, 2FA-Konto, lokale Medien,
-   Timeline. Danach wieder auf 0. Sidekiq darf in der Probe nie laufen, sonst
-   föderiert die Kopie.
-5. SMTP vom Pod aus prüfen (Relay-Zugriff und SPF für den Cluster-Egress).
+**Reihenfolge-Falle:** Ein bereits bestehender Cluster übernimmt weder einen
+geänderten `bootstrap`-Abschnitt noch `replica.enabled`. Er muss gelöscht und
+neu angelegt werden. ArgoCD legt ihn dabei sofort aus seiner **zwischen-
+gespeicherten** Revision neu an — erst `argocd.argoproj.io/refresh=hard`
+setzen, warten bis die Application auf dem neuen Commit steht, dann löschen.
 
 ## Phase 4: Cutover
 
-1. Altserver stoppen: `mastodon-sidekiq`, dann Web und Streaming.
-2. Finaler Dump und Restore wie in der Probe; `redis-cli SAVE` und `dump.rdb`
-   übernehmen; Valkey-Reihenfolge wie oben.
-3. Delta-Sync der lokalen Medien.
-4. Cutover-PR: Ingress sowie je eine Web-, Streaming- und Sidekiq-Replik
-   aktivieren; automatische DB-Hooks bleiben aus.
-5. Verkehr umschalten (siehe offene Entscheidung zum Eingangsweg).
-6. Föderation, Push, Mail und Streaming testen; Gatus-Check für `jit.social`
+Vorbedingung: Replikation ist aktuell (`pg_last_wal_receive_lsn()` folgt der
+Quelle, Lag im Sekundenbereich).
+
+1. Mastodon auf mastodon02 stoppen: `mastodon-sidekiq`, dann Web und Streaming.
+   **Erst danach** ist die Quelle schreibfrei.
+2. Warten, bis die Replik den letzten WAL angewendet hat: `sent_lsn` auf der
+   Quelle gleich `pg_last_wal_replay_lsn()` im Ziel.
+3. `redis-cli SAVE` auf der Quelle, `dump.rdb` auf den Valkey-PVC übernehmen,
+   Valkey nach der Reihenfolge aus Phase 2 starten.
+4. Delta-Sync der lokalen Medien (`public/system` ohne `cache/`).
+5. **Promotion:** `replica.enabled: false` per PR. CNPG beendet den
+   Recovery-Modus und macht den Cluster schreibfähig.
+   Kein `ALTER ROLE` und kein Umbenennen nötig: Die App spricht
+   `mastodon_production` an, und `mastodon-db-app` trägt das Kennwort der
+   Quelle.
+6. Cutover-PR: Ingress sowie je eine Web-, Streaming- und Sidekiq-Replik
+   aktivieren, `S3_ALIAS_HOST` und die `/system`-Route gemeinsam scharfstellen;
+   automatische DB-Hooks bleiben aus.
+7. Verkehr umschalten (siehe offene Entscheidung zum Eingangsweg).
+8. Föderation, Push, Mail und Streaming testen; Gatus-Check für `jit.social`
    wieder aufnehmen.
 
 Rollback: Tunnel-Ziel zurück auf den Altserver und dessen Dienste starten.
-Sauber möglich, solange im Cluster noch nichts geschrieben wurde; danach nur per
-Rück-Dump. Alt- und Zielinstanz dürfen niemals gleichzeitig schreibend aktiv
-sein.
+Sauber möglich, solange im Cluster noch nichts geschrieben wurde; nach der
+Promotion und ersten Schreibzugriffen nur noch per Rück-Dump. Alt- und
+Zielinstanz dürfen niemals gleichzeitig schreibend aktiv sein.
 
 ## Phase 5: Nacharbeit
 
