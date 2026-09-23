@@ -10,8 +10,3 @@
 # cluster ran the operator default 17.2 — a Postgres major-version split created
 # purely by omission.
 
-# Pinned by the open PR #46 (feat/mastodon-k8s-migration), which sets a
-# digest-pinned 16.14 for the migration from the existing 16.x install.
-# Deliberately left alone here to keep that PR conflict-free — drop this line
-# once #46 is merged.
-apps/base/mastodon/database.yaml

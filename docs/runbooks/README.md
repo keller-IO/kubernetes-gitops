@@ -11,6 +11,7 @@ Pro Vorgang eine Markdown-Datei.
 - [docker15-retirement.md](docker15-retirement.md) — Direkter WAN-Cutover auf nginx-inc `.246` und kontrollierte Abschaltung von `192.168.2.15`.
 - [ciso-assistant-setup.md](ciso-assistant-setup.md) — CISO Assistant (VVT/GRC) auf `grc.jit.services`: Vor-Merge-Schritte, Keycloak-Client, Zugriffstest.
 - [sops-recipients.md](sops-recipients.md) — age-Empfänger für die Secrets ergänzen oder entfernen (inkl. `sops updatekeys` über beide Repos).
+- [mastodon-migration.md](mastodon-migration.md) — Migration von `jit.social` (mastodon02, `192.168.2.233`) nach Kubernetes.
 
 Weitere noch zu erstellen — siehe TODOs in
 `docs/PRODUCTION-READINESS.md` (Abschnitt 11 Backup & DR).
