@@ -51,6 +51,8 @@ resources:
   - database.yaml
   - cache.yaml
   - backup.yaml
+  - media-backend.yaml
+  - ingress.yaml
 
 generators:
   - ./secret-generator.yaml

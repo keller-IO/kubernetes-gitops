@@ -57,16 +57,45 @@ Dumps dürfen nicht dort abgelegt werden; Dumps direkt in den Cluster streamen.
 
 ## Offene Entscheidungen
 
-- ~~Volltextsuche~~ **entschieden am 23.09.2026:** Die Suche wird separat
-  behandelt. Elasticsearch bleibt im Manifest deaktiviert, der Cutover läuft
-  ohne Volltextsuche. Nachrüsten später per OpenSearch im Cluster und
-  `tootctl search deploy`.
-- **Eingangsweg nach dem Cutover:** Empfehlung: Cloudflare-Tunnel zunächst
-  beibehalten und nur das Tunnel-Ziel auf den Ingress `192.168.2.246` umstellen
-  (Rollback = Ziel zurückstellen, DNS unverändert). Vorher prüfen, dass der
-  Ingress für Tunnel-Anfragen keine Redirect-Schleife erzeugt. Danach
-  `cloudflared` in den Cluster holen oder wie die übrigen Dienste direkt über
-  die UDM veröffentlichen.
+Keine mehr — beide sind entschieden:
+
+- **Volltextsuche** (23.09.2026): wird separat behandelt. Elasticsearch bleibt
+  deaktiviert, der Cutover läuft ohne Volltextsuche. Nachrüsten später per
+  OpenSearch und `tootctl search deploy`.
+- **Eingangsweg** (23.09.2026): **direkt über die UDM**, kein Cloudflare-Proxy
+  und kein Tunnel. Cloudflare bleibt reiner DNS-Anbieter.
+
+### Warum direkt statt Tunnel
+
+Die UDM leitet 80 und 443 auf **beiden** WAN-Strecken (`ppp0` und `eth7`)
+bereits nach `192.168.2.246`. `jit.cloud`, `auth.savar.de`, `office.savar.de`
+und `status.jit-creatives.de` zeigen direkt auf `87.191.135.42`; `jit.social`
+war der letzte Dienst hinter Cloudflare.
+
+Die Vorteile des Tunnels greifen hier nicht:
+
+- *Origin-IP verstecken* ist gegenstandslos, solange dieselbe Adresse an sechs
+  anderen Stellen öffentlich steht.
+- *Unabhängigkeit vom WAN-IP-Wechsel* ebenso: die gesamte Umgebung hängt
+  bereits an dieser Adresse, mit TTLs im Stundenbereich.
+- *CDN-Caching für Medien* wäre das einzige echte Argument. Bei 31 aktiven
+  Nutzern ist das Volumen gering, und der große Cache-Bestand waren eingehende
+  Remote-Medien, die niemand von außen abruft. Falls es doch klemmt, gibt es
+  zwei Hebel ohne Rückkehr zum Tunnel: Medien über einen eigenen öffentlichen
+  RGW-Namen ausliefern, oder `jit.social` auf die InternetNord-Adresse
+  `185.89.37.138` legen und den DSL-Upstream unbelastet lassen.
+
+Dagegen kostet der Tunnel: `cloudflared` läuft auf genau dem Server, den wir
+abschalten wollen, und müsste samt Token in den Cluster umziehen. Cloudflares
+Bot-Schutz sitzt zwischen der Föderation und uns — ActivityPub-Abrufe fremder
+Instanzen sind genau die Art maschineller Requests, die solche Regeln abweisen,
+und der Fehler äußert sich als „Posts kommen bei manchen Instanzen nicht an".
+Und alle Client-IPs kämen als Cloudflare-Adressen an, was für Rate-Limits und
+CrowdSec zusätzliche Real-IP-Konfiguration nötig machte.
+
+**Vor dem Cutover die TTL des `jit.social`-Eintrags auf 60 Sekunden senken.**
+Der Rollback ist dann kein Tunnel-Umschalten mehr, sondern ein DNS-Wechsel
+zurück auf den Proxy — mit kurzer TTL genauso schnell.
 
 ## Phase 1: GitOps-Stand ohne Live-Wirkung
 
@@ -253,7 +282,9 @@ Quelle, Lag im Sekundenbereich).
 6. Cutover-PR: Ingress sowie je eine Web-, Streaming- und Sidekiq-Replik
    aktivieren, `S3_ALIAS_HOST` und die `/system`-Route gemeinsam scharfstellen;
    automatische DB-Hooks bleiben aus.
-7. Verkehr umschalten (siehe offene Entscheidung zum Eingangsweg).
+7. Verkehr umschalten: in Cloudflare den Proxy für `jit.social` abschalten
+   (graue statt oranger Wolke) und den A-Record auf `87.191.135.42` setzen.
+   `cloudflared` auf mastodon02 danach stoppen und deaktivieren.
 8. Föderation, Push, Mail und Streaming testen; Gatus-Check für `jit.social`
    wieder aufnehmen.
 
