@@ -12,14 +12,13 @@ spec:
         revision: main
         directories:
           - path: apps/overlays/main/*
-          # Mastodon ist noch nicht produktiv und live nicht deployt — der
-          # Namespace enthielt nur einen seit Tagen haengenden db-prepare-Job.
-          # Solange die Migration (#46) laeuft, soll ArgoCD den kompletten Stack
-          # nicht bei der ersten Gelegenheit hochfahren. Gleiche Handhabung wie
-          # bei authentik im Infrastruktur-ApplicationSet.
-          # Wieder aufnehmen, wenn die Migration soweit ist.
-          - path: apps/overlays/main/mastodon
-            exclude: true
+          # Mastodon ist seit #204 wieder aufgenommen (23.09.2026): der Stand in
+          # apps/base/mastodon ist Migrations-Staging — Web, Streaming, Sidekiq
+          # und Valkey stehen auf 0 Replikaten, der Ingress ist aus, und
+          # createAdmin/dbPrepare/dbMigrate/deploySearch sind deaktiviert. Ein
+          # Sync legt nur Secrets, Services, den CNPG-Cluster und die PVCs an.
+          # Der oeffentliche Betrieb kommt erst mit dem Cutover-PR, siehe
+          # docs/runbooks/mastodon-migration.md.
   template:
     metadata:
       name: "app-{{.path.basename}}"
