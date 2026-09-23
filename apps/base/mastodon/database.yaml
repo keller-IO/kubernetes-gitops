@@ -19,6 +19,20 @@ spec:
   resources:
     requests: { cpu: 500m, memory: 1Gi }
     limits: { memory: 4Gi }
+  # Am 23.09.2026 gemessen: der erste Restore-Probelauf brauchte 3 h 59 min und
+  # schob dabei 2.085 WAL-Segmente (rund 33 GB) unkomprimiert ueber den VPN nach
+  # Potsdam. Diese drei Werte adressieren das und sind auch im Normalbetrieb
+  # sinnvoll — maintenance_work_mem bleibt bewusst draussen und wird nur fuer
+  # den Restore per ALTER DATABASE gesetzt.
+  postgresql:
+    parameters:
+      # Halbiert bis drittelt das WAL-Volumen; der Weg nach Garage laeuft ueber
+      # die VPN-Strecke nach Potsdam, dort zaehlt jedes Byte.
+      wal_compression: "on"
+      # Default 1 GB erzwingt beim Massenimport Dauer-Checkpoints. Die PVC hat
+      # 64 GiB, davon sind nach dem Restore rund 15 GB belegt.
+      max_wal_size: "4GB"
+      checkpoint_timeout: "15min"
   bootstrap:
     initdb:
       database: mastodon
