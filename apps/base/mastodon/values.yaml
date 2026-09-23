@@ -30,14 +30,27 @@ mastodon:
 
   s3:
     enabled: true
-    existingSecret: mastodon-s3 # dedicated external Ceph-RGW user
+    existingSecret: mastodon-s3 # dedizierter Ceph-RGW-Benutzer mastodon
     existingSecretKeys:
       accessKeyId: AWS_ACCESS_KEY_ID
       secretAccessKey: AWS_SECRET_ACCESS_KEY
     bucket: jit-social-media
-    endpoint: https://s3.jit.services
-    hostname: s3.jit.services
+    # ⚠️ Frueher stand hier s3.jit.services — den Namen gibt es nicht. Er faellt
+    # nur ins Wildcard-DNS auf 192.168.2.246, und nginx lehnt ihn per SNI ab
+    # ("unrecognized name"). Am 22.09.2026 nachgewiesen.
+    # Intern per HTTP auf den RGW, wie bei ciso-assistant. Ueber den Service in
+    # legacy-proxy laufen alle drei RGW-Daemons (.6/.7/.8) statt nur einem.
+    endpoint: http://s3.legacy-proxy.svc.cluster.local:7480
+    hostname: s3.legacy-proxy.svc.cluster.local
+    # Nur das URL-Schema der Medien-Links, nicht der API-Zugriff (siehe
+    # config/initializers/paperclip.rb: S3_ENDPOINT bringt sein eigenes Schema mit).
+    protocol: https
     region: default
+    # S3_ALIAS_HOST kommt mit dem Cutover-PR, ZUSAMMEN mit der /system-Route im
+    # Ingress — beides muss gleichzeitig live gehen, sonst zeigen die Medien-URLs
+    # ins Leere. Damit bleiben die bestehenden https://jit.social/system/...-URLs
+    # gueltig (:s3_alias_url = protocol://alias/pfad, ohne Bucket im Pfad).
+    # aliasHost: jit.social/system
 
   smtp:
     server: mail.jit-creatives.de

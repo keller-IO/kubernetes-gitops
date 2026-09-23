@@ -50,10 +50,10 @@ Dumps dürfen nicht dort abgelegt werden; Dumps direkt in den Cluster streamen.
 
 ## Offene Entscheidungen
 
-- **Volltextsuche:** Elasticsearch bleibt im Manifest deaktiviert. Cutover
-  ohne Suche nur, wenn der temporäre Funktionsverlust ausdrücklich akzeptiert
-  wurde; alternativ vorher OpenSearch im Cluster bereitstellen und den Index mit
-  `tootctl search deploy` neu aufbauen.
+- ~~Volltextsuche~~ **entschieden am 23.09.2026:** Die Suche wird separat
+  behandelt. Elasticsearch bleibt im Manifest deaktiviert, der Cutover läuft
+  ohne Volltextsuche. Nachrüsten später per OpenSearch im Cluster und
+  `tootctl search deploy`.
 - **Eingangsweg nach dem Cutover:** Empfehlung: Cloudflare-Tunnel zunächst
   beibehalten und nur das Tunnel-Ziel auf den Ingress `192.168.2.246` umstellen
   (Rollback = Ziel zurückstellen, DNS unverändert). Vorher prüfen, dass der
@@ -149,28 +149,40 @@ wird `appendonly yes` per GitOps festgeschrieben und Mastodon gestartet.
 ### Medien-S3
 
 Der Cluster besitzt weder die `ObjectBucketClaim`-CRD noch eine
-`ceph-bucket`-StorageClass. Medien liegen deshalb im externen Ceph-RGW unter
-`https://s3.jit.services`.
+`ceph-bucket`-StorageClass. Medien liegen deshalb im externen Ceph-RGW.
 
-Der RGW-Benutzer `mastodon` und der Bucket `jit-social-media` existierten auch
-am 22.09. noch nicht. Ein Ceph-Administrator legt beide mit den in
-`mastodon-s3` hinterlegten Access Keys an. Keine bestehenden, breiter
-berechtigten RGW-Benutzer wiederverwenden.
+**⚠️ Der früher eingetragene Endpunkt `https://s3.jit.services` existiert
+nicht.** Der Name fällt nur ins Wildcard-DNS auf `192.168.2.246`, wo nginx ihn
+per SNI ablehnt (`unrecognized name`). Mastodon spricht den RGW stattdessen
+intern über den Service `s3.legacy-proxy.svc.cluster.local:7480` an, hinter dem
+alle drei RGW-Daemons (`192.168.2.6/.7/.8`) stehen. Aus dem Cluster mit HTTP 200
+geprüft. `S3_ENDPOINT` bringt sein eigenes Schema mit, `S3_PROTOCOL` gilt nur
+für die erzeugten Medien-URLs — interner HTTP-Zugriff und öffentliche
+HTTPS-Links schließen sich also nicht aus
+(siehe `config/initializers/paperclip.rb`).
 
-Vor dem ersten Mediensync müssen diese Punkte grün sein:
+**Erledigt am 23.09.2026:**
 
-- RGW-Benutzer `mastodon` mit Zugriff nur auf `jit-social-media` vorhanden
-- Secret `mastodon-s3` entspricht den RGW-Zugangsdaten
-- authentifizierter Put/Get/Delete-Test erfolgreich
-- hochgeladene Objekte öffentlich lesbar, aber Bucket nicht auflistbar
-- CORS erlaubt `GET` von `https://jit.social`
+- RGW-Benutzer `mastodon` angelegt, mit den Schlüsseln aus `mastodon-s3`,
+  `max_buckets=1` und `op_mask=read,write,delete`.
+- Bucket `jit-social-media` angelegt, Owner `mastodon`, leer.
+- Benutzer-Quota 100 GiB, aktiv. Ausgelegt auf lokale Medien plus den
+  7-Tage-Remote-Cache; bei Bedarf mit `radosgw-admin quota set` anheben.
+- CORS gesetzt: `GET` und `HEAD` von `https://jit.social`, `MaxAge` 3000.
+- Abnahme bestanden: authentifiziertes PUT/GET/DELETE, anonymer GET auf ein
+  `public-read`-Objekt (200), anonymer GET ohne ACL (403), anonymes Listing
+  (403), Anlegen eines zweiten Buckets scheitert an `max_buckets`
+  (`TooManyBuckets`). Alle Probeobjekte wurden wieder entfernt.
 
 Sync-Umfang: `public/system` **ohne** `cache/` (ca. 1 GB). Erstsync vorab,
 Delta-Sync im Wartungsfenster.
 
 Bestehende URLs unter `https://jit.social/system/...` müssen erhalten bleiben.
-Die dafür nötige `/system`-Proxyroute und `S3_ALIAS_HOST` gehören zum
-Cutover-PR.
+`S3_ALIAS_HOST=jit.social/system` und die `/system`-Route im Ingress gehören
+deshalb **in denselben Cutover-PR**; einzeln ausgerollt zeigen die Medien-URLs
+ins Leere. Mit Alias-Host erzeugt Mastodon `:s3_alias_url`, also
+`https://jit.social/system/<pfad>` ohne Bucket im Pfad — die Ingress-Route muss
+das auf den Bucket-Pfad `/jit-social-media/` abbilden.
 
 ## Phase 3: Probe
 
