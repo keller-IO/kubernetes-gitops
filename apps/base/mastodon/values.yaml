@@ -46,11 +46,11 @@ mastodon:
     # config/initializers/paperclip.rb: S3_ENDPOINT bringt sein eigenes Schema mit).
     protocol: https
     region: default
-    # S3_ALIAS_HOST kommt mit dem Cutover-PR, ZUSAMMEN mit der /system-Route im
-    # Ingress — beides muss gleichzeitig live gehen, sonst zeigen die Medien-URLs
-    # ins Leere. Damit bleiben die bestehenden https://jit.social/system/...-URLs
-    # gueltig (:s3_alias_url = protocol://alias/pfad, ohne Bucket im Pfad).
-    # aliasHost: jit.social/system
+    # Medien-URLs laufen ueber den eigenen Host, nicht ueber den RGW-Namen: das
+    # haelt die bestehenden https://jit.social/system/...-URLs gueltig, auf die
+    # alte Posts und foederierte Instanzen verweisen. Die passende /system-Route
+    # steht in ingress.yaml — beides gehoert zusammen.
+    aliasHost: jit.social/system
 
   smtp:
     server: mail.jit-creatives.de
@@ -61,21 +61,23 @@ mastodon:
     existingSecret: mastodon-smtp
 
   web:
-    replicas: 0 # enabled only for rehearsal/cutover
+    replicas: 1 # Cutover 23.09.2026: oeffentlicher Betrieb
     resources:
       requests: { cpu: 200m, memory: 512Mi }
       limits: { memory: 2Gi }
   sidekiq:
     workers:
       - name: all-queues
-        replicas: 0 # enabled only for cutover; never run beside legacy Sidekiq
+        # ⚠️ Niemals parallel zum Sidekiq auf mastodon02. Erst wenn dort alle
+        # Dienste gestoppt sind, darf diese Replik laufen.
+        replicas: 1
         concurrency: 25
         queues: ["default,8", "push,6", "ingress,4", "mailers,2", "pull", "scheduler", "fasp"]
     resources:
       requests: { cpu: 200m, memory: 512Mi }
       limits: { memory: 2Gi }
   streaming:
-    replicas: 0 # enabled only for rehearsal/cutover
+    replicas: 1 # Cutover 23.09.2026: oeffentlicher Betrieb
     image:
       repository: ghcr.io/mastodon/mastodon-streaming
       tag: v4.5.18
@@ -106,19 +108,11 @@ elasticsearch:
   enabled: false # enable for full-text search (extra resources)
 
 ingress:
-  enabled: false # public route remains on 192.168.2.233 until cutover
-  className: nginx
-  annotations:
-    nginx.org/ssl-redirect: "false"
-    nginx.org/redirect-to-https: "false"
-    nginx.org/websocket-services: mastodon-streaming
-    nginx.org/client-max-body-size: "100m"
-  hosts:
-    - host: jit.social
-      paths:
-        - path: "/"
-          pathType: Prefix
-  tls: [] # TLS terminates at Cloudflare/legacy Traefik during migration
+  # Der Chart-Ingress kennt nur / und /api/v1/streaming. Die Medien brauchen
+  # zusaetzlich /system, deshalb liegt der Ingress als eigenes Objekt in
+  # ingress.yaml. Zwei Ingresses fuer denselben Host waeren bei nginx-inc ein
+  # mergeable-master/minion-Fall und damit unnoetig kompliziert.
+  enabled: false
 
 # Gateway API not used — this cluster routes through NGINX Ingress.
 httproute:

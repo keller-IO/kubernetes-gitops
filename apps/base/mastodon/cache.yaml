@@ -13,7 +13,11 @@ metadata:
     app.kubernetes.io/component: cache
 spec:
   serviceName: mastodon-valkey
-  replicas: 0 # migration staging: start only after dump.rdb was restored to the PVC
+  # Cutover: startet NACH dem Einspielen von dump.rdb. appendonly bleibt hier
+  # bewusst "no" — erst wenn INFO persistence einen erfolgreichen AOF-Rewrite
+  # meldet, wird appendonly yes per Folge-PR festgeschrieben. Sonst kann ein
+  # leerer AOF den restaurierten RDB-Bestand ueberstimmen.
+  replicas: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: mastodon-valkey
