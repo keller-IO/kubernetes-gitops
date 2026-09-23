@@ -86,9 +86,14 @@ mastodon:
 postgresql:
   hostname: mastodon-pg-rw # CNPG read-write service
   port: 5432
-  database: mastodon
+  # Die physische Kopie bringt die Datenbank unter ihrem Originalnamen mit —
+  # mastodon_production, nicht mastodon. Kein Umbenennen beim Cutover: das
+  # braucht eine verbindungsfreie Datenbank und waere ein Schritt mehr unter
+  # Zeitdruck. mastodon-db-app traegt seit 23.09.2026 das Kennwort der QUELLE,
+  # damit nach der Promotion auch kein ALTER ROLE noetig ist.
+  database: mastodon_production
   username: mastodon
-  existingSecret: mastodon-db-app # CNPG basic-auth secret (keys: username/password)
+  existingSecret: mastodon-db-app # Schluessel: username/password
 
 redis:
   hostname: mastodon-valkey

@@ -46,9 +46,9 @@ spec:
     enabled: true
     source: mastodon02
   # PROMOTION beim Cutover: replica.enabled auf false setzen, NACHDEM die
-  # Bestandsinstanz gestoppt und der letzte WAL angekommen ist. Danach traegt
-  # die Rolle mastodon noch das Kennwort der QUELLE — mit dem Wert aus
-  # mastodon-db-app per ALTER ROLE angleichen, sonst kommt die App nicht rein.
+  # Bestandsinstanz gestoppt und der letzte WAL angekommen ist. Kein ALTER ROLE
+  # noetig — mastodon-db-app traegt seit 23.09.2026 das Kennwort der Quelle,
+  # und die App spricht die mitgebrachte Datenbank mastodon_production an.
   externalClusters:
     - name: mastodon02
       connectionParameters:
