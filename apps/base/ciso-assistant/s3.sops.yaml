@@ -1,4 +1,4 @@
-# Ceph-RGW-Zugang (cloud64, http://192.168.2.7:7480), eigener RGW-User
+# Ceph-RGW-Zugang (Service s3 in legacy-proxy:7480 = RGW auf .6/.7/.8), eigener RGW-User
 # ciso-assistant mit max-buckets=1 und 20-GiB-User-Quota, angelegt 22.09.2026.
 apiVersion: v1
 kind: Secret
