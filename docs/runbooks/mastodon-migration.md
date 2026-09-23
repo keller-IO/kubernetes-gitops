@@ -120,10 +120,29 @@ sops filestatus apps/base/mastodon/secret.sops.yaml
 
 ### Voraussetzung Ceph
 
-Am 22.09.2026 meldete Ceph `HEALTH_ERR`: zwei OSDs mit langsamen
-BlueStore-Operationen, eine OSD mit *stalled read* im BlueFS-DB-Device (alle PGs
-`active+clean`, `MAX AVAIL` 1,1 TiB). Vor Restore-Probe und Cutover müssen diese
-Befunde geklärt sein. Kein Restore auf RBD bei laufendem stalled read.
+Nachgeprüft am 23.09.2026 — **kein Blocker mehr**, die Einschätzung vom 22.09.
+war zu pauschal:
+
+- Das `HEALTH_ERR` stammt **nicht** vom Storage, sondern von zwei
+  Auth-Meldungen (`AUTH_INSECURE_SERVICE_KEY_TYPE`,
+  `AUTH_INSECURE_SERVICE_TICKETS`) zu unsicheren cephx-Schlüsseltypen. Das ist
+  eine Konfigurationsaltlast, kein Datenrisiko, und separat zu behandeln.
+- Slow-Ops (`osd.0`, `osd.1`, `osd.6`) und der stalled read im DB-Device
+  (`osd.1`) sind nur `[WRN]`. Der Alarm hält bei
+  `bluestore_slow_ops_warn_threshold=1` und
+  `bluestore_slow_ops_warn_lifetime=86400` schon nach **einer einzigen**
+  langsamen Operation 24 Stunden an.
+- `dump_historic_slow_ops` war auf allen drei OSDs leer; das jüngste Ereignis
+  war ein einzelner 5,07-Sekunden-Commit auf `osd.0` am 23.09. um 06:22.
+- SMART aller drei Datenträger (GIGASTONE 1 TB auf cloud65, Netac 2 TB auf
+  cloud62, Crucial MX500 4 TB auf pve): `PASSED`, keine CRC-Fehler, eine
+  einzige reallozierte Sektorangabe auf dem Netac. Es sind
+  Consumer-SSD-Latenzspitzen unter Last, kein sterbendes Gerät.
+- Alle PGs `active+clean`, `MAX AVAIL` 1,1 TiB.
+
+Vor dem Cutover erneut `ceph -s` prüfen. Treten Slow-Ops **während** des
+Restores gehäuft auf, ist das ein Grund zum Abbruch, nicht die stehende
+Warnung an sich.
 
 ### PostgreSQL
 
@@ -189,9 +208,20 @@ das auf den Bucket-Pfad `/jit-social-media/` abbilden.
 1. Exclude in `clusters/main/appset-apps.yaml` per PR entfernen; Sync
    beobachten. Alle Workloads bleiben bei 0 Replikaten.
 2. CNPG-Cluster, Backup-Status und Valkey-PVC prüfen.
-3. Restore-Probe: `pg_dump -Fc` auf dem Altserver direkt per Pipe nach
-   `pg_restore` im CNPG-Pod streamen, nicht auf die Root-Platte des
-   Altservers. Dauer messen; sie bestimmt das Wartungsfenster.
+3. Restore-Probe, gestreamt, ohne Zwischendatei auf der vollen Root-Platte:
+
+   ```bash
+   time ssh root@192.168.2.233 \
+     "sudo -u postgres pg_dump -Fc -Z1 mastodon_production" \
+     | kubectl exec -i -n mastodon mastodon-pg-1 -- \
+       pg_restore -U postgres -d mastodon --no-owner --role=mastodon --no-privileges
+   ```
+
+   Die Dauer bestimmt das Wartungsfenster. Ist sie zu lang, bringt nur ein
+   paralleler Restore etwas: Dump als Verzeichnis (`-Fd -j2`) auf den
+   **Medien-Datenträger** `/home/mastodon/live/public` (dort sind 140 GB frei,
+   auf `/` nicht), dann in den Pod kopieren und mit `pg_restore -j4`
+   einspielen. Niemals nach `/` auf mastodon02.
 4. Nur für den Test Web auf eine Replik skalieren, ohne Sidekiq und ohne
    Ingress, Zugriff per Port-Forward: Login, 2FA-Konto, lokale Medien,
    Timeline. Danach wieder auf 0. Sidekiq darf in der Probe nie laufen, sonst
