@@ -41,9 +41,18 @@ backend:
     # Evidenzen/Anhaenge auf Ceph-RGW (S3) statt auf einem RWO-PVC: das Backend
     # bleibt zustandslos, und RGW traegt bereits GitLab, invoices und jitmgmt.
     # Auslieferung laeuft ueber das Backend (Rechtepruefung), Browser sprechen
-    # RGW nie direkt an. IP-Endpoint => botocore nimmt Path-Style.
+    # RGW nie direkt an.
+    # Endpoint ist die (in external-backends.yaml gepinnte) ClusterIP des
+    # Service s3 in legacy-proxy: dahinter stehen alle DREI RGW-Daemons
+    # (.6/.7/.8) statt nur eines Hosts. Vorher stand hier 192.168.2.7 — faellt
+    # der Host aus, stehen Upload und Download.
+    # ⚠️ Bewusst die IP und NICHT der DNS-Name des Service: die App kennt kein
+    # AWS_S3_ADDRESSING_STYLE, und botocore wechselt bei einem DNS-Endpoint auf
+    # Virtual-Host-Style. Das waere ciso-assistant-evidence.s3.legacy-proxy...
+    # und damit NXDOMAIN (am 23.09.2026 im Cluster nachgewiesen). Bei einer IP
+    # bleibt botocore bei Path-Style.
     - { name: USE_S3, value: "True" }
-    - { name: AWS_S3_ENDPOINT_URL, value: "http://192.168.2.7:7480" }
+    - { name: AWS_S3_ENDPOINT_URL, value: "http://10.103.83.185:7480" }
     - { name: AWS_S3_REGION_NAME, value: default }
     - { name: AWS_STORAGE_BUCKET_NAME, value: ciso-assistant-evidence }
     - name: AWS_ACCESS_KEY_ID
@@ -61,7 +70,7 @@ backend:
     # Huey erzeugt Exporte/Reports und braucht denselben Storage wie das Backend.
     env:
       - { name: USE_S3, value: "True" }
-      - { name: AWS_S3_ENDPOINT_URL, value: "http://192.168.2.7:7480" }
+      - { name: AWS_S3_ENDPOINT_URL, value: "http://10.103.83.185:7480" }
       - { name: AWS_S3_REGION_NAME, value: default }
       - { name: AWS_STORAGE_BUCKET_NAME, value: ciso-assistant-evidence }
       - name: AWS_ACCESS_KEY_ID

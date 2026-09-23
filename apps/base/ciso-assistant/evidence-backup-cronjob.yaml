@@ -64,7 +64,11 @@ spec:
                 # Quelle: Ceph-RGW
                 - { name: RCLONE_CONFIG_RGW_TYPE, value: s3 }
                 - { name: RCLONE_CONFIG_RGW_PROVIDER, value: Ceph }
-                - { name: RCLONE_CONFIG_RGW_ENDPOINT, value: "http://192.168.2.7:7480" }
+                # Service in legacy-proxy = alle drei RGW-Daemons (.6/.7/.8).
+                # Hier der DNS-Name statt der ClusterIP wie beim Backend:
+                # rclone erzwingt unten explizit Path-Style, botocore kann das
+                # in der App nicht.
+                - { name: RCLONE_CONFIG_RGW_ENDPOINT, value: "http://s3.legacy-proxy.svc.cluster.local:7480" }
                 - { name: RCLONE_CONFIG_RGW_REGION, value: default }
                 - { name: RCLONE_CONFIG_RGW_FORCE_PATH_STYLE, value: "true" }
                 # Beide Keys duerfen keine Buckets anlegen (RGW max-buckets=1, Garage

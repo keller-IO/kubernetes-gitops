@@ -144,6 +144,12 @@ apiVersion: v1
 kind: Service
 metadata: { name: s3, namespace: legacy-proxy }
 spec:
+  # ClusterIP gepinnt (der bereits zugeteilte Wert), weil ciso-assistant sie als
+  # S3-Endpoint traegt: die App kann botocore nicht auf Path-Style zwingen, mit
+  # einem DNS-Endpoint wuerde daraus Virtual-Host-Style und NXDOMAIN. Ein
+  # Neuanlegen des Service ohne diesen Pin wuerde die IP aendern und die
+  # Evidenz-Speicherung brechen.
+  clusterIP: 10.103.83.185
   ports: [{ name: http, port: 7480, targetPort: 7480 }]
 ---
 apiVersion: discovery.k8s.io/v1
