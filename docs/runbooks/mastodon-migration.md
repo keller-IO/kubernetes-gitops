@@ -229,8 +229,33 @@ HTTPS-Links schließen sich also nicht aus
   (403), Anlegen eines zweiten Buckets scheitert an `max_buckets`
   (`TooManyBuckets`). Alle Probeobjekte wurden wieder entfernt.
 
-Sync-Umfang: `public/system` **ohne** `cache/` (ca. 1 GB). Erstsync vorab,
-Delta-Sync im Wartungsfenster.
+Sync-Umfang: `public/system` **ohne** `cache/`.
+
+**Erstsync erledigt am 24.09.2026:** 2425 Objekte, 685 MiB, 0 Fehler, 1 min 13 s.
+Werkzeug ist `rclone` (auf mastodon02 aus dem Debian-Paket nachinstalliert, mit
+dem Altserver zu entfernen). Zugangsdaten kommen aus SOPS und stehen nur in der
+Umgebung, nie in der Kommandozeile:
+
+```bash
+export RCLONE_CONFIG_RGW_TYPE=s3 RCLONE_CONFIG_RGW_PROVIDER=Ceph \
+  RCLONE_CONFIG_RGW_ENDPOINT=http://192.168.2.7:7480 RCLONE_CONFIG_RGW_REGION=default \
+  RCLONE_CONFIG_RGW_FORCE_PATH_STYLE=true RCLONE_CONFIG_RGW_NO_CHECK_BUCKET=true \
+  RCLONE_CONFIG_RGW_ACL=public-read
+rclone copy /home/mastodon/live/public/system rgw:jit-social-media \
+  --exclude "cache/**" --transfers 8 --checkers 16 \
+  --header-upload "Cache-Control: public, max-age=315576000, immutable"
+```
+
+`--s3-acl public-read` und der `Cache-Control`-Header sind Pflicht: ohne sie
+liefert der RGW anonym 403 beziehungsweise die Objekte unterscheiden sich von
+denen, die Mastodon selbst hochlädt. `NO_CHECK_BUCKET` ist nötig, weil der Key
+wegen `max_buckets=1` kein CreateBucket ausführen darf.
+
+Stichprobe bestanden: ein Objekt anonym mit HTTP 200 geladen, SHA256 und Größe
+identisch zur Quelle, `Cache-Control` und `Content-Type` korrekt gesetzt.
+
+**Delta-Sync im Wartungsfenster** mit demselben Befehl — er überträgt dann nur,
+was seit dem 24.09. hinzugekommen ist.
 
 Bestehende URLs unter `https://jit.social/system/...` müssen erhalten bleiben.
 `S3_ALIAS_HOST=jit.social/system` und die `/system`-Route im Ingress gehören
