@@ -190,6 +190,29 @@ endpoints:
   - addresses: ["192.168.2.217"]
     conditions: { ready: true }
 ---
+# notify_push (Client Push) fuer jit.cloud -> nc05 192.168.2.217:7867.
+# Eigenes Backend, weil der Daemon im Gegensatz zum Nextcloud-Backend KLARTEXT-
+# HTTP spricht: "jitcloud-push" darf deshalb nicht in nginx.org/ssl-services.
+# Nur .217, weil der Ingress auch fuer den Hauptpfad nur nc05 anspricht; ein
+# Client muss zudem dieselbe Node treffen wie seine Session.
+apiVersion: v1
+kind: Service
+metadata: { name: jitcloud-push, namespace: legacy-proxy }
+spec:
+  ports: [{ name: http, port: 7867, targetPort: 7867 }]
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: jitcloud-push
+  namespace: legacy-proxy
+  labels: { kubernetes.io/service-name: jitcloud-push }
+addressType: IPv4
+ports: [{ name: http, port: 7867 }]
+endpoints:
+  - addresses: ["192.168.2.217"]
+    conditions: { ready: true }
+---
 # cloud-dev (Nextcloud-Dev, HTTPS-Backend) -> nc01-dev 192.168.2.220:443 und
 # nc02-dev 192.168.2.221:443. Beide Nodes teilen PHP-Sessions ueber Redis
 # (cfgmgmt01 playbooks/nc_dev_runtime.yml); Sticky Sessions sind nicht noetig.

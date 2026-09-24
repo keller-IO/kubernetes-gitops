@@ -244,8 +244,16 @@ metadata:
     # jitcloud-preload gewandert) — daher hier "true".
     nginx.org/ssl-redirect: "true"
     nginx.org/redirect-to-https: "false"
-    # Backend spricht selbst HTTPS (.217:443) -> re-encrypt zum Upstream
+    # Backend spricht selbst HTTPS (.217:443) -> re-encrypt zum Upstream.
+    # jitcloud-push steht bewusst NICHT hier: der notify_push-Daemon spricht
+    # Klartext-HTTP auf 7867.
     nginx.org/ssl-services: "jitcloud"
+    # notify_push haelt eine WebSocket-Verbindung je Client offen.
+    nginx.org/websocket-services: "jitcloud-push"
+    # Der Daemon erwartet seine Pfade an der Wurzel (/ws, /test/cookie), der
+    # Client spricht aber https://jit.cloud/push/... an. Ohne dieses Rewrite
+    # liefe jede Anfrage auf /push/... ins Leere.
+    nginx.org/rewrites: "serviceName=jitcloud-push rewrite=/"
     # Nextcloud: grosse Uploads + Sync-Clients mit langen Requests
     nginx.org/client-max-body-size: "0"
     nginx.org/proxy-read-timeout: "3600s"
@@ -264,7 +272,11 @@ spec:
         paths: [{ path: /, pathType: Prefix, backend: { service: { name: jitcloud, port: { number: 443 } } } }]
     - host: jit.cloud
       http:
-        paths: [{ path: /, pathType: Prefix, backend: { service: { name: jitcloud, port: { number: 443 } } } }]
+        paths:
+          # /push vor / : nginx waehlt zwar ohnehin das laengste Praefix, aber
+          # die Reihenfolge macht beim Lesen sichtbar, dass hier abgezweigt wird.
+          - { path: /push, pathType: Prefix, backend: { service: { name: jitcloud-push, port: { number: 7867 } } } }
+          - { path: /, pathType: Prefix, backend: { service: { name: jitcloud, port: { number: 443 } } } }
     - host: cloud.daec-berlin.de
       http:
         paths: [{ path: /, pathType: Prefix, backend: { service: { name: jitcloud, port: { number: 443 } } } }]
