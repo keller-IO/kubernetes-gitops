@@ -93,9 +93,24 @@ und der Fehler äußert sich als „Posts kommen bei manchen Instanzen nicht an"
 Und alle Client-IPs kämen als Cloudflare-Adressen an, was für Rate-Limits und
 CrowdSec zusätzliche Real-IP-Konfiguration nötig machte.
 
-**Vor dem Cutover die TTL des `jit.social`-Eintrags auf 60 Sekunden senken.**
-Der Rollback ist dann kein Tunnel-Umschalten mehr, sondern ein DNS-Wechsel
-zurück auf den Proxy — mit kurzer TTL genauso schnell.
+**⚠️ Die TTL lässt sich nicht vorab senken.** Solange der Proxy aktiv ist,
+erzwingt Cloudflare TTL „Auto" und liefert die Anycast-Adressen mit fest 300
+Sekunden aus (am 24.09.2026 direkt an `athena.ns.cloudflare.com` nachgemessen).
+TTL 60 wird erst in dem Moment gesetzt, in dem der Eintrag auf grau umgestellt
+und auf `87.191.135.42` gezeigt wird — danach ist der Rollback schnell.
+
+Für die bis zu 5 Minuten, in denen Resolver noch die alte, proxied Antwort
+halten, wird **mastodon02 kurzzeitig zum Reverse Proxy**: sein nginx bekommt
+statt des lokalen Mastodon `proxy_pass http://192.168.2.246;` mit
+`Host: jit.social`. Dann führen beide Wege — der alte über Cloudflare und der
+neue direkt — auf dieselbe neue Instanz, und der DNS-Wechsel wird unkritisch.
+Der Tunnel bleibt dabei bis zuletzt in Betrieb.
+
+**Genau deshalb bleibt `ssl-redirect` in dieser Phase `false`:** Über den Tunnel
+kommt der Verkehr als HTTP am Ingress an. Mit `true` antwortet nginx dort 301
+auf https, der Client geht wieder über Cloudflare — eine Endlosschleife, die
+gleiche Falle wie seinerzeit über `.15` (#169). Erst wenn DNS umgestellt und
+`cloudflared` gestoppt ist, wird `ssl-redirect` auf `true` gezogen.
 
 ## Phase 1: GitOps-Stand ohne Live-Wirkung
 
@@ -307,9 +322,19 @@ Quelle, Lag im Sekundenbereich).
 6. Cutover-PR: Ingress sowie je eine Web-, Streaming- und Sidekiq-Replik
    aktivieren, `S3_ALIAS_HOST` und die `/system`-Route gemeinsam scharfstellen;
    automatische DB-Hooks bleiben aus.
-7. Verkehr umschalten: in Cloudflare den Proxy für `jit.social` abschalten
-   (graue statt oranger Wolke) und den A-Record auf `87.191.135.42` setzen.
-   `cloudflared` auf mastodon02 danach stoppen und deaktivieren.
+7. Verkehr umschalten, in dieser Reihenfolge:
+   1. nginx auf mastodon02 auf `proxy_pass http://192.168.2.246;` mit
+      `Host: jit.social` umstellen und neu laden. Ab hier bedient auch der
+      Cloudflare-Weg die neue Instanz; prüfen mit einem Abruf über
+      `https://jit.social`.
+   2. Zertifikat prüfen (`kubectl get certificate -n mastodon`). Die
+      HTTP-01-Challenge läuft in dieser Phase ebenfalls über den Tunnel und
+      den temporären Proxy.
+   3. In Cloudflare den Proxy abschalten (graue Wolke), A-Record auf
+      `87.191.135.42`, **TTL 60**.
+   4. Warten, bis die direkte Auflösung greift, dann `cloudflared` auf
+      mastodon02 stoppen und deaktivieren.
+   5. Erst jetzt `ssl-redirect` per Folge-PR auf `true`.
 8. Föderation, Push, Mail und Streaming testen; Gatus-Check für `jit.social`
    wieder aufnehmen.
 
