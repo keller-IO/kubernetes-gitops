@@ -1,0 +1,44 @@
+# Eigener Ingress statt des Chart-Ingress (ingress.enabled: false in values.yaml):
+# das Chart kennt nur / und /api/v1/streaming, hier kommt /system fuer die Medien
+# dazu. Zwei Ingress-Objekte fuer denselben Host waeren bei nginx-inc ein Fall
+# fuer mergeable master/minion — ein Objekt ist einfacher und nachvollziehbarer.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: mastodon
+  namespace: mastodon
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    # ⚠️ ssl-redirect bleibt "false", bis das HTTP-01-Zertifikat steht. Mit "true"
+    # beantwortet nginx die ACME-Challenge mit einem 301 auf https und die
+    # Ausstellung scheitert dauerhaft (gleiche Falle wie bei jitcloud, #169).
+    # Direkt nach erfolgreicher Ausstellung auf "true" ziehen.
+    nginx.org/ssl-redirect: "false"
+    nginx.org/redirect-to-https: "false"
+    nginx.org/websocket-services: "mastodon-streaming"
+    # Medien-URLs /system/<pfad> auf den Bucket-Pfad abbilden.
+    nginx.org/rewrites: "serviceName=rgw rewrite=/jit-social-media"
+    # Mastodon erlaubt Uploads bis 99 MB (Videos); 100m deckt das mit Rand ab.
+    nginx.org/client-max-body-size: "100m"
+    # Streaming ist eine lange offene Verbindung, kein Request-Response.
+    nginx.org/proxy-read-timeout: "3600s"
+    nginx.org/proxy-send-timeout: "3600s"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: [jit.social]
+      secretName: mastodon-tls
+  rules:
+    - host: jit.social
+      http:
+        paths:
+          # Reihenfolge: spezifisch vor allgemein.
+          - path: /api/v1/streaming
+            pathType: Prefix
+            backend: { service: { name: mastodon-streaming, port: { number: 4000 } } }
+          - path: /system/
+            pathType: Prefix
+            backend: { service: { name: rgw, port: { number: 7480 } } }
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: mastodon-web, port: { number: 3000 } } }

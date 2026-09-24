@@ -57,16 +57,60 @@ Dumps dürfen nicht dort abgelegt werden; Dumps direkt in den Cluster streamen.
 
 ## Offene Entscheidungen
 
-- ~~Volltextsuche~~ **entschieden am 23.09.2026:** Die Suche wird separat
-  behandelt. Elasticsearch bleibt im Manifest deaktiviert, der Cutover läuft
-  ohne Volltextsuche. Nachrüsten später per OpenSearch im Cluster und
-  `tootctl search deploy`.
-- **Eingangsweg nach dem Cutover:** Empfehlung: Cloudflare-Tunnel zunächst
-  beibehalten und nur das Tunnel-Ziel auf den Ingress `192.168.2.246` umstellen
-  (Rollback = Ziel zurückstellen, DNS unverändert). Vorher prüfen, dass der
-  Ingress für Tunnel-Anfragen keine Redirect-Schleife erzeugt. Danach
-  `cloudflared` in den Cluster holen oder wie die übrigen Dienste direkt über
-  die UDM veröffentlichen.
+Keine mehr — beide sind entschieden:
+
+- **Volltextsuche** (23.09.2026): wird separat behandelt. Elasticsearch bleibt
+  deaktiviert, der Cutover läuft ohne Volltextsuche. Nachrüsten später per
+  OpenSearch und `tootctl search deploy`.
+- **Eingangsweg** (23.09.2026): **direkt über die UDM**, kein Cloudflare-Proxy
+  und kein Tunnel. Cloudflare bleibt reiner DNS-Anbieter.
+
+### Warum direkt statt Tunnel
+
+Die UDM leitet 80 und 443 auf **beiden** WAN-Strecken (`ppp0` und `eth7`)
+bereits nach `192.168.2.246`. `jit.cloud`, `auth.savar.de`, `office.savar.de`
+und `status.jit-creatives.de` zeigen direkt auf `87.191.135.42`; `jit.social`
+war der letzte Dienst hinter Cloudflare.
+
+Die Vorteile des Tunnels greifen hier nicht:
+
+- *Origin-IP verstecken* ist gegenstandslos, solange dieselbe Adresse an sechs
+  anderen Stellen öffentlich steht.
+- *Unabhängigkeit vom WAN-IP-Wechsel* ebenso: die gesamte Umgebung hängt
+  bereits an dieser Adresse, mit TTLs im Stundenbereich.
+- *CDN-Caching für Medien* wäre das einzige echte Argument. Bei 31 aktiven
+  Nutzern ist das Volumen gering, und der große Cache-Bestand waren eingehende
+  Remote-Medien, die niemand von außen abruft. Falls es doch klemmt, gibt es
+  zwei Hebel ohne Rückkehr zum Tunnel: Medien über einen eigenen öffentlichen
+  RGW-Namen ausliefern, oder `jit.social` auf die InternetNord-Adresse
+  `185.89.37.138` legen und den DSL-Upstream unbelastet lassen.
+
+Dagegen kostet der Tunnel: `cloudflared` läuft auf genau dem Server, den wir
+abschalten wollen, und müsste samt Token in den Cluster umziehen. Cloudflares
+Bot-Schutz sitzt zwischen der Föderation und uns — ActivityPub-Abrufe fremder
+Instanzen sind genau die Art maschineller Requests, die solche Regeln abweisen,
+und der Fehler äußert sich als „Posts kommen bei manchen Instanzen nicht an".
+Und alle Client-IPs kämen als Cloudflare-Adressen an, was für Rate-Limits und
+CrowdSec zusätzliche Real-IP-Konfiguration nötig machte.
+
+**⚠️ Die TTL lässt sich nicht vorab senken.** Solange der Proxy aktiv ist,
+erzwingt Cloudflare TTL „Auto" und liefert die Anycast-Adressen mit fest 300
+Sekunden aus (am 24.09.2026 direkt an `athena.ns.cloudflare.com` nachgemessen).
+TTL 60 wird erst in dem Moment gesetzt, in dem der Eintrag auf grau umgestellt
+und auf `87.191.135.42` gezeigt wird — danach ist der Rollback schnell.
+
+Für die bis zu 5 Minuten, in denen Resolver noch die alte, proxied Antwort
+halten, wird **mastodon02 kurzzeitig zum Reverse Proxy**: sein nginx bekommt
+statt des lokalen Mastodon `proxy_pass http://192.168.2.246;` mit
+`Host: jit.social`. Dann führen beide Wege — der alte über Cloudflare und der
+neue direkt — auf dieselbe neue Instanz, und der DNS-Wechsel wird unkritisch.
+Der Tunnel bleibt dabei bis zuletzt in Betrieb.
+
+**Genau deshalb bleibt `ssl-redirect` in dieser Phase `false`:** Über den Tunnel
+kommt der Verkehr als HTTP am Ingress an. Mit `true` antwortet nginx dort 301
+auf https, der Client geht wieder über Cloudflare — eine Endlosschleife, die
+gleiche Falle wie seinerzeit über `.15` (#169). Erst wenn DNS umgestellt und
+`cloudflared` gestoppt ist, wird `ssl-redirect` auf `true` gezogen.
 
 ## Phase 1: GitOps-Stand ohne Live-Wirkung
 
@@ -200,8 +244,33 @@ HTTPS-Links schließen sich also nicht aus
   (403), Anlegen eines zweiten Buckets scheitert an `max_buckets`
   (`TooManyBuckets`). Alle Probeobjekte wurden wieder entfernt.
 
-Sync-Umfang: `public/system` **ohne** `cache/` (ca. 1 GB). Erstsync vorab,
-Delta-Sync im Wartungsfenster.
+Sync-Umfang: `public/system` **ohne** `cache/`.
+
+**Erstsync erledigt am 24.09.2026:** 2425 Objekte, 685 MiB, 0 Fehler, 1 min 13 s.
+Werkzeug ist `rclone` (auf mastodon02 aus dem Debian-Paket nachinstalliert, mit
+dem Altserver zu entfernen). Zugangsdaten kommen aus SOPS und stehen nur in der
+Umgebung, nie in der Kommandozeile:
+
+```bash
+export RCLONE_CONFIG_RGW_TYPE=s3 RCLONE_CONFIG_RGW_PROVIDER=Ceph \
+  RCLONE_CONFIG_RGW_ENDPOINT=http://192.168.2.7:7480 RCLONE_CONFIG_RGW_REGION=default \
+  RCLONE_CONFIG_RGW_FORCE_PATH_STYLE=true RCLONE_CONFIG_RGW_NO_CHECK_BUCKET=true \
+  RCLONE_CONFIG_RGW_ACL=public-read
+rclone copy /home/mastodon/live/public/system rgw:jit-social-media \
+  --exclude "cache/**" --transfers 8 --checkers 16 \
+  --header-upload "Cache-Control: public, max-age=315576000, immutable"
+```
+
+`--s3-acl public-read` und der `Cache-Control`-Header sind Pflicht: ohne sie
+liefert der RGW anonym 403 beziehungsweise die Objekte unterscheiden sich von
+denen, die Mastodon selbst hochlädt. `NO_CHECK_BUCKET` ist nötig, weil der Key
+wegen `max_buckets=1` kein CreateBucket ausführen darf.
+
+Stichprobe bestanden: ein Objekt anonym mit HTTP 200 geladen, SHA256 und Größe
+identisch zur Quelle, `Cache-Control` und `Content-Type` korrekt gesetzt.
+
+**Delta-Sync im Wartungsfenster** mit demselben Befehl — er überträgt dann nur,
+was seit dem 24.09. hinzugekommen ist.
 
 Bestehende URLs unter `https://jit.social/system/...` müssen erhalten bleiben.
 `S3_ALIAS_HOST=jit.social/system` und die `/system`-Route im Ingress gehören
@@ -253,7 +322,19 @@ Quelle, Lag im Sekundenbereich).
 6. Cutover-PR: Ingress sowie je eine Web-, Streaming- und Sidekiq-Replik
    aktivieren, `S3_ALIAS_HOST` und die `/system`-Route gemeinsam scharfstellen;
    automatische DB-Hooks bleiben aus.
-7. Verkehr umschalten (siehe offene Entscheidung zum Eingangsweg).
+7. Verkehr umschalten, in dieser Reihenfolge:
+   1. nginx auf mastodon02 auf `proxy_pass http://192.168.2.246;` mit
+      `Host: jit.social` umstellen und neu laden. Ab hier bedient auch der
+      Cloudflare-Weg die neue Instanz; prüfen mit einem Abruf über
+      `https://jit.social`.
+   2. Zertifikat prüfen (`kubectl get certificate -n mastodon`). Die
+      HTTP-01-Challenge läuft in dieser Phase ebenfalls über den Tunnel und
+      den temporären Proxy.
+   3. In Cloudflare den Proxy abschalten (graue Wolke), A-Record auf
+      `87.191.135.42`, **TTL 60**.
+   4. Warten, bis die direkte Auflösung greift, dann `cloudflared` auf
+      mastodon02 stoppen und deaktivieren.
+   5. Erst jetzt `ssl-redirect` per Folge-PR auf `true`.
 8. Föderation, Push, Mail und Streaming testen; Gatus-Check für `jit.social`
    wieder aufnehmen.
 
