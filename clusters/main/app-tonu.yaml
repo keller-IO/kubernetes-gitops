@@ -1,0 +1,26 @@
+# Tonu (Haushalts-App: Kalender/CalDAV, Essensplanung, Einkaufsliste) liegt komplett
+# auf gitlab.jit-creatives.de -- Quellcode, Image UND Kubernetes-Manifeste. Gleiches
+# Muster wie app-flurfunk.yaml: eigene, einzelne Application, hier nur ein Zeiger.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: app-tonu
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  project: apps
+  source:
+    repoURL: https://gitlab.jit-creatives.de/tommy/tonu.git
+    targetRevision: main
+    path: k8s
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: tonu
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
