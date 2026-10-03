@@ -168,10 +168,29 @@ endpoints:
   - addresses: ["192.168.2.8"]
     conditions: { ready: true }
 ---
-# jitcloud (Nextcloud, HTTPS-Backend!) -> 192.168.2.217:443
-# Traefik hatte Sticky-Cookie nc_affinity — mit nur EINEM aktiven Backend
-# (.218 auskommentiert) ist Stickiness ein No-op, daher hier weggelassen
-# (Sticky-Cookies waeren in nginx-inc OSS eh NGINX-Plus-only).
+# ⚠️⚠️ DIE ADRESSEN IN DIESER DATEI ERZEUGEN NICHTS. ⚠️⚠️
+# ArgoCD schliesst Endpoints UND EndpointSlice per resource.exclusions aus
+# (argocd-cm, ArgoCDs mitgelieferte Standardliste). Die Slices hier werden also
+# weder angelegt, noch abgeglichen, noch gepruned — und die App meldet trotzdem
+# "Synced", weil ausgeschlossene Objekte nicht verglichen werden. Alle Slices im
+# Namespace sind von Hand angelegt. Diese Datei dokumentiert nur den Sollstand.
+#
+# Folge: Wer hier eine Adresse aendert, aendert nichts am Cluster. Neue oder
+# geaenderte Slices zusaetzlich per kubectl apply ausrollen und den Live-Stand
+# mit `kubectl -n legacy-proxy get endpointslice` gegenpruefen.
+#
+# Am 03.10.2026 war die Datei deshalb zehn Tage lang falsch: live lief .218,
+# hier stand .217. Wer dem Repo glaubte, suchte den Fehler auf dem falschen Node.
+#
+# Wenn Git diese Objekte wirklich besitzen soll, muss EndpointSlice aus den
+# Exclusions. Vorher die Werte hier mit dem Live-Stand abgleichen, sonst zieht
+# ArgoCD beim ersten Sync den Produktivverkehr auf eine andere Node.
+---
+# jitcloud (Nextcloud, HTTPS-Backend!) -> 192.168.2.218:443 = nc04
+# Bewusst nc04 und nicht nc05: nc05 (VM 2034) laeuft auf dem Node lat7440,
+# einem Laptop, der zugleich runner01, mastodon02 und kellerio-wrk1 traegt.
+# Nur EIN aktives Backend, daher kein Sticky-Cookie noetig (in nginx-inc OSS
+# waere es ohnehin NGINX-Plus-only).
 apiVersion: v1
 kind: Service
 metadata: { name: jitcloud, namespace: legacy-proxy }
@@ -187,14 +206,15 @@ metadata:
 addressType: IPv4
 ports: [{ name: https, port: 443 }]
 endpoints:
-  - addresses: ["192.168.2.217"]
+  - addresses: ["192.168.2.218"]
     conditions: { ready: true }
 ---
-# notify_push (Client Push) fuer jit.cloud -> nc05 192.168.2.217:7867.
+# notify_push (Client Push) fuer jit.cloud -> nc04 192.168.2.218:7867.
 # Eigenes Backend, weil der Daemon im Gegensatz zum Nextcloud-Backend KLARTEXT-
 # HTTP spricht: "jitcloud-push" darf deshalb nicht in nginx.org/ssl-services.
-# Nur .217, weil der Ingress auch fuer den Hauptpfad nur nc05 anspricht; ein
-# Client muss zudem dieselbe Node treffen wie seine Session.
+# Dieselbe Node wie der Hauptpfad, damit Client und Session zusammenbleiben.
+# Der Daemon laeuft auf beiden App-Nodes; beim Umschwenken des Hauptpfads muss
+# diese Adresse mitwandern — und zwar per kubectl, siehe Warnung oben.
 apiVersion: v1
 kind: Service
 metadata: { name: jitcloud-push, namespace: legacy-proxy }
@@ -210,7 +230,7 @@ metadata:
 addressType: IPv4
 ports: [{ name: http, port: 7867 }]
 endpoints:
-  - addresses: ["192.168.2.217"]
+  - addresses: ["192.168.2.218"]
     conditions: { ready: true }
 ---
 # cloud-dev (Nextcloud-Dev, HTTPS-Backend) -> nc01-dev 192.168.2.220:443 und
