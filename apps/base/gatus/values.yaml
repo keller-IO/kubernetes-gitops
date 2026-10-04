@@ -152,3 +152,25 @@ config:
       url: https://www.gemeinsam-fuer-halbe.de
       interval: 60s
       conditions: ["[STATUS] == 200"]
+    # Kunden-Nextcloud umdiehand (VM 113, ueber legacy-proxy), beide Domains.
+    # status.php prueft neben der Erreichbarkeit auch Wartungsmodus und ein
+    # offenes DB-Upgrade (wie der jit.cloud-Check der oeffentlichen Instanz).
+    # Diese Gatus-Instanz alarmiert nicht - sie zeigt nur an.
+    - name: nextcloud umdiehand.jit-creatives.de
+      group: Kunden-Nextcloud
+      url: https://umdiehand.jit-creatives.de/status.php
+      interval: 60s
+      conditions:
+        - "[STATUS] == 200"
+        - "[BODY].installed == true"
+        - "[BODY].maintenance == false"
+        - "[BODY].needsDbUpgrade == false"
+    - name: nextcloud gesinefranze.jit-creatives.de
+      group: Kunden-Nextcloud
+      url: https://gesinefranze.jit-creatives.de/status.php
+      interval: 60s
+      conditions:
+        - "[STATUS] == 200"
+        - "[BODY].installed == true"
+        - "[BODY].maintenance == false"
+        - "[BODY].needsDbUpgrade == false"
