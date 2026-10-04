@@ -34,7 +34,9 @@ spec:
   # WICHTIG: erst reaktiviert, seit das externe S3 existiert (13.07.) — ein
   # kaputtes Archive-Target würde WALs stauen bis die Disk voll ist.
   backup:
-    retentionPolicy: "30d"
+    # Den geplanten 3.x-Recovery-Punkt bis ueber die Abnahme hinaus schuetzen.
+    # Erst nach bewusstem Verzicht auf den 2.20.15-Rollback wieder reduzieren.
+    retentionPolicy: "90d"
     barmanObjectStore:
       destinationPath: s3://backups/cnpg-paperless/
       endpointURL: http://192.168.23.21:3900

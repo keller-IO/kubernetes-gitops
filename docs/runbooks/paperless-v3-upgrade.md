@@ -26,7 +26,7 @@ ueberspringen.
 |---|---|---|
 | 1: 2.20.15 | Abgeschlossen | Export und PVC-Snapshots vom 02.08. behalten; das damalige CNPG-Backup ist abgelaufen |
 | Stabilisierung | Blockiert | Wiederholte Celery-Child-Start-Timeouts auf 2.20.15 erklaeren und beseitigen |
-| 2: 3.x-Recovery-Punkt | Offen | Erst nach stabiler 2.20.15 einen neuen quieszierten Export, CNPG-Backup und Snapshots erzeugen |
+| 2: 3.x-Recovery-Punkt | Teilweise vorbereitet | CNPG-Retention ist auf 90 Tage gesetzt; erst nach stabiler 2.20.15 einen neuen quieszierten Export, CNPG-Backup und Snapshots erzeugen |
 | 3: 3.x-Change | Offen | Separater PR auf die dann aktuelle gepruefte 3.x-Patchversion, derzeit 3.2.1 |
 | Abnahme | Offen | Migration, Tantivy-Aufbau, OIDC, OCR, Suche, Mail und SMB-Consume pruefen |
 
@@ -40,7 +40,7 @@ geprueft:
 | Laufende App | `2.20.15`, Deployment `1/1`; aktueller Pod seit 32 Tagen ohne Container-Restart |
 | GitOps | `app-paperless-ngx` ist `Synced` und `Healthy`; PR #89 ist gemergt |
 | Datenbank | CNPG/PostgreSQL 17.2, Cluster gesund; PostgreSQL >=14 wird von Paperless 3 unterstuetzt |
-| Backup | Taegliche CNPG-Backups laufen; `paperless-pg-20260923020000` ist `completed`. Sie ersetzen kein Backup der Paperless-PVCs oder der externen Scanner-Inbox |
+| Backup | Taegliche CNPG-Backups laufen; `paperless-pg-20260923020000` ist `completed`. Die Retention ist fuer das 3.x-Recovery-Gate deklarativ auf 90 Tage erhoeht. Die Backups ersetzen kein Backup der Paperless-PVCs oder der externen Scanner-Inbox |
 | Broker | Valkey 8.1 ueber `redis://paperless-valkey:6379`, kompatibel |
 | Secret | `PAPERLESS_SECRET_KEY` ist im SOPS-Secret vorhanden und muss unveraendert bleiben |
 | DB-Konfiguration | `PAPERLESS_DBENGINE=postgresql` ist bereits explizit gesetzt; keine veralteten erweiterten DB-Variablen im Manifest |
@@ -164,11 +164,12 @@ Metadaten aendern. Ein leerer Queue-Stand allein ist keine Schreibsperre.
 4. Den schreibenden Paperless-Pod ueber einen separaten GitOps-Schritt stoppen
    und auf sein Verschwinden sowie das Loesen seiner `VolumeAttachment`s warten.
    Postgres bleibt fuer sein natives Backup aktiv.
-5. Vor dem Backup die Barman-Retention per GitOps fuer die gesamte Rollbackfrist
-   auf mindestens 90 Tage erhoehen oder Base-Backup und benoetigte WALs in ein
-   separates, nicht von der 30-Tage-Retention verwaltetes Ziel kopieren. Die
-   laengere Retention erst nach abgeschlossener 3.x-Abnahme oder bewusstem
-   Verzicht auf Rollback zuruecknehmen.
+5. Die Barman-Retention ist per GitOps auf 90 Tage erhoeht. Vor dem Backup
+   bestaetigen, dass dieser Wert live angewendet ist und die gesamte geplante
+   Rollbackfrist abdeckt; andernfalls Base-Backup und benoetigte WALs in ein
+   separates, nicht von der Retention verwaltetes Ziel kopieren. Die laengere
+   Retention erst nach abgeschlossener 3.x-Abnahme oder bewusstem Verzicht auf
+   Rollback zuruecknehmen.
 6. Ein neues CNPG-Base-Backup inklusive funktionierendem WAL-Archiv erzeugen und
    verifizieren. Danach `VolumeSnapshot`s fuer `data` und `media` erzeugen. Da
    Paperless seit Schritt 4 gestoppt ist, gehoeren Datenbank, PVCs und die
