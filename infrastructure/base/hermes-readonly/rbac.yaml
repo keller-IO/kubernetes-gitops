@@ -1,0 +1,85 @@
+# Lesezugang fuer Hermes Agent auf hermes01 (192.168.2.37, Ansible-Rolle
+# hermes_agent auf cfgmgmt01). Hermes ist ein LLM-Agent mit Shell auf seiner VM
+# und wird ueber Nextcloud Talk gesteuert; er bekommt deshalb nur lesende Rechte:
+#
+# - die eingebaute ClusterRole "view": alle Namespaces, ohne Secrets, ohne Roles
+#   und RoleBindings, ohne exec/port-forward;
+# - hermes-cluster-reader fuer clusterweite Objekte und die Operator-CRDs, die
+#   "view" nicht abdeckt.
+#
+# Bewusst NICHT: secrets, nodes/proxy (darueber geht je nach Kubelet mehr als
+# Lesen), pods/exec, pods/attach, pods/portforward.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: hermes
+---
+# Langlebiger Token fuer den Verbraucher ausserhalb des Clusters, Muster wie
+# cert-manager/steinbach-mail.yaml: data.token befuellt der TokenController, es
+# steht nicht in Git. Rotieren: Secret loeschen, ArgoCD legt es neu an, den neuen
+# Token auf cfgmgmt01 in host_vars/hermes01.yml (Vault) eintragen.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: hermes-token
+  annotations:
+    kubernetes.io/service-account.name: hermes
+type: kubernetes.io/service-account-token
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: hermes-cluster-reader
+rules:
+  - apiGroups: [""]
+    resources: [nodes, persistentvolumes, namespaces]
+    verbs: [get, list, watch]
+  - apiGroups: [storage.k8s.io]
+    resources: [storageclasses, volumeattachments, csidrivers]
+    verbs: [get, list, watch]
+  - apiGroups: [networking.k8s.io]
+    resources: [ingressclasses]
+    verbs: [get, list, watch]
+  - apiGroups: [apiextensions.k8s.io]
+    resources: [customresourcedefinitions]
+    verbs: [get, list, watch]
+  - apiGroups: [metrics.k8s.io]
+    resources: [nodes, pods]
+    verbs: [get, list]
+  # Operator-Objekte: Beschreibung und Status, Zugangsdaten stehen dort nur als
+  # Verweise auf Secrets.
+  - apiGroups:
+      - argoproj.io
+      - cert-manager.io
+      - postgresql.cnpg.io
+      - k8s.mariadb.com
+      - operator.victoriametrics.com
+      - snapshot.storage.k8s.io
+    resources: ["*"]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: hermes-view
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+subjects:
+  - kind: ServiceAccount
+    name: hermes
+    namespace: hermes-readonly
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: hermes-cluster-reader
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: hermes-cluster-reader
+subjects:
+  - kind: ServiceAccount
+    name: hermes
+    namespace: hermes-readonly
