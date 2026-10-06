@@ -1,0 +1,10 @@
+# Enthaelt nur ServiceAccount und Token-Secret, hier laeuft nie ein Pod. Deshalb
+# durchgehend "restricted": sollte doch einmal etwas hier landen, faellt es auf.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hermes-readonly
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
