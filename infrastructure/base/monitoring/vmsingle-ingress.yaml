@@ -1,6 +1,10 @@
 # VictoriaMetrics für das externe Haupt-Grafana (192.168.23.9) als
 # Prometheus-Datasource. BasicAuth über NGINX-Inc-Annotation; das
 # htpasswd liegt SOPS-verschlüsselt in secret.sops.yaml.
+#
+# Backend-Port per Name: VMSingle lauscht auf 8428 (Service-Port "http").
+# Hier stand seit dem Anlegen am 12.07.2026 die 8429 (der vmagent-Port), dahinter
+# gab es nichts, und metrics.jit.services lieferte 502.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -27,4 +31,4 @@ spec:
               service:
                 name: vmsingle-vm-k8s-stack-victoria-metrics-k8s-stack
                 port:
-                  number: 8429
+                  name: http
