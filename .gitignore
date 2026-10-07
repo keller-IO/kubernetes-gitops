@@ -53,3 +53,4 @@ Thumbs.db
 
 # --- Local tooling ---
 .codebase-memory/
+.worktrees/
