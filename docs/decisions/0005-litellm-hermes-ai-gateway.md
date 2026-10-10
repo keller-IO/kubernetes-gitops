@@ -226,14 +226,17 @@ Der Pod wird gehaertet mit:
 - `seccompProfile: RuntimeDefault`,
 - Drop aller Linux-Capabilities,
 - read-only Root-Dateisystem und begrenzten `emptyDir`-Mounts fuer `/tmp`,
-  `/app/cache` und `/app/migrations`,
+  `/app/.cache` und `/app/migrations`,
 - `automountServiceAccountToken: false`,
 - CPU-Request `250m`, CPU-Limit `1`, RAM-Request `512Mi` und RAM-Limit `1Gi`.
 
 Der Container laeuft mit genau einem Uvicorn-Worker und
-`LITELLM_MODE=PRODUCTION`. `LITELLM_MIGRATION_DIR`,
-`PRISMA_BINARY_CACHE_DIR` und `XDG_CACHE_HOME` zeigen auf die beschreibbaren
-Mounts; die Admin-UI wird nicht vorbereitet oder kopiert. Das RAM-Limit ist ein
+`LITELLM_MODE=PRODUCTION`. `LITELLM_MIGRATION_DIR` und `XDG_CACHE_HOME` zeigen
+auf die beschreibbaren Mounts. Die vom Non-Root-Image gesetzten Werte
+`PRISMA_BINARY_CACHE_DIR=/opt/prisma/binaries` und `PRISMA_CLI_PATH` bleiben
+unveraendert, damit die eingebauten Prisma-Binaries read-only verwendet und
+nicht zur Laufzeit heruntergeladen werden. Die Admin-UI wird nicht vorbereitet
+oder kopiert. Das RAM-Limit ist ein
 Startwert fuer die datenbanklose API-only-Variante und muss im Lasttest sowie
 im anschliessenden Betrieb gegen OOMs und den tatsaechlichen High-Water-Mark
 validiert werden.
