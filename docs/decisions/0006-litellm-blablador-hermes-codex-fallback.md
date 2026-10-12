@@ -1,7 +1,8 @@
 # ADR 0006 - LiteLLM fuer Blablador mit Hermes-Codex-Fallback
 
-- **Status:** Vorgeschlagen, schriftliche Freigabe ausstehend
+- **Status:** Angenommen, Umsetzung ausstehend
 - **Datum:** 2026-10-12
+- **Freigegeben:** 2026-10-12
 - **Ersetzt:** ADR 0005
 - **Kontext:** Hermes auf `hermes01` soll Blablador als primaeren Modellpfad
   nutzen und den vorhandenen Codex-OAuth-Zugang als unabhaengigen Fallback
@@ -141,6 +142,13 @@ Hermes-Version abgeleitet und ueber `hermes config check` sowie die effektive
 Konfiguration validiert. Vermutete oder veraltete Optionsnamen sind nicht
 zulaessig.
 
+Bei der Designabnahme lief Hermes Agent `v0.21.5+6827.g819cc3c` auf Commit
+`819cc3cbe02104c420ea32f1f1a924247d42eaf8`. Diese Version unterstuetzt den
+nativen Administrator-Scope `/etc/hermes`: Dessen `config.yaml` wird als
+verwaltetes Overlay ueber die Benutzerkonfiguration gelegt, und dessen `.env`
+ueberschreibt nur gleichnamige Umgebungswerte. Die Umsetzung pinnt diese
+Semantik und fuehrt waehrend Rollout und Abnahme kein Hermes-Update durch.
+
 Die effektive Primaerkonfiguration setzt den Gateway-Provider und
 `hermes-blablador`. Die Top-Level-Liste `fallback_providers` enthaelt genau:
 
@@ -150,9 +158,13 @@ fallback_providers:
     model: gpt-5.6-sol
 ```
 
-Hermess App-Level-Retry wird auf einen Versuch begrenzt. Die zusaetzliche
-Auto-Recovery-Schleife wird deaktiviert, damit ein ausgefallener Primaerpfad
-nicht minutenlang vor dem Codex-Fallback wiederholt wird.
+Hermess App-Level-Retry wird mit `agent.api_max_retries: 1` auf einen Versuch
+begrenzt. In der gepinnten Version ist dies trotz des Variablennamens das
+minimale Gesamtversuchsbudget: Die Schleife startet mit Zaehler `0`, laeuft nur
+solange er kleiner als `api_max_retries` ist und wechselt nach dem ersten Fehler
+zum Fallback. Die zusaetzliche Auto-Recovery-Schleife wird mit
+`agent.auto_recovery_cycles: 0` deaktiviert, damit ein ausgefallener
+Primaerpfad nicht minutenlang vor dem Codex-Fallback wiederholt wird.
 
 Es gilt bewusst Hermess eingebaute Fallback-Klassifizierung. Neben Timeouts,
 Verbindungsfehlern, 429 und 5xx koennen daher je nach Hermes-Version auch
@@ -169,10 +181,10 @@ LiteLLM-Retry-Layer veraendert.
 
 ## Kubernetes und Secret-Grenze
 
-Die App umfasst Namespace, ConfigMaps fuer LiteLLM und Request-Policy,
-Deployment, Service, CiliumNetworkPolicy, Ingress, KSOPS-Generator und
-SOPS-Secret. Sie laeuft mit genau einer Replica, einem Uvicorn-Worker und
-`strategy.type: Recreate`.
+Die App umfasst Namespace, ConfigMaps fuer LiteLLM, Request-Policy und
+Egress-Probe, Deployment, Service, CiliumNetworkPolicy, Ingress, einen
+ArgoCD-`PostSync`-Pruefjob, KSOPS-Generator und SOPS-Secret. Sie laeuft mit
+genau einer Replica, einem Uvicorn-Worker und `strategy.type: Recreate`.
 
 Es gibt kein PostgreSQL, Redis, PVC, HPA, PDB, ServiceMonitor, Admin-UI,
 Spend-Tracking, Prompt-Logging oder externe Callback-Ziele. Der kurze Ausfall
@@ -244,6 +256,13 @@ Metadata-Egress sind nicht erlaubt. Die aktive Cilium-L7-Proxy-Funktion,
 CNAME-/IP-Rotation, falsches SNI und ein fremder HTTPS-Host werden praktisch
 geprueft.
 
+Diese Egress-Abnahme erfolgt ohne `kubectl exec`: Ein per GitOps verwalteter,
+gehaerteter ArgoCD-`PostSync`-Job verwendet dasselbe gepinnte Image und dieselbe
+Cilium-Egress-Identitaet, aber weder Service-Selector noch Secret. Er prueft
+einen erlaubten TLS-Handshake zu Blablador sowie das Scheitern von fremdem DNS,
+privaten/Metadata-Zielen und falschem SNI. Der Job erzeugt keine Inference-
+Anfrage und muss den Sync bei einer aufgeweichten Netzgrenze fehlschlagen lassen.
+
 ## Tests und Abnahme
 
 Vor Manifesten wird `alias-code` mit dem geschuetzten Blablador-Key direkt
@@ -268,7 +287,8 @@ Lokale Contract-Tests im exakten LiteLLM-Image pruefen:
 Statische Manifesttests pruefen Image-Digest, Replica/Worker/Strategie,
 Security Context, Ressourcen, writable Mounts, Secret-Schluessel, deaktivierte
 Features, exakte Ingresspfade und ausschliesslich Blablador-DNS-/FQDN-/SNI-
-Egress.
+Egress. Sie pruefen ausserdem, dass der Egress-Probe-Job dieselbe Policy-
+Identitaet, aber weder Service-Selector noch Secret-Zugriff besitzt.
 
 Die Live-Abnahme prueft:
 
@@ -297,8 +317,8 @@ muss der naechste Turn wieder `hermes-blablador` verwenden.
 
 Der Rollout erfolgt in dieser Reihenfolge:
 
-1. Blablador-Contract fuer `alias-code` schliessen.
-2. LiteLLM-Image verifizieren und immutable pinnen.
+1. LiteLLM-Image verifizieren und immutable pinnen.
+2. Blablador-Contract fuer `alias-code` im gepinnten Image schliessen.
 3. Gateway-Manifeste und verschluesselte Secrets implementieren und lokal
    pruefen.
 4. GitOps-PR mergen und ArgoCD-Abnahme abschliessen, waehrend Hermes weiterhin
