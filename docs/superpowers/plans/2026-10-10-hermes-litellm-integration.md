@@ -1,5 +1,8 @@
 # Hermes LiteLLM Integration Implementation Plan
 
+> **Status:** Ersetzt durch ADR 0006. Nicht ausfuehren. Ein neuer
+> Implementierungsplan wird nach der schriftlichen Freigabe von ADR 0006 erstellt.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Manage Hermes' LiteLLM provider through central Ansible, activate `hermes-balanced` only after gateway acceptance, and retain `openai-codex` with `gpt-5.6-sol` as the tested rollback path.

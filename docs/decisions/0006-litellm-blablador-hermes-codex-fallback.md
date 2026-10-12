@@ -1,0 +1,382 @@
+# ADR 0006 - LiteLLM fuer Blablador mit Hermes-Codex-Fallback
+
+- **Status:** Vorgeschlagen, schriftliche Freigabe ausstehend
+- **Datum:** 2026-10-12
+- **Ersetzt:** ADR 0005
+- **Kontext:** Hermes auf `hermes01` soll Blablador als primaeren Modellpfad
+  nutzen und den vorhandenen Codex-OAuth-Zugang als unabhaengigen Fallback
+  behalten.
+
+## Ausgangslage
+
+Hermes laeuft auf `hermes01` (`192.168.2.37`) und nutzt derzeit direkt
+`openai-codex` mit `gpt-5.6-sol`. Die Authentisierung besteht aus von Hermes
+verwalteten OAuth-Access- und Refresh-Tokens. Es ist kein OpenAI-Platform-
+API-Key vorhanden.
+
+Fuer Blablador existiert ein API-Key. Die authentifizierte Modellabfrage am
+12.10.2026 bestaetigte `alias-code` als account-sichtbare Modell-ID. Der Key
+liegt ausserhalb des Repositories in einer Datei mit Modus `0600` und darf nie
+in Logs, Shell-Argumenten oder Dokumentation erscheinen.
+
+Ein Claude-Abonnement und ein Codex-/ChatGPT-Abonnement enthalten keine
+separaten Anthropic-Console- beziehungsweise OpenAI-Platform-API-Keys. Damit
+sind das in ADR 0005 beschlossene gleichgewichtete Routing und der
+provideruebergreifende LiteLLM-Failover nicht ohne weitere kostenpflichtige
+API-Vertraege umsetzbar.
+
+LiteLLM `v1.104.0` kann Codex als Client an einen LiteLLM-Proxy anbinden, aber
+Codex-OAuth nicht als Upstream-Provider verwalten. Ein eigener Adapter muesste
+Hermess Refresh-Token in den Cluster kopieren, das Token erneuern und einen
+nicht nativ unterstuetzten ChatGPT-Backendpfad nachbilden. Diese Kopplung wird
+aus Sicherheits- und Wartungsgruenden ausgeschlossen.
+
+Die fachliche Freigabe der Verarbeitungs-, Aufbewahrungs- und
+Trainingsbedingungen fuer Blablador und Codex wurde am 12.10.2026 durch den
+Betreiber bestaetigt.
+
+## Entscheidung
+
+LiteLLM wird als stateless, OpenAI-kompatible Sicherheitsgrenze fuer genau
+einen Upstream betrieben:
+
+- oeffentlicher Modellname: `hermes-blablador`
+- LiteLLM-Provider: OpenAI-kompatibel
+- Upstream-Modell: `openai/alias-code`
+- Upstream-Basis: `https://api.blablador.fz-juelich.de/v1/`
+
+Hermes verwendet nach erfolgreicher Abnahme den Gateway als Primaerprovider.
+Hermess native Top-Level-Liste `fallback_providers` enthaelt als einzigen
+Fallback `openai-codex` mit `gpt-5.6-sol`. Die Codex-OAuth-Credentials bleiben
+ausschliesslich auf `hermes01`; LiteLLM sieht und speichert sie nie.
+
+Jeder neue Hermes-Turn startet erneut ueber `hermes-blablador`. LiteLLM macht
+weder Load Balancing noch provideruebergreifende Retries. Wenn der Primaerpfad
+vor einer verwertbaren Ausgabe gemaess Hermess Standardklassifizierung
+scheitert, wechselt Hermes fuer diesen Turn direkt zu Codex.
+
+## Architektur und Datenfluss
+
+Die GitOps-App folgt dem vorhandenen Base-/Overlay-Muster:
+
+```text
+apps/base/litellm/
+apps/overlays/main/litellm/
+```
+
+Das Main-Overlay wird vom vorhandenen Apps-ApplicationSet aufgenommen. Der
+Hostname `litellm.jit.services` wird in
+`apps/overlays/main/cluster-config.yaml` gepflegt. Das bestehende Wildcard-DNS
+fuer `*.jit.services` zeigt bereits auf den Ingress-LoadBalancer
+`192.168.2.246`; ein DNS-Edit ist nicht vorgesehen.
+
+Der Primaerpfad lautet:
+
+```text
+Hermes (192.168.2.37)
+  -> HTTPS litellm.jit.services:443
+  -> ingress-nginx (192.168.2.246)
+  -> ClusterIP-Service litellm:4000
+  -> HTTPS api.blablador.fz-juelich.de:443
+```
+
+Der Fallback umgeht den Cluster bewusst:
+
+```text
+Hermes
+  -> vorhandener openai-codex-Provider
+  -> https://chatgpt.com/backend-api/codex
+```
+
+Damit bleiben die beiden Auth-Domaenen getrennt. Der Cluster besitzt nur den
+Blablador-Key; Hermes besitzt nur den Gateway-Key und seine bestehende
+Codex-OAuth-Sitzung.
+
+## LiteLLM-Modell und Request-Policy
+
+LiteLLM exponiert genau eine Modellgruppe `hermes-blablador` mit genau einem
+Deployment und einer stabilen `model_info.id` `hermes-blablador`. Es gibt keine
+Wildcard-Modelle, Gewichte, Fallbacks oder alternativen Provider.
+
+Die Routerkonfiguration setzt `num_retries: 0`. Ein Fehler wird nach genau
+einem Upstream-Versuch an Hermes zurueckgegeben. LiteLLM darf einen Request
+nicht selbst auf demselben kostenpflichtigen Upstream wiederholen.
+
+Ein immer aktiver, read-only eingebundener `async_pre_call_hook` prueft vor dem
+Upstream-Aufruf die von LiteLLM normalisierte Body-Kopie und die bereinigten
+Header unter `proxy_server_request`:
+
+- `model` muss exakt `hermes-blablador` sein.
+- `messages` muss vorhanden und listenfoermig sein.
+- Erlaubt werden nur die nach dem Provider-Contract empirisch bestaetigten
+  OpenAI-Chat-Parameter.
+- `extra_body`, unbekannte providergerichtete Felder, Routing-, Retry-,
+  Fallback-, Drop-, API-Basis- und Timeout-Overrides werden mit HTTP 400
+  abgewiesen.
+- Alle clientseitigen `x-litellm-*`-Steuerheader werden abgewiesen.
+- Die Policy veraendert oder loggt den Request nicht. Fehlermeldungen nennen
+  nur Feldnamen, nie Feldwerte.
+
+LiteLLMs vor der Policy entfernte interne Kontrollfelder werden mit dem exakt
+gepinnten Image darauf getestet, dass sie wirkungslos bleiben. Die erwartete
+Normalisierungsform und Strip-Liste sind ein Upgrade-Contract. Eine Aenderung
+blockiert das Upgrade, bis Policy und ADR geprueft wurden.
+
+`drop_params` bleibt explizit `false`. `LITELLM_DROP_PARAMS`,
+deploymentweites `drop_params`, `additional_drop_params` und der unsichere
+Master-Key-Bypass sind verboten.
+
+## Hermes-Routing und Fehlerverhalten
+
+Die zentrale Rolle `hermes_agent` auf `cfgmgmt01:/etc/ansible` verwaltet einen
+benannten, OpenAI-kompatiblen Provider fuer:
+
+- Base URL `https://litellm.jit.services/v1`
+- Modell `hermes-blablador`
+- Chat-Completions-Transport
+- Gateway-Key aus Ansible Vault
+
+Die exakte YAML-Struktur wird aus der auf `hermes01` installierten
+Hermes-Version abgeleitet und ueber `hermes config check` sowie die effektive
+Konfiguration validiert. Vermutete oder veraltete Optionsnamen sind nicht
+zulaessig.
+
+Die effektive Primaerkonfiguration setzt den Gateway-Provider und
+`hermes-blablador`. Die Top-Level-Liste `fallback_providers` enthaelt genau:
+
+```yaml
+fallback_providers:
+  - provider: openai-codex
+    model: gpt-5.6-sol
+```
+
+Hermess App-Level-Retry wird auf einen Versuch begrenzt. Die zusaetzliche
+Auto-Recovery-Schleife wird deaktiviert, damit ein ausgefallener Primaerpfad
+nicht minutenlang vor dem Codex-Fallback wiederholt wird.
+
+Es gilt bewusst Hermess eingebaute Fallback-Klassifizierung. Neben Timeouts,
+Verbindungsfehlern, 429 und 5xx koennen daher je nach Hermes-Version auch
+Auth-, Billing- oder Accountfehler Codex aktivieren. Dieser
+Verfuegbarkeits-Trade-off wurde am 12.10.2026 akzeptiert. Providerwechsel
+muessen im Hermes-Status und in technischen Logs sichtbar bleiben; ein
+Codex-Fallback darf bei der Abnahme nicht als erfolgreicher Gateway-Test
+gewertet werden.
+
+Nach bereits ausgelieferten Streaming-Daten findet kein Providerwechsel statt.
+Request-Format-, Context-Window- und Content-Policy-Verhalten werden gegen die
+installierte Hermes-Version getestet und nicht durch einen zweiten
+LiteLLM-Retry-Layer veraendert.
+
+## Kubernetes und Secret-Grenze
+
+Die App umfasst Namespace, ConfigMaps fuer LiteLLM und Request-Policy,
+Deployment, Service, CiliumNetworkPolicy, Ingress, KSOPS-Generator und
+SOPS-Secret. Sie laeuft mit genau einer Replica, einem Uvicorn-Worker und
+`strategy.type: Recreate`.
+
+Es gibt kein PostgreSQL, Redis, PVC, HPA, PDB, ServiceMonitor, Admin-UI,
+Spend-Tracking, Prompt-Logging oder externe Callback-Ziele. Der kurze Ausfall
+bei einem Update ist akzeptiert, weil Hermes auf Codex zurueckfallen kann.
+
+Das SOPS-Secret enthaelt genau:
+
+- `BLABLADOR_API_KEY`
+- `LITELLM_MASTER_KEY`
+
+Der Master-Key besteht aus `sk-` plus 64 kleinen Hex-Zeichen aus 32
+Zufallsbytes. Das Secret erhaelt ArgoCD-Sync-Wave `-1`, das Deployment Wave
+`0`. Eine nicht geheime Secret-Revision in der Pod-Template-Annotation erzwingt
+nach einer Rotation den kontrollierten Pod-Ersatz.
+
+Das Deployment verwendet das offizielle Non-Root-Image
+`ghcr.io/berriai/litellm-non_root`. `v1.104.0` bleibt der zu verifizierende
+Kandidat. Vor dem ersten Manifest-Commit werden Provenienz beziehungsweise
+Signatur, Registry-Digest und HIGH-/CRITICAL-Vulnerabilities geprueft. Das
+Manifest pinnt Tag und Digest. Die kompromittierten Versionen `1.82.7` und
+`1.82.8` bleiben ausgeschlossen.
+
+Der Pod wird gehaertet mit:
+
+- festem Non-Root-UID/GID, `RuntimeDefault` und ohne Privilege Escalation
+- Drop aller Linux-Capabilities
+- read-only Root-Dateisystem
+- begrenzten `emptyDir`-Mounts fuer `/tmp`, `/app/.cache` und
+  `/app/migrations`
+- `automountServiceAccountToken: false`
+- Requests `250m`/`512Mi` und Limits `1`/`1Gi`
+
+Die Imagewerte `PRISMA_BINARY_CACHE_DIR=/opt/prisma/binaries` und
+`PRISMA_CLI_PATH` bleiben unveraendert. `LITELLM_LOCAL_MODEL_COST_MAP=True`
+verhindert einen Live-Download der Preisliste. Message- und Debug-Logging sind
+deaktiviert. Probes verwenden nur lokale LiteLLM-Health-Endpunkte und erzeugen
+keine Provider-Anfragen.
+
+## Ingress- und Egress-Grenze
+
+Der Ingress verwendet `letsencrypt-prod` und akzeptiert nur die
+urspruengliche Peer-Adresse `192.168.2.37`. Wegen des global vertrauten
+`X-Forwarded-For` wird zwingend `$realip_remote_addr`, nicht `$remote_addr`,
+geprueft.
+
+Extern erreichbar sind nur:
+
+- `POST /v1/chat/completions`
+- `GET /v1/models`
+
+Andere Methoden, Slash-Varianten, Unterpfade, Health-, Docs-, OpenAPI-, UI-
+und Managementpfade werden abgewiesen. Der Ingress setzt 1 MiB Body-Limit,
+30 Requests pro Minute, Burst 10 ohne Delay und
+`${realip_remote_addr}` als Rate-Key.
+
+LiteLLMs Admission Control startet mit vier laufenden und vier wartenden
+Requests sowie einer Sekunde Queue-Timeout.
+
+Die CiliumNetworkPolicy erlaubt:
+
+- Ingress zu TCP/4000 nur vom tatsaechlich gerenderten Ingress-Controller
+- DNS per TCP/UDP nur zum Cluster-DNS
+- TCP/443 nur zu `api.blablador.fz-juelich.de`
+- fuer diesen HTTPS-Pfad sowohl `toFQDNs.matchName` als auch das passende
+  `toPorts.serverNames`-SNI
+
+OpenAI-, Anthropic-, allgemeiner Internet-, CIDR-, private, Link-Local- und
+Metadata-Egress sind nicht erlaubt. Die aktive Cilium-L7-Proxy-Funktion,
+CNAME-/IP-Rotation, falsches SNI und ein fremder HTTPS-Host werden praktisch
+geprueft.
+
+## Tests und Abnahme
+
+Vor Manifesten wird `alias-code` mit dem geschuetzten Blablador-Key direkt
+getestet:
+
+1. normale Chat-Completion
+2. Stream mit mindestens zwei Chunks
+3. deterministischer Tool Call in der von Hermes erwarteten Form
+
+Abnahmeprotokolle enthalten nur Datum, Status, Latenz und Schemaergebnis,
+keine Keys, Prompts, Antworten oder personenbezogenen Inhalte.
+
+Lokale Contract-Tests im exakten LiteLLM-Image pruefen:
+
+- Laden und Unumgehbarkeit der Request-Policy
+- gepinnte Proxy-Normalisierung und Strip-Liste
+- genau einen Blablador-Upstream-Versuch bei Erfolg und Fehler
+- unveraenderte Weitergabe kontrollierter 400-, 401-, 429- und 5xx-Fehler
+- kein Providerwechsel nach dem ersten Streaming-Chunk
+- sichere Wirkungslosigkeit vorab entfernter Kontrollfelder
+
+Statische Manifesttests pruefen Image-Digest, Replica/Worker/Strategie,
+Security Context, Ressourcen, writable Mounts, Secret-Schluessel, deaktivierte
+Features, exakte Ingresspfade und ausschliesslich Blablador-DNS-/FQDN-/SNI-
+Egress.
+
+Die Live-Abnahme prueft:
+
+- ArgoCD `Synced`/`Healthy`, Pod-Probes und TLS-Zertifikat
+- gueltiger und ungueltiger Gateway-Key
+- Pfad-/Methodenmatrix und XFF-Spoofing von einem anderen LAN-Host
+- HTTP 413, 429 und 503 fuer Body-, Rate- und Admission-Grenzen
+- Blablador Chat, Streaming und Tool Call ueber den Gateway
+- erlaubte CNAME-/IP-Rotation sowie blockierte fremde Ziele und falsches SNI
+- Master-Key-Rotation: neuer Key erfolgreich, alter Key HTTP 401
+
+Erst danach wird die Ansible-Rolle aktiviert. Syntaxcheck, Check-Mode,
+gezielter Rollout auf `hermes01`, effektive Konfigurationspruefung und ein
+idempotenter Zweitlauf sind Pflicht.
+
+Der End-to-End-Test umfasst einen normalen Hermes-Turn, Streaming und einen
+Tool Call ueber Blablador. Anschliessend wird das Ingress-Rate-Limit in einem
+Wartungsfenster mit policy-abgewiesenen Requests auf exakt
+`POST /v1/chat/completions` kontrolliert erreicht. Diese Requests muessen vor
+dem Blablador-Aufruf mit HTTP 400 enden und duerfen keine Providerkosten
+erzeugen. Ein unmittelbar folgender, dedizierter Hermes-Testturn muss den 429
+erkennen und sichtbar ueber Codex erfolgreich sein. Nach Ablauf des Rate-Limits
+muss der naechste Turn wieder `hermes-blablador` verwenden.
+
+## Rollout und Rotation
+
+Der Rollout erfolgt in dieser Reihenfolge:
+
+1. Blablador-Contract fuer `alias-code` schliessen.
+2. LiteLLM-Image verifizieren und immutable pinnen.
+3. Gateway-Manifeste und verschluesselte Secrets implementieren und lokal
+   pruefen.
+4. GitOps-PR mergen und ArgoCD-Abnahme abschliessen, waehrend Hermes weiterhin
+   Codex als Primaerprovider nutzt.
+5. Gateway-Master-Key einmal rotieren und neuen/alten Key pruefen.
+6. Hermes-Rollensupport zunaechst deaktiviert committen und testen.
+7. Gateway als Primaerprovider sowie Codex-Fallback separat aktivieren.
+8. End-to-End-, Failover-, Idempotenz- und Rollback-Drill abschliessen.
+
+Bei spaeterer Master-Key-Rotation wird zuerst der SOPS-Key samt Secret-Revision
+per GitOps ausgerollt. Bis Ansible denselben neuen Key auf Hermes verteilt,
+liefert der alte Key 401 und Hermess Standard-Fallback haelt Codex verfuegbar.
+Nach dem Ansible-Rollout muessen Gateway-Nutzung mit dem neuen Key, Ablehnung
+des alten Keys und Rueckkehr zum Blablador-Primaerpfad belegt werden.
+
+## Rollback
+
+Der schnellste Rollback ist ausschliesslich Hermes-seitig:
+
+1. verwaltete Gateway-Aktivierung deaktivieren
+2. `openai-codex` mit `gpt-5.6-sol` wieder als Primaerprovider wirksam machen
+3. Hermes kontrolliert neu starten
+4. effektive Konfiguration und einen Testturn pruefen
+
+LiteLLM kann ungenutzt fuer die Diagnose weiterlaufen. Ist der Cluster-Workload
+selbst fehlerhaft, wird sein GitOps-Commit revertiert und ArgoCD abgewartet.
+Mangels Datenbank und Volumes existieren weder Datenmigration noch Restore.
+
+## Bewusste Nicht-Ziele
+
+- OpenAI-Platform- oder Anthropic-API als LiteLLM-Upstream
+- Codex-OAuth, Refresh-Tokens oder ChatGPT-Backendzugriff aus dem Cluster
+- LiteLLM-Load-Balancing oder provideruebergreifender Gateway-Failover
+- Datenbank, Redis, Persistenz oder mehrere LiteLLM-Replicas
+- Admin-UI, virtuelle Keys, Benutzer-/Teamverwaltung oder Spend-Tracking
+- Prompt-Logging, externe Observability-Callbacks oder zusaetzliche API-Pfade
+- automatische Auswahl anderer Blablador-Modelle neben `alias-code`
+
+## Rollout-Gates
+
+- [ ] `alias-code` besteht Chat-, Streaming- und Tool-Calling-Contract.
+- [ ] Blablador-Key liegt SOPS-verschluesselt im GitOps-Repo.
+- [ ] Dedizierter Master-Key liegt in SOPS und Ansible Vault.
+- [ ] Image-Provenienz, Digest und Vulnerability-Scan sind akzeptiert.
+- [ ] Request-Policy und gepinnter LiteLLM-Contract sind gruen.
+- [ ] Quell-IP-, XFF-Spoofing-, Pfad-/Methoden-, Body-, Rate- und
+      Admission-Tests sind gruen.
+- [ ] Cilium erlaubt nur Cluster-DNS und Blablador HTTPS mit FQDN plus SNI.
+- [ ] Chat, Streaming und Tool Call funktionieren live ueber den Gateway.
+- [ ] Master-Key-Rotation akzeptiert den neuen und verweigert den alten Key.
+- [ ] Hermes verwendet Blablador als Primaerpfad und Codex sichtbar als
+      Fallback; danach kehrt ein neuer Turn zu Blablador zurueck.
+- [ ] Hermes-Rollback auf Codex wurde aus Ansible erfolgreich geuebt.
+
+## Konsequenzen
+
+Der Gateway bleibt trotz nur eines Upstreams sinnvoll: Er trennt den
+Blablador-Key von Hermes, erzwingt einen engen Request-Contract und legt
+Ingress-, Rate-, Admission- und Egress-Grenzen zentral fest. Provider-Failover
+ist dagegen bewusst eine Hermes-Verantwortung.
+
+`alias-code` ist ein von Blablador gepflegter, veraenderlicher Alias. Ein
+Backendwechsel kann Verhalten aendern, ohne dass sich die Konfiguration aendert.
+Deshalb sind die Provider-Contracts nicht nur Erstabnahme, sondern auch ein
+verpflichtender Wiederholungstest bei beobachteten Verhaltensaenderungen und vor
+LiteLLM-/Hermes-Upgrades.
+
+Der gewaehlte Hermes-Standard-Fallback maximiert Verfuegbarkeit, kann aber einen
+kaputten Gateway-Key oder Billing-Fehler durch Codex-Nutzung maskieren. Sichtbare
+Fallback-Hinweise, technische Logs und die explizite Pruefung der Rueckkehr zum
+Primaerpfad sind daher Teil der Abnahme.
+
+Die Betriebsdokumentation wird zusaetzlich nach
+`cfgmgmt01:/root/ansible/kellerio-docs/` kopiert. GitOps- und
+Ansible-Aenderungen werden getrennt validiert und committet.
+
+Technische Referenzen:
+
+- [LiteLLM OpenAI Codex tutorial](https://docs.litellm.ai/docs/tutorials/openai_codex)
+- [LiteLLM custom callback](https://docs.litellm.ai/docs/proxy/custom_callbacks)
+- Hermes-Dokumentation `website/docs/user-guide/features/fallback-providers.md`

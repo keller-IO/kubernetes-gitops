@@ -1,7 +1,9 @@
 # ADR 0005 - LiteLLM AI Gateway fuer Hermes
 
-- **Status:** Angenommen, Umsetzung ausstehend
+- **Status:** Ersetzt durch ADR 0006
 - **Datum:** 2026-10-07
+- **Ersetzt am:** 2026-10-12
+- **Nachfolger:** `0006-litellm-blablador-hermes-codex-fallback.md`
 - **Kontext:** Hermes auf `hermes01` soll mehrere LLM-Anbieter ueber einen
   zentralen, OpenAI-kompatiblen Gateway nutzen.
 

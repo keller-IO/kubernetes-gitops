@@ -1,5 +1,8 @@
 # LiteLLM Gateway Implementation Plan
 
+> **Status:** Ersetzt durch ADR 0006. Nicht ausfuehren. Ein neuer
+> Implementierungsplan wird nach der schriftlichen Freigabe von ADR 0006 erstellt.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Deploy and accept a hardened, stateless LiteLLM `v1.104.0` gateway that exposes only `hermes-balanced` to `hermes01` and routes evenly across OpenAI, Anthropic, and Blablador.
