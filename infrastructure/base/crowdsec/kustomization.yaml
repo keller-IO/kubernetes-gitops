@@ -7,7 +7,7 @@ namespace: crowdsec
 helmCharts:
   - name: crowdsec
     repo: https://crowdsecurity.github.io/helm-charts
-    version: 0.24.0 # renovate: helm
+    version: 0.24.2 # renovate: helm
     releaseName: crowdsec
     namespace: crowdsec
     valuesFile: values.yaml
