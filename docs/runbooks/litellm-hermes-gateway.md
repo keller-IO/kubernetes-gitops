@@ -17,15 +17,18 @@ Verified on 2026-10-13 before creating any gateway manifests.
 - Vulnerability result: pass. Trivy 0.72.0 reported zero HIGH or CRITICAL
   vulnerabilities with exit code 0.
 
-Reproduce the verification from the repository root inside the dev shell:
+Reproduce the verification from the repository root in a non-interactive
+dev-shell Bash:
 
 ```bash
+nix develop --command bash -c '
 set -euo pipefail
 VERIFIED_IMAGE_REF="$(<apps/base/litellm/image-ref.txt)"
 cosign verify \
   --key https://raw.githubusercontent.com/BerriAI/litellm/0112e53046018d726492c814b3644b7d376029d0/cosign.pub \
   "${VERIFIED_IMAGE_REF}"
 trivy image --severity HIGH,CRITICAL --exit-code 1 "${VERIFIED_IMAGE_REF}"
+'
 ```
 
 Supply-chain records contain only image, signature, scan date, and result
