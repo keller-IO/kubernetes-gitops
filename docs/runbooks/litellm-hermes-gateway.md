@@ -17,12 +17,11 @@ Verified on 2026-10-13 before creating any gateway manifests.
 - Vulnerability result: pass. Trivy 0.72.0 reported zero HIGH or CRITICAL
   vulnerabilities with exit code 0.
 
-Reproduce the verification inside the repository dev shell:
+Reproduce the verification from the repository root inside the dev shell:
 
 ```bash
-VERIFIED_DIGEST="$(skopeo inspect \
-  docker://ghcr.io/berriai/litellm-non_root:v1.104.0 | jq -r .Digest)"
-VERIFIED_IMAGE_REF="ghcr.io/berriai/litellm-non_root:v1.104.0@${VERIFIED_DIGEST}"
+set -euo pipefail
+VERIFIED_IMAGE_REF="$(<apps/base/litellm/image-ref.txt)"
 cosign verify \
   --key https://raw.githubusercontent.com/BerriAI/litellm/0112e53046018d726492c814b3644b7d376029d0/cosign.pub \
   "${VERIFIED_IMAGE_REF}"
