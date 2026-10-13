@@ -78,8 +78,10 @@ litellm-provider-contract ENV_FILE:
       echo "ERROR: credential file mode must be 600" >&2
       exit 1
     fi
-    if ! grep -Eq '^BLABLADOR_API_KEY=.+$' "$env_file"; then
-      echo "ERROR: credential file must declare BLABLADOR_API_KEY" >&2
+    declaration_count="$(grep -Ec '^BLABLADOR_API_KEY=' "$env_file" || :)"
+    nonempty_count="$(grep -Ec '^BLABLADOR_API_KEY=.+$' "$env_file" || :)"
+    if [[ "$declaration_count" != "1" || "$nonempty_count" != "1" ]]; then
+      echo "ERROR: credential file must contain exactly one non-empty BLABLADOR_API_KEY assignment" >&2
       exit 1
     fi
     image_ref="$(<"$repo_root/apps/base/litellm/image-ref.txt")"
