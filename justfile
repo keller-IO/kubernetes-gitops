@@ -62,5 +62,43 @@ guardrails:
 # Run the full local gate used by CI.
 validate: lint secrets-check guardrails build test
 
+# Run the opt-in Blablador provider contract against the pinned LiteLLM image.
+litellm-provider-contract ENV_FILE:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    repo_root="$(realpath "$(git rev-parse --show-toplevel)")"
+    env_file="$(realpath -- {{quote(ENV_FILE)}})"
+    case "$env_file" in
+      "$repo_root"|"$repo_root"/*)
+        echo "ERROR: credential file must be outside the repository" >&2
+        exit 1
+        ;;
+    esac
+    if [[ "$(stat -c %a -- "$env_file")" != "600" ]]; then
+      echo "ERROR: credential file mode must be 600" >&2
+      exit 1
+    fi
+    if ! grep -Eq '^BLABLADOR_API_KEY=.+$' "$env_file"; then
+      echo "ERROR: credential file must declare BLABLADOR_API_KEY" >&2
+      exit 1
+    fi
+    image_ref="$(<"$repo_root/apps/base/litellm/image-ref.txt")"
+    repository_with_tag="${image_ref%@*}"
+    policy_scope="${repository_with_tag%:*}@${image_ref##*@}"
+    podman_config="$(mktemp -d)"
+    podman_data_home="${XDG_DATA_HOME:-$HOME/.local/share}"
+    trap 'rm -rf "$podman_config"' EXIT
+    mkdir -p "$podman_config/.config/containers"
+    jq -n --arg scope "$policy_scope" \
+      '{default: [{type: "reject"}], transports: {docker: {($scope): [{type: "insecureAcceptAnything"}]}}}' \
+      >"$podman_config/.config/containers/policy.json"
+    HOME="$podman_config" XDG_DATA_HOME="$podman_data_home" podman run --rm \
+      --env-file "$env_file" \
+      --volume "$repo_root/apps/base/litellm:/work:ro,Z" \
+      --workdir /work \
+      --entrypoint python \
+      "$image_ref" \
+      /work/test_blablador_contract.py
+
 fmt:
     kustomize cfg fmt infrastructure apps clusters

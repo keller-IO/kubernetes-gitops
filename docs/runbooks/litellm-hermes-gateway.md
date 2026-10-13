@@ -34,3 +34,19 @@ trivy image --severity HIGH,CRITICAL --exit-code 1 "${VERIFIED_IMAGE_REF}"
 Supply-chain records contain only image, signature, scan date, and result
 metadata. Do not add credentials, prompts, responses, or provider content to
 this runbook.
+
+## Blablador provider contract
+
+Verified on 2026-10-13 with model `openai/alias-code`.
+
+- Status: pass (3/3 contract tests).
+- Observed request latency range: 0.998-7.121 seconds.
+- Streaming compatibility: pass.
+- Deterministic forced-tool compatibility: pass.
+- `COMMON_CHAT_PARAMETERS`: `temperature`, `max_tokens`, `stream`, `tools`,
+  `tool_choice`.
+
+The parameter set excludes `model` and `messages`; those are handled separately
+by the gateway configuration. Contract evidence contains no credentials,
+prompts, responses, headers, request identifiers, tool argument values, or
+provider-generated content.
