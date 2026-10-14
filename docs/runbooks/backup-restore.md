@@ -121,6 +121,7 @@ Referenz: `ciso-assistant` (PR #198) → `s3://backup-ciso-assistant/cnpg/`.
 | `default access key` | **RWO** auf `backups` | beim Garage-Setup angelegt, kein bekannter Nutzer |
 | `hass-backup` | RWO auf `hass-backups` | Home Assistant, schon ein eigener Bucket |
 | `backup-ciso-assistant` | RW auf `backup-ciso-assistant` | neues Schema |
+| `backup-goloom` (`GK4fa170…`) | RW auf `backup-goloom` (Quota 20 GiB) | neues Schema, seit 14.10.2026 |
 
 Klartext eines Secrets ansehen: `sops -d apps/base/roundcube/secret.sops.yaml`.
 
@@ -329,6 +330,43 @@ Ablauf: Manifest anwenden, `kubectl get restore -n kimai -w` bis
 
 WordPress analog mit `wordpress-mariadb` / `wordpress-backup-s3` und dem
 Instanz-Prefix (`mariadb-wordpress-1` etc.) im jeweiligen Namespace.
+
+## Goloom (SQLite + Medien)
+
+Der CronJob `goloom-backup` (03:45, `apps/base/goloom/backup-cronjob.yaml`)
+sichert nach `s3://backup-goloom/`, Key `backup-goloom`, Secret `goloom-backup-s3`:
+
+| Pfad | Inhalt | Aufbewahrung |
+|---|---|---|
+| `sqlite/goloom-<Zeit>.db.gz` | Kopie per `sqlite3 .backup`, vor dem Upload per `integrity_check` geprüft | 30 Tage |
+| `media/current/` | Spiegel von `/app/data/media` | aktuell |
+| `media/archive/<Zeit>/` | von `sync` gelöschte/überschriebene Dateien | 30 Tage |
+
+Prüfen: Log des letzten Jobs (`kubectl -n goloom logs job/<name> -c snapshot`
+zeigt Zeilenzahlen und SHA256), Liste per `rclone lsl` bzw. `curl --aws-sigv4`
+auf `backup-goloom?list-type=2&prefix=sqlite/`.
+
+**Restore** (überschreibt den Stand auf `goloom-data`):
+
+1. `app-goloom` in ArgoCD auf manuellen Sync stellen. Sonst setzt selfHeal die
+   Replikas sofort zurück: Der Chart erzwingt bei SQLite `replicas: 1`, ein
+   Skalieren über Git geht nicht.
+2. `kubectl -n goloom scale deploy goloom --replicas=0` und warten, bis der Pod weg ist.
+3. Wegwerf-Pod mit `goloom-data` unter `/data` (UID/GID 65532, Restricted-PSA):
+   den gewünschten `sqlite/goloom-<Zeit>.db.gz` holen und nach `/data/goloom.db`
+   entpacken, **`goloom.db-wal` und `goloom.db-shm` löschen**, danach
+   `media/current/` nach `/data/media/` kopieren. Eine Vorlage für die
+   rclone-Umgebung ist der CronJob.
+4. `pragma integrity_check` auf `/data/goloom.db`, Pod löschen, Deployment
+   wieder auf 1 skalieren, Auto-Sync wieder einschalten.
+5. **`ENCRYPTION_KEY` aus `secret.sops.yaml` muss derselbe bleiben.** Damit sind
+   die Zugangstoken der verbundenen Social-Media-Konten verschlüsselt; mit einem
+   neuen Key müssen alle Konten neu verbunden werden.
+
+Restore-Test 14.10.2026: Stand aus Garage geladen, SHA256 gleich dem Job-Log,
+`integrity_check` ok, Goloom v0.2.9 startete lokal darauf (`/healthz` 200,
+Nutzer vorhanden). Medien waren noch keine vorhanden. Den Medien-Pfad nach dem
+ersten Upload einmal mitprüfen.
 
 ---
 
