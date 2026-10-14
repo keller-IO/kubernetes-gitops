@@ -17,4 +17,5 @@ rules:
 ignore: |
   rendered/
   charts/
+  apps/vendor/
   .git/
