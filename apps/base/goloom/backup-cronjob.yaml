@@ -1,0 +1,142 @@
+# Offsite-Backup von Goloom: PVC goloom-data -> Garage Potsdam, Bucket backup-goloom.
+#
+#   sqlite/goloom-<Zeit>.db.gz   konsistente Kopie per SQLite-Backup-API, 30 Tage
+#   media/current/               Spiegel von /app/data/media (rclone sync)
+#   media/archive/<Zeit>/        von sync geloeschte/ueberschriebene Dateien, 30 Tage
+#
+# Die DB laeuft im WAL-Modus; ein Dateikopieren waere nicht konsistent. Der
+# Init-Container zieht deshalb mit `sqlite3 .backup` eine Kopie, prueft sie per
+# integrity_check und packt sie. Erst danach laedt rclone hoch — scheitert die
+# Pruefung, bricht der Job vor dem Upload ab.
+#
+# goloom-data ist RWO: der Pod muss auf dem Node der App laufen (podAffinity).
+# Die Labels hier duerfen den Selector von Deployment/Service nicht treffen,
+# deshalb fehlt app.kubernetes.io/instance.
+#
+# Zugang: goloom-backup-s3 (Garage-Key backup-goloom, RW nur auf den eigenen
+# Bucket, Quota 20 GiB). Restore: docs/runbooks/backup-restore.md, Abschnitt Goloom.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: goloom-backup
+  namespace: goloom
+  labels:
+    app.kubernetes.io/name: goloom
+    app.kubernetes.io/component: backup
+spec:
+  schedule: "45 3 * * *"
+  timeZone: Europe/Berlin
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 3600
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: goloom
+            app.kubernetes.io/component: backup
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          affinity:
+            podAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - topologyKey: kubernetes.io/hostname
+                  labelSelector:
+                    matchLabels:
+                      app.kubernetes.io/name: goloom
+                      app.kubernetes.io/instance: goloom
+          securityContext:
+            # Gleiche UID/GID wie die App, damit sqlite3 die -shm-Datei oeffnen kann.
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
+            seccompProfile: { type: RuntimeDefault }
+          initContainers:
+            - name: snapshot
+              image: keinos/sqlite3:3.53.4 # renovate: image=keinos/sqlite3
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -eu
+                  STAMP=$(date -u +%Y-%m-%dT%H%M%SZ)
+                  OUT=/work/goloom-${STAMP}.db
+                  sqlite3 /data/goloom.db ".backup ${OUT}"
+                  CHECK=$(sqlite3 "${OUT}" "pragma integrity_check;")
+                  if [ "${CHECK}" != "ok" ]; then echo "integrity_check: ${CHECK}"; exit 1; fi
+                  sqlite3 "${OUT}" "select 'users=' || count(*) from users; select 'teams=' || count(*) from teams; select 'media_items=' || count(*) from media_items;"
+                  gzip -9 "${OUT}"
+                  sha256sum "${OUT}.gz"
+              env:
+                - { name: HOME, value: /work }
+              resources:
+                requests: { cpu: 50m, memory: 64Mi }
+                limits: { memory: 256Mi }
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: { drop: ["ALL"] }
+              volumeMounts:
+                # Schreibbar gemountet: sqlite3 muss bei WAL die -shm-Datei mappen.
+                - { name: data, mountPath: /data }
+                - { name: work, mountPath: /work }
+          containers:
+            - name: rclone
+              image: rclone/rclone:1.75.1 # renovate: image=rclone/rclone
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -eu
+                  STAMP=$(date -u +%Y-%m-%dT%H%M%SZ)
+                  rclone copy /work garage:backup-goloom/sqlite --include "goloom-*.db.gz" -v
+                  if [ -d /data/media ]; then
+                    rclone sync /data/media garage:backup-goloom/media/current \
+                      --backup-dir "garage:backup-goloom/media/archive/${STAMP}" \
+                      --checksum --stats-one-line --stats 0 -v
+                  else
+                    echo "noch kein /data/media"
+                  fi
+                  rclone delete garage:backup-goloom/sqlite --min-age 30d -v
+                  rclone delete garage:backup-goloom/media/archive --min-age 30d --rmdirs -v
+                  rclone lsl garage:backup-goloom/sqlite | tail -3
+                  rclone size garage:backup-goloom
+              env:
+                - { name: HOME, value: /tmp }
+                - { name: RCLONE_CONFIG, value: /tmp/rclone.conf } # existiert nicht (harmloser NOTICE); Remote kommt aus RCLONE_CONFIG_*
+                - { name: RCLONE_CACHE_DIR, value: /tmp/cache }
+                - { name: RCLONE_CONFIG_GARAGE_TYPE, value: s3 }
+                - { name: RCLONE_CONFIG_GARAGE_PROVIDER, value: Other }
+                - { name: RCLONE_CONFIG_GARAGE_ENDPOINT, value: "http://192.168.23.21:3900" }
+                - { name: RCLONE_CONFIG_GARAGE_FORCE_PATH_STYLE, value: "true" }
+                # Der Key darf keine Buckets anlegen; ohne no_check_bucket scheitert
+                # rclone vor jedem Upload an CreateBucket (403).
+                - { name: RCLONE_CONFIG_GARAGE_NO_CHECK_BUCKET, value: "true" }
+                - name: RCLONE_CONFIG_GARAGE_REGION
+                  valueFrom: { secretKeyRef: { name: goloom-backup-s3, key: region } }
+                - name: RCLONE_CONFIG_GARAGE_ACCESS_KEY_ID
+                  valueFrom: { secretKeyRef: { name: goloom-backup-s3, key: ACCESS_KEY_ID } }
+                - name: RCLONE_CONFIG_GARAGE_SECRET_ACCESS_KEY
+                  valueFrom: { secretKeyRef: { name: goloom-backup-s3, key: SECRET_ACCESS_KEY } }
+              resources:
+                requests: { cpu: 50m, memory: 64Mi }
+                limits: { memory: 512Mi }
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: { drop: ["ALL"] }
+              volumeMounts:
+                - { name: data, mountPath: /data, readOnly: true }
+                - { name: work, mountPath: /work, readOnly: true }
+                - { name: tmp, mountPath: /tmp }
+          volumes:
+            - name: data
+              persistentVolumeClaim:
+                claimName: goloom-data
+            - name: work
+              emptyDir: { sizeLimit: 2Gi }
+            - name: tmp
+              emptyDir: { sizeLimit: 256Mi }
