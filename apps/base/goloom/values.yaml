@@ -1,0 +1,58 @@
+image:
+  repository: ghcr.io/goloom-app/goloom
+  tag: v0.2.9 # renovate: image=ghcr.io/goloom-app/goloom
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+database:
+  type: sqlite
+persistence:
+  enabled: true
+  storageClass: ceph-rbd
+  accessMode: ReadWriteOnce
+  size: 5Gi
+  mountPath: /app/data
+config:
+  publicBaseUrl: https://goloom.binaergewitter.de
+  appEnv: production
+  logLevel: info
+  logFormat: json
+  mcpEnabled: false
+secret:
+  create: false
+  existingSecret: goloom-secrets
+bootstrap:
+  adminEmail: admin@binaergewitter.de
+  adminName: Administrator
+
+# Enable only after the Keycloak client in realm bgt and its SOPS secret match.
+# Redirect URI: https://goloom.binaergewitter.de/v1/oauth/oidc/callback
+oidc:
+  enabled: false
+  issuerUrl: https://auth.savar.de/realms/bgt
+  clientId: goloom
+  redirectUri: https://goloom.binaergewitter.de/v1/oauth/oidc/callback
+
+resources:
+  requests: { cpu: 100m, memory: 128Mi }
+  limits: { memory: 512Mi }
+serviceAccount:
+  create: false
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/issuer: goloom-letsencrypt
+    acme.cert-manager.io/http01-edit-in-place: "true"
+    nginx.org/redirect-to-https: "true"
+    nginx.org/ssl-redirect: "true"
+  hosts:
+    - host: goloom.binaergewitter.de
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: goloom-tls
+      hosts:
+        - goloom.binaergewitter.de
