@@ -50,6 +50,12 @@ metadata:
     nginx.org/ssl-redirect: "true"
     nginx.org/redirect-to-https: "true"
     nginx.org/client-max-body-size: "0" # Nextcloud: keine Upload-Grenze
+    # HSTS hier, weil TLS am Ingress endet; das Backend spricht nur HTTP.
+    # 180 Tage = Mindestwert des Nextcloud-Setup-Checks. Ohne includeSubDomains:
+    # unter jit-creatives.de haengen viele andere Dienste.
+    nginx.org/hsts: "true"
+    nginx.org/hsts-max-age: "15552000"
+    nginx.org/hsts-include-subdomains: "false"
 spec:
   ingressClassName: nginx
   tls:
