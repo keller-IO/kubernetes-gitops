@@ -41,7 +41,9 @@ resources:
   # 19.08.2026: Limit 1536Mi -> 2Gi. Der Ist-Verbrauch war auf 1004Mi gestiegen
   # (65 % des Limits) und der Pod wurde mit OOMKilled/Exit 137 abgeraeumt.
   # Dokumentbearbeitung erzeugt Spitzen deutlich ueber dem Ruhewert.
-  requests: { cpu: 250m, memory: 896Mi }
+  # 14.10.2026: Ruhewert ~840Mi, 14-Tage-Maximum 1189Mi — wieder ueber dem
+  # Request. CPU dagegen p95 1m, max 165m: Request 250m -> 100m (kein CPU-Limit).
+  requests: { cpu: 100m, memory: 1280Mi }
   limits: { memory: 2Gi }
 ingress:
   enabled: true

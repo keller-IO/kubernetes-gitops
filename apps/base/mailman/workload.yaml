@@ -64,7 +64,8 @@ spec:
           resources:
             # Gemessen am 28.07.2026: 916Mi — der Request von 512Mi untertrieb den
             # Verbrauch um Faktor 1,8 und liess den Scheduler wrk2 fuer frei halten.
-            requests: { cpu: 150m, memory: 1Gi }
+            # 14.10.2026: CPU p95 8m, max 78m (7 Tage) — Request 150m -> 50m.
+            requests: { cpu: 50m, memory: 1Gi }
             limits: { memory: 1536Mi } # 768Mi war zu knapp -> OOMKilled beim Start (13.07.)
           volumeMounts:
             - name: core-data
@@ -195,7 +196,8 @@ spec:
             - name: UWSGI_STATIC_MAP
               value: /static=/opt/mailman-web-data/static
           resources:
-            requests: { cpu: 200m, memory: 512Mi }
+            # 14.10.2026: CPU p95 41m, max 72m (7 Tage) — Request 200m -> 100m.
+            requests: { cpu: 100m, memory: 512Mi }
             # 0.5.2 überschritt beim produktiven Start zweimal 1536Mi, während
             # Migrationen/collectstatic und Django-Q gleichzeitig anliefen.
             # 20.08.2026 auf 3Gi: mit dem 256-KiB-Cap landet der Suchindex
