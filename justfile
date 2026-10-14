@@ -103,5 +103,30 @@ litellm-provider-contract ENV_FILE:
       "$image_ref" \
       /work/test_blablador_contract.py
 
+# Run the network-isolated LiteLLM proxy contract against the pinned image.
+litellm-contract:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    repo_root="$(realpath "$(git rev-parse --show-toplevel)")"
+    image_ref="$(<"$repo_root/apps/base/litellm/image-ref.txt")"
+    repository_with_tag="${image_ref%@*}"
+    policy_scope="${repository_with_tag%:*}@${image_ref##*@}"
+    podman_config="$(mktemp -d)"
+    podman_data_home="${XDG_DATA_HOME:-$HOME/.local/share}"
+    trap 'rm -rf "$podman_config"' EXIT
+    mkdir -p "$podman_config/.config/containers"
+    jq -n --arg scope "$policy_scope" \
+      '{default: [{type: "reject"}], transports: {docker: {($scope): [{type: "insecureAcceptAnything"}]}}}' \
+      >"$podman_config/.config/containers/policy.json"
+    HOME="$podman_config" XDG_DATA_HOME="$podman_data_home" podman run --rm \
+      --network none \
+      --env LITELLM_DONT_SHOW_FEEDBACK_BOX=True \
+      --env LITELLM_LOCAL_MODEL_COST_MAP=True \
+      --volume "$repo_root/apps/base/litellm:/work:ro,Z" \
+      --workdir /work \
+      --entrypoint python \
+      "$image_ref" \
+      /work/test_litellm_contract.py
+
 fmt:
     kustomize cfg fmt infrastructure apps clusters

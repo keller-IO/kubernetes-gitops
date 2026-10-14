@@ -50,3 +50,42 @@ The parameter set excludes `model` and `messages`; those are handled separately
 by the gateway configuration. Contract evidence contains no credentials,
 prompts, responses, headers, request identifiers, tool argument values, or
 provider-generated content.
+
+## Pinned LiteLLM proxy contract
+
+Verified on 2026-10-14 against the immutable image reference above with the
+container network disabled. The test process used only a loopback
+OpenAI-compatible stub.
+
+- Status: pass (7/7 contract tests).
+- Callback loading: pass from its config directory without relying on that
+  directory being in the Python module search path; a rejected provider field
+  returned HTTP 400 before any upstream attempt.
+- Normalized `proxy_server_request` fields: `arrival_time`, `body`,
+  `credential_fields`, `headers`, `method`, `url`.
+- Normalized minimal body fields: `messages`, `metadata`, `model`.
+- Proxy stripping: the exact `v1.104.0` root and metadata control-field sets are
+  pinned and every field is proven ineffective before forwarding. This includes
+  mock controls, callback registration/disabling, guardrail state, routing
+  state, agentic-loop state, and injected identity/cache metadata.
+- A mixed-case client `x-litellm-*` control header reaches the policy and is
+  rejected with HTTP 400 before any upstream attempt.
+- Upstream attempts: exactly one for success and each controlled 400, 401, 429,
+  and 500 response.
+- Status propagation: 4xx and 5xx classes preserved.
+- Streaming: the known first upstream chunk reaches the client and no retry
+  occurs when the stream then fails.
+- Stable deployment ID observed on every upstream attempt:
+  `hermes-blablador`.
+
+Reproduce from the repository root:
+
+```bash
+nix develop --command just litellm-contract
+```
+
+`just litellm-contract` reads `apps/base/litellm/image-ref.txt`, starts that
+exact image with `--network none`, and mounts the contract files read-only. An
+image update is blocked if callback loading, normalized snapshot fields,
+proxy-stripped controls, attempt counts, deployment identity, status classes,
+or post-chunk streaming behavior changes.

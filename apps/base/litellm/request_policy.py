@@ -1,7 +1,19 @@
+import importlib.util
+from pathlib import Path
+
 from fastapi import HTTPException
 from litellm.integrations.custom_logger import CustomLogger
 
-from request_policy_core import PolicyViolation, validate_proxy_request
+
+_core_path = Path(__file__).with_name("request_policy_core.py")
+_core_spec = importlib.util.spec_from_file_location("litellm_request_policy_core", _core_path)
+if _core_spec is None or _core_spec.loader is None:
+    raise ImportError("unable to load request policy core")
+_core = importlib.util.module_from_spec(_core_spec)
+_core_spec.loader.exec_module(_core)
+
+PolicyViolation = _core.PolicyViolation
+validate_proxy_request = _core.validate_proxy_request
 
 
 class HermesRequestPolicy(CustomLogger):

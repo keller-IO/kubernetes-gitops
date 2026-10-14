@@ -2,9 +2,12 @@ import asyncio
 import copy
 import importlib
 import inspect
+import shutil
 import sys
+import tempfile
 import types
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from request_policy_core import PolicyViolation, validate_proxy_request
@@ -24,22 +27,38 @@ class FakeHTTPException(Exception):
         super().__init__(detail)
 
 
-def load_adapter():
+def fake_dependency_modules():
     litellm = types.ModuleType("litellm")
     integrations = types.ModuleType("litellm.integrations")
     custom_logger = types.ModuleType("litellm.integrations.custom_logger")
     custom_logger.CustomLogger = FakeCustomLogger
     fastapi = types.ModuleType("fastapi")
     fastapi.HTTPException = FakeHTTPException
-    modules = {
+    return {
         "litellm": litellm,
         "litellm.integrations": integrations,
         "litellm.integrations.custom_logger": custom_logger,
         "fastapi": fastapi,
     }
+
+
+def load_adapter():
     sys.modules.pop("request_policy", None)
-    with patch.dict(sys.modules, modules):
+    with patch.dict(sys.modules, fake_dependency_modules()):
         return importlib.import_module("request_policy")
+
+
+def load_adapter_file(path):
+    spec = importlib.util.spec_from_file_location("isolated_request_policy", path)
+    module = importlib.util.module_from_spec(spec)
+    cached_core = sys.modules.pop("request_policy_core", None)
+    try:
+        with patch.dict(sys.modules, fake_dependency_modules()):
+            spec.loader.exec_module(module)
+    finally:
+        if cached_core is not None:
+            sys.modules["request_policy_core"] = cached_core
+    return module
 
 
 def proxy_data(body, headers=None):
@@ -209,6 +228,22 @@ class RequestPolicyTests(unittest.TestCase):
         self.assertTrue(adapter.HermesRequestPolicy.enforces_request_content)
         self.assertIsInstance(adapter.hermes_request_policy, adapter.HermesRequestPolicy)
         self.assertIs(result, data)
+
+    def test_adapter_loads_core_from_its_own_directory(self):
+        # Mutation caught: relying on the callback directory being present in global sys.path.
+        source_dir = Path(__file__).resolve().parent
+        with tempfile.TemporaryDirectory() as directory:
+            isolated_dir = Path(directory)
+            for filename in ("request_policy.py", "request_policy_core.py"):
+                shutil.copy(source_dir / filename, isolated_dir / filename)
+            original_path = sys.path
+            sys.path = [entry for entry in sys.path if Path(entry or ".").resolve() != source_dir]
+            try:
+                adapter = load_adapter_file(isolated_dir / "request_policy.py")
+            finally:
+                sys.path = original_path
+
+        self.assertIsInstance(adapter.hermes_request_policy, adapter.HermesRequestPolicy)
 
     def test_adapter_translates_policy_violation_to_http_400(self):
         # Mutation caught: leaking a policy exception or mapping rejection to a non-400 response.
