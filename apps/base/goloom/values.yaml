@@ -46,7 +46,11 @@ ingress:
     cert-manager.io/issuer: goloom-letsencrypt
     acme.cert-manager.io/http01-edit-in-place: "true"
     nginx.org/redirect-to-https: "true"
-    nginx.org/ssl-redirect: "true"
+    # ⚠️ ssl-redirect bleibt "false", bis goloom-tls ausgestellt ist. Mit "true"
+    # beantwortet nginx die ACME-Challenge mit einem 301 auf https, und ohne
+    # Secret lehnt nginx-inc den TLS-Handshake ab — die Erstausstellung scheitert.
+    # Erneuerungen gehen danach auch mit "true" (LE folgt dem Redirect auf https).
+    nginx.org/ssl-redirect: "false"
   hosts:
     - host: goloom.binaergewitter.de
       paths:
