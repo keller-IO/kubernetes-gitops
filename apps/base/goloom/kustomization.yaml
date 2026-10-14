@@ -12,6 +12,7 @@ helmCharts:
 resources:
   - namespace.yaml
   - issuer.yaml
+  - backup-cronjob.yaml
 generators:
   - ./secret-generator.yaml
 patches:
