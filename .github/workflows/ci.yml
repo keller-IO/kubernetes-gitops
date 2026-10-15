@@ -37,14 +37,18 @@ jobs:
 
       - uses: azure/setup-helm@v5
 
-      - name: Install kustomize + kubeconform
+      - name: Install kustomize + kubeconform + yq
         env:
           KUSTOMIZE_VERSION: 5.8.1
+          # renovate: datasource=github-releases depName=mikefarah/yq
+          YQ_VERSION: 4.53.6
         run: |
           set -euo pipefail
           curl -sSfL "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v${KUSTOMIZE_VERSION}/kustomize_v${KUSTOMIZE_VERSION}_linux_amd64.tar.gz" | tar xz kustomize
           curl -sSfL https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz | tar xz
           sudo mv kustomize kubeconform /usr/local/bin/
+          curl -sSfL "https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION}/yq_linux_amd64" -o yq
+          sudo install -m 0755 yq /usr/local/bin/yq
           # KSOPS-Stub: CI hat keinen age-Key, Secrets werden nicht gerendert.
           printf '#!/bin/sh\nexit 0\n' | sudo tee /usr/local/bin/ksops >/dev/null
           sudo chmod +x /usr/local/bin/ksops
@@ -58,6 +62,9 @@ jobs:
             kustomize build --enable-helm --enable-alpha-plugins --enable-exec "$dir" \
               | kubeconform -strict -ignore-missing-schemas -summary
           done
+
+      - name: LiteLLM manifest contract
+        run: bash -n scripts/ci/check-litellm.sh && scripts/ci/check-litellm.sh
 
   # Render every overlay/base and fail on an HPA a chart brought unasked, or
   # one that autoscales on memory. See docs/learnings/collabora-hpa-runaway.md
@@ -87,17 +94,21 @@ jobs:
       - name: check-hpa
         run: bash -n scripts/ci/check-hpa.sh && scripts/ci/check-hpa.sh
 
-  # Blueprint phase: secrets are placeholder templates, not yet SOPS-encrypted.
-  # Warn only — flip to a hard failure once real secrets are encrypted.
+  # Reject decrypted real secrets while allowing explicit blueprint placeholders.
   secrets-check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - name: Warn on unencrypted *.sops.yaml (non-blocking)
+      - name: Install yq
+        env:
+          # renovate: datasource=github-releases depName=mikefarah/yq
+          YQ_VERSION: 4.53.6
         run: |
-          while IFS= read -r f; do
-            grep -q "sops:" "$f" || echo "::warning file=$f::$f is not SOPS-encrypted"
-          done < <(find . -name '*.sops.yaml' -not -name '.sops.yaml')
+          set -euo pipefail
+          curl -sSfL "https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION}/yq_linux_amd64" -o yq
+          sudo install -m 0755 yq /usr/local/bin/yq
+      - name: Reject unencrypted real *.sops.yaml
+        run: bash -n scripts/ci/check-sops.sh && scripts/ci/check-sops.sh
 
   # Static security scan of the rendered manifests (misconfig) + repo (secrets).
   # Reports findings; does NOT fail the build yet — add `--exit-code 1` to enforce.

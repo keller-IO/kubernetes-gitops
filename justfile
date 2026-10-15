@@ -29,6 +29,7 @@ test:
       [ -f "$dir/kustomization.yaml" ] || continue
       kustomize build --enable-helm --enable-alpha-plugins --enable-exec "$dir" | kubeconform -strict -ignore-missing-schemas -summary
     done
+    ./scripts/ci/check-litellm.sh
     PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s apps/base/nextcloud-yealink-phonebook -p 'test_*.py'
     PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=apps/base/litellm python3 -m unittest apps/base/litellm/test_request_policy.py
 
@@ -42,19 +43,7 @@ decrypt FILE:
 
 # Verify real *.sops.yaml secrets are encrypted. Blueprint placeholders warn only.
 secrets-check:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    fail=0
-    while IFS= read -r f; do
-      grep -q "sops:" "$f" && continue
-      if grep -Eq "REPLACE_ME|CHANGE ME|PLACEHOLDER|placeholder|age1placeholder" "$f"; then
-        echo "WARN placeholder secret not encrypted yet: $f"
-      else
-        echo "UNENCRYPTED: $f"
-        fail=1
-      fi
-    done < <(find . -name '*.sops.yaml' -not -name '.sops.yaml')
-    exit $fail
+    ./scripts/ci/check-sops.sh
 
 # Check repo safety invariants before CI or PR review.
 guardrails:
