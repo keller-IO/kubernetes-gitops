@@ -32,3 +32,4 @@ data:
   host_nextcloud_dev: cloud-dev.savar.de
   host_ciso_assistant: grc.jit.services # intern, IP-Allowlist im Ingress
   host_litellm: litellm.jit.services
+  host_goloom: goloom.binaergewitter.de

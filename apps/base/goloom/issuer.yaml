@@ -1,0 +1,17 @@
+# binaergewitter.de is not in the shared ClusterIssuer's DNS-01 selectors.
+# The app Ingress uses HTTP-01 edit-in-place so nginx-inc does not reject a
+# second Ingress for the same host (see docs/learnings/flurfunk-dns-and-http01-chain.md).
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: goloom-letsencrypt
+  namespace: goloom
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    privateKeySecretRef:
+      name: goloom-letsencrypt-account
+    solvers:
+      - http01:
+          ingress:
+            ingressClassName: nginx

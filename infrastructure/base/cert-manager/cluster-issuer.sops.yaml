@@ -4,32 +4,32 @@ metadata:
     name: cloudns-credentials
     namespace: cert-manager
 stringData:
-    auth_id: ENC[AES256_GCM,data:TJOqoXQ=,iv:zzbR6dzo4PfRT14GJB2pQJk4uPCabLtxRTFl1GgSqaQ=,tag:IMropdJ19zXpnA/q03sOfA==,type:str]
-    auth_password: ENC[AES256_GCM,data:FWbIJvKaXKmxnaMO,iv:bDroqmNM7QWPp+ag/Y8PGRLOZpeZ77YlWotajipl0I4=,tag:GzRE/aiyDFxg3ZWpLV9FbA==,type:str]
+    auth_id: ENC[AES256_GCM,data:zd94bCc=,iv:nmEpxgt+T2qP7wQ5OmK0obQirXnEuYjXBEDpql/Opy8=,tag:w9A2AUX+AojWW0x4gsf7xg==,type:str]
+    auth_password: ENC[AES256_GCM,data:MeYPzuZvYTTGD0YR,iv:SV0ynH7/LvEyWU+Gvk39Gw8ef4Hun0emXEZtvuoT38I=,tag:JSjvoFsgiBVf+kJgOSk+fg==,type:str]
 type: Opaque
 sops:
     age:
         - enc: |
             -----BEGIN AGE ENCRYPTED FILE-----
-            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSA4TWlHcWFCbHBoNlU3ZXVJ
-            MnRhcjI0WUlkeEZObFBMZzVoL2lKazVkUGxJCnRtbGxkdUdXcHNKbjhicGNSd2ZR
-            UkoxM3NBdGtXV1orVVZPcHloSVIydFUKLS0tIEVsVlVQdE1yc1VQYWJDRWp2UDFD
-            VjFGK21Rem41bGVxV3JZMldTUnVjejgKrHVhGf8t6xuGsS906Ie1HShsLdsn6u1h
-            RyrPG6jDch1kDLVTntqaq9guqzQgVhFOCm3sS6KXvmAq1WOP46uCtA==
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBJa3BteFlSVzkzM3k4MHNE
+            SysxRXYzcGVVbHpXOUdLWitxSXQ3NTRkLzJjClFrREVsMy9jaUdBcS83OERjb1BS
+            ekJRU1RXMXd6a0Y5ZDRlUFl2cGFjZ3cKLS0tIE5CRFFwbVNScE1GUXhEUmdGUVAv
+            ZkEzL01aWjg3MjVINWpNVVJaTldmV28KDmsKIdQ/X9TNSmSiXR0yErkyElFExUNj
+            pBOjtJmN4VZbufjQ0J8TW0ivgUZf/kB8Z9r2ibvwVVN46qdwnpT2+w==
             -----END AGE ENCRYPTED FILE-----
           recipient: age17x04ga87qyu9lzcuja9k83z90veew9cez7jusul4y5xyr09xaejs9rq755
         - enc: |
             -----BEGIN AGE ENCRYPTED FILE-----
-            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBEbUQrd1cvSWYrdllBc2xv
-            QkdVTjlnNHNmOXNvbmlscTZ2bVUwaGZnS1ZZCk42cmhqdUtQT3o0aUtmWGM5MWFp
-            Q2VPZEVDN3RTKzNDT3lZOHVNK0ZVUGMKLS0tIDA4by8rYkV0Y2VhZWZIWC96b1Z2
-            bUxVQUZKVUhMM3ZzUDE2QTdYZGlmSnMKtL2TB1N6mPh97VU/+LxCvTPNJTa7ll7v
-            NWyEZNeot5y5y0AreAhEMfiuXMpc15+wsuxYkAzj/NF0Eg1J7oJGmw==
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBkYndCR3o5T0pxN01XWldM
+            SkIvRXo3RXdGZjU5MkwrMzVDeVYrWVJmRGhZCmtaS2dqTnJWS085VVY4WnZwbm90
+            NzBFeEhGS1o1Z2lHb2VxYk45VldONlkKLS0tIHhVWWFTand3d21hYjUrbDFhQjdH
+            b2FNdEJUZkExeEZZcXVZQ0RQT1VnRXcKVxAKfHZL2D+KuYu0uHBg1khykvHboMNl
+            LJafb4IiXmiFbD+mlSx5WOqudF2a4cytJOdd9oa2lvii9OClsBXLaQ==
             -----END AGE ENCRYPTED FILE-----
           recipient: age1hjq0mgzc2npw9lhtwr49qqrfvkxzc2ss8qu7e06fk5n84qm7xs7qrgxfxa
     encrypted_regex: ^(data|stringData)$
-    lastmodified: "2026-09-24T12:26:59Z"
-    mac: ENC[AES256_GCM,data:7u394HH0lj4ZtRp4y+E9jSKvzBtyA/imNLlS6LJg0P2F6xZarHvzo+4oKnaKfdu2KwSf/qXHXaFfcUol5hEy4oM48vU4CdgwwBEeaDc4RymTBSJp3NLyESuceVdxUjE/V9BAx4F3rYGMpMglFd1X3X2P9AHYvFd08PMNDjiolho=,iv:8RrsEFsS5g24IgQjofFIscbA4aqMvqw/HL/JyZKsdbo=,tag:ciHXXPW96js2spXwRt6AAA==,type:str]
+    lastmodified: "2026-10-10T17:29:42Z"
+    mac: ENC[AES256_GCM,data:0wzEqCrst+QI2wFcKfonnp3QgAtNumh5Z35/2pRSEsjrE9Z0hOXhRySJgYjVWfB9J2Aw7wFysEHmBx3BX0YABhbE5QvReR0yceJBAf97pgbyIe1RMwyJYia7LoYSAgKxl9NjfE/TUvQ/BK4luGJmQ3hGdSuKoM/XnsXrdENWj+s=,iv:br/spZdwNh5ptB5OZm9qgOxu2HcnlMOs0rtc+QOWZ+A=,tag:PykicteoN2k0cASEjEGtZw==,type:str]
     version: 3.13.3
 ---
 apiVersion: cert-manager.io/v1
@@ -61,8 +61,6 @@ spec:
               selector:
                 dnsZones:
                     - jit-creatives.de
-                    - jitcreatives.de
-                    - jit.cloud
             - dns01:
                 cnameStrategy: Follow
                 rfc2136:
@@ -77,6 +75,8 @@ spec:
                     - imcor.de
                     - jonaks.com
                     - naturkindergarten-moehringen.de
+                    - jit.cloud
+                    - jitcreatives.de
                     - savar.de
                     - jitmail.de
                     - gemeinsam-fuer-halbe.de
@@ -95,25 +95,25 @@ sops:
     age:
         - enc: |
             -----BEGIN AGE ENCRYPTED FILE-----
-            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSA4TWlHcWFCbHBoNlU3ZXVJ
-            MnRhcjI0WUlkeEZObFBMZzVoL2lKazVkUGxJCnRtbGxkdUdXcHNKbjhicGNSd2ZR
-            UkoxM3NBdGtXV1orVVZPcHloSVIydFUKLS0tIEVsVlVQdE1yc1VQYWJDRWp2UDFD
-            VjFGK21Rem41bGVxV3JZMldTUnVjejgKrHVhGf8t6xuGsS906Ie1HShsLdsn6u1h
-            RyrPG6jDch1kDLVTntqaq9guqzQgVhFOCm3sS6KXvmAq1WOP46uCtA==
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBJa3BteFlSVzkzM3k4MHNE
+            SysxRXYzcGVVbHpXOUdLWitxSXQ3NTRkLzJjClFrREVsMy9jaUdBcS83OERjb1BS
+            ekJRU1RXMXd6a0Y5ZDRlUFl2cGFjZ3cKLS0tIE5CRFFwbVNScE1GUXhEUmdGUVAv
+            ZkEzL01aWjg3MjVINWpNVVJaTldmV28KDmsKIdQ/X9TNSmSiXR0yErkyElFExUNj
+            pBOjtJmN4VZbufjQ0J8TW0ivgUZf/kB8Z9r2ibvwVVN46qdwnpT2+w==
             -----END AGE ENCRYPTED FILE-----
           recipient: age17x04ga87qyu9lzcuja9k83z90veew9cez7jusul4y5xyr09xaejs9rq755
         - enc: |
             -----BEGIN AGE ENCRYPTED FILE-----
-            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBEbUQrd1cvSWYrdllBc2xv
-            QkdVTjlnNHNmOXNvbmlscTZ2bVUwaGZnS1ZZCk42cmhqdUtQT3o0aUtmWGM5MWFp
-            Q2VPZEVDN3RTKzNDT3lZOHVNK0ZVUGMKLS0tIDA4by8rYkV0Y2VhZWZIWC96b1Z2
-            bUxVQUZKVUhMM3ZzUDE2QTdYZGlmSnMKtL2TB1N6mPh97VU/+LxCvTPNJTa7ll7v
-            NWyEZNeot5y5y0AreAhEMfiuXMpc15+wsuxYkAzj/NF0Eg1J7oJGmw==
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBkYndCR3o5T0pxN01XWldM
+            SkIvRXo3RXdGZjU5MkwrMzVDeVYrWVJmRGhZCmtaS2dqTnJWS085VVY4WnZwbm90
+            NzBFeEhGS1o1Z2lHb2VxYk45VldONlkKLS0tIHhVWWFTand3d21hYjUrbDFhQjdH
+            b2FNdEJUZkExeEZZcXVZQ0RQT1VnRXcKVxAKfHZL2D+KuYu0uHBg1khykvHboMNl
+            LJafb4IiXmiFbD+mlSx5WOqudF2a4cytJOdd9oa2lvii9OClsBXLaQ==
             -----END AGE ENCRYPTED FILE-----
           recipient: age1hjq0mgzc2npw9lhtwr49qqrfvkxzc2ss8qu7e06fk5n84qm7xs7qrgxfxa
     encrypted_regex: ^(data|stringData)$
-    lastmodified: "2026-09-24T12:26:59Z"
-    mac: ENC[AES256_GCM,data:7u394HH0lj4ZtRp4y+E9jSKvzBtyA/imNLlS6LJg0P2F6xZarHvzo+4oKnaKfdu2KwSf/qXHXaFfcUol5hEy4oM48vU4CdgwwBEeaDc4RymTBSJp3NLyESuceVdxUjE/V9BAx4F3rYGMpMglFd1X3X2P9AHYvFd08PMNDjiolho=,iv:8RrsEFsS5g24IgQjofFIscbA4aqMvqw/HL/JyZKsdbo=,tag:ciHXXPW96js2spXwRt6AAA==,type:str]
+    lastmodified: "2026-10-10T17:29:42Z"
+    mac: ENC[AES256_GCM,data:0wzEqCrst+QI2wFcKfonnp3QgAtNumh5Z35/2pRSEsjrE9Z0hOXhRySJgYjVWfB9J2Aw7wFysEHmBx3BX0YABhbE5QvReR0yceJBAf97pgbyIe1RMwyJYia7LoYSAgKxl9NjfE/TUvQ/BK4luGJmQ3hGdSuKoM/XnsXrdENWj+s=,iv:br/spZdwNh5ptB5OZm9qgOxu2HcnlMOs0rtc+QOWZ+A=,tag:PykicteoN2k0cASEjEGtZw==,type:str]
     version: 3.13.3
 ---
 apiVersion: cert-manager.io/v1
@@ -145,8 +145,6 @@ spec:
               selector:
                 dnsZones:
                     - jit-creatives.de
-                    - jitcreatives.de
-                    - jit.cloud
             - dns01:
                 cnameStrategy: Follow
                 rfc2136:
@@ -161,6 +159,8 @@ spec:
                     - imcor.de
                     - jonaks.com
                     - naturkindergarten-moehringen.de
+                    - jit.cloud
+                    - jitcreatives.de
                     - savar.de
                     - jitmail.de
                     - gemeinsam-fuer-halbe.de
@@ -179,23 +179,23 @@ sops:
     age:
         - enc: |
             -----BEGIN AGE ENCRYPTED FILE-----
-            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSA4TWlHcWFCbHBoNlU3ZXVJ
-            MnRhcjI0WUlkeEZObFBMZzVoL2lKazVkUGxJCnRtbGxkdUdXcHNKbjhicGNSd2ZR
-            UkoxM3NBdGtXV1orVVZPcHloSVIydFUKLS0tIEVsVlVQdE1yc1VQYWJDRWp2UDFD
-            VjFGK21Rem41bGVxV3JZMldTUnVjejgKrHVhGf8t6xuGsS906Ie1HShsLdsn6u1h
-            RyrPG6jDch1kDLVTntqaq9guqzQgVhFOCm3sS6KXvmAq1WOP46uCtA==
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBJa3BteFlSVzkzM3k4MHNE
+            SysxRXYzcGVVbHpXOUdLWitxSXQ3NTRkLzJjClFrREVsMy9jaUdBcS83OERjb1BS
+            ekJRU1RXMXd6a0Y5ZDRlUFl2cGFjZ3cKLS0tIE5CRFFwbVNScE1GUXhEUmdGUVAv
+            ZkEzL01aWjg3MjVINWpNVVJaTldmV28KDmsKIdQ/X9TNSmSiXR0yErkyElFExUNj
+            pBOjtJmN4VZbufjQ0J8TW0ivgUZf/kB8Z9r2ibvwVVN46qdwnpT2+w==
             -----END AGE ENCRYPTED FILE-----
           recipient: age17x04ga87qyu9lzcuja9k83z90veew9cez7jusul4y5xyr09xaejs9rq755
         - enc: |
             -----BEGIN AGE ENCRYPTED FILE-----
-            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBEbUQrd1cvSWYrdllBc2xv
-            QkdVTjlnNHNmOXNvbmlscTZ2bVUwaGZnS1ZZCk42cmhqdUtQT3o0aUtmWGM5MWFp
-            Q2VPZEVDN3RTKzNDT3lZOHVNK0ZVUGMKLS0tIDA4by8rYkV0Y2VhZWZIWC96b1Z2
-            bUxVQUZKVUhMM3ZzUDE2QTdYZGlmSnMKtL2TB1N6mPh97VU/+LxCvTPNJTa7ll7v
-            NWyEZNeot5y5y0AreAhEMfiuXMpc15+wsuxYkAzj/NF0Eg1J7oJGmw==
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBkYndCR3o5T0pxN01XWldM
+            SkIvRXo3RXdGZjU5MkwrMzVDeVYrWVJmRGhZCmtaS2dqTnJWS085VVY4WnZwbm90
+            NzBFeEhGS1o1Z2lHb2VxYk45VldONlkKLS0tIHhVWWFTand3d21hYjUrbDFhQjdH
+            b2FNdEJUZkExeEZZcXVZQ0RQT1VnRXcKVxAKfHZL2D+KuYu0uHBg1khykvHboMNl
+            LJafb4IiXmiFbD+mlSx5WOqudF2a4cytJOdd9oa2lvii9OClsBXLaQ==
             -----END AGE ENCRYPTED FILE-----
           recipient: age1hjq0mgzc2npw9lhtwr49qqrfvkxzc2ss8qu7e06fk5n84qm7xs7qrgxfxa
     encrypted_regex: ^(data|stringData)$
-    lastmodified: "2026-09-24T12:26:59Z"
-    mac: ENC[AES256_GCM,data:7u394HH0lj4ZtRp4y+E9jSKvzBtyA/imNLlS6LJg0P2F6xZarHvzo+4oKnaKfdu2KwSf/qXHXaFfcUol5hEy4oM48vU4CdgwwBEeaDc4RymTBSJp3NLyESuceVdxUjE/V9BAx4F3rYGMpMglFd1X3X2P9AHYvFd08PMNDjiolho=,iv:8RrsEFsS5g24IgQjofFIscbA4aqMvqw/HL/JyZKsdbo=,tag:ciHXXPW96js2spXwRt6AAA==,type:str]
+    lastmodified: "2026-10-10T17:29:42Z"
+    mac: ENC[AES256_GCM,data:0wzEqCrst+QI2wFcKfonnp3QgAtNumh5Z35/2pRSEsjrE9Z0hOXhRySJgYjVWfB9J2Aw7wFysEHmBx3BX0YABhbE5QvReR0yceJBAf97pgbyIe1RMwyJYia7LoYSAgKxl9NjfE/TUvQ/BK4luGJmQ3hGdSuKoM/XnsXrdENWj+s=,iv:br/spZdwNh5ptB5OZm9qgOxu2HcnlMOs0rtc+QOWZ+A=,tag:PykicteoN2k0cASEjEGtZw==,type:str]
     version: 3.13.3

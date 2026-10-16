@@ -1,0 +1,67 @@
+image:
+  repository: ghcr.io/goloom-app/goloom
+  tag: v0.2.9 # renovate: image=ghcr.io/goloom-app/goloom
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+database:
+  type: sqlite
+persistence:
+  enabled: true
+  storageClass: ceph-rbd
+  accessMode: ReadWriteOnce
+  size: 5Gi
+  mountPath: /app/data
+config:
+  publicBaseUrl: https://goloom.binaergewitter.de
+  appEnv: production
+  logLevel: info
+  logFormat: json
+  mcpEnabled: false
+secret:
+  create: false
+  existingSecret: goloom-secrets
+bootstrap:
+  adminEmail: admin@binaergewitter.de
+  adminName: Administrator
+
+# Keycloak-Client goloom im Realm bgt (Secret: OIDC_CLIENT_SECRET in secret.sops.yaml).
+# ⚠️ Goloom legt jeden OIDC-Nutzer automatisch an, der erste wird Instanz-Admin.
+# bgt foederiert alle Mailkonten, deshalb laesst der client-eigene Browser-Flow
+# goloom-browser nur Mitglieder der Gruppe goloom-users (Client-Rolle
+# goloom.access) durch; alle anderen bekommen "Deny access". Neue Nutzer in
+# Keycloak in diese Gruppe aufnehmen, nicht hier.
+oidc:
+  enabled: true
+  issuerUrl: https://auth.savar.de/realms/bgt
+  clientId: goloom
+  redirectUri: https://goloom.binaergewitter.de/v1/oauth/oidc/callback
+
+resources:
+  requests: { cpu: 100m, memory: 128Mi }
+  limits: { memory: 512Mi }
+serviceAccount:
+  create: false
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/issuer: goloom-letsencrypt
+    acme.cert-manager.io/http01-edit-in-place: "true"
+    nginx.org/redirect-to-https: "true"
+    # goloom-tls steht seit 14.10.2026, daher "true": Erneuerungen gehen trotz
+    # Redirect, weil LE ihm auf https folgt und das Secret dann existiert.
+    # ⚠️ Bei einer Neuausstellung ohne Secret (Namespace neu, Secret geloescht)
+    # vorher auf "false" stellen — sonst lehnt nginx-inc den TLS-Handshake ab
+    # und die HTTP-01-Challenge scheitert dauerhaft.
+    nginx.org/ssl-redirect: "true"
+  hosts:
+    - host: goloom.binaergewitter.de
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: goloom-tls
+      hosts:
+        - goloom.binaergewitter.de
