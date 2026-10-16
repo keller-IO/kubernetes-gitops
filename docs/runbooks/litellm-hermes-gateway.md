@@ -89,3 +89,38 @@ exact image with `--network none`, and mounts the contract files read-only. An
 image update is blocked if callback loading, normalized snapshot fields,
 proxy-stripped controls, attempt counts, deployment identity, status classes,
 or post-chunk streaming behavior changes.
+
+## Network selector baseline
+
+Discovered on 2026-10-15 from the rendered infrastructure and confirmed with
+read-only queries against the running kellerIO cluster:
+
+- NGINX Ingress Controller namespace: `ingress-nginx`
+- NGINX pod labels: `app.kubernetes.io/instance=nginx-ingress` and
+  `app.kubernetes.io/name=nginx-ingress`
+- Cluster DNS namespace: `kube-system`
+- Cluster DNS pod label: `k8s-app=kube-dns`
+- Cilium image: `quay.io/cilium/cilium:v1.16.5` with its repository-pinned
+  digest
+- Cilium `enable-l7-proxy`: `true`
+
+The CiliumNetworkPolicy renders these Kubernetes labels with Cilium's `k8s:`
+source prefix. The server and PostSync probe share only
+`network-policy.jit.land/identity=litellm` for policy selection. The Service
+continues to select `app.kubernetes.io/name=litellm` plus
+`app.kubernetes.io/component=server`, so it cannot route to the probe.
+
+Before merging the LiteLLM overlay, create an explicit ClouDNS A record for
+`litellm.jit.services` pointing to `192.168.2.246` and verify it from the public
+authorities. DNS-01 creates `_acme-challenge.litellm.jit.services`; without the
+explicit application record that node makes `litellm.jit.services` an empty
+non-terminal and suppresses the existing `*.jit.services` wildcard, potentially
+caching NODATA for up to an hour. See
+`docs/learnings/wildcard-dns01-empty-non-terminal.md`.
+
+The PostSync probe's strongest negative control is a certificate-valid TLS
+handshake to `1.1.1.1` with SNI `one.one.one.one`: it succeeds on an unrestricted
+network and therefore fails the hook if broad public egress is available. The
+private, metadata, unrelated-DNS, and wrong-SNI cases remain defense-in-depth
+checks; their failures can also originate outside Cilium, so static exact-policy
+validation and live Cilium policy evidence remain mandatory.

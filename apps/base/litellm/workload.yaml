@@ -21,6 +21,7 @@ spec:
       labels:
         app.kubernetes.io/name: litellm
         app.kubernetes.io/component: server
+        network-policy.jit.land/identity: litellm
       annotations:
         litellm.jit.land/secret-revision: v1
     spec:

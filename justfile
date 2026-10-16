@@ -32,6 +32,7 @@ test:
     ./scripts/ci/check-litellm.sh
     PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s apps/base/nextcloud-yealink-phonebook -p 'test_*.py'
     PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=apps/base/litellm python3 -m unittest apps/base/litellm/test_request_policy.py
+    PYTHONDONTWRITEBYTECODE=1 python3 -m unittest apps/base/litellm/test_network_probe.py
 
 # Encrypt a single secret in place.
 encrypt FILE:
