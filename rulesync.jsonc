@@ -5,7 +5,7 @@
   // generated and gitignored (see .gitignore). Regenerate with `just agents-setup`.
   "targets": ["claudecode", "codexcli", "cursor", "opencode"],
 
-  "features": ["rules", "subagents", "skills", "permissions"],
+  "features": ["rules", "subagents", "skills", "permissions", "mcp"],
 
   "outputRoots": ["."],
 

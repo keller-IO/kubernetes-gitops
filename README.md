@@ -101,7 +101,7 @@ Diese Dienste bilden das Fundament des Clusters und liegen unter `infrastructure
 | **Ceph (Storage)** | Persistenter Speicher: RBD (Block), CephFS (Datei), S3 (Objekt) |
 | **SOPS + age** | Verschlüsselung von Secrets im Git-Repo (KSOPS im ArgoCD repo-server) |
 | **Renovate** | Hält Helm-Chart- und Image-Versionen automatisch aktuell |
-| **[Kubernetes MCP Server](https://github.com/manusa/kubernetes-mcp-server)** | Cluster-Observability für KI-Agenten (read-only, HTTP Basic Auth) |
+| **[Kubernetes MCP Server](https://github.com/containers/kubernetes-mcp-server)** | Cluster-Observability für KI-Agenten (read-only, HTTP Basic Auth) |
 
 ---
 
@@ -143,6 +143,11 @@ direnv allow         # einmalig erlauben
 
 Enthaltene Werkzeuge: `just`, `kustomize`, `kubeconform`, `helm`, `sops`, `age`,
 `yamllint`, `kubectl`.
+
+KI-Agenten führen in jedem neuen Checkout oder Worktree vor der Arbeit einmal
+`nix develop --command just agents-setup` aus und starten danach eine neue Session.
+Die versionierten `AGENTS.md` und `CLAUDE.md` enthalten diese Bootstrap-Anweisung;
+alle weiteren Tool-Dateien erzeugt rulesync aus `.rulesync/`.
 
 ---
 

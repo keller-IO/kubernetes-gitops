@@ -61,8 +61,13 @@ renovate-check:
 agents-setup:
     rulesync generate
 
+# Check agent config after setup; a fresh checkout must run agents-setup first.
+agents-check:
+    rulesync doctor --strict
+    rulesync generate --check
+
 # Run the full local gate used by CI.
-validate: lint secrets-check guardrails renovate-check build test
+validate: agents-check lint secrets-check guardrails renovate-check build test
 
 # Run the opt-in Blablador provider contract against the pinned LiteLLM image.
 litellm-provider-contract ENV_FILE:

@@ -7,6 +7,14 @@ globs: ["**/*"]
 
 # kubernetes-gitops — AGENTS.md
 
+## Agent setup
+On every fresh clone or worktree, run `nix develop --command just agents-setup`
+before working in this repository. This generates the local tool rules, skills,
+subagents, permissions, and MCP configuration from `.rulesync/`. Start a new agent
+session afterward so newly generated tools can be discovered. `AGENTS.md` and
+`CLAUDE.md` are checked-in bootstrap copies of this rule; edit the source here,
+then regenerate both files.
+
 ## Purpose
 Declarative management of K8s workloads on Talos Linux via **ArgoCD**. Single source of truth for all cluster resources.
 
@@ -22,7 +30,7 @@ You are **Senior Kubernetes System Architect** and **GitOps Automation Engineer*
 
 ## Repository Layout
 ```
-├── .rulesync/              # Canonical agent rules, skills, subagents, permissions (this dir)
+├── .rulesync/              # Canonical agent rules, skills, subagents, MCP, permissions (this dir)
 ├── clusters/               # ArgoCD entry points (root-app, ApplicationSets)
 ├── infrastructure/         # Cluster-wide platform services (ingress, storage, operators)
 ├── apps/                   # Application workloads (base + overlays)
@@ -68,7 +76,7 @@ You are **Senior Kubernetes System Architect** and **GitOps Automation Engineer*
 - Do not use floating image tags (`latest`) or `imagePullPolicy: Always`; Talos node
   reboots must pull reproducible images.
 - Open a PR for generated fixes. Let CI and review gate ArgoCD reconciliation.
-- **Adding Apps**: 
+- **Adding Apps**:
   1. Search official docs.
   2. Create base with `helmCharts:` + `values.yaml`.
   3. Add `database.yaml`, `cache.yaml`, `backup.yaml`, `secret.sops.yaml`.
@@ -77,11 +85,16 @@ You are **Senior Kubernetes System Architect** and **GitOps Automation Engineer*
 - **OIDC Onboarding**: Ask user first. Create or confirm a Keycloak client in Realm `bgt`, set app redirect URIs, then store client secrets in the app `secret.sops.yaml`. Enable app OIDC only after a client/secret match is confirmed.
 
 ## Agent Setup & Resources (.rulesync/)
-- `.rulesync/` is the **single source of truth** for agent rules, skills, subagents, and
-  permissions, managed by [rulesync](https://github.com/dyoshikawa/rulesync). The
-  tool-native files (`AGENTS.md`, `CLAUDE.md`, `.claude/`, `.opencode/`, `.codex/`,
-  `.cursor/`) are generated and **gitignored** — after cloning or changing anything
-  under `.rulesync/`, run `just agents-setup` (inside `nix develop`).
+- `.rulesync/` is the **single source of truth** for agent rules, skills, subagents,
+  MCP servers, and permissions, managed by [rulesync](https://github.com/dyoshikawa/rulesync). The
+  tool-native files are generated. The root `AGENTS.md` and `CLAUDE.md` are tracked
+  bootstrap copies; the other outputs (`.claude/`, `.opencode/`, `.codex/`,
+  `.cursor/`) are gitignored. After changing anything under `.rulesync/`, run
+  `nix develop --command just agents-setup`.
+- **MCP** (`.rulesync/mcp.jsonc`): `keller-kubernetes` connects to the GitOps-managed
+  read-only cluster server. Set `KELLER_KUBERNETES_MCP_AUTH` to the complete
+  `Basic <base64(mcp:password)>` header value in the agent's environment before
+  starting it. Keep the password and generated header value outside the repository.
 - **Skills** (`.rulesync/skills/<id>/SKILL.md`, index below): load on demand, don't
   dump them into context.
 - **Subagents** (`.rulesync/subagents/<id>.md`, generated into `.claude/agents/`,
@@ -113,7 +126,7 @@ You are **Senior Kubernetes System Architect** and **GitOps Automation Engineer*
 - **Betriebsdoku** immer zusätzlich nach cfgmgmt01 kopieren: `192.168.23.19:/root/ansible/kellerio-docs/`.
 
 ## Operational Learnings
-- Check `docs/learnings/` before complex changes. 
+- Check `docs/learnings/` before complex changes.
 - Create new learning if migration/action had unexpected side effects.
 
 ## Index

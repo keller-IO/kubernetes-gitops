@@ -110,3 +110,8 @@ rulesync.local.jsonc
 **/.cursorignore
 !.rulesync/.aiignore
 # End of Rulesync
+
+# Root agent instructions bootstrap a fresh clone before rulesync can run.
+# They are generated from .rulesync/rules/overview.md but deliberately tracked.
+!/AGENTS.md
+!/CLAUDE.md

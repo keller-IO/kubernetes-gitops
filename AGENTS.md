@@ -1,0 +1,130 @@
+# kubernetes-gitops — AGENTS.md
+
+## Agent setup
+On every fresh clone or worktree, run `nix develop --command just agents-setup`
+before working in this repository. This generates the local tool rules, skills,
+subagents, permissions, and MCP configuration from `.rulesync/`. Start a new agent
+session afterward so newly generated tools can be discovered. `AGENTS.md` and
+`CLAUDE.md` are checked-in bootstrap copies of this rule; edit the source here,
+then regenerate both files.
+
+## Purpose
+Declarative management of K8s workloads on Talos Linux via **ArgoCD**. Single source of truth for all cluster resources.
+
+## Role & Context
+You are **Senior Kubernetes System Architect** and **GitOps Automation Engineer**. Goal: build and maintain a resource-efficient, highly-available cluster. All changes via YAML manifests (Kustomize / HelmReleases), Git commits, and CI.
+
+## Tech Stack (GitOps)
+- **GitOps Controller**: ArgoCD (app-of-apps + ApplicationSets). No Flux.
+- **Ingress**: NGINX Ingress Controller + Cilium CNI.
+- **Secrets**: SOPS + age (KSOPS in ArgoCD repo-server).
+- **Identity**: External Keycloak (OIDC), Realm `bgt` at `https://auth.savar.de/realms/bgt`.
+- **Storage**: Ceph.
+
+## Repository Layout
+```
+├── .rulesync/              # Canonical agent rules, skills, subagents, MCP, permissions (this dir)
+├── clusters/               # ArgoCD entry points (root-app, ApplicationSets)
+├── infrastructure/         # Cluster-wide platform services (ingress, storage, operators)
+├── apps/                   # Application workloads (base + overlays)
+├── docs/                   # Production-readiness, Runbooks, Learnings, Decisions
+├── scripts/                # CI helpers
+└── justfile                # Task runner
+```
+
+## Local Contracts
+- **Manifests**: Prefer Kustomize Base/Overlay. Use `helmCharts:` inflation.
+- **New/bumped chart → inspect the rendered manifest**, don't trust the values file: a
+  chart can silently ignore a values key that isn't in its schema, or ship an HPA you
+  never asked for that voids your `replicaCount` (Collabora scaled to 55 replicas and
+  took the cluster down — `docs/learnings/collabora-hpa-runaway.md`). CI fails on any
+  unallowlisted HPA (`scripts/ci/check-hpa.sh`) and never allows one that targets
+  memory — per-pod memory doesn't fall as replicas rise, so that's a structurally
+  unbounded spiral, not a tuning problem. Autoscale on CPU if at all.
+- **Database Strategy**: Postgres via CNPG operator; MariaDB via mariadb-operator. Dedicated
+  CRs per app in `apps/base/<app>/database.yaml`. Every such CR **must** set
+  `spec.resources` (requests+limits) — without them the pod is BestEffort, OOM-killed
+  first, and invisible to the scheduler's request-based node balancing (MariaDB
+  incident, commit `098d145`) — and **must** pin `spec.image`/`spec.imageName`, or the
+  operator's own default silently picks the DB version out of Renovate's sight. Size
+  requests from a measured `kubectl top`, never a guess (Collabora ran at 830Mi
+  against a 512Mi request). CI enforces both via allowlisted exceptions in
+  `scripts/ci/known-gaps/`; new CRs get no free pass.
+- **Ingress**: Use `nginx.org/*` annotations. Hosts in `cluster-config.yaml`.
+- **Backup**: Daily to Ceph S3 via operator-native backup CRs.
+- **OIDC**: Use external Keycloak clients and app SOPS secrets. Do not add new Authentik blueprints unless the architecture decision changes again.
+- **Agent Safety**: AI agents use GitOps by default. They may inspect the live cluster
+  with read-only credentials, but must not run mutating `kubectl`/`talosctl` commands
+  unless a human explicitly grants write access for a named incident. This is enforced
+  mechanically by the generated tool permissions (`.rulesync/permissions.jsonc`), not
+  only by this prompt.
+
+## Work Guidance
+- Follow Root AGENTS.md for global rules (Caveman, Commit, DOX).
+- Start every non-trivial change from current `main` on a feature branch/worktree.
+- Prefer `nix develop` + `just validate`; do not install tools globally or invent
+  one-off validation commands when a `just` recipe exists.
+- Do not commit kubeconfig, talosconfig, age private keys, API tokens, or plaintext
+  `*.sops.yaml` contents.
+- Do not use floating image tags (`latest`) or `imagePullPolicy: Always`; Talos node
+  reboots must pull reproducible images.
+- Open a PR for generated fixes. Let CI and review gate ArgoCD reconciliation.
+- **Adding Apps**:
+  1. Search official docs.
+  2. Create base with `helmCharts:` + `values.yaml`.
+  3. Add `database.yaml`, `cache.yaml`, `backup.yaml`, `secret.sops.yaml`.
+  4. Create overlay in `apps/overlays/main/`.
+  5. Update `docs/PRODUCTION-READINESS.md` (mandatory).
+- **OIDC Onboarding**: Ask user first. Create or confirm a Keycloak client in Realm `bgt`, set app redirect URIs, then store client secrets in the app `secret.sops.yaml`. Enable app OIDC only after a client/secret match is confirmed.
+
+## Agent Setup & Resources (.rulesync/)
+- `.rulesync/` is the **single source of truth** for agent rules, skills, subagents,
+  MCP servers, and permissions, managed by [rulesync](https://github.com/dyoshikawa/rulesync). The
+  tool-native files are generated. The root `AGENTS.md` and `CLAUDE.md` are tracked
+  bootstrap copies; the other outputs (`.claude/`, `.opencode/`, `.codex/`,
+  `.cursor/`) are gitignored. After changing anything under `.rulesync/`, run
+  `nix develop --command just agents-setup`.
+- **MCP** (`.rulesync/mcp.jsonc`): `keller-kubernetes` connects to the GitOps-managed
+  read-only cluster server. Set `KELLER_KUBERNETES_MCP_AUTH` to the complete
+  `Basic <base64(mcp:password)>` header value in the agent's environment before
+  starting it. Keep the password and generated header value outside the repository.
+- **Skills** (`.rulesync/skills/<id>/SKILL.md`, index below): load on demand, don't
+  dump them into context.
+- **Subagents** (`.rulesync/subagents/<id>.md`, generated into `.claude/agents/`,
+  `.opencode/agents/`, `.codex/agents/`, `.cursor/agents/`):
+  - `manifest-inspector` — render a kustomize/helm dir and audit what ArgoCD would
+    actually apply (HPA, resources, pinned images, namespace labels). Read-only.
+  - `validate-triage` — run the local CI gate and map every failure to the owning
+    file with a concrete fix. Read-only.
+- **Mutation guard** (`.rulesync/permissions.jsonc` → native Claude Code / OpenCode /
+  Codex permission denies) mechanically blocks mutating `kubectl`/`oc`/`talosctl`/
+  `helm`/`argocd app` shell commands — the enforced twin of the Agent Safety rule above
+  and `docs/learnings/agent-command-guardrails.md`. Write access stays behind read-only
+  credentials plus explicit human grant for a named incident.
+
+## Agent Skills Index
+- `add-app` — onboard a new application (base, namespace + labels, database contracts,
+  overlay, PRODUCTION-READINESS).
+- `renovate-bump` — chart/image bumps: rendered-manifest inspection, HPA/image contracts.
+- `write-learning` — write a `docs/learnings/` entry and turn checkable patterns into
+  CI guardrails.
+
+## External Infrastructure (DNS & Public Routing)
+- **Public path**: Seit dem WAN-Cutover am 13.09.2026 leitet der Router `87.191.135.42` die Ports 80/443 direkt an den Cluster-LB **192.168.2.246** (nginx-inc). TLS terminiert pro Domain im Cluster; der fruehere `.15`-Traefik (`192.168.2.15`) ist aus dem Web-Pfad entfernt und VM 107 ist gestoppt. `traefik-edge-potsdam` (`192.168.23.20`) bleibt ein ebenfalls gestoppter DR-Edge und darf nicht als aktiver Pfad angenommen werden.
+- **DNS-Master**: `dns01.jit-creatives.de` (88.198.107.13), BIND9. Zonen unter `/etc/bind/dom/<domain>.db` mit `$INCLUDE`-Fragmenten (`.a`, `.aaaa`, `.cn`, `.mx`, `.ns`, `.rr`); DNSSEC inline-signing.
+  Workflow: Fragment editieren → Serial in `.db` bumpen (YYYYMMDDNN) → `named-checkzone` → `rndc reload <zone>`.
+- **⚠️ Delegation prüfen, bevor du dns01 editierst**: Nicht jede Zone auf dns01 ist öffentlich autoritativ. Z. B. ist `gemeinsam-fuer-halbe.de` an der Registry zu **Cloudflare** delegiert (native CF-Zone, kein AXFR von dns01) — Änderungen dort zusätzlich im CF-Dashboard nötig. Check: `dig +noall +authority NS <zone> @a.nic.de`.
+- **Secondaries** von dns01: dns02, dns03, ClouDNS (pns31–34 — auch Basis für cert-manager DNS-01).
+- **web03.jit-creatives.de** (88.198.107.11): Alt-Webserver, serviert nur noch Apex-301-Redirects auf www.
+- **Betriebsdoku** immer zusätzlich nach cfgmgmt01 kopieren: `192.168.23.19:/root/ansible/kellerio-docs/`.
+
+## Operational Learnings
+- Check `docs/learnings/` before complex changes.
+- Create new learning if migration/action had unexpected side effects.
+
+## Index
+- [clusters/AGENTS.md](clusters/AGENTS.md) — ArgoCD bootstrap & entry points
+- [infrastructure/AGENTS.md](infrastructure/AGENTS.md) — cluster-wide platform services
+- [apps/AGENTS.md](apps/AGENTS.md) — application workloads
+- [docs/AGENTS.md](docs/AGENTS.md) — project documentation
+- [scripts/AGENTS.md](scripts/AGENTS.md) — CI and guardrail helper scripts

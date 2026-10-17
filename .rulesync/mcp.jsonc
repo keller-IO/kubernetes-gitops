@@ -1,0 +1,15 @@
+{
+  "$schema": "https://github.com/dyoshikawa/rulesync/releases/latest/download/mcp-schema.json",
+  "mcpServers": {
+    // Uses the GitOps-managed, read-only server and its restricted ServiceAccount.
+    // Set KELLER_KUBERNETES_MCP_AUTH to the complete "Basic <base64>" value
+    // outside this repository before starting an agent. No credential is stored here.
+    "keller-kubernetes": {
+      "type": "http",
+      "url": "https://mcp.jit.services/mcp",
+      "headers": {
+        "Authorization": "${KELLER_KUBERNETES_MCP_AUTH}"
+      }
+    }
+  }
+}
