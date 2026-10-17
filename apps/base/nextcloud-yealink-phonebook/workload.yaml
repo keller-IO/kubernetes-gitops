@@ -25,7 +25,7 @@ spec:
       containers:
         - name: phonebook
           # renovate: image=python
-          image: python:3.13.5-alpine3.22@sha256:37b14db89f587f9eaa890e4a442a3fe55db452b69cca1403cc730bd0fbdc8aaf
+          image: python:3.14.5-alpine3.22@sha256:6b91e66ab2a880ce9ca5a1b91c70f45963ff71ff68268df056336e1a657d5efd
           command: [python, /app/app.py]
           ports:
             - name: http
