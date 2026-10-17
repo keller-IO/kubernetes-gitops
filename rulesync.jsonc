@@ -1,8 +1,8 @@
 {
   "$schema": "https://github.com/dyoshikawa/rulesync/releases/latest/download/config-schema.json",
 
-  // Single source of truth lives in .rulesync/; the tool-native files are
-  // generated and gitignored (see .gitignore). Regenerate with `just agents-setup`.
+  // Single source of truth lives in .rulesync/. Root AGENTS.md and CLAUDE.md
+  // are tracked bootstrap outputs; other tool-native files are gitignored.
   "targets": ["claudecode", "codexcli", "cursor", "opencode"],
 
   "features": ["rules", "subagents", "skills", "permissions", "mcp"],

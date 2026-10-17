@@ -56,8 +56,8 @@ renovate-check:
     bash scripts/ci/check-renovate.sh
 
 # Regenerate the tool-native agent configs (AGENTS.md, CLAUDE.md, .claude/,
-# .opencode/, .codex/, .cursor/) from the .rulesync/ source of truth. The
-# generated files are gitignored; `rulesync` comes from the nix dev shell.
+# .opencode/, .codex/, .cursor/) from the .rulesync/ source of truth. Root
+# AGENTS.md and CLAUDE.md are tracked bootstraps; other outputs are ignored.
 agents-setup:
     rulesync generate
 
