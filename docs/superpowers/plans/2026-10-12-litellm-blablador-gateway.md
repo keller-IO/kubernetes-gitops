@@ -257,6 +257,7 @@ Use `unittest`, FastAPI `TestClient`, the LiteLLM proxy, and loopback HTTP stubs
 
 ```python
 def test_callback_loads_from_config_directory_and_returns_http_400(): ...
+def test_stateless_auth_rejections_never_call_blablador(): ...
 def test_proxy_snapshot_matches_pinned_injected_fields(): ...
 def test_stripped_control_fields_are_ineffective(): ...
 def test_success_calls_blablador_once(): ...
@@ -275,7 +276,7 @@ Expected before completing the harness: the first unimplemented assertion fails.
 
 - [ ] **Step 3: Complete the loopback stubs and assertions**
 
-Return controlled OpenAI-compatible success, 400, 401, 429, 500, and a stream that emits one chunk before failing. Require one attempt for every case and no retry after emitted output.
+Configure a synthetic master key in the isolated harness. Require missing credentials to return 401 and a supplied non-master key to return 400 with `no_db_connection`, with zero loopback-stub attempts for both chat requests. Return controlled OpenAI-compatible success, 400, 401, 429, 500, and a stream that emits one chunk before failing. Require one attempt for every upstream case and no retry after emitted output.
 
 - [ ] **Step 4: Verify and document the pinned contract**
 
@@ -518,7 +519,7 @@ Push/create/merge only with explicit authorization. Wait for Secret sync, old po
 
 - [ ] **Step 4: Prove new-key acceptance and old-key rejection**
 
-At test time, pipe the current encrypted Secret and `git show "${ROTATION_BASE}:apps/base/litellm/secret.sops.yaml"` separately through `sops --decrypt /dev/stdin`, select only `LITELLM_MASTER_KEY`, and capture each value in a protected shell variable. From `hermes01`, require `/v1/models` success with the current key and HTTP 400 with structural type `no_db_connection` for the base key. Require rejection before provider routing. Pass Authorization through curl config stdin, not argv; print neither key nor header, then unset both variables.
+At test time, pipe the current encrypted Secret and `git show "${ROTATION_BASE}:apps/base/litellm/secret.sops.yaml"` separately through `sops --decrypt /dev/stdin`, select only `LITELLM_MASTER_KEY`, and capture each value in a protected shell variable. From `hermes01`, require `/v1/models` success with the current key and HTTP 400 with structural type `no_db_connection` for the base key. Use the exact-image stateless-auth chat test and its zero-attempt loopback counter as the structural proof that this rejection occurs before provider routing; the live models request proves the rotated deployment rejects the base key without generating provider content. Pass Authorization through curl config stdin, not argv; print neither key nor header, then unset both variables.
 
 - [ ] **Step 5: Close documentation and readiness**
 

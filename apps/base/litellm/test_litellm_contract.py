@@ -24,6 +24,8 @@ from litellm.proxy.proxy_server import app, initialize
 
 MODEL = "hermes-blablador"
 DEPLOYMENT_ID = "hermes-blablador"
+MASTER_KEY = "sk-" + ("a" * 64)
+INVALID_MASTER_KEY = "sk-" + ("b" * 64)
 WORK_DIR = Path(__file__).resolve().parent
 EXPECTED_STRIPPED_ROOT_CONTROLS = frozenset(
     {
@@ -226,6 +228,8 @@ model_list:
 router_settings:
   num_retries: 0
   disable_cooldowns: true
+general_settings:
+  master_key: {MASTER_KEY}
 litellm_settings:
   drop_params: false
   callbacks: request_policy.hermes_request_policy
@@ -248,12 +252,19 @@ litellm_settings:
         cls.callback_path = Path(
             cls.callback.__class__.async_pre_call_hook.__code__.co_filename
         ).resolve()
-        cls.client = TestClient(app, raise_server_exceptions=False)
+        cls.client = TestClient(
+            app,
+            headers={"Authorization": f"Bearer {MASTER_KEY}"},
+            raise_server_exceptions=False,
+        )
+        cls.unauthenticated_client = TestClient(app, raise_server_exceptions=False)
 
     @classmethod
     def tearDownClass(cls):
         if hasattr(cls, "client"):
             cls.client.close()
+        if hasattr(cls, "unauthenticated_client"):
+            cls.unauthenticated_client.close()
         if hasattr(cls, "server"):
             cls.server.shutdown()
             cls.server.server_close()
@@ -275,6 +286,25 @@ litellm_settings:
         attempts, deployment_ids = self.server.state.snapshot()
         self.assertEqual(attempts, 1)
         self.assertEqual(deployment_ids, (DEPLOYMENT_ID,))
+
+    def test_stateless_auth_rejections_never_call_blablador(self):
+        response = self.unauthenticated_client.post(
+            "/v1/chat/completions",
+            json=self.request_body(),
+        )
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(self.server.state.snapshot()[0], 0)
+
+        response = self.unauthenticated_client.post(
+            "/v1/chat/completions",
+            headers={"Authorization": f"Bearer {INVALID_MASTER_KEY}"},
+            json=self.request_body(),
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["error"]["type"], "no_db_connection")
+        self.assertEqual(self.server.state.snapshot()[0], 0)
 
     def test_callback_loads_from_config_directory_and_returns_http_400(self):
         self.assertEqual(self.callback_path.parent, self.config_dir)

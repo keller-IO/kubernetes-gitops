@@ -57,10 +57,13 @@ Verified on 2026-10-14 against the immutable image reference above with the
 container network disabled. The test process used only a loopback
 OpenAI-compatible stub.
 
-- Status: pass (7/7 contract tests).
+- Status: pass (8/8 contract tests).
 - Callback loading: pass from its config directory without relying on that
   directory being in the Python module search path; a rejected provider field
   returned HTTP 400 before any upstream attempt.
+- Stateless authentication: a missing key returned HTTP 401 and a supplied
+  non-master key returned HTTP 400 with `no_db_connection`; the loopback stub
+  recorded zero upstream attempts for both chat requests.
 - Normalized `proxy_server_request` fields: `arrival_time`, `body`,
   `credential_fields`, `headers`, `method`, `url`.
 - Normalized minimal body fields: `messages`, `metadata`, `model`.
@@ -148,8 +151,9 @@ provider.
   `$realip_remote_addr`.
 - API boundary from `hermes01`: the valid-key model and chat routes returned
   HTTP 200. Missing credentials returned 401. A supplied, well-formed but
-  non-master key returned 400 with structural type `no_db_connection` before
-  provider routing, as specified for the stateless LiteLLM mode.
+  non-master key returned 400 with structural type `no_db_connection`. The
+  exact-image stateless-auth contract independently proved zero provider
+  attempts for both rejection paths using the chat route.
 - Route boundary: disallowed methods returned 405; appended slashes, child
   paths, `/`, health, documentation, OpenAPI, UI, key, and management paths
   returned 404.
