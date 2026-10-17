@@ -21,6 +21,9 @@ so the generated tools are discovered. The tracked root `AGENTS.md` and
 - For a new app, load `add-app`; for a chart or image bump, load
   `renovate-bump`. Inspect **rendered** manifests for new or bumped charts,
   using `manifest-inspector` when useful. Values alone do not prove the result.
+- For infrastructure manifests, cross-cutting Kubernetes changes, or a safety
+  review, load `kubernetes-skill` to check security, resources, exposure, RBAC,
+  rollout, and API drift.
 - New app database CRs use CNPG for Postgres or mariadb-operator for MariaDB.
   Set requests and limits in `spec.resources`, pin `spec.image`/`spec.imageName`,
   and size requests from measured usage. Existing exceptions in
@@ -67,6 +70,7 @@ so the generated tools are discovered. The tracked root `AGENTS.md` and
   `KELLER_KUBERNETES_MCP_AUTH` outside the repository to the complete
   `Basic <base64(mcp:password)>` header value before starting the agent.
 - Available workflows: `add-app` for app onboarding, `renovate-bump` for
-  dependencies, `write-learning` for incidents; `manifest-inspector` audits
-  rendered resources, `validate-triage` maps CI failures to files, and
-  `sweeper` returns compact `path:line` evidence for mechanical lookups.
+  dependencies, `kubernetes-skill` for manifest safety, `write-learning` for
+  incidents; `manifest-inspector` audits rendered resources,
+  `validate-triage` maps CI failures to files, and `sweeper` returns compact
+  `path:line` evidence for mechanical lookups.
