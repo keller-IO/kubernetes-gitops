@@ -1,6 +1,6 @@
 # ADR 0006 - LiteLLM fuer Blablador mit Hermes-Codex-Fallback
 
-- **Status:** Angenommen, Umsetzung ausstehend
+- **Status:** Angenommen, Gateway umgesetzt; Hermes-Aktivierung ausstehend
 - **Datum:** 2026-10-12
 - **Freigegeben:** 2026-10-12
 - **Ersetzt:** ADR 0005
@@ -370,16 +370,16 @@ Mangels Datenbank und Volumes existieren weder Datenmigration noch Restore.
 
 ## Rollout-Gates
 
-- [ ] `alias-code` besteht Chat-, Streaming- und Tool-Calling-Contract.
-- [ ] Blablador-Key liegt SOPS-verschluesselt im GitOps-Repo.
+- [x] `alias-code` besteht Chat-, Streaming- und Tool-Calling-Contract.
+- [x] Blablador-Key liegt SOPS-verschluesselt im GitOps-Repo.
 - [ ] Dedizierter Master-Key liegt in SOPS und Ansible Vault.
-- [ ] Image-Provenienz, Digest und Vulnerability-Scan sind akzeptiert.
-- [ ] Request-Policy und gepinnter LiteLLM-Contract sind gruen.
-- [ ] Quell-IP-, XFF-Spoofing-, Pfad-/Methoden-, Body-, Rate- und
+- [x] Image-Provenienz, Digest und Vulnerability-Scan sind akzeptiert.
+- [x] Request-Policy und gepinnter LiteLLM-Contract sind gruen.
+- [x] Quell-IP-, XFF-Spoofing-, Pfad-/Methoden-, Body-, Rate- und
       Admission-Tests sind gruen.
-- [ ] Cilium erlaubt nur Cluster-DNS und Blablador HTTPS mit FQDN plus SNI.
-- [ ] Chat, Streaming und Tool Call funktionieren live ueber den Gateway.
-- [ ] Master-Key-Rotation akzeptiert den neuen und verweigert den alten Key.
+- [x] Cilium erlaubt nur Cluster-DNS und Blablador HTTPS mit FQDN plus SNI.
+- [x] Chat, Streaming und Tool Call funktionieren live ueber den Gateway.
+- [x] Master-Key-Rotation akzeptiert den neuen und verweigert den alten Key.
 - [ ] Hermes verwendet Blablador als Primaerpfad und Codex sichtbar als
       Fallback; danach kehrt ein neuer Turn zu Blablador zurueck.
 - [ ] Hermes-Rollback auf Codex wurde aus Ansible erfolgreich geuebt.
