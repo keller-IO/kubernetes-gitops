@@ -23,7 +23,7 @@ spec:
         app.kubernetes.io/component: server
         network-policy.jit.land/identity: litellm
       annotations:
-        litellm.jit.land/secret-revision: v1
+        litellm.jit.land/secret-revision: v2
     spec:
       automountServiceAccountToken: false
       securityContext:

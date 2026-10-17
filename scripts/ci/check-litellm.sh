@@ -97,7 +97,7 @@ assert_manifest_eq "$config.general_settings | keys | sort | join(\",\")" 'admis
 assert_manifest_eq "$deployment.metadata.annotations[\"argocd.argoproj.io/sync-wave\"]" 0 'Deployment sync wave must be zero'
 assert_manifest_eq "$deployment.spec.replicas" 1 'Deployment must have one replica'
 assert_manifest_eq "$deployment.spec.strategy.type" Recreate 'Deployment strategy must be Recreate'
-assert_manifest_eq "$deployment.spec.template.metadata.annotations[\"litellm.jit.land/secret-revision\"]" v1 'pod must carry secret revision v1'
+assert_manifest_eq "$deployment.spec.template.metadata.annotations[\"litellm.jit.land/secret-revision\"]" v2 'pod must carry secret revision v2'
 assert_manifest_eq "$deployment.spec.template.spec.automountServiceAccountToken" false 'service account token automount must be disabled'
 assert_manifest_eq "$deployment.spec.template.spec.securityContext.runAsNonRoot" true 'pod must require non-root execution'
 assert_manifest_eq "$deployment.spec.template.spec.securityContext.runAsUser" 65534 'pod UID must be 65534'
