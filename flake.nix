@@ -35,8 +35,11 @@
         # .codex/, .cursor/) are generated from the committed .rulesync/ source via
         # `just agents-setup`. The npm tarball ships a prebuilt dist/, so only its
         # runtime dependencies are installed (devDependencies/scripts stripped in
-        # postPatch); the lockfile lives in nix/rulesync/ (the tarball has none).
-        # Keep the version in sync with the rulesync.jsonc `$schema` URL generation.
+        # postPatch) and the lockfile lives in nix/rulesync/ (the tarball has none).
+        # On a version bump update `version`, the `src` hash, `npmDepsHash`, and
+        # regenerate nix/rulesync/package-lock.json (`npm install
+        # --package-lock-only` in the unpacked tarball with devDependencies and
+        # scripts removed, e.g. `jq 'del(.devDependencies, .scripts)'`).
         rulesync = pkgs.buildNpmPackage rec {
           pname = "rulesync";
           version = "36.0.2";

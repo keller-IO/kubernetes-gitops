@@ -24,9 +24,11 @@ All paths are repo-root-relative.
      `scripts/ci/known-gaps/hpa-allowlist.txt`); never autoscale on memory.
    - Database CRs keep pinned images and `spec.resources`
      (`scripts/ci/known-gaps/missing-resources.txt`,
-     `unpinned-images.txt` — legacy exceptions only, no new entries).
+     `scripts/ci/known-gaps/unpinned-images.txt` — legacy exceptions only, no
+     new entries).
    - No `:latest`, no `imagePullPolicy: Always`.
-5. Run `just validate` before opening or updating the PR.
+5. Run `just validate` and `scripts/ci/check-hpa.sh` before opening or updating
+   the PR; the HPA check is a separate CI step.
 6. Chart **major** bumps: read the upstream migration notes first. If the bump
    needs a manual cluster or DB migration step, add a `docs/learnings/` entry
    (skill `write-learning`) and update `docs/PRODUCTION-READINESS.md`.
