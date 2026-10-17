@@ -8,6 +8,8 @@ database:
   type: sqlite
 persistence:
   enabled: true
+  # PVC liegt in pvc.yaml (Prune=false/Delete=false), nicht im Chart.
+  existingClaim: goloom-data
   storageClass: ceph-rbd
   accessMode: ReadWriteOnce
   size: 5Gi

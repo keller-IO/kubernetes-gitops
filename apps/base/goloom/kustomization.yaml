@@ -8,5 +8,6 @@ resources:
   - issuer.yaml
   - backup-cronjob.yaml
   - service-account.yaml
+  - pvc.yaml
 generators:
   - ./secret-generator.yaml

@@ -37,3 +37,6 @@ Format und Kriterien: siehe AGENTS.md → „Operational Learnings".
 - [*.jit.services: DNS-01 macht Wildcard-Namen unauflösbar](wildcard-dns01-empty-non-terminal.md)
   — `_acme-challenge.<name>` macht `<name>` zum leeren Knoten, die Wildcard greift nicht;
   `NODATA` bleibt bis zu 3600 s im Cache. Fix: expliziter A-Record je Name.
+- [ArgoCD prunt die PVC beim Quellenwechsel](argocd-prune-pvc-bei-quellenwechsel.md)
+  — Umstellung auf eine Multi-Source-Application loeschte `goloom-data`; PVCs
+  zustandsbehafteter Apps gehoeren mit `Prune=false,Delete=false` in den eigenen Base.
