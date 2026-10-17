@@ -308,7 +308,8 @@ alertmanager:
 **Offen:**
 - [ ] `htpasswd`-Wert in `secret.sops.yaml` generieren + verschlüsseln:
       `htpasswd -nb mcp <starkes-passwort>` → in `stringData.htpasswd` eintragen.
-- [ ] Claude Code konfigurieren: `Authorization: Basic base64(mcp:<passwort>)` als Header setzen.
+- [ ] Fuer den Rulesync-MCP-Preset `KELLER_KUBERNETES_MCP_AUTH` in der Agent-Umgebung
+      auf `Basic base64(mcp:<passwort>)` setzen; die Zugangsdaten nicht committen.
 - [x] RBAC read-only halten: keine Write-Verben, kein Secret-Zugriff. CI prüft das über
       `just guardrails`.
 

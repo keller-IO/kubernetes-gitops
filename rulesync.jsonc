@@ -1,0 +1,21 @@
+{
+  "$schema": "https://github.com/dyoshikawa/rulesync/releases/latest/download/config-schema.json",
+
+  // Single source of truth lives in .rulesync/. Root AGENTS.md and CLAUDE.md
+  // are tracked bootstrap outputs; other tool-native files are gitignored.
+  "targets": ["claudecode", "codexcli", "cursor", "opencode"],
+
+  "features": ["rules", "subagents", "skills", "permissions", "mcp"],
+
+  "outputRoots": ["."],
+
+  // Remove Rulesync-managed files it no longer writes before regenerating.
+  "delete": true,
+
+  // `rulesync gitignore` only emits entries for the configured targets.
+  "gitignoreTargetsOnly": true,
+
+  "verbose": false,
+  "silent": false,
+  "global": false
+}
