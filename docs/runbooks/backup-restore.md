@@ -91,6 +91,14 @@ docker exec $G /garage key create backup-<app>
 docker exec $G /garage bucket allow --read --write backup-<app> --key backup-<app>
 ```
 
+Quota dimensionieren: 20 GiB passt nur für kleine DBs. Faustregel: Quota =
+(Retention ÷ Base-Intervall + 1) × komprimierte Base + WAL des Retention-Fensters
+plus 50 % Reserve. Mastodon (21 GB DB) nutzt 100 GiB bei wöchentlichen Bases.
+Ein volles Bucket zeigt sich als `barman-cloud-wal-archive: exit status 4`
+(Base-Backups und WAL-Archiving scheitern, pg_wal wächst). WAL aus einer früheren
+Cluster-Inkarnation unter demselben serverName wird nie gebraucht, bleibt aber bis
+zur Retention liegen; am 2026-10-17 wurden so 11,7 GB nach Freigabe manuell entfernt.
+
 Secret befüllen, ohne dass der Klartext im Terminal oder auf der Platte landet
 (im Repo-Root ausführen; `.sops.yaml` greift über `--filename-override`):
 ```bash

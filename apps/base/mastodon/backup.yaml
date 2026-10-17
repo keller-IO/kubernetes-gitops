@@ -4,7 +4,11 @@ metadata:
   name: mastodon-pg
   namespace: mastodon
 spec:
-  schedule: "0 0 2 * * *" # 6-field (CNPG = seconds first): daily 02:00
+  # 6-field (CNPG = seconds first): woechentlich sonntags 02:00. Jede Base ist
+  # eine volle Kopie (~6 GB gz) ueber das VPN nach Potsdam; taegliche Bases
+  # braeuchten bei 30d Retention ~190 GB. Woechentlich + kontinuierliches WAL
+  # haelt das 30-Tage-PITR-Fenster bei ~5 Bases + ~15 GB WAL = ca. 50 GB.
+  schedule: "0 0 2 * * 0"
   backupOwnerReference: self
   cluster:
     name: mastodon-pg
