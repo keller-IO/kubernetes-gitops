@@ -11,5 +11,29 @@
         "Authorization": "${KELLER_KUBERNETES_MCP_AUTH}"
       }
     }
+  },
+  // Codex needs its native MCP approval table; Rulesync's canonical MCP
+  // permission categories do not map to Codex permission profiles.
+  "codexcli": {
+    "mcpServers": {
+      "keller-kubernetes": {
+        "type": "http",
+        "url": "https://mcp.jit.services/mcp",
+        "headers": {
+          "Authorization": "${KELLER_KUBERNETES_MCP_AUTH}"
+        },
+        "default_tools_approval_mode": "prompt",
+        "codexcliTools": {
+          "namespaces_list": { "approval_mode": "approve" },
+          "events_list": { "approval_mode": "approve" },
+          "pods_list": { "approval_mode": "approve" },
+          "pods_list_in_namespace": { "approval_mode": "approve" },
+          "pods_get": { "approval_mode": "approve" },
+          "pods_log": { "approval_mode": "approve" },
+          "resources_list": { "approval_mode": "approve" },
+          "resources_get": { "approval_mode": "approve" }
+        }
+      }
+    }
   }
 }

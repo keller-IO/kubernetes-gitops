@@ -83,5 +83,46 @@
       "argocd app rotate *": "deny",
       "argocd app undelete *": "deny"
     }
+  },
+  // Routine diagnosis via the read-only Kubernetes MCP server. Exact tool
+  // names match kubernetes-mcp-server v0.0.61. Server --read-only and RBAC
+  // remain the cluster access boundary. Codex approvals live in mcp.jsonc.
+  "claudecode": {
+    "permission": {
+      "mcp__keller-kubernetes__namespaces_list": { "*": "allow" },
+      "mcp__keller-kubernetes__events_list": { "*": "allow" },
+      "mcp__keller-kubernetes__pods_list": { "*": "allow" },
+      "mcp__keller-kubernetes__pods_list_in_namespace": { "*": "allow" },
+      "mcp__keller-kubernetes__pods_get": { "*": "allow" },
+      "mcp__keller-kubernetes__pods_log": { "*": "allow" },
+      "mcp__keller-kubernetes__resources_list": { "*": "allow" },
+      "mcp__keller-kubernetes__resources_get": { "*": "allow" }
+    }
+  },
+  "cursor": {
+    "permission": {
+      "mcp__keller-kubernetes__namespaces_list": { "*": "allow" },
+      "mcp__keller-kubernetes__events_list": { "*": "allow" },
+      "mcp__keller-kubernetes__pods_list": { "*": "allow" },
+      "mcp__keller-kubernetes__pods_list_in_namespace": { "*": "allow" },
+      "mcp__keller-kubernetes__pods_get": { "*": "allow" },
+      "mcp__keller-kubernetes__pods_log": { "*": "allow" },
+      "mcp__keller-kubernetes__resources_list": { "*": "allow" },
+      "mcp__keller-kubernetes__resources_get": { "*": "allow" }
+    }
+  },
+  "opencode": {
+    "permission": {
+      // OpenCode defaults to allow; prompt for other tools from this server.
+      "keller-kubernetes_*": "ask",
+      "keller-kubernetes_namespaces_list": "allow",
+      "keller-kubernetes_events_list": "allow",
+      "keller-kubernetes_pods_list": "allow",
+      "keller-kubernetes_pods_list_in_namespace": "allow",
+      "keller-kubernetes_pods_get": "allow",
+      "keller-kubernetes_pods_log": "allow",
+      "keller-kubernetes_resources_list": "allow",
+      "keller-kubernetes_resources_get": "allow"
+    }
   }
 }
