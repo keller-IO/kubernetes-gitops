@@ -37,6 +37,7 @@
           # Tooling required by validation and cluster operations.
           packages = with pkgs; [
             just # task runner
+            renovate # dependency extraction and configuration validation
             kustomize # manifest rendering
             kubeconform # schema validation
             kubernetes-helm # `kustomize build --enable-helm`
