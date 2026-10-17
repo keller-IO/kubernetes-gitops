@@ -126,3 +126,51 @@ network and therefore fails the hook if broad public egress is available. The
 private, metadata, unrelated-DNS, and wrong-SNI cases remain defense-in-depth
 checks; their failures can also originate outside Cilium, so static exact-policy
 validation and live Cilium policy evidence remain mandatory.
+
+## Live GitOps acceptance before key rotation
+
+Verified on 2026-10-17 while Hermes continued to use Codex as its primary
+provider.
+
+- Git revision: `daaa517af7e9277f0ede5e0be46121d0af0d5a17`.
+- ArgoCD: `app-litellm` was `Synced` and `Healthy`; its operation succeeded and
+  recorded the `litellm-network-policy-probe` PostSync hook as successful.
+- Runtime: one Deployment replica was Ready and Available; the only server pod
+  was Running and Ready with zero restarts. `Certificate/litellm-tls` was Ready.
+- Image digest:
+  `sha256:37066242e6b8327fdd627682a66a9ae2a599553b4d5a84c905c6d8b9eb35c01e`.
+- Cilium: `enable-l7-proxy=true`; `CiliumNetworkPolicy/litellm` was Valid with
+  exactly the declared DNS rule and Blablador TCP/443 FQDN plus matching SNI
+  rule. Blablador resolved through `zam12059.zam.kfa-juelich.de` to
+  `134.94.198.59` during acceptance.
+- Source boundary: a non-Hermes LAN source received HTTP 403 both normally and
+  with forged `X-Forwarded-For: 192.168.2.37`. The rendered source check uses
+  `$realip_remote_addr`.
+- API boundary from `hermes01`: the valid-key model and chat routes returned
+  HTTP 200. Missing credentials returned 401. A supplied, well-formed but
+  non-master key returned 400 with structural type `no_db_connection` before
+  provider routing, as specified for the stateless LiteLLM mode.
+- Route boundary: disallowed methods returned 405; appended slashes, child
+  paths, `/`, health, documentation, OpenAPI, UI, key, and management paths
+  returned 404.
+- Limits: a body larger than 1 MiB returned 413; the rate/burst test returned
+  429 on request 12; the ninth concurrent authorized request returned 503 when
+  four in-flight and four queued requests exhausted admission capacity. The
+  ingress rate limiter was independently observed returning 429, distinguishing
+  the admission 503 from rate limiting.
+- Gateway provider compatibility: model discovery returned the sole deployment
+  ID `hermes-blablador` in 0.040 seconds. Ordinary chat passed its response
+  schema in 8.438 seconds and carried the same deployment ID in the LiteLLM
+  response metadata. Streaming produced 34 valid chunks plus the terminal
+  marker in 2.346 seconds. The deterministic forced-tool response passed its
+  function-call and JSON-argument shape in 4.084 seconds.
+- Retry boundary: the deployed configuration has no fallback and
+  `num_retries: 0`; the exact-image proxy contract proves one upstream attempt
+  for success and controlled errors, including failure after a first streaming
+  chunk. No second upstream path exists in the accepted runtime configuration.
+
+The live test output contained only status, latency, count, field-shape, and
+deployment metadata. It contained no credentials, prompts, responses, request
+identifiers, tool argument values, or provider-generated content. Gateway
+readiness remains open only for the Task 8 master-key rotation and old-key
+rejection proof.
