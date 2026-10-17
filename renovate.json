@@ -280,6 +280,14 @@
         "kubernetes-sigs/kustomize"
       ],
       "extractVersion": "^kustomize/v(?<version>.+)$"
+    },
+    {
+      "description": "CNPG timestamped system images: compare build dates as versions while keeping the OS variant compatible.",
+      "matchPackageNames": [
+        "ghcr.io/cloudnative-pg/postgresql"
+      ],
+      "matchCurrentValue": "/-\\d+-system-/",
+      "versioning": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)-(?<build>\\d+)-(?<compatibility>system-[a-z0-9-]+)$"
     }
   ]
 }
