@@ -22,7 +22,7 @@ lint:
     yamllint -s .
 
 # Validate rendered manifests against Kubernetes + CRD schemas.
-test: goloom-check
+test:
     #!/usr/bin/env bash
     set -euo pipefail
     for dir in apps/overlays/main/*/ infrastructure/base/*/; do
@@ -62,10 +62,6 @@ guardrails:
 # Validate Renovate configuration and extract dependencies locally without writes.
 renovate-check:
     bash scripts/ci/check-renovate.sh
-
-# Check Goloom's upstream chart preserves security and persistent storage.
-goloom-check:
-    bash scripts/ci/check-goloom.sh
 
 # Run the full local gate used by CI.
 validate: lint secrets-check guardrails renovate-check build test

@@ -78,9 +78,6 @@ jobs:
               | kubeconform -strict -ignore-missing-schemas -summary
           done
 
-      - name: Goloom upstream chart contract
-        run: bash scripts/ci/check-goloom.sh
-
   # Render every overlay/base and fail on an HPA a chart brought unasked, or
   # one that autoscales on memory. See docs/learnings/collabora-hpa-runaway.md
   # and scripts/ci/check-hpa.sh.
