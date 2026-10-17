@@ -55,6 +55,12 @@ guardrails:
 renovate-check:
     bash scripts/ci/check-renovate.sh
 
+# Regenerate the tool-native agent configs (AGENTS.md, CLAUDE.md, .claude/,
+# .opencode/, .codex/, .cursor/) from the .rulesync/ source of truth. The
+# generated files are gitignored; `rulesync` comes from the nix dev shell.
+agents-setup:
+    rulesync generate
+
 # Run the full local gate used by CI.
 validate: lint secrets-check guardrails renovate-check build test
 

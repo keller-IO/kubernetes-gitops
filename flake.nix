@@ -29,8 +29,43 @@
           dontBuild = true;
           installPhase = "install -Dm755 ksops $out/bin/ksops";
         };
+
+        # rulesync is not packaged in nixpkgs — vendor the published npm CLI so the
+        # tool-native agent configs (AGENTS.md, CLAUDE.md, .claude/, .opencode/,
+        # .codex/, .cursor/) are generated from the committed .rulesync/ source via
+        # `just agents-setup`. The npm tarball ships a prebuilt dist/, so only its
+        # runtime dependencies are installed (devDependencies/scripts stripped in
+        # postPatch); the lockfile lives in nix/rulesync/ (the tarball has none).
+        # Keep the version in sync with the rulesync.jsonc `$schema` URL generation.
+        rulesync = pkgs.buildNpmPackage rec {
+          pname = "rulesync";
+          version = "36.0.2";
+
+          src = pkgs.fetchurl {
+            url = "https://registry.npmjs.org/rulesync/-/rulesync-${version}.tgz";
+            hash = "sha256-65EOUZnMTsnvAjQgmcHb+isngaalnGK9Xw75+cWbTWg=";
+          };
+
+          postPatch = ''
+            cp ${./nix/rulesync/package-lock.json} package-lock.json
+            ${pkgs.jq}/bin/jq 'del(.devDependencies, .scripts)' package.json > package.json.tmp
+            mv package.json.tmp package.json
+          '';
+
+          dontNpmBuild = true; # dist/ is already built upstream
+          npmDepsHash = "sha256-8vIFR1rmDvAx0ieAVmK7BiuEYsGR7VfbRhzRzP4qMN8=";
+
+          meta = {
+            description = "Unified AI rules management CLI — generates tool-native agent configs";
+            homepage = "https://rulesync.dyoshikawa.com";
+            license = pkgs.lib.licenses.mit;
+            mainProgram = "rulesync";
+          };
+        };
       in
       {
+        packages.rulesync = rulesync;
+
         devShells.default = pkgs.mkShell {
           name = "keller.io";
 
@@ -54,6 +89,7 @@
             yq-go # query, update, and inspect YAML
             podman # run pinned container images for contract tests
             argocd # inspect ArgoCD state
+            rulesync # generate tool-native agent configs from .rulesync/
           ];
 
           shellHook = ''

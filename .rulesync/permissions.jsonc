@@ -1,0 +1,87 @@
+{
+  // Runtime enforcement of the Agent Safety rule (rules/overview.md) and
+  // docs/learnings/agent-command-guardrails.md: an agent may inspect the live
+  // cluster read-only, but must not mutate it. rulesync turns these into native
+  // permission rules per tool — Claude Code `Bash(<pattern>)`, OpenCode
+  // `permission.bash`, Cursor `Shell(<pattern>)` and Codex `prefix_rule(...)`.
+  // A deny always outranks an allow; read-only verbs are left untouched.
+  //
+  // Patterns are deliberately the lowest common denominator: `<tool> <verb> *`
+  // (literal words plus a trailing wildcard). Codex matches each word as a
+  // literal token and cannot translate a glob inside or before a word
+  // (`kubectl delete*`, `kubectl -* delete *`), so such patterns are dropped
+  // there — and a dropped deny is no protection. Keeping every entry in this
+  // shape means all four tools enforce the same list.
+  //
+  // Residual gap: global flags *before* the verb (`kubectl -n prod delete pod x`,
+  // `helm -n x upgrade`) cannot be expressed as a Codex prefix, so no tool is
+  // given that rule. The real control remains the read-only kubeconfig; this
+  // list is defence in depth.
+  "permission": {
+    "bash": {
+      // kubectl — mutating verbs
+      "kubectl apply *": "deny",
+      "kubectl create *": "deny",
+      "kubectl replace *": "deny",
+      "kubectl delete *": "deny",
+      "kubectl patch *": "deny",
+      "kubectl edit *": "deny",
+      "kubectl scale *": "deny",
+      "kubectl label *": "deny",
+      "kubectl annotate *": "deny",
+      "kubectl set *": "deny",
+      "kubectl drain *": "deny",
+      "kubectl cordon *": "deny",
+      "kubectl uncordon *": "deny",
+      "kubectl taint *": "deny",
+      "kubectl rollout *": "deny",
+      "kubectl cp *": "deny",
+
+      // oc — mutating verbs
+      "oc apply *": "deny",
+      "oc create *": "deny",
+      "oc replace *": "deny",
+      "oc delete *": "deny",
+      "oc patch *": "deny",
+      "oc edit *": "deny",
+      "oc scale *": "deny",
+      "oc label *": "deny",
+      "oc annotate *": "deny",
+      "oc set *": "deny",
+      "oc drain *": "deny",
+      "oc cordon *": "deny",
+      "oc uncordon *": "deny",
+      "oc taint *": "deny",
+      "oc rollout *": "deny",
+      "oc cp *": "deny",
+
+      // talosctl — node/cluster mutation
+      "talosctl apply-config *": "deny",
+      "talosctl patch *": "deny",
+      "talosctl upgrade *": "deny",
+      "talosctl bootstrap *": "deny",
+      "talosctl drain *": "deny",
+      "talosctl reboot *": "deny",
+      "talosctl reset *": "deny",
+      "talosctl maintenance *": "deny",
+      "talosctl service *": "deny",
+      "talosctl etcd *": "deny",
+      "talosctl config *": "deny",
+
+      // helm — release mutation
+      "helm install *": "deny",
+      "helm upgrade *": "deny",
+      "helm uninstall *": "deny",
+      "helm rollback *": "deny",
+
+      // argocd — application mutation
+      "argocd app sync *": "deny",
+      "argocd app set *": "deny",
+      "argocd app create *": "deny",
+      "argocd app delete *": "deny",
+      "argocd app prune *": "deny",
+      "argocd app rotate *": "deny",
+      "argocd app undelete *": "deny"
+    }
+  }
+}

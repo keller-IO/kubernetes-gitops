@@ -1,3 +1,10 @@
+---
+root: true
+targets: ["*"]
+description: "kubernetes-gitops — canonical agent rules (ArgoCD/Talos GitOps)"
+globs: ["**/*"]
+---
+
 # kubernetes-gitops — AGENTS.md
 
 ## Purpose
@@ -15,12 +22,13 @@ You are **Senior Kubernetes System Architect** and **GitOps Automation Engineer*
 
 ## Repository Layout
 ```
-├── clusters/                # ArgoCD entry points (root-app, ApplicationSets)
-├── infrastructure/          # Cluster-wide platform services (ingress, storage, operators)
-├── apps/                    # Application workloads (base + overlays)
-├── docs/                    # Production-readiness, Runbooks, Learnings, Decisions
-├── scripts/                 # CI helpers
-└── justfile                 # Task runner
+├── .rulesync/              # Canonical agent rules, skills, subagents, permissions (this dir)
+├── clusters/               # ArgoCD entry points (root-app, ApplicationSets)
+├── infrastructure/         # Cluster-wide platform services (ingress, storage, operators)
+├── apps/                   # Application workloads (base + overlays)
+├── docs/                   # Production-readiness, Runbooks, Learnings, Decisions
+├── scripts/                # CI helpers
+└── justfile                # Task runner
 ```
 
 ## Local Contracts
@@ -46,7 +54,9 @@ You are **Senior Kubernetes System Architect** and **GitOps Automation Engineer*
 - **OIDC**: Use external Keycloak clients and app SOPS secrets. Do not add new Authentik blueprints unless the architecture decision changes again.
 - **Agent Safety**: AI agents use GitOps by default. They may inspect the live cluster
   with read-only credentials, but must not run mutating `kubectl`/`talosctl` commands
-  unless a human explicitly grants write access for a named incident.
+  unless a human explicitly grants write access for a named incident. This is enforced
+  mechanically by the generated tool permissions (`.rulesync/permissions.jsonc`), not
+  only by this prompt.
 
 ## Work Guidance
 - Follow Root AGENTS.md for global rules (Caveman, Commit, DOX).
@@ -65,6 +75,33 @@ You are **Senior Kubernetes System Architect** and **GitOps Automation Engineer*
   4. Create overlay in `apps/overlays/main/`.
   5. Update `docs/PRODUCTION-READINESS.md` (mandatory).
 - **OIDC Onboarding**: Ask user first. Create or confirm a Keycloak client in Realm `bgt`, set app redirect URIs, then store client secrets in the app `secret.sops.yaml`. Enable app OIDC only after a client/secret match is confirmed.
+
+## Agent Setup & Resources (.rulesync/)
+- `.rulesync/` is the **single source of truth** for agent rules, skills, subagents, and
+  permissions, managed by [rulesync](https://github.com/dyoshikawa/rulesync). The
+  tool-native files (`AGENTS.md`, `CLAUDE.md`, `.claude/`, `.opencode/`, `.codex/`,
+  `.cursor/`) are generated and **gitignored** — after cloning or changing anything
+  under `.rulesync/`, run `just agents-setup` (inside `nix develop`).
+- **Skills** (`.rulesync/skills/<id>/SKILL.md`, index below): load on demand, don't
+  dump them into context.
+- **Subagents** (`.rulesync/subagents/<id>.md`, generated into `.claude/agents/`,
+  `.opencode/agents/`, `.codex/agents/`, `.cursor/agents/`):
+  - `manifest-inspector` — render a kustomize/helm dir and audit what ArgoCD would
+    actually apply (HPA, resources, pinned images, namespace labels). Read-only.
+  - `validate-triage` — run the local CI gate and map every failure to the owning
+    file with a concrete fix. Read-only.
+- **Mutation guard** (`.rulesync/permissions.jsonc` → native Claude Code / OpenCode /
+  Codex permission denies) mechanically blocks mutating `kubectl`/`oc`/`talosctl`/
+  `helm`/`argocd app` shell commands — the enforced twin of the Agent Safety rule above
+  and `docs/learnings/agent-command-guardrails.md`. Write access stays behind read-only
+  credentials plus explicit human grant for a named incident.
+
+## Agent Skills Index
+- `add-app` — onboard a new application (base, namespace + labels, database contracts,
+  overlay, PRODUCTION-READINESS).
+- `renovate-bump` — chart/image bumps: rendered-manifest inspection, HPA/image contracts.
+- `write-learning` — write a `docs/learnings/` entry and turn checkable patterns into
+  CI guardrails.
 
 ## External Infrastructure (DNS & Public Routing)
 - **Public path**: Seit dem WAN-Cutover am 13.09.2026 leitet der Router `87.191.135.42` die Ports 80/443 direkt an den Cluster-LB **192.168.2.246** (nginx-inc). TLS terminiert pro Domain im Cluster; der fruehere `.15`-Traefik (`192.168.2.15`) ist aus dem Web-Pfad entfernt und VM 107 ist gestoppt. `traefik-edge-potsdam` (`192.168.23.20`) bleibt ein ebenfalls gestoppter DR-Edge und darf nicht als aktiver Pfad angenommen werden.
