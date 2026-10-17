@@ -8,6 +8,13 @@ spec:
   # kontinuierliche WAL-Archiv nach Garage. Drei Instanzen wuerden RAM und
   # Ceph-Belegung verdreifachen — erst nach der Migration neu bewerten.
   instances: 1
+  # 14.10.2026: Bei instances: 1 legt CNPG ein PDB mit minAvailable 1 an, das
+  # null Unterbrechungen erlaubt — jeder `kubectl drain`/Talos-Upgrade des
+  # Workers blieb daran haengen. Ohne PDB raeumt der Drain den Pod, der Operator
+  # startet ihn mit derselben RBD-PVC auf einer anderen Node (ca. 1 min Ausfall,
+  # derselbe, den ein Node-Ausfall ohnehin bedeutet). Bei instances > 1 wieder
+  # auf true setzen.
+  enablePDB: false
   # Explizit gepinnt: PG 16 wie die Bestandsinstanz (16.14), Restore per
   # logischem Dump. Kein Major-Wechsel waehrend der Migration.
   imageName: ghcr.io/cloudnative-pg/postgresql:16.14-202607270908-system-bookworm@sha256:0fd578912f7786e218b7ed223458824236c03084f38030563b274865679ecd62

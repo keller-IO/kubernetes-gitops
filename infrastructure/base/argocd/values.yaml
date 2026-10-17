@@ -57,8 +57,10 @@ configs:
 # app/cluster count and do real work (reconcile loop / git+helm+kustomize
 # render per sync), so they get the most headroom of the bunch.
 controller:
+  # 14.10.2026: CPU p95 39m, max 302m (7 Tage). Ohne CPU-Limit darf er bei
+  # Spitzen weiter bursten; der Request blockierte nur Scheduler-Kapazitaet.
   resources:
-    requests: { cpu: 200m, memory: 512Mi }
+    requests: { cpu: 100m, memory: 512Mi }
     limits: { memory: 1Gi }
 server:
   resources:

@@ -51,7 +51,9 @@ spec:
           resources:
             # Gemessen am 28.07.2026: 1013Mi — praktisch exakt auf dem alten Request,
             # also ohne Reserve. Request mit Kopffreiheit statt auf Kante.
-            requests: { cpu: 250m, memory: 1280Mi }
+            # 14.10.2026: Speicher-Maximum 1223Mi bestaetigt die 1280Mi. CPU p95 9m,
+            # max 395m (7 Tage) — Request 250m -> 100m, Spitzen bursten ohne Limit.
+            requests: { cpu: 100m, memory: 1280Mi }
             limits: { memory: 4Gi } # Doku-Minimum 4 GB RAM
           volumeMounts:
             # KEIN Mount über /var/log/euro-office/documentserver: das Image bringt dort
