@@ -40,6 +40,11 @@ so the generated tools are discovered. The tracked root `AGENTS.md` and
 - Read the relevant directory `AGENTS.md` and `docs/learnings/` before complex
   changes. After unexpected operational effects, use `write-learning` and add
   a CI guardrail for checkable patterns.
+- Delegate mechanical searches, counts, and inventories to the read-only
+  `sweeper` subagent. Start it on the cheapest suitable small model: use its
+  pinned model where supported, otherwise select a cheap model in the dispatch
+  call or configure the client's default subagent model. A prompt alone cannot
+  change a model that the client already selected.
 - For public routing or DNS changes, read the current runbook under
   `docs/runbooks/` and verify registry delegation before editing `dns01`.
   Copy operational documentation to
@@ -56,4 +61,5 @@ so the generated tools are discovered. The tracked root `AGENTS.md` and
   `Basic <base64(mcp:password)>` header value before starting the agent.
 - Available workflows: `add-app` for app onboarding, `renovate-bump` for
   dependencies, `write-learning` for incidents; `manifest-inspector` audits
-  rendered resources and `validate-triage` maps CI failures to files.
+  rendered resources, `validate-triage` maps CI failures to files, and
+  `sweeper` returns compact `path:line` evidence for mechanical lookups.
