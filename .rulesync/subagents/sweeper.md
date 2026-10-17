@@ -7,7 +7,6 @@ claudecode:
   tools: ["Bash", "Read", "Grep", "Glob"]
 opencode:
   mode: subagent
-  model: llama-server/qwen3.6
   temperature: 0
   tools:
     edit: false

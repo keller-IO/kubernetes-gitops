@@ -48,10 +48,10 @@ so the generated tools are discovered. The tracked root `AGENTS.md` and
   changes. After unexpected operational effects, use `write-learning` and add
   a CI guardrail for checkable patterns.
 - Delegate mechanical searches, counts, and inventories to the read-only
-  `sweeper` subagent. Start it on the cheapest suitable small model: use its
-  pinned model where supported, otherwise select a cheap model in the dispatch
-  call or configure the client's default subagent model. A prompt alone cannot
-  change a model that the client already selected.
+  `sweeper` subagent. Start it on the cheapest suitable small model: Claude
+  uses its pinned model; for OpenCode, Codex, and Cursor choose an available
+  cheap model in the dispatch call or configure the client's default subagent
+  model. A prompt alone cannot change a model the client already selected.
 - For public routing or DNS changes, read the current runbook under
   `docs/runbooks/` and verify registry delegation before editing `dns01`.
   Copy operational documentation to
