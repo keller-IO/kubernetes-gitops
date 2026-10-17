@@ -29,6 +29,9 @@ jq -e '
     .depName == "ghcr.io/paperless-ngx/paperless-ngx") and
   any(deps("kubernetes"; "infrastructure/base/snapshot-controller/controller.yaml");
     .depName == "registry.k8s.io/sig-storage/snapshot-controller") and
+  any(deps("kubernetes"; "apps/base/icecast/workload.yaml");
+    .depName == "infiniteproject/icecast" and .currentValue == null and
+    (.currentDigest | startswith("sha256:"))) and
   any(deps("regex"; "apps/base/mastodon/database.yaml");
     (.currentValue | startswith("16.")) and (.currentDigest | startswith("sha256:"))) and
   # A tagged Python image must never also be tracked as latest by the digest manager.

@@ -2,8 +2,8 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended",
-    ":dependencyDashboard",
-    ":semanticCommits"
+    ":semanticCommits",
+    "customManagers:githubActionsVersions"
   ],
   "timezone": "Europe/Berlin",
   "labels": [
@@ -17,8 +17,6 @@
   ],
   "rebaseWhen": "behind-base-branch",
   "minimumReleaseAge": "7 days",
-  "prHourlyLimit": 2,
-  "prConcurrentLimit": 10,
   "nix": {
     "enabled": true
   },
@@ -26,39 +24,17 @@
     "enabled": true,
     "automerge": true
   },
-  "kustomize": {
-    "managerFilePatterns": [
-      "/(^|/)(apps|infrastructure|clusters)/.+/kustomization\\.ya?ml$/"
-    ]
-  },
   "kubernetes": {
     "managerFilePatterns": [
-      "/(^|/)(apps|infrastructure|clusters)/.+\\.ya?ml$/"
-    ]
-  },
-  "github-actions": {
-    "managerFilePatterns": [
-      "/(^|/)\\.github/workflows/.+\\.ya?ml$/"
+      "{apps,infrastructure,clusters}/**/*.{yaml,yml}"
     ]
   },
   "customManagers": [
     {
       "customType": "regex",
-      "description": "Generic marker '# renovate: datasource=X depName=Y [versioning=Z]' for fields without native manager support.",
+      "description": "Tag-only Helm values with '# renovate: image=repo/name'.",
       "managerFilePatterns": [
-        "/(^|/)(apps|infrastructure|clusters)/.+\\.ya?ml$/"
-      ],
-      "matchStrings": [
-        "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+packageName=(?<packageName>\\S+))?(?:\\s+versioning=(?<versioning>\\S+))?\\s*\\n(?:[^\\n]*\\n)*?\\s*tag:\\s*[\"']?(?<currentValue>[^\\s\"'#]+)[\"']?",
-        "\\sversion:\\s*[\"']?(?<currentValue>[^\\s\"'#]+)[\"']?\\s*#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+packageName=(?<packageName>\\S+))?(?:\\s+versioning=(?<versioning>\\S+))?"
-      ],
-      "versioningTemplate": "{{#if versioning}}{{{versioning}}}{{else}}semver{{/if}}"
-    },
-    {
-      "customType": "regex",
-      "description": "Legacy repo marker '# renovate: image=repo/name' for inline images and tag-only values.",
-      "managerFilePatterns": [
-        "/(^|/)(apps|infrastructure|clusters)/.+\\.ya?ml$/"
+        "{apps,infrastructure,clusters}/**/*.{yaml,yml}"
       ],
       "matchStrings": [
         "tag:\\s*[\"']?(?<currentValue>[^\\s\"'#]+)[\"']?\\s*#\\s*renovate:\\s*image=(?<depName>\\S+)"
@@ -70,54 +46,25 @@
       "customType": "regex",
       "description": "CNPG imageName is not supported by the Kubernetes manager. Preserve tags and digests together.",
       "managerFilePatterns": [
-        "/(^|/)(apps|infrastructure|clusters)/.+\\.ya?ml$/"
+        "{apps,infrastructure,clusters}/**/*.{yaml,yml}"
       ],
       "matchStrings": [
         "\\bimageName:\\s*[\"']?(?<depName>[^\\s:@\"']+):(?<currentValue>[^\\s@\"'#]+)(?:@(?<currentDigest>sha256:[a-f0-9]{64}))?"
       ],
       "datasourceTemplate": "docker",
       "versioningTemplate": "docker"
-    },
-    {
-      "customType": "regex",
-      "description": "Legacy digest-only image markers keep manifests non-floating while allowing digest refreshes.",
-      "managerFilePatterns": [
-        "/(^|/)(apps|infrastructure|clusters)/.+\\.ya?ml$/"
-      ],
-      "matchStrings": [
-        "#\\s*renovate:\\s*image=(?<depName>\\S+)\\s*\\n\\s*(?:-\\s+)?image:\\s*[\"']?[^:@\\s\"']+@(?<currentDigest>sha256:[a-f0-9]{64})[\"']?"
-      ],
-      "datasourceTemplate": "docker",
-      "currentValueTemplate": "latest"
-    },
-    {
-      "customType": "regex",
-      "description": "Workflow env-var marker '# renovate: datasource=X depName=Y' followed by VERSION: X.",
-      "managerFilePatterns": [
-        "/(^|/)\\.github/workflows/.+\\.ya?ml$/"
-      ],
-      "matchStrings": [
-        "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+packageName=(?<packageName>\\S+))?(?:\\s+versioning=(?<versioning>\\S+))?\\s*\\n\\s*[A-Z0-9_]+:\\s*[\"']?(?<currentValue>[^\"'\\s]+)[\"']?"
-      ],
-      "versioningTemplate": "{{#if versioning}}{{{versioning}}}{{else}}semver{{/if}}"
     }
   ],
   "packageRules": [
     {
-      "description": "Group each application across base, overlays and nested directories.",
+      "description": "Group charts, images and markers per component across base, overlays and subdirectories.",
       "matchFileNames": [
         "apps/base/**",
-        "apps/overlays/**"
-      ],
-      "groupName": "{{{replace \"^apps/(?:base|overlays/[^/]+)/([^/]+)/.*$\" \"apps/$1\" packageFile}}}"
-    },
-    {
-      "description": "Group each infrastructure component across base, overlays and nested directories.",
-      "matchFileNames": [
+        "apps/overlays/**",
         "infrastructure/base/**",
         "infrastructure/overlays/**"
       ],
-      "groupName": "{{{replace \"^infrastructure/(?:base|overlays/[^/]+)/([^/]+)/.*$\" \"infrastructure/$1\" packageFile}}}"
+      "groupName": "{{{replace \"^(apps|infrastructure)/(?:base|overlays/[^/]+)/([^/]+)/.*$\" \"$1/$2\" packageFile}}}"
     },
     {
       "matchFileNames": [
@@ -150,9 +97,7 @@
         "nix"
       ],
       "groupName": "nix packages",
-      "automerge": true,
-      "automergeType": "pr",
-      "platformAutomerge": true
+      "automerge": true
     },
     {
       "description": "Automerge low-risk digest, pin and patch updates after CI.",
@@ -161,9 +106,7 @@
         "pin",
         "patch"
       ],
-      "automerge": true,
-      "automergeType": "pr",
-      "platformAutomerge": true
+      "automerge": true
     },
     {
       "description": "Automerge minor updates only for stateless leaf apps.",
@@ -178,9 +121,7 @@
       "matchUpdateTypes": [
         "minor"
       ],
-      "automerge": true,
-      "automergeType": "pr",
-      "platformAutomerge": true
+      "automerge": true
     },
     {
       "description": "Renovate self-updates get a shorter soak to keep the updater current.",
@@ -188,9 +129,7 @@
         "apps/base/renovate/**"
       ],
       "minimumReleaseAge": "2 days",
-      "automerge": true,
-      "automergeType": "pr",
-      "platformAutomerge": true
+      "automerge": true
     },
     {
       "description": "Infrastructure controllers and stateful applications need manual review.",
