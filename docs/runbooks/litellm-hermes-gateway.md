@@ -175,6 +175,40 @@ provider.
 
 The live test output contained only status, latency, count, field-shape, and
 deployment metadata. It contained no credentials, prompts, responses, request
-identifiers, tool argument values, or provider-generated content. Gateway
-readiness remains open only for the Task 8 master-key rotation and old-key
-rejection proof.
+identifiers, tool argument values, or provider-generated content. This
+acceptance left only the Task 8 master-key rotation and old-key rejection proof
+open for gateway readiness.
+
+## Master-key rotation
+
+- Rotation base: `0f6d50bf26269ab0abef258c1799359c899dc46a`
+
+Verified on 2026-10-17 while Hermes continued to use Codex as its primary
+provider.
+
+- GitOps rotation commit: `449d917b36843aa3b5ed3ddf88946b76be97042a`.
+- Merged ArgoCD revision: `2f4a67dbc0aa673c40e269f17b6a5f870a083ae1`.
+- The Secret changed in sync wave `-1` before the `Recreate` Deployment in
+  wave `0`. The old `v1` pod was removed, and exactly one replacement pod with
+  secret revision `v2` became Ready. ArgoCD finished `Synced`, `Healthy`, and
+  `Succeeded`.
+- From `hermes01`, the current key returned HTTP 200 from `/v1/models` with
+  exactly the deployment ID `hermes-blablador`. The key retrieved transiently
+  from the encrypted Secret at the rotation base returned HTTP 400 with
+  `error.type=no_db_connection`.
+- Both Authorization headers were supplied through curl configuration on
+  standard input. Neither plaintext key nor header was printed or persisted.
+  The live test used only the models route and therefore generated no provider
+  content. The pinned-image stateless-auth contract separately proves that a
+  rejected chat request makes zero Blablador attempts.
+
+The encrypted file at the rotation base is the rollback anchor for this first
+rotation; no rollback was needed. A gateway rollback reverts the rotation
+through GitOps, waits for the Secret and `v1` replacement pod, and then repeats
+the current/base-key checks with their expected results reversed.
+
+For every later production rotation, first switch Hermes through its managed
+rollback path to Codex as the primary provider and verify that state. Rotate the
+SOPS key and Hermes's Ansible Vault value only afterward, and restore Blablador
+as primary only after the new key passes. Do not rely on Hermes classifying the
+old key's HTTP 400 response as a fallback-triggering error.
