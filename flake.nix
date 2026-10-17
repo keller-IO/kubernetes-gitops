@@ -48,7 +48,11 @@
             kubectl # cluster access
             talosctl # Talos node diagnostics and maintenance
             jq # parse Kubernetes and Talos JSON output
-            yq-go # read Argo CD sources and inspect rendered YAML
+            cosign # verify container image signatures and provenance
+            skopeo # inspect registry image metadata and resolve digests
+            trivy # scan container images for vulnerabilities
+            yq-go # query, update, and inspect YAML
+            podman # run pinned container images for contract tests
             argocd # inspect ArgoCD state
           ];
 

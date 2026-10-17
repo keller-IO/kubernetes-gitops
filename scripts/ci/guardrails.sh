@@ -35,9 +35,12 @@ section "No obvious plaintext secret placeholders"
 matches="$(find apps infrastructure clusters -path '*/charts/*' -prune -o \( -name '*.yaml' -o -name '*.yml' \) -print \
   | grep -v '\.sops\.ya\?ml$' \
   | xargs grep -InE '(^|[^A-Z0-9_])(password|passwd|token|api[_-]?key|client[_-]?secret):[[:space:]]*["'\''"]?[^[:space:]#"'\''{]+' \
+  | grep -vE ':[0-9]+:[[:space:]]*(password|passwd|token|api[_-]?key|client[_-]?secret):[[:space:]]*["'\''"]?os\.environ/[A-Z][A-Z0-9_]*["'\''"]?[[:space:]]*(#.*)?$' \
   | grep -vE 'secretName:|secretRef:|secretKeyRef:|name: .*secret|kind: Secret|metadata:|app.kubernetes.io|REPLACE_ME|CHANGE ME|PLACEHOLDER|placeholder|\$\{' || true)"
 if [[ -n "$matches" ]]; then
-  printf '%s\n' "$matches"
+  while IFS=: read -r file line _; do
+    printf '%s:%s: [REDACTED]\n' "$file" "$line"
+  done <<<"$matches"
   report "possible plaintext secret outside *.sops.yaml"
 fi
 

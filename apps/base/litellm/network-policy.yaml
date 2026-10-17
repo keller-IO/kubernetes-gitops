@@ -1,0 +1,41 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: litellm
+  namespace: litellm
+spec:
+  endpointSelector:
+    matchLabels:
+      network-policy.jit.land/identity: litellm
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            "k8s:io.kubernetes.pod.namespace": ingress-nginx
+            "k8s:app.kubernetes.io/instance": nginx-ingress
+            "k8s:app.kubernetes.io/name": nginx-ingress
+      toPorts:
+        - ports:
+            - port: "4000"
+              protocol: TCP
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            "k8s:io.kubernetes.pod.namespace": kube-system
+            "k8s:k8s-app": kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
+          rules:
+            dns:
+              - matchName: api.blablador.fz-juelich.de
+    - toFQDNs:
+        - matchName: api.blablador.fz-juelich.de
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+          serverNames:
+            - api.blablador.fz-juelich.de

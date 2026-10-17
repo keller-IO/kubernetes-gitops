@@ -1,0 +1,24 @@
+model_list:
+  - model_name: hermes-blablador
+    litellm_params:
+      model: openai/alias-code
+      api_base: https://api.blablador.fz-juelich.de/v1
+      api_key: os.environ/BLABLADOR_API_KEY
+    model_info:
+      id: hermes-blablador
+      mode: chat
+
+router_settings:
+  num_retries: 0
+  disable_cooldowns: true
+
+litellm_settings:
+  callbacks: request_policy.hermes_request_policy
+  drop_params: false
+  turn_off_message_logging: true
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+  max_in_flight_requests_per_worker: 4
+  max_queued_requests_per_worker: 4
+  admission_queue_timeout_seconds: 1

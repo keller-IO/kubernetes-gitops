@@ -1,0 +1,52 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: litellm
+  namespace: litellm
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.org/ssl-redirect: "true"
+    nginx.org/client-max-body-size: 1m
+    nginx.org/limit-req-rate: 30r/m
+    nginx.org/limit-req-burst: "10"
+    nginx.org/limit-req-no-delay: "true"
+    nginx.org/limit-req-key: '${realip_remote_addr}'
+    nginx.org/location-snippets: |
+      if ($realip_remote_addr != 192.168.2.37) {
+        return 403;
+      }
+      set $litellm_route_allowed 0;
+      set $litellm_route_key "$request_method:$uri";
+      if ($litellm_route_key = "POST:/v1/chat/completions") {
+        set $litellm_route_allowed 1;
+      }
+      if ($litellm_route_key = "GET:/v1/models") {
+        set $litellm_route_allowed 1;
+      }
+      if ($litellm_route_allowed = 0) {
+        return 405;
+      }
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: litellm.jit.services
+      http:
+        paths:
+          - path: /v1/chat/completions
+            pathType: Exact
+            backend:
+              service:
+                name: litellm
+                port:
+                  number: 4000
+          - path: /v1/models
+            pathType: Exact
+            backend:
+              service:
+                name: litellm
+                port:
+                  number: 4000
+  tls:
+    - hosts:
+        - litellm.jit.services
+      secretName: litellm-tls

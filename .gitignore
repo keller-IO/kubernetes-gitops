@@ -33,6 +33,8 @@ Chart.lock
 kubeconfig
 *.kubeconfig
 .kube/
+__pycache__/
+*.py[cod]
 
 # --- Nix ---
 result
@@ -53,3 +55,4 @@ Thumbs.db
 
 # --- Local tooling ---
 .codebase-memory/
+.worktrees/

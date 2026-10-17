@@ -29,7 +29,10 @@ test:
       [ -f "$dir/kustomization.yaml" ] || continue
       bash scripts/render.sh "$dir" | kubeconform -strict -ignore-missing-schemas -summary
     done
+    ./scripts/ci/check-litellm.sh
     PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s apps/base/nextcloud-yealink-phonebook -p 'test_*.py'
+    PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=apps/base/litellm python3 -m unittest apps/base/litellm/test_request_policy.py
+    PYTHONDONTWRITEBYTECODE=1 python3 -m unittest apps/base/litellm/test_network_probe.py
 
 # Encrypt a single secret in place.
 encrypt FILE:
@@ -41,19 +44,8 @@ decrypt FILE:
 
 # Verify real *.sops.yaml secrets are encrypted. Blueprint placeholders warn only.
 secrets-check:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    fail=0
-    while IFS= read -r f; do
-      grep -q "sops:" "$f" && continue
-      if grep -Eq "REPLACE_ME|CHANGE ME|PLACEHOLDER|placeholder|age1placeholder" "$f"; then
-        echo "WARN placeholder secret not encrypted yet: $f"
-      else
-        echo "UNENCRYPTED: $f"
-        fail=1
-      fi
-    done < <(find . -name '*.sops.yaml' -not -name '.sops.yaml')
-    exit $fail
+    bash scripts/ci/test-check-sops.sh
+    ./scripts/ci/check-sops.sh
 
 # Check repo safety invariants before CI or PR review.
 guardrails:
@@ -65,6 +57,71 @@ renovate-check:
 
 # Run the full local gate used by CI.
 validate: lint secrets-check guardrails renovate-check build test
+
+# Run the opt-in Blablador provider contract against the pinned LiteLLM image.
+litellm-provider-contract ENV_FILE:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    repo_root="$(realpath "$(git rev-parse --show-toplevel)")"
+    env_file="$(realpath -- {{quote(ENV_FILE)}})"
+    case "$env_file" in
+      "$repo_root"|"$repo_root"/*)
+        echo "ERROR: credential file must be outside the repository" >&2
+        exit 1
+        ;;
+    esac
+    if [[ "$(stat -c %a -- "$env_file")" != "600" ]]; then
+      echo "ERROR: credential file mode must be 600" >&2
+      exit 1
+    fi
+    declaration_count="$(grep -Ec '^BLABLADOR_API_KEY=' "$env_file" || :)"
+    nonempty_count="$(grep -Ec '^BLABLADOR_API_KEY=.+$' "$env_file" || :)"
+    if [[ "$declaration_count" != "1" || "$nonempty_count" != "1" ]]; then
+      echo "ERROR: credential file must contain exactly one non-empty BLABLADOR_API_KEY assignment" >&2
+      exit 1
+    fi
+    image_ref="$(<"$repo_root/apps/base/litellm/image-ref.txt")"
+    repository_with_tag="${image_ref%@*}"
+    policy_scope="${repository_with_tag%:*}@${image_ref##*@}"
+    podman_config="$(mktemp -d)"
+    podman_data_home="${XDG_DATA_HOME:-$HOME/.local/share}"
+    trap 'rm -rf "$podman_config"' EXIT
+    mkdir -p "$podman_config/.config/containers"
+    jq -n --arg scope "$policy_scope" \
+      '{default: [{type: "reject"}], transports: {docker: {($scope): [{type: "insecureAcceptAnything"}]}}}' \
+      >"$podman_config/.config/containers/policy.json"
+    HOME="$podman_config" XDG_DATA_HOME="$podman_data_home" podman run --rm \
+      --env-file "$env_file" \
+      --volume "$repo_root/apps/base/litellm:/work:ro,Z" \
+      --workdir /work \
+      --entrypoint python \
+      "$image_ref" \
+      /work/test_blablador_contract.py
+
+# Run the network-isolated LiteLLM proxy contract against the pinned image.
+litellm-contract:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    repo_root="$(realpath "$(git rev-parse --show-toplevel)")"
+    image_ref="$(<"$repo_root/apps/base/litellm/image-ref.txt")"
+    repository_with_tag="${image_ref%@*}"
+    policy_scope="${repository_with_tag%:*}@${image_ref##*@}"
+    podman_config="$(mktemp -d)"
+    podman_data_home="${XDG_DATA_HOME:-$HOME/.local/share}"
+    trap 'rm -rf "$podman_config"' EXIT
+    mkdir -p "$podman_config/.config/containers"
+    jq -n --arg scope "$policy_scope" \
+      '{default: [{type: "reject"}], transports: {docker: {($scope): [{type: "insecureAcceptAnything"}]}}}' \
+      >"$podman_config/.config/containers/policy.json"
+    HOME="$podman_config" XDG_DATA_HOME="$podman_data_home" podman run --rm \
+      --network none \
+      --env LITELLM_DONT_SHOW_FEEDBACK_BOX=True \
+      --env LITELLM_LOCAL_MODEL_COST_MAP=True \
+      --volume "$repo_root/apps/base/litellm:/work:ro,Z" \
+      --workdir /work \
+      --entrypoint python \
+      "$image_ref" \
+      /work/test_litellm_contract.py
 
 fmt:
     kustomize cfg fmt infrastructure apps clusters
