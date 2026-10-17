@@ -21,7 +21,7 @@ spec:
       containers:
         - name: kimai
           # renovate: image=kimai/kimai2
-          image: kimai/kimai2:apache-2.56.0 # = Version des Alt-Systems (DB-Schema-Stand der Migration)
+          image: kimai/kimai2:apache-2.57.0 # = Version des Alt-Systems (DB-Schema-Stand der Migration)
           ports:
             - containerPort: 8001
           env:
