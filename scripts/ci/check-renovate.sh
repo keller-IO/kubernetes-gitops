@@ -23,25 +23,9 @@ while IFS= read -r file; do
   }
 done < <(git grep -l -E '^[[:space:]]*imageName:' -- apps infrastructure clusters ':!*.sops.yaml')
 
+# Check every extracted file, without app-specific expected dependencies.
 jq -e '
-  def deps($manager; $file): .[$manager][]? | select(.packageFile == $file) | .deps[]?;
-  any(deps("argocd"; "clusters/main/appset-apps.yaml");
-    .depName == "https://github.com/Goloom-App/goloom" and .datasource == "git-tags" and
-    (.currentValue | startswith("v"))) and
-  any(deps("helm-values"; "apps/base/goloom/values.yaml");
-    .depName == "ghcr.io/goloom-app/goloom" and (.currentValue | startswith("v"))) and
-  any(deps("kubernetes"; "apps/base/paperless-ngx/watchdog.yaml");
-    .depName == "ghcr.io/paperless-ngx/paperless-ngx") and
-  any(deps("kubernetes"; "infrastructure/base/snapshot-controller/controller.yaml");
-    .depName == "registry.k8s.io/sig-storage/snapshot-controller") and
-  any(deps("kubernetes"; "apps/base/icecast/workload.yaml");
-    .depName == "infiniteproject/icecast" and .currentValue == null and
-    (.currentDigest | startswith("sha256:"))) and
-  any(deps("regex"; "apps/base/mastodon/database.yaml");
-    (.currentValue | startswith("16.")) and (.currentDigest | startswith("sha256:"))) and
-  # A tagged Python image must never also be tracked as latest by the digest manager.
-  (all(deps("regex"; "apps/base/nextcloud-yealink-phonebook/workload.yaml");
-    .currentValue != "latest")) and
+  ([.[][]] | length > 0) and
   all(.[][]; (.packageFile | test("(/charts/|\\.sops\\.yaml$)") | not))
 ' "$audit_dir/deps.json" >/dev/null
 
