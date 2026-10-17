@@ -17,6 +17,7 @@
 - Do not use LiteLLM `1.82.7` or `1.82.8`.
 - Run one replica, one Uvicorn worker, `strategy.type: Recreate`, and no PostgreSQL, Redis, PVC, HPA, PDB, Admin UI, spend tracking, or external callbacks.
 - Store only `BLABLADOR_API_KEY` and `LITELLM_MASTER_KEY` in `apps/base/litellm/secret.sops.yaml`; never print decrypted values or put them in command arguments.
+- Preserve stateless master-key authentication: missing credentials return HTTP 401, while any supplied non-master key returns HTTP 400 with `no_db_connection`; both must fail before a Blablador attempt.
 - Keep `drop_params: false`; do not set `LITELLM_DROP_PARAMS`, deployment-level `drop_params`, `additional_drop_params`, or `LITELLM_DANGEROUSLY_PERMIT_WEAK_OR_UNSET_MASTER_KEY`.
 - Keep the image defaults `PRISMA_BINARY_CACHE_DIR=/opt/prisma/binaries` and `PRISMA_CLI_PATH` unchanged.
 - Expose only `POST /v1/chat/completions` and `GET /v1/models`, and authorize the original peer with `$realip_remote_addr == 192.168.2.37`.
@@ -29,7 +30,7 @@
 - A mode other than `0600`, an env file inside the repository, or a missing `BLABLADOR_API_KEY` must stop the networked provider test before Podman starts; Task 2 owns this test.
 - A LiteLLM normalization or strip-list change must fail the pinned proxy contract test rather than bypass request validation; Task 4 owns this test.
 - Controlled 400, 401, 429, and 5xx upstream responses must make exactly one Blablador attempt and preserve the HTTP status class; Task 4 owns this test.
-- A forged `X-Forwarded-For: 192.168.2.37`, a different SNI on an allowed IP, and any unrelated HTTPS host must remain blocked; Task 7 owns these tests.
+- Missing credentials must return 401, while a supplied non-master key must return 400 with `no_db_connection`; neither may reach Blablador, and Tasks 7 and 8 own these tests.
 - Because `alias-code` can change backend without a Git diff, chat, streaming, and deterministic tool calling must pass before rollout and before image/Hermes upgrades; Tasks 2 and 7 own these tests.
 
 ## File Map
@@ -470,7 +471,7 @@ Require `enable-l7-proxy: "true"`, realized DNS proxy rules, only the Blablador 
 
 - [ ] **Step 5: Test API and source boundaries**
 
-From `hermes01`, require valid-key success only for the allowed POST/GET pair and 401 for an invalid key. Require 404/405 for slash variants, child paths, wrong methods, `/`, health, docs, OpenAPI, UI, and management paths.
+From `hermes01`, require valid-key success only for the allowed POST/GET pair, 401 for missing credentials, and 400 with `no_db_connection` for a supplied non-master key. The two rejection cases must occur before provider routing. Require 404/405 for slash variants, child paths, wrong methods, `/`, health, docs, OpenAPI, UI, and management paths.
 
 From another LAN host, require 403 normally and with forged `X-Forwarded-For: 192.168.2.37`. Confirm rendered NGINX uses `$realip_remote_addr`.
 
@@ -517,11 +518,11 @@ Push/create/merge only with explicit authorization. Wait for Secret sync, old po
 
 - [ ] **Step 4: Prove new-key acceptance and old-key rejection**
 
-At test time, pipe the current encrypted Secret and `git show "${ROTATION_BASE}:apps/base/litellm/secret.sops.yaml"` separately through `sops --decrypt /dev/stdin`, select only `LITELLM_MASTER_KEY`, and capture each value in a protected shell variable. From `hermes01`, require `/v1/models` success with the current key and HTTP 401 with the base key. Pass Authorization through curl config stdin, not argv; print neither key nor header, then unset both variables.
+At test time, pipe the current encrypted Secret and `git show "${ROTATION_BASE}:apps/base/litellm/secret.sops.yaml"` separately through `sops --decrypt /dev/stdin`, select only `LITELLM_MASTER_KEY`, and capture each value in a protected shell variable. From `hermes01`, require `/v1/models` success with the current key and HTTP 400 with structural type `no_db_connection` for the base key. Require rejection before provider routing. Pass Authorization through curl config stdin, not argv; print neither key nor header, then unset both variables.
 
 - [ ] **Step 5: Close documentation and readiness**
 
-Mark the gateway accepted and list only Hermes activation work in `PRODUCTION-READINESS.md`. Record rotation/rollback evidence and copy the runbook to `cfgmgmt01:/root/ansible/kellerio-docs/`.
+Mark the gateway accepted and list only Hermes activation work in `PRODUCTION-READINESS.md`. Record rotation/rollback evidence, including that later production rotations first switch Hermes to Codex primary rather than relying on HTTP-400 fallback classification, and copy the runbook to `cfgmgmt01:/root/ansible/kellerio-docs/`.
 
 - [ ] **Step 6: Final verification and commit**
 
