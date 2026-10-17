@@ -110,12 +110,14 @@ source prefix. The server and PostSync probe share only
 continues to select `app.kubernetes.io/name=litellm` plus
 `app.kubernetes.io/component=server`, so it cannot route to the probe.
 
-Before merging the LiteLLM overlay, create an explicit ClouDNS A record for
-`litellm.jit.services` pointing to `192.168.2.246` and verify it from the public
-authorities. DNS-01 creates `_acme-challenge.litellm.jit.services`; without the
-explicit application record that node makes `litellm.jit.services` an empty
-non-terminal and suppresses the existing `*.jit.services` wildcard, potentially
-caching NODATA for up to an hour. See
+The explicit ClouDNS A record `litellm.jit.services -> 192.168.2.246` was created
+on 2026-10-16 before merging the overlay. The ClouDNS API returned exactly one
+active `litellm` A record with TTL 3600; `pns31` through `pns34` and the public
+resolvers `1.1.1.1`, `8.8.8.8`, and `9.9.9.9` all returned the target address.
+This is required because DNS-01 creates `_acme-challenge.litellm.jit.services`;
+without the explicit application record that node makes `litellm.jit.services`
+an empty non-terminal and suppresses the existing `*.jit.services` wildcard,
+potentially caching NODATA for up to an hour. See
 `docs/learnings/wildcard-dns01-empty-non-terminal.md`.
 
 The PostSync probe's strongest negative control is a certificate-valid TLS

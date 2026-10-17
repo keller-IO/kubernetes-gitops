@@ -44,6 +44,7 @@ decrypt FILE:
 
 # Verify real *.sops.yaml secrets are encrypted. Blueprint placeholders warn only.
 secrets-check:
+    bash scripts/ci/test-check-sops.sh
     ./scripts/ci/check-sops.sh
 
 # Check repo safety invariants before CI or PR review.

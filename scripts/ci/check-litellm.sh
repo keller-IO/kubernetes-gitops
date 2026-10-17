@@ -81,6 +81,7 @@ assert_manifest_eq "$config.model_list[0].litellm_params.api_base" https://api.b
 assert_manifest_eq "$config.model_list[0].litellm_params.api_key" os.environ/BLABLADOR_API_KEY 'provider key must come from the environment'
 assert_manifest_eq "$config.model_list[0].litellm_params | keys | sort | join(\",\")" 'api_base,api_key,model' 'provider deployment contains unexpected fields'
 assert_manifest_eq "$config.router_settings.num_retries" 0 'router retries must be disabled'
+assert_manifest_eq "$config.router_settings.disable_cooldowns" true 'router cooldowns must be disabled'
 assert_manifest_eq "$config.router_settings | keys | sort | join(\",\")" 'disable_cooldowns,num_retries' 'router settings contain unexpected controls'
 assert_manifest_eq "($config.router_settings | (has(\"fallbacks\") or has(\"default_fallbacks\") or has(\"context_window_fallbacks\")))" false 'LiteLLM fallbacks are forbidden'
 assert_manifest_eq "$config.litellm_settings.callbacks" request_policy.hermes_request_policy 'request policy callback must be registered'

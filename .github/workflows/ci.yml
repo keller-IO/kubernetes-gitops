@@ -66,6 +66,13 @@ jobs:
       - name: LiteLLM manifest contract
         run: bash -n scripts/ci/check-litellm.sh && scripts/ci/check-litellm.sh
 
+      - name: LiteLLM policy and network probe tests
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          PYTHONPATH=apps/base/litellm python3 -m unittest apps/base/litellm/test_request_policy.py
+          python3 -m unittest apps/base/litellm/test_network_probe.py
+
   # Render every overlay/base and fail on an HPA a chart brought unasked, or
   # one that autoscales on memory. See docs/learnings/collabora-hpa-runaway.md
   # and scripts/ci/check-hpa.sh.
@@ -108,7 +115,11 @@ jobs:
           curl -sSfL "https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION}/yq_linux_amd64" -o yq
           sudo install -m 0755 yq /usr/local/bin/yq
       - name: Reject unencrypted real *.sops.yaml
-        run: bash -n scripts/ci/check-sops.sh && scripts/ci/check-sops.sh
+        run: |
+          bash -n scripts/ci/check-sops.sh
+          bash -n scripts/ci/test-check-sops.sh
+          bash scripts/ci/test-check-sops.sh
+          scripts/ci/check-sops.sh
 
   # Static security scan of the rendered manifests (misconfig) + repo (secrets).
   # Reports findings; does NOT fail the build yet — add `--exit-code 1` to enforce.

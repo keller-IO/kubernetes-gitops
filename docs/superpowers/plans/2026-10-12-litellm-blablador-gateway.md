@@ -92,13 +92,17 @@ VERIFIED_DIGEST="$(skopeo inspect \
   docker://ghcr.io/berriai/litellm-non_root:v1.104.0 | jq -r .Digest)"
 VERIFIED_IMAGE_REF="ghcr.io/berriai/litellm-non_root:v1.104.0@${VERIFIED_DIGEST}"
 cosign verify \
-  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-  --certificate-identity-regexp '^https://github.com/BerriAI/litellm/' \
+  --key https://raw.githubusercontent.com/BerriAI/litellm/0112e53046018d726492c814b3644b7d376029d0/cosign.pub \
   "${VERIFIED_IMAGE_REF}"
 trivy image --severity HIGH,CRITICAL --exit-code 1 "${VERIFIED_IMAGE_REF}"
 ```
 
-Expected: non-empty SHA-256 digest, valid GitHub-issued provenance/signature, and no unaccepted HIGH/CRITICAL finding. If provenance is absent, stop; do not weaken verification.
+Expected: non-empty SHA-256 digest, a valid signature and offline Rekor inclusion
+against LiteLLM's public Cosign key pinned to source commit
+`0112e53046018d726492c814b3644b7d376029d0`, and no unaccepted HIGH/CRITICAL
+finding. Upstream `v1.104.0` uses this long-lived key rather than a keyless GitHub
+Actions certificate; if this exact signature gate fails, stop rather than weakening
+verification.
 
 - [ ] **Step 4: Record the immutable input**
 

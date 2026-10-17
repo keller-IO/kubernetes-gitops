@@ -33,7 +33,11 @@ jobs:
         run: yamllint -s .
 
       - name: secrets-check (no plaintext *.sops.yaml)
-        run: bash -n scripts/ci/check-sops.sh && scripts/ci/check-sops.sh
+        run: |
+          bash -n scripts/ci/check-sops.sh
+          bash -n scripts/ci/test-check-sops.sh
+          bash scripts/ci/test-check-sops.sh
+          scripts/ci/check-sops.sh
 
       - name: kustomize build + kubeconform
         run: |
@@ -47,3 +51,10 @@ jobs:
 
       - name: LiteLLM manifest contract
         run: bash -n scripts/ci/check-litellm.sh && scripts/ci/check-litellm.sh
+
+      - name: LiteLLM policy and network probe tests
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          PYTHONPATH=apps/base/litellm python3 -m unittest apps/base/litellm/test_request_policy.py
+          python3 -m unittest apps/base/litellm/test_network_probe.py
