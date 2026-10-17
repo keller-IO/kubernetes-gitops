@@ -1,6 +1,6 @@
 image:
   repository: ghcr.io/goloom-app/goloom
-  tag: v0.2.9 # renovate: image=ghcr.io/goloom-app/goloom
+  tag: v0.3.0
   pullPolicy: IfNotPresent
 
 replicaCount: 1
@@ -42,6 +42,19 @@ resources:
   limits: { memory: 512Mi }
 serviceAccount:
   create: false
+  name: goloom
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  fsGroup: 65532
+  seccompProfile:
+    type: RuntimeDefault
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: [ALL]
 
 ingress:
   enabled: true

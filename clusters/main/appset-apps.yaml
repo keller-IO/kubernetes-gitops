@@ -32,6 +32,21 @@ spec:
         path: "{{.path.path}}"
         # Native kustomize (repo-server runs it with --enable-helm --enable-alpha-plugins
         # --enable-exec + ksops in PATH; see infrastructure/base/argocd + Terraform argocd.tf).
+      # Goloom's chart is published in Git only. Keep the literal Git tag here
+      # so Renovate's native Argo CD manager can update it with the image tag.
+      # templatePatch selects these sources only for app-goloom.
+      sources:
+        - repoURL: https://github.com/Goloom-App/goloom
+          targetRevision: v0.3.0
+          path: deploy/helm/goloom
+          helm:
+            releaseName: goloom
+            valueFiles:
+              - $values/apps/base/goloom/values.yaml
+        - repoURL: https://github.com/keller-IO/kubernetes-gitops.git
+          targetRevision: main
+          ref: values
+          path: apps/overlays/main/goloom
       destination:
         server: https://kubernetes.default.svc
         namespace: "{{.path.basename}}"
@@ -109,3 +124,12 @@ spec:
         syncOptions:
           - CreateNamespace=true
           - ServerSideApply=true
+  # Keep the same ApplicationSet owner and Application name during migration.
+  # A null merge-patch field removes the unused source variant entirely.
+  templatePatch: |
+    spec:
+      {{- if eq .path.basename "goloom" }}
+      source: null
+      {{- else }}
+      sources: null
+      {{- end }}

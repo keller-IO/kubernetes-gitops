@@ -11,6 +11,20 @@ permissions:
   contents: read
 
 jobs:
+  # Exercise real dependency extraction, including CNPG and nonstandard filenames.
+  renovate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Validate Renovate configuration and extraction
+        env:
+          GITHUB_COM_TOKEN: ${{ github.token }}
+        run: |
+          docker run --rm --user "$(id -u):$(id -g)" \
+            -e HOME=/tmp -e GITHUB_COM_TOKEN \
+            -v "$PWD:/repo:ro" -w /repo --entrypoint bash \
+            renovate/renovate:43.280.4 scripts/ci/check-renovate.sh
+
   # YAML syntax / formatting.
   lint:
     runs-on: ubuntu-latest
@@ -39,7 +53,8 @@ jobs:
 
       - name: Install kustomize + kubeconform + yq
         env:
-          KUSTOMIZE_VERSION: 5.8.1
+          # renovate: datasource=github-releases depName=kubernetes-sigs/kustomize
+          KUSTOMIZE_VERSION: 5.8.3
           # renovate: datasource=github-releases depName=mikefarah/yq
           YQ_VERSION: 4.53.6
         run: |
@@ -53,13 +68,13 @@ jobs:
           printf '#!/bin/sh\nexit 0\n' | sudo tee /usr/local/bin/ksops >/dev/null
           sudo chmod +x /usr/local/bin/ksops
 
-      - name: kustomize build + kubeconform
+      - name: Render manifests + kubeconform
         run: |
           set -euo pipefail
           for dir in apps/overlays/main/*/ infrastructure/base/*/; do
             [ -f "$dir/kustomization.yaml" ] || continue
             echo "== $dir"
-            kustomize build --enable-helm --enable-alpha-plugins --enable-exec "$dir" \
+            bash scripts/render.sh "$dir" \
               | kubeconform -strict -ignore-missing-schemas -summary
           done
 
@@ -85,9 +100,10 @@ jobs:
 
       - name: Install kustomize + yq
         env:
-          KUSTOMIZE_VERSION: 5.8.1
+          # renovate: datasource=github-releases depName=kubernetes-sigs/kustomize
+          KUSTOMIZE_VERSION: 5.8.3
           # renovate: datasource=github-releases depName=mikefarah/yq
-          YQ_VERSION: 4.53.6
+          YQ_VERSION: 4.54.1
         run: |
           set -euo pipefail
           curl -sSfL "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v${KUSTOMIZE_VERSION}/kustomize_v${KUSTOMIZE_VERSION}_linux_amd64.tar.gz" | tar xz kustomize
@@ -130,11 +146,14 @@ jobs:
 
       - uses: azure/setup-helm@v5
 
-      - name: Install kustomize + Trivy
+      - name: Install kustomize + Trivy + yq
         env:
-          KUSTOMIZE_VERSION: 5.8.1
+          # renovate: datasource=github-releases depName=kubernetes-sigs/kustomize
+          KUSTOMIZE_VERSION: 5.8.3
           # renovate: datasource=github-releases depName=aquasecurity/trivy
-          TRIVY_VERSION: 0.73.0
+          TRIVY_VERSION: 0.75.0
+          # renovate: datasource=github-releases depName=mikefarah/yq
+          YQ_VERSION: 4.53.6
         run: |
           set -euo pipefail
           # Gepinnter Direkt-Download statt install_kustomize.sh: das Script fragt
@@ -146,6 +165,8 @@ jobs:
           # regelmäßig ins anonyme Rate-Limit.
           curl -sSfL "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz" | tar xz trivy
           sudo mv trivy /usr/local/bin/
+          curl -sSfL "https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION}/yq_linux_amd64" -o yq
+          sudo install -m 0755 yq /usr/local/bin/yq
           # KSOPS-Stub: CI hat keinen age-Key, Secrets werden nicht gerendert.
           printf '#!/bin/sh\nexit 0\n' | sudo tee /usr/local/bin/ksops >/dev/null
           sudo chmod +x /usr/local/bin/ksops
@@ -157,7 +178,7 @@ jobs:
           for dir in apps/overlays/main/*/ infrastructure/base/*/; do
             [ -f "$dir/kustomization.yaml" ] || continue
             name=$(echo "$dir" | tr '/' '_')
-            kustomize build --enable-helm --enable-alpha-plugins --enable-exec "$dir" > "rendered/${name}.yaml"
+            bash scripts/render.sh "$dir" > "rendered/${name}.yaml"
           done
 
       - name: Trivy misconfiguration scan

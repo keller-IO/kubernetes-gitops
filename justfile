@@ -7,14 +7,14 @@ set shell := ["bash", "-cu"]
 default:
     @just --list
 
-# Render every overlay with kustomize (helm inflation enabled) to catch build errors.
+# Render every ArgoCD source to catch build errors.
 build:
     #!/usr/bin/env bash
     set -euo pipefail
     for dir in apps/overlays/main/*/ infrastructure/base/*/; do
       [ -f "$dir/kustomization.yaml" ] || continue
       echo "== building $dir"
-      kustomize build --enable-helm --enable-alpha-plugins --enable-exec "$dir" >/dev/null
+      bash scripts/render.sh "$dir" >/dev/null
     done
 
 # Lint YAML formatting.
@@ -27,7 +27,7 @@ test:
     set -euo pipefail
     for dir in apps/overlays/main/*/ infrastructure/base/*/; do
       [ -f "$dir/kustomization.yaml" ] || continue
-      kustomize build --enable-helm --enable-alpha-plugins --enable-exec "$dir" | kubeconform -strict -ignore-missing-schemas -summary
+      bash scripts/render.sh "$dir" | kubeconform -strict -ignore-missing-schemas -summary
     done
     ./scripts/ci/check-litellm.sh
     PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s apps/base/nextcloud-yealink-phonebook -p 'test_*.py'
@@ -51,8 +51,12 @@ secrets-check:
 guardrails:
     ./scripts/ci/guardrails.sh
 
+# Validate Renovate configuration and extract dependencies locally without writes.
+renovate-check:
+    bash scripts/ci/check-renovate.sh
+
 # Run the full local gate used by CI.
-validate: lint secrets-check guardrails build test
+validate: lint secrets-check guardrails renovate-check build test
 
 # Run the opt-in Blablador provider contract against the pinned LiteLLM image.
 litellm-provider-contract ENV_FILE:

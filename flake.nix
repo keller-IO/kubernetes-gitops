@@ -37,6 +37,7 @@
           # Tooling required by validation and cluster operations.
           packages = with pkgs; [
             just # task runner
+            renovate # dependency extraction and configuration validation
             kustomize # manifest rendering
             kubeconform # schema validation
             kubernetes-helm # `kustomize build --enable-helm`
@@ -50,7 +51,7 @@
             cosign # verify container image signatures and provenance
             skopeo # inspect registry image metadata and resolve digests
             trivy # scan container images for vulnerabilities
-            yq-go # query and update YAML
+            yq-go # query, update, and inspect YAML
             podman # run pinned container images for contract tests
             argocd # inspect ArgoCD state
           ];
