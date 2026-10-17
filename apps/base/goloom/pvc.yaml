@@ -1,0 +1,22 @@
+# Daten-PVC von Goloom (SQLite + Medien). Bewusst hier und nicht im Upstream-Chart
+# (values.yaml: persistence.existingClaim), damit ArgoCD sie nie pruned oder loescht:
+# Beim Umstieg auf das Upstream-Chart (#238) hat ein Sync mit Zwischenstand die
+# Chart-PVC gepruned. Siehe docs/learnings/argocd-prune-pvc-bei-quellenwechsel.md.
+#
+# Kein volumeName: ein Restore auf einem neuen Cluster soll frisch provisionieren.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: goloom-data
+  labels:
+    app.kubernetes.io/name: goloom
+    app.kubernetes.io/instance: goloom
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: ceph-rbd
+  volumeMode: Filesystem
+  resources:
+    requests:
+      storage: 5Gi
