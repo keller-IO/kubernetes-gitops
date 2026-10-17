@@ -58,7 +58,20 @@ spec:
             # vorangelegte Unterverzeichnisse (adminpanel/ …) mit — ein emptyDir verdeckt
             # sie und supervisord bricht beim Start ab.
             - { name: data, mountPath: /var/lib/euro-office/documentserver }
+            # Das Image bringt ein nicht sauber heruntergefahrenes PG-Datenverzeichnis mit
+            # (Container-Layer, fluechtig). Jeder Start fuehrt daher eine Crash-Recovery aus,
+            # die zuerst jede Datei per fsync() synchronisiert. Auf wrk4 (Ceph-RBD mit
+            # langsamer OSD) dauert das > 60 s, und das pg_ctl-Start-Timeout beendet den
+            # Container (CrashLoopBackOff). syncfs sichert das Dateisystem in einem Aufruf.
+            # subPath, damit der Rest von conf.d (include_dir) erhalten bleibt.
+            - name: postgres-conf
+              mountPath: /etc/postgresql/16/main/conf.d/90-recovery-syncfs.conf
+              subPath: 90-recovery-syncfs.conf
+              readOnly: true
       volumes:
+        - name: postgres-conf
+          configMap:
+            name: eurooffice-postgres-conf
         - name: data
           persistentVolumeClaim:
             claimName: eurooffice-data

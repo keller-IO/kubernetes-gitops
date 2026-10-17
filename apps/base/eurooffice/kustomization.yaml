@@ -8,6 +8,7 @@ namespace: eurooffice
 # Konsument: Dev-Nextcloud cloud-dev.savar.de (Connector-App "eurooffice", JWT-Auth).
 resources:
   - deployment.yaml
+  - postgres-conf.yaml
   - service.yaml
   - ingress.yaml
 

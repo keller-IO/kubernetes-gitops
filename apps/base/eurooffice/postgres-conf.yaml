@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: eurooffice-postgres-conf
+  namespace: eurooffice
+data:
+  90-recovery-syncfs.conf: |
+    # Crash-Recovery: ein einziges syncfs() statt fsync() je Datei (PostgreSQL >= 14)
+    recovery_init_sync_method = syncfs
