@@ -56,7 +56,7 @@ jobs:
           # renovate: datasource=github-releases depName=kubernetes-sigs/kustomize
           KUSTOMIZE_VERSION: 5.8.3
           # renovate: datasource=github-releases depName=mikefarah/yq
-          YQ_VERSION: 4.53.6
+          YQ_VERSION: 4.54.1
         run: |
           set -euo pipefail
           curl -sSfL "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v${KUSTOMIZE_VERSION}/kustomize_v${KUSTOMIZE_VERSION}_linux_amd64.tar.gz" | tar xz kustomize
@@ -125,7 +125,7 @@ jobs:
       - name: Install yq
         env:
           # renovate: datasource=github-releases depName=mikefarah/yq
-          YQ_VERSION: 4.53.6
+          YQ_VERSION: 4.54.1
         run: |
           set -euo pipefail
           curl -sSfL "https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION}/yq_linux_amd64" -o yq
@@ -153,7 +153,7 @@ jobs:
           # renovate: datasource=github-releases depName=aquasecurity/trivy
           TRIVY_VERSION: 0.75.0
           # renovate: datasource=github-releases depName=mikefarah/yq
-          YQ_VERSION: 4.53.6
+          YQ_VERSION: 4.54.1
         run: |
           set -euo pipefail
           # Gepinnter Direkt-Download statt install_kustomize.sh: das Script fragt
