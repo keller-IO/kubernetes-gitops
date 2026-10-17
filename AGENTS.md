@@ -1,87 +1,69 @@
 # kubernetes-gitops — AGENTS.md
 
-## Purpose
-Declarative management of K8s workloads on Talos Linux via **ArgoCD**. Single source of truth for all cluster resources.
+## Agent setup
+On every fresh clone or worktree, run `nix develop --command just agents-setup`
+before working in this repository. This generates local rules, skills, subagents,
+permissions, and MCP configuration from `.rulesync/`. Start a new agent session
+so the generated tools are discovered. The tracked root `AGENTS.md` and
+`CLAUDE.md` are bootstrap copies of this rule; edit this source and regenerate.
 
-## Role & Context
-You are **Senior Kubernetes System Architect** and **GitOps Automation Engineer**. Goal: build and maintain a resource-efficient, highly-available cluster. All changes via YAML manifests (Kustomize / HelmReleases), Git commits, and CI.
+## Project contract
+- ArgoCD manages the Talos Kubernetes cluster from this repository. Change
+  manifests through GitOps, not by editing live resources. Use Kustomize
+  base/overlay layouts and `helmCharts:` inflation. There is no Flux.
+- For a new app, load `add-app`; for a chart or image bump, load
+  `renovate-bump`. Inspect **rendered** manifests for new or bumped charts,
+  using `manifest-inspector` when useful. Values alone do not prove the result.
+- For infrastructure manifests, cross-cutting Kubernetes changes, or a safety
+  review, load `kubernetes-skill` to check security, resources, exposure, RBAC,
+  rollout, and API drift.
+- New app database CRs use CNPG for Postgres or mariadb-operator for MariaDB.
+  Set requests and limits in `spec.resources`, pin `spec.image`/`spec.imageName`,
+  and size requests from measured usage. Existing exceptions in
+  `scripts/ci/known-gaps/` do not authorize new gaps.
+- No unallowlisted HPA or memory-based autoscaling. Never use floating image
+  tags (`latest`) or `imagePullPolicy: Always`.
+- Use `nginx.org/*` ingress annotations and hosts from `cluster-config.yaml`.
+  App backups go daily to Ceph S3. Keep app secrets SOPS-encrypted.
+- OIDC uses external Keycloak, realm `bgt` at
+  `https://auth.savar.de/realms/bgt`. Ask the user before onboarding a client;
+  enable OIDC only after the client, redirect URI, and SOPS secret match. Do
+  not create new Authentik blueprints.
 
-## Tech Stack (GitOps)
-- **GitOps Controller**: ArgoCD (app-of-apps + ApplicationSets). No Flux.
-- **Ingress**: NGINX Ingress Controller + Cilium CNI.
-- **Secrets**: SOPS + age (KSOPS in ArgoCD repo-server).
-- **Identity**: External Keycloak (OIDC), Realm `bgt` at `https://auth.savar.de/realms/bgt`.
-- **Storage**: Ceph.
+## Agent safety and workflow
+- Start non-trivial changes from current `main` in a feature worktree. Run
+  `nix develop --command just validate` before opening a PR; CI and review
+  gate ArgoCD reconciliation.
+- Live cluster inspection requires read-only credentials. Never run mutating
+  `kubectl`/`talosctl` commands without explicit human write access for a
+  named incident. `.rulesync/permissions.jsonc` adds tool-level denials;
+  the read-only credentials remain the actual access boundary.
+- Never commit kubeconfig, talosconfig, age private keys, API tokens, or
+  plaintext SOPS contents.
+- Read the relevant directory `AGENTS.md` and `docs/learnings/` before complex
+  changes. After unexpected operational effects, use `write-learning` and add
+  a CI guardrail for checkable patterns.
+- Delegate mechanical searches, counts, and inventories to the read-only
+  `sweeper` subagent. Start it on the cheapest suitable small model: Claude
+  uses its pinned model; for OpenCode, Codex, and Cursor choose an available
+  cheap model in the dispatch call or configure the client's default subagent
+  model. A prompt alone cannot change a model the client already selected.
+- For public routing or DNS changes, read the current runbook under
+  `docs/runbooks/` and verify registry delegation before editing `dns01`.
+  Copy operational documentation to
+  `192.168.23.19:/root/ansible/kellerio-docs/`.
 
-## Repository Layout
-```
-├── clusters/                # ArgoCD entry points (root-app, ApplicationSets)
-├── infrastructure/          # Cluster-wide platform services (ingress, storage, operators)
-├── apps/                    # Application workloads (base + overlays)
-├── docs/                    # Production-readiness, Runbooks, Learnings, Decisions
-├── scripts/                 # CI helpers
-└── justfile                 # Task runner
-```
-
-## Local Contracts
-- **Manifests**: Prefer Kustomize Base/Overlay. Use `helmCharts:` inflation.
-- **New/bumped chart → inspect the rendered manifest**, don't trust the values file: a
-  chart can silently ignore a values key that isn't in its schema, or ship an HPA you
-  never asked for that voids your `replicaCount` (Collabora scaled to 55 replicas and
-  took the cluster down — `docs/learnings/collabora-hpa-runaway.md`). CI fails on any
-  unallowlisted HPA (`scripts/ci/check-hpa.sh`) and never allows one that targets
-  memory — per-pod memory doesn't fall as replicas rise, so that's a structurally
-  unbounded spiral, not a tuning problem. Autoscale on CPU if at all.
-- **Database Strategy**: Postgres via CNPG operator; MariaDB via mariadb-operator. Dedicated
-  CRs per app in `apps/base/<app>/database.yaml`. Every such CR **must** set
-  `spec.resources` (requests+limits) — without them the pod is BestEffort, OOM-killed
-  first, and invisible to the scheduler's request-based node balancing (MariaDB
-  incident, commit `098d145`) — and **must** pin `spec.image`/`spec.imageName`, or the
-  operator's own default silently picks the DB version out of Renovate's sight. Size
-  requests from a measured `kubectl top`, never a guess (Collabora ran at 830Mi
-  against a 512Mi request). CI enforces both via allowlisted exceptions in
-  `scripts/ci/known-gaps/`; new CRs get no free pass.
-- **Ingress**: Use `nginx.org/*` annotations. Hosts in `cluster-config.yaml`.
-- **Backup**: Daily to Ceph S3 via operator-native backup CRs.
-- **OIDC**: Use external Keycloak clients and app SOPS secrets. Do not add new Authentik blueprints unless the architecture decision changes again.
-- **Agent Safety**: AI agents use GitOps by default. They may inspect the live cluster
-  with read-only credentials, but must not run mutating `kubectl`/`talosctl` commands
-  unless a human explicitly grants write access for a named incident.
-
-## Work Guidance
-- Follow Root AGENTS.md for global rules (Caveman, Commit, DOX).
-- Start every non-trivial change from current `main` on a feature branch/worktree.
-- Prefer `nix develop` + `just validate`; do not install tools globally or invent
-  one-off validation commands when a `just` recipe exists.
-- Do not commit kubeconfig, talosconfig, age private keys, API tokens, or plaintext
-  `*.sops.yaml` contents.
-- Do not use floating image tags (`latest`) or `imagePullPolicy: Always`; Talos node
-  reboots must pull reproducible images.
-- Open a PR for generated fixes. Let CI and review gate ArgoCD reconciliation.
-- **Adding Apps**: 
-  1. Search official docs.
-  2. Create base with `helmCharts:` + `values.yaml`.
-  3. Add `database.yaml`, `cache.yaml`, `backup.yaml`, `secret.sops.yaml`.
-  4. Create overlay in `apps/overlays/main/`.
-  5. Update `docs/PRODUCTION-READINESS.md` (mandatory).
-- **OIDC Onboarding**: Ask user first. Create or confirm a Keycloak client in Realm `bgt`, set app redirect URIs, then store client secrets in the app `secret.sops.yaml`. Enable app OIDC only after a client/secret match is confirmed.
-
-## External Infrastructure (DNS & Public Routing)
-- **Public path**: Seit dem WAN-Cutover am 13.09.2026 leitet der Router `87.191.135.42` die Ports 80/443 direkt an den Cluster-LB **192.168.2.246** (nginx-inc). TLS terminiert pro Domain im Cluster; der fruehere `.15`-Traefik (`192.168.2.15`) ist aus dem Web-Pfad entfernt und VM 107 ist gestoppt. `traefik-edge-potsdam` (`192.168.23.20`) bleibt ein ebenfalls gestoppter DR-Edge und darf nicht als aktiver Pfad angenommen werden.
-- **DNS-Master**: `dns01.jit-creatives.de` (88.198.107.13), BIND9. Zonen unter `/etc/bind/dom/<domain>.db` mit `$INCLUDE`-Fragmenten (`.a`, `.aaaa`, `.cn`, `.mx`, `.ns`, `.rr`); DNSSEC inline-signing.
-  Workflow: Fragment editieren → Serial in `.db` bumpen (YYYYMMDDNN) → `named-checkzone` → `rndc reload <zone>`.
-- **⚠️ Delegation prüfen, bevor du dns01 editierst**: Nicht jede Zone auf dns01 ist öffentlich autoritativ. Z. B. ist `gemeinsam-fuer-halbe.de` an der Registry zu **Cloudflare** delegiert (native CF-Zone, kein AXFR von dns01) — Änderungen dort zusätzlich im CF-Dashboard nötig. Check: `dig +noall +authority NS <zone> @a.nic.de`.
-- **Secondaries** von dns01: dns02, dns03, ClouDNS (pns31–34 — auch Basis für cert-manager DNS-01).
-- **web03.jit-creatives.de** (88.198.107.11): Alt-Webserver, serviert nur noch Apex-301-Redirects auf www.
-- **Betriebsdoku** immer zusätzlich nach cfgmgmt01 kopieren: `192.168.23.19:/root/ansible/kellerio-docs/`.
-
-## Operational Learnings
-- Check `docs/learnings/` before complex changes. 
-- Create new learning if migration/action had unexpected side effects.
-
-## Index
-- [clusters/AGENTS.md](clusters/AGENTS.md) — ArgoCD bootstrap & entry points
-- [infrastructure/AGENTS.md](infrastructure/AGENTS.md) — cluster-wide platform services
-- [apps/AGENTS.md](apps/AGENTS.md) — application workloads
-- [docs/AGENTS.md](docs/AGENTS.md) — project documentation
-- [scripts/AGENTS.md](scripts/AGENTS.md) — CI and guardrail helper scripts
+## Rulesync resources
+- `.rulesync/` is the source for root rules, skills, subagents, MCP servers,
+  and permissions. Regenerate after source changes with
+  `nix develop --command just agents-setup`; `just agents-check` detects
+  missing or stale tool files. Only root `AGENTS.md` and `CLAUDE.md` are
+  tracked bootstrap outputs; other tool-native outputs are gitignored.
+- `keller-kubernetes` uses the GitOps-managed read-only MCP server. Set
+  `KELLER_KUBERNETES_MCP_AUTH` outside the repository to the complete
+  `Basic <base64(mcp:password)>` header value before starting the agent.
+- Available workflows: `add-app` for app onboarding, `renovate-bump` for
+  dependencies, `kubernetes-skill` for manifest safety, `write-learning` for
+  incidents; `manifest-inspector` audits rendered resources,
+  `validate-triage` maps CI failures to files, and `sweeper` returns compact
+  `path:line` evidence for mechanical lookups.

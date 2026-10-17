@@ -55,8 +55,19 @@ guardrails:
 renovate-check:
     bash scripts/ci/check-renovate.sh
 
+# Regenerate the tool-native agent configs (AGENTS.md, CLAUDE.md, .claude/,
+# .opencode/, .codex/, .cursor/) from the .rulesync/ source of truth. Root
+# AGENTS.md and CLAUDE.md are tracked bootstraps; other outputs are ignored.
+agents-setup:
+    rulesync generate
+
+# Check agent config after setup; a fresh checkout must run agents-setup first.
+agents-check:
+    rulesync doctor --strict
+    rulesync generate --check
+
 # Run the full local gate used by CI.
-validate: lint secrets-check guardrails renovate-check build test
+validate: agents-check lint secrets-check guardrails renovate-check build test
 
 # Run the opt-in Blablador provider contract against the pinned LiteLLM image.
 litellm-provider-contract ENV_FILE:

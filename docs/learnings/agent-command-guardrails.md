@@ -23,6 +23,26 @@ Git-Diffs, nicht manuelle Live-Mutationen.
   ausser sie tragen eine explizite `guardrails: allow-live-mutation` Ausnahme mit
   dokumentiertem Scope.
 
+## Runtime guard (agent tools)
+
+`just guardrails` prueft nur das Repository — es kann einen Agenten nicht daran
+hindern, einen mutierenden Befehl live auszufuehren. Diese zweite Schicht steht
+seit der Rulesync-Migration genau einmal in `.rulesync/permissions.jsonc` und wird
+von `just agents-setup` in native Tool-Berechtigungen generiert:
+
+- Claude Code — `permissions.deny` in `.claude/settings.json` (`Bash(kubectl delete *)`)
+- OpenCode — `permission.bash` in `opencode.jsonc`
+- Codex — `prefix_rule(...)` in `.codex/rules/rulesync.rules`
+- Cursor — `Shell(...)` in `.cursor/cli.json`
+
+Die Muster sind bewusst der kleinste gemeinsame Nenner (`<tool> <verb> *`): Codex
+matcht jedes Wort als literales Token und verwirft ein Glob innerhalb oder vor
+einem Wort stillschweigend — alles reichere als ein abschliessender `*` schuetzt
+die anderen Tools, aber **nicht** Codex. Globale Flags vor dem Verb
+(`kubectl -n prod delete pod x`, `helm -n x upgrade`) lassen sich nicht als
+Codex-Prefix ausdruecken und sind darum in keinem Tool abgedeckt — der read-only
+Kubeconfig bleibt die eigentliche Kontrolle, diese Liste ist Defense in Depth.
+
 ## Prevention
 
 `just guardrails` und CI pruefen:
