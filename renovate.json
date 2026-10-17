@@ -2,23 +2,21 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended",
-    ":dependencyDashboard",
-    ":semanticCommits"
+    ":semanticCommits",
+    "customManagers:githubActionsVersions"
   ],
   "timezone": "Europe/Berlin",
-  "schedule": [
-    "before 6am on monday"
-  ],
   "labels": [
     "dependencies"
   ],
   "ignorePaths": [
-    ".forgejo/**"
+    ".forgejo/**",
+    "**/*.sops.yaml",
+    "**/charts/**",
+    "apps/vendor/**"
   ],
   "rebaseWhen": "behind-base-branch",
   "minimumReleaseAge": "7 days",
-  "prHourlyLimit": 2,
-  "prConcurrentLimit": 10,
   "nix": {
     "enabled": true
   },
@@ -26,40 +24,17 @@
     "enabled": true,
     "automerge": true
   },
-  "kustomize": {
-    "managerFilePatterns": [
-      "/(^|/)(apps|infrastructure|clusters)/.+/kustomization\\.ya?ml$/"
-    ]
-  },
   "kubernetes": {
     "managerFilePatterns": [
-      "/(^|/)(apps|infrastructure)/.+(deployment|daemonset|statefulset|job|cronjob|workload|cache|database)\\.ya?ml$/"
-    ]
-  },
-  "github-actions": {
-    "managerFilePatterns": [
-      "/(^|/)\\.github/workflows/.+\\.ya?ml$/"
+      "{apps,infrastructure,clusters}/**/*.{yaml,yml}"
     ]
   },
   "customManagers": [
     {
       "customType": "regex",
-      "description": "Generic marker '# renovate: datasource=X depName=Y [versioning=Z]' for fields without native manager support.",
+      "description": "Tag-only Helm values with '# renovate: image=repo/name'.",
       "managerFilePatterns": [
-        "/(^|/)(apps|infrastructure|clusters)/.+\\.ya?ml$/"
-      ],
-      "matchStrings": [
-        "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+packageName=(?<packageName>\\S+))?(?:\\s+versioning=(?<versioning>\\S+))?\\s*\\n(?:[^\\n]*\\n)*?\\s*tag:\\s*[\"']?(?<currentValue>[^\\s\"'#]+)[\"']?",
-        "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+packageName=(?<packageName>\\S+))?(?:\\s+versioning=(?<versioning>\\S+))?\\s*\\n\\s*imageName:\\s*[\"']?[^:@\\s\"']+:(?<currentValue>[^\"'@\\s]+)[\"']?",
-        "\\sversion:\\s*[\"']?(?<currentValue>[^\\s\"'#]+)[\"']?\\s*#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+packageName=(?<packageName>\\S+))?(?:\\s+versioning=(?<versioning>\\S+))?"
-      ],
-      "versioningTemplate": "{{#if versioning}}{{{versioning}}}{{else}}semver{{/if}}"
-    },
-    {
-      "customType": "regex",
-      "description": "Legacy repo marker '# renovate: image=repo/name' for inline images and tag-only values.",
-      "managerFilePatterns": [
-        "/(^|/)(apps|infrastructure|clusters)/.+\\.ya?ml$/"
+        "{apps,infrastructure,clusters}/**/*.{yaml,yml}"
       ],
       "matchStrings": [
         "tag:\\s*[\"']?(?<currentValue>[^\\s\"'#]+)[\"']?\\s*#\\s*renovate:\\s*image=(?<depName>\\S+)"
@@ -69,44 +44,52 @@
     },
     {
       "customType": "regex",
-      "description": "Legacy digest-only image markers keep manifests non-floating while allowing digest refreshes.",
+      "description": "CNPG imageName is not supported by the Kubernetes manager. Preserve tags and digests together.",
       "managerFilePatterns": [
-        "/(^|/)(apps|infrastructure|clusters)/.+\\.ya?ml$/"
+        "{apps,infrastructure,clusters}/**/*.{yaml,yml}"
       ],
       "matchStrings": [
-        "#\\s*renovate:\\s*image=(?<depName>\\S+)\\s*\\n\\s*(?:-\\s+)?image:\\s*[\"']?[^@\\s\"']+@(?<currentDigest>sha256:[a-f0-9]+)[\"']?"
+        "\\bimageName:\\s*[\"']?(?<depName>[^\\s:@\"']+):(?<currentValue>[^\\s@\"'#]+)(?:@(?<currentDigest>sha256:[a-f0-9]{64}))?"
       ],
       "datasourceTemplate": "docker",
-      "currentValueTemplate": "latest"
-    },
-    {
-      "customType": "regex",
-      "description": "Workflow env-var marker '# renovate: datasource=X depName=Y' followed by VERSION: X.",
-      "managerFilePatterns": [
-        "/(^|/)\\.github/workflows/.+\\.ya?ml$/"
-      ],
-      "matchStrings": [
-        "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+packageName=(?<packageName>\\S+))?(?:\\s+versioning=(?<versioning>\\S+))?\\s*\\n\\s*[A-Z0-9_]+:\\s*[\"']?(?<currentValue>[^\"'\\s]+)[\"']?"
-      ],
-      "versioningTemplate": "{{#if versioning}}{{{versioning}}}{{else}}semver{{/if}}"
+      "versioningTemplate": "docker"
     }
   ],
   "packageRules": [
     {
-      "description": "Group each app or infrastructure directory so chart, image and marker updates stay in lockstep.",
+      "description": "Group charts, images and markers per component across base, overlays and subdirectories.",
       "matchFileNames": [
-        "apps/**",
-        "infrastructure/**",
-        "clusters/**"
+        "apps/base/**",
+        "apps/overlays/**",
+        "infrastructure/base/**",
+        "infrastructure/overlays/**"
       ],
-      "groupName": "{{parentDir}}"
+      "groupName": "{{{replace \"^(apps|infrastructure)/(?:base|overlays/[^/]+)/([^/]+)/.*$\" \"$1/$2\" packageFile}}}"
     },
     {
-      "description": "CNPG Postgres major upgrades are manual migrations.",
-      "matchPackageNames": [
-        "ghcr.io/cloudnative-pg/postgresql"
+      "matchFileNames": [
+        "clusters/**"
       ],
-      "allowedVersions": "/^16\\.\\d+$/"
+      "groupName": "clusters/{{parentDir}}"
+    },
+    {
+      "matchFileNames": [
+        ".github/workflows/**"
+      ],
+      "groupName": "github-actions"
+    },
+    {
+      "description": "Goloom uses a vendored chart without a Helm repository; only its application image is updated.",
+      "matchManagers": [
+        "kustomize"
+      ],
+      "matchDatasources": [
+        "helm"
+      ],
+      "matchFileNames": [
+        "apps/base/goloom/kustomization.yaml"
+      ],
+      "enabled": false
     },
     {
       "description": "Nix flake inputs are grouped and automerged after the global soak period.",
@@ -114,9 +97,7 @@
         "nix"
       ],
       "groupName": "nix packages",
-      "automerge": true,
-      "automergeType": "pr",
-      "platformAutomerge": true
+      "automerge": true
     },
     {
       "description": "Automerge low-risk digest, pin and patch updates after CI.",
@@ -125,9 +106,7 @@
         "pin",
         "patch"
       ],
-      "automerge": true,
-      "automergeType": "pr",
-      "platformAutomerge": true
+      "automerge": true
     },
     {
       "description": "Automerge minor updates only for stateless leaf apps.",
@@ -142,9 +121,7 @@
       "matchUpdateTypes": [
         "minor"
       ],
-      "automerge": true,
-      "automergeType": "pr",
-      "platformAutomerge": true
+      "automerge": true
     },
     {
       "description": "Renovate self-updates get a shorter soak to keep the updater current.",
@@ -152,9 +129,7 @@
         "apps/base/renovate/**"
       ],
       "minimumReleaseAge": "2 days",
-      "automerge": true,
-      "automergeType": "pr",
-      "platformAutomerge": true
+      "automerge": true
     },
     {
       "description": "Infrastructure controllers and stateful applications need manual review.",
@@ -174,7 +149,14 @@
         "infrastructure/base/cnpg/**",
         "infrastructure/base/ingress-nginx/**",
         "infrastructure/base/mariadb-operator/**",
-        "infrastructure/base/monitoring/**"
+        "infrastructure/base/monitoring/**",
+        "apps/base/ciso-assistant/**",
+        "apps/base/expense-tracker/**",
+        "apps/base/matomo/**",
+        "infrastructure/base/crowdsec/**",
+        "infrastructure/base/csi-driver-smb/**",
+        "infrastructure/base/netbird/**",
+        "infrastructure/base/snapshot-controller/**"
       ],
       "automerge": false
     },
@@ -185,6 +167,66 @@
       ],
       "matchCurrentVersion": "/^0\\./",
       "automerge": false
+    },
+    {
+      "matchPackageNames": [
+        "kimai/kimai2"
+      ],
+      "versioning": "regex:^(?<compatibility>apache)-(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)$"
+    },
+    {
+      "description": "Commit-SHA deployments are released by the application pipeline, not ordered Docker tags.",
+      "matchPackageNames": [
+        "registry.jit-creatives.de/jit/expense-tracker"
+      ],
+      "enabled": false
+    },
+    {
+      "description": "Mailman images are intentionally frozen during migration (renovate: ignore is not a native directive).",
+      "matchFileNames": [
+        "apps/base/mailman/workload.yaml"
+      ],
+      "matchPackageNames": [
+        "maxking/mailman-core",
+        "maxking/mailman-web"
+      ],
+      "enabled": false
+    },
+    {
+      "description": "CNPG Postgres 16: patch/build updates only; major upgrades require a migration.",
+      "matchPackageNames": [
+        "ghcr.io/cloudnative-pg/postgresql"
+      ],
+      "matchCurrentVersion": "/^16\\./",
+      "allowedVersions": "/^16\\.\\d+(?:-|$)/",
+      "automerge": false
+    },
+    {
+      "description": "CNPG Postgres 17: patch/build updates only; major upgrades require a migration.",
+      "matchPackageNames": [
+        "ghcr.io/cloudnative-pg/postgresql"
+      ],
+      "matchCurrentVersion": "/^17\\./",
+      "allowedVersions": "/^17\\.\\d+(?:-|$)/",
+      "automerge": false
+    },
+    {
+      "description": "Kustomize release tags contain a component prefix; ignore kyaml and api releases.",
+      "matchDatasources": [
+        "github-releases"
+      ],
+      "matchPackageNames": [
+        "kubernetes-sigs/kustomize"
+      ],
+      "extractVersion": "^kustomize/v(?<version>.+)$"
+    },
+    {
+      "description": "CNPG timestamped system images: compare build dates as versions while keeping the OS variant compatible.",
+      "matchPackageNames": [
+        "ghcr.io/cloudnative-pg/postgresql"
+      ],
+      "matchCurrentValue": "/-\\d+-system-/",
+      "versioning": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)-(?<build>\\d+)-(?<compatibility>system-[a-z0-9-]+)$"
     }
   ]
 }

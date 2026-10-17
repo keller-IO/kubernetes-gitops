@@ -59,8 +59,12 @@ secrets-check:
 guardrails:
     ./scripts/ci/guardrails.sh
 
+# Validate Renovate configuration and extract dependencies locally without writes.
+renovate-check:
+    bash scripts/ci/check-renovate.sh
+
 # Run the full local gate used by CI.
-validate: lint secrets-check guardrails build test
+validate: lint secrets-check guardrails renovate-check build test
 
 fmt:
     kustomize cfg fmt infrastructure apps clusters

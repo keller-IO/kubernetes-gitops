@@ -11,6 +11,20 @@ permissions:
   contents: read
 
 jobs:
+  # Exercise real dependency extraction, including CNPG and nonstandard filenames.
+  renovate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Validate Renovate configuration and extraction
+        env:
+          GITHUB_COM_TOKEN: ${{ github.token }}
+        run: |
+          docker run --rm --user "$(id -u):$(id -g)" \
+            -e HOME=/tmp -e GITHUB_COM_TOKEN \
+            -v "$PWD:/repo:ro" -w /repo --entrypoint bash \
+            renovate/renovate:43.280.4 scripts/ci/check-renovate.sh
+
   # YAML syntax / formatting.
   lint:
     runs-on: ubuntu-latest
@@ -39,6 +53,7 @@ jobs:
 
       - name: Install kustomize + kubeconform
         env:
+          # renovate: datasource=github-releases depName=kubernetes-sigs/kustomize
           KUSTOMIZE_VERSION: 5.8.1
         run: |
           set -euo pipefail
@@ -71,6 +86,7 @@ jobs:
 
       - name: Install kustomize + yq
         env:
+          # renovate: datasource=github-releases depName=kubernetes-sigs/kustomize
           KUSTOMIZE_VERSION: 5.8.1
           # renovate: datasource=github-releases depName=mikefarah/yq
           YQ_VERSION: 4.53.6
@@ -110,6 +126,7 @@ jobs:
 
       - name: Install kustomize + Trivy
         env:
+          # renovate: datasource=github-releases depName=kubernetes-sigs/kustomize
           KUSTOMIZE_VERSION: 5.8.1
           # renovate: datasource=github-releases depName=aquasecurity/trivy
           TRIVY_VERSION: 0.73.0
