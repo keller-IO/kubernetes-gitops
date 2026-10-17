@@ -17,14 +17,19 @@ so the generated tools are discovered. The tracked root `AGENTS.md` and
 - For infrastructure manifests, cross-cutting Kubernetes changes, or a safety
   review, load `kubernetes-skill` to check security, resources, exposure, RBAC,
   rollout, and API drift.
-- New app database CRs use CNPG for Postgres or mariadb-operator for MariaDB.
+- For new apps, choose the first suitable database in this order: PostgreSQL
+  with CNPG, MySQL/MariaDB with mariadb-operator, SQLite. Document deviations;
+  SQLite remains an exception. Add Valkey when required by the app; ask the
+  user before adding it as an optional cache. Database CRs use CNPG for
+  PostgreSQL or mariadb-operator for MariaDB.
   Set requests and limits in `spec.resources`, pin `spec.image`/`spec.imageName`,
   and size requests from measured usage. Existing exceptions in
   `scripts/ci/known-gaps/` do not authorize new gaps.
 - No unallowlisted HPA or memory-based autoscaling. Never use floating image
   tags (`latest`) or `imagePullPolicy: Always`.
-- Use `nginx.org/*` ingress annotations and hosts from `cluster-config.yaml`.
-  App backups go daily to Ceph S3. Keep app secrets SOPS-encrypted.
+- Use `nginx.org/*` ingress annotations and hosts from
+  `apps/overlays/main/cluster-config.yaml`. App backups go daily to off-cluster
+  Garage S3, normally with 30d retention. Keep app secrets SOPS-encrypted.
 - OIDC uses external Keycloak, realm `bgt` at
   `https://auth.savar.de/realms/bgt`. Ask the user before onboarding a client;
   enable OIDC only after the client, redirect URI, and SOPS secret match. Do
