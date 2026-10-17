@@ -28,7 +28,7 @@ spec:
       containers:
         - name: matomo
           # renovate: image=matomo
-          image: matomo:5.13.0-apache
+          image: matomo:5.14.0-apache
           ports: [{ containerPort: 80, name: http }]
           env:
             - name: MATOMO_DATABASE_ADAPTER
