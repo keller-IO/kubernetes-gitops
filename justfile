@@ -7,14 +7,14 @@ set shell := ["bash", "-cu"]
 default:
     @just --list
 
-# Render every overlay with kustomize (helm inflation enabled) to catch build errors.
+# Render every ArgoCD source to catch build errors.
 build:
     #!/usr/bin/env bash
     set -euo pipefail
     for dir in apps/overlays/main/*/ infrastructure/base/*/; do
       [ -f "$dir/kustomization.yaml" ] || continue
       echo "== building $dir"
-      kustomize build --enable-helm --enable-alpha-plugins --enable-exec "$dir" >/dev/null
+      bash scripts/render.sh "$dir" >/dev/null
     done
 
 # Lint YAML formatting.
@@ -27,7 +27,7 @@ test:
     set -euo pipefail
     for dir in apps/overlays/main/*/ infrastructure/base/*/; do
       [ -f "$dir/kustomization.yaml" ] || continue
-      kustomize build --enable-helm --enable-alpha-plugins --enable-exec "$dir" | kubeconform -strict -ignore-missing-schemas -summary
+      bash scripts/render.sh "$dir" | kubeconform -strict -ignore-missing-schemas -summary
     done
     PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s apps/base/nextcloud-yealink-phonebook -p 'test_*.py'
 

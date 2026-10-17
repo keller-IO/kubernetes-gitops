@@ -12,8 +12,7 @@
   "ignorePaths": [
     ".forgejo/**",
     "**/*.sops.yaml",
-    "**/charts/**",
-    "apps/vendor/**"
+    "**/charts/**"
   ],
   "rebaseWhen": "behind-base-branch",
   "minimumReleaseAge": "7 days",
@@ -79,17 +78,13 @@
       "groupName": "github-actions"
     },
     {
-      "description": "Goloom uses a vendored chart without a Helm repository; only its application image is updated.",
-      "matchManagers": [
-        "kustomize"
-      ],
-      "matchDatasources": [
-        "helm"
-      ],
-      "matchFileNames": [
-        "apps/base/goloom/kustomization.yaml"
-      ],
-      "enabled": false
+      "description": "Group the Goloom chart and image; GitHub releases supply dates for the seven-day release age.",
+      "groupName": "apps/goloom",
+      "overrideDatasource": "github-releases",
+      "overridePackageName": "Goloom-App/goloom",
+      "matchDepNames": [
+        "https://github.com/Goloom-App/goloom"
+      ]
     },
     {
       "description": "Nix flake inputs are grouped and automerged after the global soak period.",
@@ -228,5 +223,10 @@
       "matchCurrentValue": "/-\\d+-system-/",
       "versioning": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)-(?<build>\\d+)-(?<compatibility>system-[a-z0-9-]+)$"
     }
-  ]
+  ],
+  "argocd": {
+    "managerFilePatterns": [
+      "clusters/main/appset-apps.yaml"
+    ]
+  }
 }

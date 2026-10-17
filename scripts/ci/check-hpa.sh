@@ -40,7 +40,7 @@ for dir in apps/overlays/main/*/ infrastructure/base/*/; do
   [ -f "${dir}kustomization.yaml" ] || continue
 
   rendered="$work/rendered.yaml"
-  kustomize build --enable-helm --enable-alpha-plugins --enable-exec "$dir" > "$rendered"
+  bash scripts/render.sh "$dir" > "$rendered"
 
   hpas_json="$work/hpas.json"
   : > "$hpas_json"
