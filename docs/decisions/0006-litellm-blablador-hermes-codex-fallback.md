@@ -363,6 +363,7 @@ Mangels Datenbank und Volumes existieren weder Datenmigration noch Restore.
 - Codex-OAuth, Refresh-Tokens oder ChatGPT-Backendzugriff aus dem Cluster
 - LiteLLM-Load-Balancing oder provideruebergreifender Gateway-Failover
 - Datenbank, Redis, Persistenz oder mehrere LiteLLM-Replicas
+- Response-Caching im initialen Gateway-Rollout
 - Admin-UI, virtuelle Keys, Benutzer-/Teamverwaltung oder Spend-Tracking
 - Prompt-Logging, externe Observability-Callbacks oder zusaetzliche API-Pfade
 - automatische Auswahl anderer Blablador-Modelle neben `alias-code`
@@ -395,6 +396,24 @@ Backendwechsel kann Verhalten aendern, ohne dass sich die Konfiguration aendert.
 Deshalb sind die Provider-Contracts nicht nur Erstabnahme, sondern auch ein
 verpflichtender Wiederholungstest bei beobachteten Verhaltensaenderungen und vor
 LiteLLM-/Hermes-Upgrades.
+
+Response-Caching bleibt deaktiviert. Der aktuelle Request-Contract erlaubt
+keine clientgesteuerten Cache-Parameter, und der exakte Proxy-Contract fordert
+bei einem erfolgreichen Request genau einen Blablador-Aufruf. Ein Cache-Hit
+wuerde diese Semantik auf null Aufrufe aendern, Antworten ueber die Anfrage
+hinaus im Speicher halten und koennte Backendwechsel des veraenderlichen Alias
+oder veraltete Tool-Antworten verdecken.
+
+Eine spaetere Cache-Einfuehrung ist ein eigener freigabepflichtiger
+Architektur-Change. Der erste vertretbare Schritt waere ausschliesslich ein
+operatorgesteuerter, kurzlebiger und hart begrenzter In-Memory-Cache in der
+bestehenden einzelnen Replica; ohne Redis, Persistenz oder Client-Overrides.
+Streaming, Tool Calls und Abnahmetests bleiben dabei ungecached. Vor einem
+Rollout muessen die Cache-Konfiguration gegen das gepinnte LiteLLM-Image
+verifiziert, Cache-Miss mit genau einem und Cache-Hit mit null Provideraufrufen
+getestet sowie TTL, Groessenlimit und Inhaltsaufbewahrung dokumentiert werden.
+Ein geteilter Redis-Cache erfordert wegen neuer Secrets, Egress-,
+Verfuegbarkeits- und Datenschutzgrenzen eine neue ADR.
 
 Der gewaehlte Hermes-Standard-Fallback maximiert Verfuegbarkeit, kann aber
 Gateway- oder Billing-Fehler durch Codex-Nutzung maskieren. Sichtbare
