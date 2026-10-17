@@ -293,12 +293,16 @@ Identitaet, aber weder Service-Selector noch Secret-Zugriff besitzt.
 Die Live-Abnahme prueft:
 
 - ArgoCD `Synced`/`Healthy`, Pod-Probes und TLS-Zertifikat
-- gueltiger und ungueltiger Gateway-Key
+- gueltiger Gateway-Key mit 2xx und fehlende Authentifizierung mit HTTP 401
+- vorhandener falscher Gateway-Key mit HTTP 400 und strukturellem Fehlertyp
+  `no_db_connection`; das ist LiteLLM-`v1.104.0`-Verhalten im bewusst
+  datenbanklosen Master-Key-Modus und muss vor jedem Provideraufruf entstehen
 - Pfad-/Methodenmatrix und XFF-Spoofing von einem anderen LAN-Host
 - HTTP 413, 429 und 503 fuer Body-, Rate- und Admission-Grenzen
 - Blablador Chat, Streaming und Tool Call ueber den Gateway
 - erlaubte CNAME-/IP-Rotation sowie blockierte fremde Ziele und falsches SNI
-- Master-Key-Rotation: neuer Key erfolgreich, alter Key HTTP 401
+- Master-Key-Rotation: neuer Key erfolgreich, alter Key HTTP 400 mit
+  `no_db_connection` und ohne Provideraufruf
 
 Erst danach wird die Ansible-Rolle aktiviert. Syntaxcheck, Check-Mode,
 gezielter Rollout auf `hermes01`, effektive Konfigurationspruefung und ein
@@ -328,11 +332,17 @@ Der Rollout erfolgt in dieser Reihenfolge:
 7. Gateway als Primaerprovider sowie Codex-Fallback separat aktivieren.
 8. End-to-End-, Failover-, Idempotenz- und Rollback-Drill abschliessen.
 
-Bei spaeterer Master-Key-Rotation wird zuerst der SOPS-Key samt Secret-Revision
-per GitOps ausgerollt. Bis Ansible denselben neuen Key auf Hermes verteilt,
-liefert der alte Key 401 und Hermess Standard-Fallback haelt Codex verfuegbar.
-Nach dem Ansible-Rollout muessen Gateway-Nutzung mit dem neuen Key, Ablehnung
-des alten Keys und Rueckkehr zum Blablador-Primaerpfad belegt werden.
+Task 8 rotiert den Master-Key einmalig, waehrend Hermes weiterhin Codex als
+Primaerprovider verwendet. Der neue Key muss erfolgreich sein; der alte Key
+muss mit HTTP 400 und `no_db_connection` vor dem Provideraufruf scheitern.
+
+Bei jeder spaeteren produktiven Master-Key-Rotation wird Hermes zuerst ueber
+den verwalteten Rollbackpfad auf Codex als Primaerprovider gesetzt und dieser
+Zustand verifiziert. Danach werden der SOPS-Key samt Secret-Revision per GitOps
+und derselbe neue Key per Ansible Vault auf Hermes ausgerollt. Erst nach
+erfolgreicher Gateway-Pruefung mit dem neuen Key wird Blablador wieder als
+Primaerpfad aktiviert. Der Ablauf verlaesst sich bewusst nicht darauf, dass
+Hermes den HTTP-400-Fehlertyp des alten Keys als Fallback-ausloesend einstuft.
 
 ## Rollback
 
@@ -386,10 +396,12 @@ Deshalb sind die Provider-Contracts nicht nur Erstabnahme, sondern auch ein
 verpflichtender Wiederholungstest bei beobachteten Verhaltensaenderungen und vor
 LiteLLM-/Hermes-Upgrades.
 
-Der gewaehlte Hermes-Standard-Fallback maximiert Verfuegbarkeit, kann aber einen
-kaputten Gateway-Key oder Billing-Fehler durch Codex-Nutzung maskieren. Sichtbare
+Der gewaehlte Hermes-Standard-Fallback maximiert Verfuegbarkeit, kann aber
+Gateway- oder Billing-Fehler durch Codex-Nutzung maskieren. Sichtbare
 Fallback-Hinweise, technische Logs und die explizite Pruefung der Rueckkehr zum
-Primaerpfad sind daher Teil der Abnahme.
+Primaerpfad sind daher Teil der Abnahme. Fuer einen alten Gateway-Key wird
+dieser Fallback wegen der HTTP-400-Semantik nicht vorausgesetzt; Rotation nutzt
+stattdessen den kontrollierten Codex-Primary-Ablauf.
 
 Die Betriebsdokumentation wird zusaetzlich nach
 `cfgmgmt01:/root/ansible/kellerio-docs/` kopiert. GitOps- und
