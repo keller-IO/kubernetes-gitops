@@ -48,6 +48,7 @@
             kubectl # cluster access
             talosctl # Talos node diagnostics and maintenance
             jq # parse Kubernetes and Talos JSON output
+            yq-go # read Argo CD sources and inspect rendered YAML
             argocd # inspect ArgoCD state
           ];
 

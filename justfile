@@ -7,14 +7,14 @@ set shell := ["bash", "-cu"]
 default:
     @just --list
 
-# Render every overlay with kustomize (helm inflation enabled) to catch build errors.
+# Render every ArgoCD source to catch build errors.
 build:
     #!/usr/bin/env bash
     set -euo pipefail
     for dir in apps/overlays/main/*/ infrastructure/base/*/; do
       [ -f "$dir/kustomization.yaml" ] || continue
       echo "== building $dir"
-      kustomize build --enable-helm --enable-alpha-plugins --enable-exec "$dir" >/dev/null
+      bash scripts/render.sh "$dir" >/dev/null
     done
 
 # Lint YAML formatting.
@@ -22,12 +22,12 @@ lint:
     yamllint -s .
 
 # Validate rendered manifests against Kubernetes + CRD schemas.
-test:
+test: goloom-check
     #!/usr/bin/env bash
     set -euo pipefail
     for dir in apps/overlays/main/*/ infrastructure/base/*/; do
       [ -f "$dir/kustomization.yaml" ] || continue
-      kustomize build --enable-helm --enable-alpha-plugins --enable-exec "$dir" | kubeconform -strict -ignore-missing-schemas -summary
+      bash scripts/render.sh "$dir" | kubeconform -strict -ignore-missing-schemas -summary
     done
     PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s apps/base/nextcloud-yealink-phonebook -p 'test_*.py'
 
@@ -62,6 +62,10 @@ guardrails:
 # Validate Renovate configuration and extract dependencies locally without writes.
 renovate-check:
     bash scripts/ci/check-renovate.sh
+
+# Check Goloom's upstream chart preserves security and persistent storage.
+goloom-check:
+    bash scripts/ci/check-goloom.sh
 
 # Run the full local gate used by CI.
 validate: lint secrets-check guardrails renovate-check build test
