@@ -70,6 +70,8 @@ kind: PersistentVolumeClaim
 metadata:
   name: kimai-data
   namespace: kimai
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
 spec:
   accessModes: [ReadWriteOnce]
   storageClassName: ceph-rbd # CHANGE ME

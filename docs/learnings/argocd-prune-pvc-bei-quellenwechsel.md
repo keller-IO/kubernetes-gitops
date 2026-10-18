@@ -45,5 +45,8 @@ Git, damit ein Restore auf einem neuen Cluster frisch provisioniert.
   -> Multi-Source) pruefen, dass alle PVCs `Prune=false` tragen, oder automatisches
   Prune fuer die App waehrend der Umstellung aussetzen.
 - CI: `scripts/ci/check-pvc.py` verlangt fuer gerenderte PVCs in `apps/` exakt
-  `Prune=false,Delete=false`. Bestehende Luecken stehen einzeln in
-  `scripts/ci/known-gaps/unprotected-pvcs.txt`; neue PVCs haben keine Ausnahme.
+  `Prune=false,Delete=false`. Die 14 bisherigen Luecken sind seit 18.10.2026
+  in den Manifesten bzw. nativen Helm-Annotationswerten geschlossen;
+  `scripts/ci/known-gaps/unprotected-pvcs.txt` enthaelt keine Ausnahmen.
+  Vor einem Quellenwechsel muss die Annotation bereits synchronisiert sein.
+  Namespace-Loeschung und Storage-Ausfaelle deckt dieser Argo-Schutz nicht ab.
