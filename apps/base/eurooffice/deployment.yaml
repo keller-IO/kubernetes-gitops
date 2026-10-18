@@ -81,6 +81,8 @@ kind: PersistentVolumeClaim
 metadata:
   name: eurooffice-data
   namespace: eurooffice
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
 spec:
   accessModes: [ReadWriteOnce]
   storageClassName: ceph-rbd # CHANGE ME

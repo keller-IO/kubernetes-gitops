@@ -3,6 +3,8 @@ kind: PersistentVolumeClaim
 metadata:
   name: expense-tracker-receipts
   namespace: expense-tracker
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
 spec:
   # ceph-rbd (RWO), NICHT ceph-fs: die ceph-fs-StorageClass existiert zwar,
   # aber im Cluster laeuft nur der RBD-Provisioner (ceph-csi-rbd-*). Ein

@@ -3,6 +3,8 @@ kind: PersistentVolumeClaim
 metadata:
   name: matomo-data
   namespace: matomo
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
 spec:
   accessModes: [ReadWriteOnce]
   storageClassName: ceph-rbd

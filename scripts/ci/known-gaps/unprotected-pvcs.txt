@@ -1,16 +1,2 @@
-# Existing PVCs as of 2026-10-18. These are migration debt, not safe defaults.
-# Keep resource identity exact; new PVCs must declare Prune=false,Delete=false.
-apps_overlays_main_eurooffice:eurooffice/eurooffice-data # Existing PVC; retrofit retention before chart/source migration.
-apps_overlays_main_expense-tracker:expense-tracker/expense-tracker-receipts # Existing PVC; retrofit retention before chart/source migration.
-apps_overlays_main_forgejo:forgejo/gitea-shared-storage # Existing PVC; retrofit retention before chart/source migration.
-apps_overlays_main_kimai:kimai/kimai-data # Existing PVC; retrofit retention before chart/source migration.
-apps_overlays_main_mailman:mailman/mailman-core-data # Existing PVC; retrofit retention before chart/source migration.
-apps_overlays_main_mailman:mailman/mailman-web-data # Existing PVC; retrofit retention before chart/source migration.
-apps_overlays_main_mastodon:mastodon/mastodon-valkey-data # Existing PVC; retrofit retention before chart/source migration.
-apps_overlays_main_matomo:matomo/matomo-data # Existing PVC; retrofit retention before chart/source migration.
-apps_overlays_main_paperless-ngx:-/paperless-paperless-ngx-data # Existing PVC; retrofit retention before chart/source migration.
-apps_overlays_main_paperless-ngx:-/paperless-paperless-ngx-export # Existing PVC; retrofit retention before chart/source migration.
-apps_overlays_main_paperless-ngx:-/paperless-paperless-ngx-media # Existing PVC; retrofit retention before chart/source migration.
-apps_overlays_main_wordpress-1:wordpress-1/wordpress # Existing PVC; retrofit retention before chart/source migration.
-apps_overlays_main_wordpress-2:wordpress-2/wordpress # Existing PVC; retrofit retention before chart/source migration.
-apps_overlays_main_wordpress-3:wordpress-3/wordpress # Existing PVC; retrofit retention before chart/source migration.
+# No exceptions: every directly Argo-managed application PVC requires
+# argocd.argoproj.io/sync-options: Prune=false,Delete=false.
