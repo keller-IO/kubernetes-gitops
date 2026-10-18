@@ -10,7 +10,7 @@ spec:
   instances: 1 # 3 fuer HA
   # Explizit gepinnt wie die uebrigen CNPG-Cluster: ohne imageName waehlt der
   # Operator seine Default-Version, und ein Operator-Bump wechselt sie ungefragt.
-  imageName: ghcr.io/cloudnative-pg/postgresql:17.2 # renovate: image=ghcr.io/cloudnative-pg/postgresql
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.11 # renovate: image=ghcr.io/cloudnative-pg/postgresql
   # Ohne resources ist der Pod BestEffort. Startwert wie ciso-assistant-pg; nach
   # der ersten Betriebswoche nachziehen.
   resources:
