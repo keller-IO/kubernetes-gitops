@@ -321,6 +321,12 @@ alertmanager:
       auf `Basic base64(mcp:<passwort>)` setzen; die Zugangsdaten nicht committen.
 - [x] RBAC read-only halten: keine Write-Verben, kein Secret-Zugriff. CI prüft das über
       `just guardrails`.
+- [x] Kein `nodes/proxy`: Bereits GET erlaubt laut [Kubernetes-RBAC-Dokumentation](https://kubernetes.io/docs/concepts/security/rbac-good-practices/#access-to-proxy-subresource-of-nodes)
+      die Ausführung von Befehlen über die Kubelet-API. `just test` blockiert diese
+      Berechtigung einschließlich Wildcards, Trivy prüft das gerenderte RBAC.
+      Die zugehörige Ausnahme KSV-0047 entfällt, die Security-Baseline sinkt von 277 auf 276 Findings.
+      Beim MCP-Server v0.0.61 entfallen dadurch Node-Logs und die Kubelet-Statistikzusammenfassung;
+      Pod-Logs und Node-/Pod-Metriken über `metrics.k8s.io` bleiben erlaubt.
 
 ---
 
@@ -389,7 +395,16 @@ spec: { schedule: "0 0 2 * * *", cluster: { name: forgejo-pg } }
 - [x] `# renovate:`-Kommentare an Helm-, Docker- und Workflow-Versionen werden
       durch `customManagers` abgedeckt.
 - [x] CI führt `scripts/ci/guardrails.sh` aus; lokal bündelt `just validate`
-      Guardrails, Lint, Secret-Check, Kustomize-Build und kubeconform.
+      dieselben statischen Prüfungen wie GitHub: Guardrails, Lint, Secret-Check,
+      synthetisches SOPS/KSOPS-Rendering, strikte Schemas, HPA-, PVC- und Security-Gates.
+- [x] Kind/ArgoCD-Piloten für Neuinstallation und Upgrade von Gatus/Goloom sind
+      über `just integration` und die CI-Matrix verdrahtet; Details und Grenzen:
+      [CI-Sicherheit](runbooks/ci-safety.md), [Integration](runbooks/ci-integration.md).
+- [ ] Produktive Kubernetes-Version read-only gegen den CI-Pin 1.36.1 prüfen.
+- [ ] Bestehende 14 PVC- und 277 Security-Lücken abbauen; Security-Ausnahmen
+      laufen am 18.01.2027 ab.
+- [ ] Produktions-Health nach Merge als Automerge-Schranke und regelmäßige
+      isolierte Backup-Restore-Tests ergänzen.
 - [x] Guardrails blockieren `:latest`, `imagePullPolicy: Always`, verdächtige
       Klartext-Secrets, mutierende Cluster-Kommandos in Automation und Write-RBAC
       für den Kubernetes MCP Server.

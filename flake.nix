@@ -19,10 +19,10 @@
         # Terraform argocd.tf).
         ksops = pkgs.stdenvNoCC.mkDerivation rec {
           pname = "ksops";
-          version = "4.3.2";
+          version = "4.5.1";
           src = pkgs.fetchurl {
             url = "https://github.com/viaduct-ai/kustomize-sops/releases/download/v${version}/ksops_${version}_Linux_x86_64.tar.gz";
-            hash = "sha256-Nesao06fIQ4trXZ9SDhV4XawCVQJHE7H53qVjs0LArQ=";
+            hash = "sha256-lkHgOjAb8vxLmNDoN6A1HhykQ+zXposl5q8hSfuy7zA=";
           };
           sourceRoot = ".";
           dontConfigure = true;
@@ -75,6 +75,11 @@
           # Tooling required by validation and cluster operations.
           packages = with pkgs; [
             just # task runner
+            (python3.withPackages (ps: [ ps.pyyaml ])) # CI manifest/schema checks
+            kind # disposable integration clusters
+            docker-client # Kind on GitHub-hosted runners
+            ripgrep # integration diagnostics
+            actionlint # GitHub workflow and expression validation
             renovate # dependency extraction and configuration validation
             kustomize # manifest rendering
             kubeconform # schema validation

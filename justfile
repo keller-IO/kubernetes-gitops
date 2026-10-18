@@ -11,27 +11,26 @@ default:
 build:
     #!/usr/bin/env bash
     set -euo pipefail
-    for dir in apps/overlays/main/*/ infrastructure/base/*/; do
-      [ -f "$dir/kustomization.yaml" ] || continue
-      echo "== building $dir"
-      bash scripts/render.sh "$dir" >/dev/null
-    done
+    work="$(mktemp -d)"
+    trap 'rm -rf "$work"' EXIT
+    bash scripts/ci/render-all.sh "$work/rendered"
 
 # Lint YAML formatting.
 lint:
     yamllint -s .
+    actionlint .github/workflows/ci.yml
 
-# Validate rendered manifests against Kubernetes + CRD schemas.
+# Run application and CI guard regression tests.
 test:
     #!/usr/bin/env bash
     set -euo pipefail
-    for dir in apps/overlays/main/*/ infrastructure/base/*/; do
-      [ -f "$dir/kustomization.yaml" ] || continue
-      bash scripts/render.sh "$dir" | kubeconform -strict -ignore-missing-schemas -summary
-    done
-    ./scripts/ci/check-litellm.sh
+    PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s scripts/ci -p 'test_*.py'
     bash scripts/ci/check-talos-upgrade.sh
-    PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s scripts/ci -p 'test_talos_*.py'
+    python3 scripts/ci/test-check-schemas.py
+    bash scripts/ci/test-render-all.sh
+    bash scripts/ci/integration/test-guards.sh
+    bash scripts/ci/integration/test-image-pull.sh
+    bash scripts/ci/integration/test-prepare.sh
     PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s apps/base/nextcloud-yealink-phonebook -p 'test_*.py'
     PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=apps/base/litellm python3 -m unittest apps/base/litellm/test_request_policy.py
     PYTHONDONTWRITEBYTECODE=1 python3 -m unittest apps/base/litellm/test_network_probe.py
@@ -68,8 +67,23 @@ agents-check:
     rulesync doctor --strict
     rulesync generate --check
 
-# Run the full local gate used by CI.
-validate: agents-check lint secrets-check guardrails renovate-check build test
+# Render once and enforce schema, HPA, PVC and security contracts.
+render-check:
+    bash scripts/ci/render-check.sh
+
+# Run the full static gate used by CI, without production credentials.
+validate: agents-check lint secrets-check guardrails renovate-check test render-check
+
+# Run both isolated integration scenarios (CI runs them on separate runners).
+integration: integration-install integration-upgrade
+
+# Fresh install of the candidate revision through ArgoCD.
+integration-install:
+    bash scripts/ci/integration/run.sh --mode install
+
+# Upgrade the base revision to the candidate and verify persistent data.
+integration-upgrade:
+    bash scripts/ci/integration/run.sh --mode upgrade
 
 # Run the opt-in Blablador provider contract against the pinned LiteLLM image.
 litellm-provider-contract ENV_FILE:

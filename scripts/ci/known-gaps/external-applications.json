@@ -1,0 +1,54 @@
+[
+  {
+    "name": "app-flurfunk",
+    "spec": {
+      "project": "apps",
+      "source": {
+        "repoURL": "https://gitlab.jit-creatives.de/tommy/flurfunk.git",
+        "targetRevision": "main",
+        "path": "k8s"
+      },
+      "destination": {
+        "server": "https://kubernetes.default.svc",
+        "namespace": "flurfunk"
+      },
+      "syncPolicy": {
+        "automated": {
+          "prune": true,
+          "selfHeal": true
+        },
+        "syncOptions": [
+          "CreateNamespace=true",
+          "ServerSideApply=true"
+        ]
+      }
+    },
+    "reason": "Existing external GitLab application: manifests and delivery belong to its own repo. Freeze the complete spec until this CI can render the external source without production credentials."
+  },
+  {
+    "name": "app-tonu",
+    "spec": {
+      "project": "apps",
+      "source": {
+        "repoURL": "https://gitlab.jit-creatives.de/tommy/tonu.git",
+        "targetRevision": "main",
+        "path": "k8s"
+      },
+      "destination": {
+        "server": "https://kubernetes.default.svc",
+        "namespace": "tonu"
+      },
+      "syncPolicy": {
+        "automated": {
+          "prune": true,
+          "selfHeal": true
+        },
+        "syncOptions": [
+          "CreateNamespace=true",
+          "ServerSideApply=true"
+        ]
+      }
+    },
+    "reason": "Existing external GitLab application: manifests and delivery belong to its own repo. Freeze the complete spec until this CI can render the external source without production credentials."
+  }
+]

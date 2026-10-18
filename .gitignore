@@ -56,6 +56,7 @@ Thumbs.db
 # --- Local tooling ---
 .codebase-memory/
 .worktrees/
+.artifacts/
 
 # --- Agent tool wiring (generated from .rulesync/ via `just agents-setup`) ---
 # The Rulesync block below covers most generated outputs but omits these three,

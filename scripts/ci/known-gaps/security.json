@@ -1,0 +1,1938 @@
+[
+  {
+    "target": "apps_overlays_main_ciso-assistant.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'backend' of Deployment 'ciso-assistant-backend' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_ciso-assistant.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'frontend' of Deployment 'ciso-assistant-frontend' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_ciso-assistant.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'huey' of Deployment 'ciso-assistant-backend' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_ciso-assistant.yaml",
+    "id": "KSV-0118",
+    "message": "container ciso-assistant-backend in ciso-assistant namespace is using the default security context",
+    "count": 2,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_ciso-assistant.yaml",
+    "id": "KSV-0118",
+    "message": "container ciso-assistant-frontend in ciso-assistant namespace is using the default security context",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_ciso-assistant.yaml",
+    "id": "KSV-0118",
+    "message": "deployment ciso-assistant-backend in ciso-assistant namespace is using the default security context, which allows root privileges",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_ciso-assistant.yaml",
+    "id": "KSV-0118",
+    "message": "deployment ciso-assistant-frontend in ciso-assistant namespace is using the default security context, which allows root privileges",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_collabora.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'collabora-online' of Deployment 'collabora-collabora-online' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_collabora.yaml",
+    "id": "KSV-0118",
+    "message": "container collabora-collabora-online in default namespace is using the default security context",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_collabora.yaml",
+    "id": "KSV-0118",
+    "message": "deployment collabora-collabora-online in default namespace is using the default security context, which allows root privileges",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_eurooffice.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'documentserver' of Deployment 'eurooffice' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_eurooffice.yaml",
+    "id": "KSV-0118",
+    "message": "container eurooffice in eurooffice namespace is using the default security context",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_forgejo.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'configure-gitea' of Deployment 'forgejo' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_forgejo.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'forgejo' of Deployment 'forgejo' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_forgejo.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'init-app-ini' of Deployment 'forgejo' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_forgejo.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'init-directories' of Deployment 'forgejo' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_forgejo.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'valkey' of StatefulSet 'forgejo-valkey' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_forgejo.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'wget' of Pod 'forgejo-test-connection' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_forgejo.yaml",
+    "id": "KSV-0118",
+    "message": "container forgejo in forgejo namespace is using the default security context",
+    "count": 3,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_forgejo.yaml",
+    "id": "KSV-0118",
+    "message": "container forgejo-test-connection in default namespace is using the default security context",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_forgejo.yaml",
+    "id": "KSV-0118",
+    "message": "pod forgejo-test-connection in default namespace is using the default security context, which allows root privileges",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_gatus.yaml",
+    "id": "KSV-0109",
+    "message": "ConfigMap 'gatus' in 'gatus' namespace stores secrets in key(s) or value(s) '{\"  token\"}'",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_icecast.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'icecast' of Deployment 'icecast' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_icecast.yaml",
+    "id": "KSV-0118",
+    "message": "container icecast in icecast namespace is using the default security context",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_icecast.yaml",
+    "id": "KSV-0118",
+    "message": "deployment icecast in icecast namespace is using the default security context, which allows root privileges",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_kimai.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'kimai' of Deployment 'kimai' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_kimai.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'valkey' of StatefulSet 'kimai-valkey' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_kimai.yaml",
+    "id": "KSV-0118",
+    "message": "container kimai in kimai namespace is using the default security context",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_kimai.yaml",
+    "id": "KSV-0118",
+    "message": "deployment kimai in kimai namespace is using the default security context, which allows root privileges",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_mailman.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'install-settings' of Deployment 'mailman-web' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_mailman.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'mailman-core' of Deployment 'mailman-core' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_mailman.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'mailman-web' of Deployment 'mailman-web' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_mailman.yaml",
+    "id": "KSV-0118",
+    "message": "container mailman-core in mailman namespace is using the default security context",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_mailman.yaml",
+    "id": "KSV-0118",
+    "message": "container mailman-web in mailman namespace is using the default security context",
+    "count": 2,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_mailman.yaml",
+    "id": "KSV-0118",
+    "message": "deployment mailman-core in mailman namespace is using the default security context, which allows root privileges",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_mailman.yaml",
+    "id": "KSV-0118",
+    "message": "deployment mailman-web in mailman namespace is using the default security context, which allows root privileges",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_mastodon.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'mastodon' of Deployment 'mastodon-sidekiq-all-queues' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_mastodon.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'mastodon-streaming' of Deployment 'mastodon-streaming' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_mastodon.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'mastodon-web' of Deployment 'mastodon-web' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_mastodon.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'valkey' of StatefulSet 'mastodon-valkey' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_matomo.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'matomo' of Deployment 'matomo' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_matomo.yaml",
+    "id": "KSV-0118",
+    "message": "deployment matomo in matomo namespace is using the default security context, which allows root privileges",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_nextcloud-yealink-phonebook.yaml",
+    "id": "KSV-0109",
+    "message": "ConfigMap 'nextcloud-yealink-phonebook-code-fdt8447fg7' in 'nextcloud-yealink-phonebook' namespace stores secrets in key(s) or value(s) '{\"        token \", \"    app_password \"}'",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_paperless-ngx.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'paperless-paperless-ngx' of Deployment 'paperless-paperless-ngx' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_paperless-ngx.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'valkey' of StatefulSet 'paperless-valkey' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_paperless-ngx.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'watchdog' of CronJob 'paperless-watchdog' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_paperless-ngx.yaml",
+    "id": "KSV-0109",
+    "message": "ConfigMap 'paperless-watchdog' in 'paperless-ngx' namespace stores secrets in key(s) or value(s) '{\"        user\", \"TOKEN \"}'",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_paperless-ngx.yaml",
+    "id": "KSV-0118",
+    "message": "container paperless-paperless-ngx in default namespace is using the default security context",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_paperless-ngx.yaml",
+    "id": "KSV-0118",
+    "message": "container paperless-watchdog in paperless-ngx namespace is using the default security context",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_paperless-ngx.yaml",
+    "id": "KSV-0118",
+    "message": "cronjob paperless-watchdog in paperless-ngx namespace is using the default security context, which allows root privileges",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_paperless-ngx.yaml",
+    "id": "KSV-0118",
+    "message": "deployment paperless-paperless-ngx in default namespace is using the default security context, which allows root privileges",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_phpmyadmin.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'phpmyadmin' of Deployment 'phpmyadmin' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_phpmyadmin.yaml",
+    "id": "KSV-0118",
+    "message": "container phpmyadmin in phpmyadmin namespace is using the default security context",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_phpmyadmin.yaml",
+    "id": "KSV-0118",
+    "message": "deployment phpmyadmin in phpmyadmin namespace is using the default security context, which allows root privileges",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_renovate.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'renovate' of CronJob 'renovate' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_renovate.yaml",
+    "id": "KSV-0118",
+    "message": "container renovate in renovate namespace is using the default security context",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_renovate.yaml",
+    "id": "KSV-0118",
+    "message": "cronjob renovate in renovate namespace is using the default security context, which allows root privileges",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_roundcube.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'roundcube' of Deployment 'roundcube' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_roundcube.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'valkey' of StatefulSet 'roundcube-valkey' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_roundcube.yaml",
+    "id": "KSV-0109",
+    "message": "ConfigMap 'roundcube-config' in 'roundcube' namespace stores secrets in key(s) or value(s) '{\"password.php\"}'",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_roundcube.yaml",
+    "id": "KSV-0109",
+    "message": "ConfigMap 'roundcube-customizations' in 'roundcube' namespace stores secrets in key(s) or value(s) '{\"showpassword.php\"}'",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_roundcube.yaml",
+    "id": "KSV-0118",
+    "message": "container roundcube in roundcube namespace is using the default security context",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_roundcube.yaml",
+    "id": "KSV-0118",
+    "message": "deployment roundcube in roundcube namespace is using the default security context, which allows root privileges",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_wordpress-1.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'valkey' of StatefulSet 'wordpress-valkey' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_wordpress-1.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'wordpress' of Deployment 'wordpress' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_wordpress-1.yaml",
+    "id": "KSV-0118",
+    "message": "container wordpress in wordpress-1 namespace is using the default security context",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_wordpress-1.yaml",
+    "id": "KSV-0118",
+    "message": "deployment wordpress in wordpress-1 namespace is using the default security context, which allows root privileges",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_wordpress-2.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'valkey' of StatefulSet 'wordpress-valkey' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_wordpress-2.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'wordpress' of Deployment 'wordpress' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_wordpress-2.yaml",
+    "id": "KSV-0118",
+    "message": "container wordpress in wordpress-2 namespace is using the default security context",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_wordpress-2.yaml",
+    "id": "KSV-0118",
+    "message": "deployment wordpress in wordpress-2 namespace is using the default security context, which allows root privileges",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_wordpress-3.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'valkey' of StatefulSet 'wordpress-valkey' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_wordpress-3.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'wordpress' of Deployment 'wordpress' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_wordpress-3.yaml",
+    "id": "KSV-0118",
+    "message": "container wordpress in wordpress-3 namespace is using the default security context",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "apps_overlays_main_wordpress-3.yaml",
+    "id": "KSV-0118",
+    "message": "deployment wordpress in wordpress-3 namespace is using the default security context, which allows root privileges",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_argocd.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'install-ksops' of Deployment 'argocd-repo-server' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_argocd.yaml",
+    "id": "KSV-0044",
+    "message": "Role permits wildcard verb on wildcard resource",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_argocd.yaml",
+    "id": "KSV-0046",
+    "message": "ClusterRole 'argocd-application-controller' shouldn't manage all resources",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_argocd.yaml",
+    "id": "KSV-0046",
+    "message": "ClusterRole 'argocd-server' shouldn't manage all resources",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_argocd.yaml",
+    "id": "KSV-0109",
+    "message": "ConfigMap 'argocd-cm' in 'argocd' namespace stores secrets in key(s) or value(s) '{\"clientSecret\"}'",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_argocd.yaml",
+    "id": "KSV-0118",
+    "message": "container argocd-repo-server in argocd namespace is using the default security context",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_argocd.yaml",
+    "id": "KSV-0118",
+    "message": "deployment argocd-applicationset-controller in argocd namespace is using the default security context, which allows root privileges",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_argocd.yaml",
+    "id": "KSV-0118",
+    "message": "deployment argocd-repo-server in argocd namespace is using the default security context, which allows root privileges",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_argocd.yaml",
+    "id": "KSV-0118",
+    "message": "deployment argocd-server in argocd namespace is using the default security context, which allows root privileges",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_argocd.yaml",
+    "id": "KSV-0118",
+    "message": "job argocd-redis-secret-init in argocd namespace is using the default security context, which allows root privileges",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_argocd.yaml",
+    "id": "KSV-0118",
+    "message": "statefulset argocd-application-controller in argocd namespace is using the default security context, which allows root privileges",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_authentik.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'server' of Deployment 'authentik-server' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_authentik.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'valkey' of StatefulSet 'authentik-valkey' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_authentik.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'worker' of Deployment 'authentik-worker' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_authentik.yaml",
+    "id": "KSV-0056",
+    "message": "Role 'authentik' should not have access to resources [\"services\", \"endpoints\", \"endpointslices\", \"networkpolicies\", \"ingresses\"] for verbs [\"create\", \"update\", \"patch\", \"delete\", \"deletecollection\", \"impersonate\", \"*\"]",
+    "count": 2,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_authentik.yaml",
+    "id": "KSV-0109",
+    "message": "ConfigMap 'authentik-blueprints' in 'authentik' namespace stores secrets in key(s) or value(s) '{\"      client_secret\"}'",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_authentik.yaml",
+    "id": "KSV-0118",
+    "message": "container authentik-server in authentik namespace is using the default security context",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_authentik.yaml",
+    "id": "KSV-0118",
+    "message": "container authentik-worker in authentik namespace is using the default security context",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_authentik.yaml",
+    "id": "KSV-0118",
+    "message": "deployment authentik-server in authentik namespace is using the default security context, which allows root privileges",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_authentik.yaml",
+    "id": "KSV-0118",
+    "message": "deployment authentik-worker in authentik namespace is using the default security context, which allows root privileges",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ceph-csi.yaml",
+    "id": "KSV-0005",
+    "message": "Container 'csi-cephfsplugin' of DaemonSet 'ceph-csi-cephfs-nodeplugin' should not include 'SYS_ADMIN' in 'securityContext.capabilities.add'",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ceph-csi.yaml",
+    "id": "KSV-0005",
+    "message": "Container 'csi-rbdplugin' of DaemonSet 'ceph-csi-rbd-nodeplugin' should not include 'SYS_ADMIN' in 'securityContext.capabilities.add'",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ceph-csi.yaml",
+    "id": "KSV-0009",
+    "message": "DaemonSet 'ceph-csi-cephfs-nodeplugin' should not set 'spec.template.spec.hostNetwork' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ceph-csi.yaml",
+    "id": "KSV-0009",
+    "message": "DaemonSet 'ceph-csi-rbd-nodeplugin' should not set 'spec.template.spec.hostNetwork' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ceph-csi.yaml",
+    "id": "KSV-0010",
+    "message": "DaemonSet 'ceph-csi-cephfs-nodeplugin' should not set 'spec.template.spec.hostPID' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ceph-csi.yaml",
+    "id": "KSV-0010",
+    "message": "DaemonSet 'ceph-csi-rbd-nodeplugin' should not set 'spec.template.spec.hostPID' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ceph-csi.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'csi-attacher' of Deployment 'ceph-csi-cephfs-provisioner' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ceph-csi.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'csi-attacher' of Deployment 'ceph-csi-rbd-provisioner' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ceph-csi.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'csi-cephfsplugin' of DaemonSet 'ceph-csi-cephfs-nodeplugin' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ceph-csi.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'csi-cephfsplugin' of Deployment 'ceph-csi-cephfs-provisioner' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ceph-csi.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'csi-cephfsplugin-controller' of Deployment 'ceph-csi-cephfs-provisioner' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ceph-csi.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'csi-provisioner' of Deployment 'ceph-csi-cephfs-provisioner' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ceph-csi.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'csi-provisioner' of Deployment 'ceph-csi-rbd-provisioner' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ceph-csi.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'csi-rbdplugin' of DaemonSet 'ceph-csi-rbd-nodeplugin' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ceph-csi.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'csi-rbdplugin' of Deployment 'ceph-csi-rbd-provisioner' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ceph-csi.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'csi-rbdplugin-controller' of Deployment 'ceph-csi-rbd-provisioner' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ceph-csi.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'csi-resizer' of Deployment 'ceph-csi-cephfs-provisioner' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ceph-csi.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'csi-resizer' of Deployment 'ceph-csi-rbd-provisioner' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ceph-csi.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'csi-snapshotter' of Deployment 'ceph-csi-cephfs-provisioner' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ceph-csi.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'csi-snapshotter' of Deployment 'ceph-csi-rbd-provisioner' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ceph-csi.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'driver-registrar' of DaemonSet 'ceph-csi-cephfs-nodeplugin' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ceph-csi.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'driver-registrar' of DaemonSet 'ceph-csi-rbd-nodeplugin' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ceph-csi.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'liveness-prometheus' of DaemonSet 'ceph-csi-cephfs-nodeplugin' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ceph-csi.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'liveness-prometheus' of DaemonSet 'ceph-csi-rbd-nodeplugin' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ceph-csi.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'liveness-prometheus' of Deployment 'ceph-csi-cephfs-provisioner' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ceph-csi.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'liveness-prometheus' of Deployment 'ceph-csi-rbd-provisioner' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ceph-csi.yaml",
+    "id": "KSV-0017",
+    "message": "Container 'csi-cephfsplugin' of DaemonSet 'ceph-csi-cephfs-nodeplugin' should set 'securityContext.privileged' to false",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ceph-csi.yaml",
+    "id": "KSV-0017",
+    "message": "Container 'csi-rbdplugin' of DaemonSet 'ceph-csi-rbd-nodeplugin' should set 'securityContext.privileged' to false",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ceph-csi.yaml",
+    "id": "KSV-0017",
+    "message": "Container 'driver-registrar' of DaemonSet 'ceph-csi-cephfs-nodeplugin' should set 'securityContext.privileged' to false",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ceph-csi.yaml",
+    "id": "KSV-0017",
+    "message": "Container 'driver-registrar' of DaemonSet 'ceph-csi-rbd-nodeplugin' should set 'securityContext.privileged' to false",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ceph-csi.yaml",
+    "id": "KSV-0017",
+    "message": "Container 'liveness-prometheus' of DaemonSet 'ceph-csi-cephfs-nodeplugin' should set 'securityContext.privileged' to false",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ceph-csi.yaml",
+    "id": "KSV-0017",
+    "message": "Container 'liveness-prometheus' of DaemonSet 'ceph-csi-rbd-nodeplugin' should set 'securityContext.privileged' to false",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ceph-csi.yaml",
+    "id": "KSV-0041",
+    "message": "ClusterRole 'ceph-csi-cephfs-provisioner' shouldn't have access to manage resource 'secrets'",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ceph-csi.yaml",
+    "id": "KSV-0041",
+    "message": "ClusterRole 'ceph-csi-rbd-nodeplugin' shouldn't have access to manage resource 'secrets'",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ceph-csi.yaml",
+    "id": "KSV-0041",
+    "message": "ClusterRole 'ceph-csi-rbd-provisioner' shouldn't have access to manage resource 'secrets'",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ceph-csi.yaml",
+    "id": "KSV-0056",
+    "message": "ClusterRole 'ceph-csi-rbd-provisioner' should not have access to resources [\"services\", \"endpoints\", \"endpointslices\", \"networkpolicies\", \"ingresses\"] for verbs [\"create\", \"update\", \"patch\", \"delete\", \"deletecollection\", \"impersonate\", \"*\"]",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ceph-csi.yaml",
+    "id": "KSV-0118",
+    "message": "container ceph-csi-cephfs-provisioner in ceph-csi namespace is using the default security context",
+    "count": 7,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ceph-csi.yaml",
+    "id": "KSV-0118",
+    "message": "container ceph-csi-rbd-provisioner in ceph-csi namespace is using the default security context",
+    "count": 7,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ceph-csi.yaml",
+    "id": "KSV-0118",
+    "message": "daemonset ceph-csi-cephfs-nodeplugin in ceph-csi namespace is using the default security context, which allows root privileges",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ceph-csi.yaml",
+    "id": "KSV-0118",
+    "message": "daemonset ceph-csi-rbd-nodeplugin in ceph-csi namespace is using the default security context, which allows root privileges",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ceph-csi.yaml",
+    "id": "KSV-0118",
+    "message": "deployment ceph-csi-cephfs-provisioner in ceph-csi namespace is using the default security context, which allows root privileges",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ceph-csi.yaml",
+    "id": "KSV-0118",
+    "message": "deployment ceph-csi-rbd-provisioner in ceph-csi namespace is using the default security context, which allows root privileges",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ceph-csi.yaml",
+    "id": "KSV-0121",
+    "message": "daemonset ceph-csi-cephfs-nodeplugin in ceph-csi namespace shouldn't have volumes set to {\"/dev\", \"/sys\"}",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ceph-csi.yaml",
+    "id": "KSV-0121",
+    "message": "daemonset ceph-csi-rbd-nodeplugin in ceph-csi namespace shouldn't have volumes set to {\"/dev\", \"/sys\"}",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ceph-csi.yaml",
+    "id": "KSV-0121",
+    "message": "deployment ceph-csi-cephfs-provisioner in ceph-csi namespace shouldn't have volumes set to {\"/dev\", \"/sys\"}",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ceph-csi.yaml",
+    "id": "KSV-0121",
+    "message": "deployment ceph-csi-rbd-provisioner in ceph-csi namespace shouldn't have volumes set to {\"/dev\", \"/sys\"}",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_cert-manager.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'cert-manager-webhook-cloudns' of Deployment 'cert-manager-webhook-cloudns' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_cert-manager.yaml",
+    "id": "KSV-0041",
+    "message": "ClusterRole 'cert-manager-cainjector' shouldn't have access to manage resource 'secrets'",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_cert-manager.yaml",
+    "id": "KSV-0041",
+    "message": "ClusterRole 'cert-manager-controller-certificates' shouldn't have access to manage resource 'secrets'",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_cert-manager.yaml",
+    "id": "KSV-0041",
+    "message": "ClusterRole 'cert-manager-controller-challenges' shouldn't have access to manage resource 'secrets'",
+    "count": 2,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_cert-manager.yaml",
+    "id": "KSV-0041",
+    "message": "ClusterRole 'cert-manager-controller-clusterissuers' shouldn't have access to manage resource 'secrets'",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_cert-manager.yaml",
+    "id": "KSV-0041",
+    "message": "ClusterRole 'cert-manager-controller-issuers' shouldn't have access to manage resource 'secrets'",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_cert-manager.yaml",
+    "id": "KSV-0041",
+    "message": "ClusterRole 'cert-manager-controller-orders' shouldn't have access to manage resource 'secrets'",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_cert-manager.yaml",
+    "id": "KSV-0041",
+    "message": "ClusterRole 'cert-manager-webhook-cloudns:cloudns-api-secret-access' shouldn't have access to manage resource 'secrets'",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_cert-manager.yaml",
+    "id": "KSV-0046",
+    "message": "ClusterRole 'cert-manager-webhook-cloudns:domain-solver' shouldn't manage all resources",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_cert-manager.yaml",
+    "id": "KSV-0056",
+    "message": "ClusterRole 'cert-manager-controller-challenges' should not have access to resources [\"services\", \"endpoints\", \"endpointslices\", \"networkpolicies\", \"ingresses\"] for verbs [\"create\", \"update\", \"patch\", \"delete\", \"deletecollection\", \"impersonate\", \"*\"]",
+    "count": 2,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_cert-manager.yaml",
+    "id": "KSV-0114",
+    "message": "ClusterRole 'cert-manager-cainjector' should not have access to resources [\"mutatingwebhookconfigurations\", \"validatingwebhookconfigurations\"] for verbs [\"create\", \"update\", \"patch\", \"delete\", \"deletecollection\", \"impersonate\", \"*\"]",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_cert-manager.yaml",
+    "id": "KSV-0118",
+    "message": "container cert-manager-webhook-cloudns in cert-manager namespace is using the default security context",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_cert-manager.yaml",
+    "id": "KSV-0118",
+    "message": "deployment cert-manager-webhook-cloudns in cert-manager namespace is using the default security context, which allows root privileges",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_cilium.yaml",
+    "id": "KSV-0005",
+    "message": "Container 'apply-sysctl-overwrites' of DaemonSet 'cilium' should not include 'SYS_ADMIN' in 'securityContext.capabilities.add'",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_cilium.yaml",
+    "id": "KSV-0005",
+    "message": "Container 'cilium-agent' of DaemonSet 'cilium' should not include 'SYS_ADMIN' in 'securityContext.capabilities.add'",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_cilium.yaml",
+    "id": "KSV-0005",
+    "message": "Container 'cilium-envoy' of DaemonSet 'cilium-envoy' should not include 'SYS_ADMIN' in 'securityContext.capabilities.add'",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_cilium.yaml",
+    "id": "KSV-0005",
+    "message": "Container 'clean-cilium-state' of DaemonSet 'cilium' should not include 'SYS_ADMIN' in 'securityContext.capabilities.add'",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_cilium.yaml",
+    "id": "KSV-0009",
+    "message": "DaemonSet 'cilium' should not set 'spec.template.spec.hostNetwork' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_cilium.yaml",
+    "id": "KSV-0009",
+    "message": "DaemonSet 'cilium-envoy' should not set 'spec.template.spec.hostNetwork' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_cilium.yaml",
+    "id": "KSV-0009",
+    "message": "Deployment 'cilium-operator' should not set 'spec.template.spec.hostNetwork' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_cilium.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'apply-sysctl-overwrites' of DaemonSet 'cilium' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_cilium.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'backend' of Deployment 'hubble-ui' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_cilium.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'cilium-agent' of DaemonSet 'cilium' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_cilium.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'cilium-envoy' of DaemonSet 'cilium-envoy' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_cilium.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'cilium-operator' of Deployment 'cilium-operator' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_cilium.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'clean-cilium-state' of DaemonSet 'cilium' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_cilium.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'config' of DaemonSet 'cilium' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_cilium.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'frontend' of Deployment 'hubble-ui' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_cilium.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'install-cni-binaries' of DaemonSet 'cilium' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_cilium.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'mount-bpf-fs' of DaemonSet 'cilium' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_cilium.yaml",
+    "id": "KSV-0017",
+    "message": "Container 'mount-bpf-fs' of DaemonSet 'cilium' should set 'securityContext.privileged' to false",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_cilium.yaml",
+    "id": "KSV-0024",
+    "message": "Container 'cilium-agent' of DaemonSet 'cilium' should not set host ports, 'ports[*].hostPort'",
+    "count": 6,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_cilium.yaml",
+    "id": "KSV-0024",
+    "message": "Container 'cilium-envoy' of DaemonSet 'cilium-envoy' should not set host ports, 'ports[*].hostPort'",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_cilium.yaml",
+    "id": "KSV-0024",
+    "message": "Container 'cilium-operator' of Deployment 'cilium-operator' should not set host ports, 'ports[*].hostPort'",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_cilium.yaml",
+    "id": "KSV-0041",
+    "message": "ClusterRole 'cilium-operator' shouldn't have access to manage resource 'secrets'",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_cilium.yaml",
+    "id": "KSV-0109",
+    "message": "ConfigMap 'cilium-config' in 'kube-system' namespace stores secrets in key(s) or value(s) '{\"enable-policy-secrets-sync\", \"policy-secrets-namespace\", \"policy-secrets-only-from-secrets-namespace\"}'",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_cilium.yaml",
+    "id": "KSV-0119",
+    "message": "container cilium-agent of daemonset cilium in kube-system namespace should not include 'NET_RAW' in securityContext.capabilities.add",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_cilium.yaml",
+    "id": "KSV-0121",
+    "message": "daemonset cilium in kube-system namespace shouldn't have volumes set to {\"/proc\"}",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_cnpg.yaml",
+    "id": "KSV-0041",
+    "message": "ClusterRole 'cnpg-cloudnative-pg' shouldn't have access to manage resource 'secrets'",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_cnpg.yaml",
+    "id": "KSV-0053",
+    "message": "ClusterRole 'cnpg-cloudnative-pg' should not have access to resource '[\"pods/exec\"]' for verbs [\"create\", \"update\", \"patch\", \"delete\", \"deletecollection\", \"impersonate\", \"*\"]",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_cnpg.yaml",
+    "id": "KSV-0056",
+    "message": "ClusterRole 'cnpg-cloudnative-pg' should not have access to resources [\"services\", \"endpoints\", \"endpointslices\", \"networkpolicies\", \"ingresses\"] for verbs [\"create\", \"update\", \"patch\", \"delete\", \"deletecollection\", \"impersonate\", \"*\"]",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_cnpg.yaml",
+    "id": "KSV-0114",
+    "message": "ClusterRole 'cnpg-cloudnative-pg' should not have access to resources [\"mutatingwebhookconfigurations\", \"validatingwebhookconfigurations\"] for verbs [\"create\", \"update\", \"patch\", \"delete\", \"deletecollection\", \"impersonate\", \"*\"]",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_crowdsec.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'crowdsec-agent' of DaemonSet 'crowdsec-agent' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_crowdsec.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'crowdsec-lapi' of Deployment 'crowdsec-lapi' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_crowdsec.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'wait-for-lapi-and-register' of DaemonSet 'crowdsec-agent' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_crowdsec.yaml",
+    "id": "KSV-0109",
+    "message": "ConfigMap 'crowdsec-config-local' in 'default' namespace stores secrets in key(s) or value(s) '{\"      token\", \"  password\"}'",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_crowdsec.yaml",
+    "id": "KSV-0118",
+    "message": "daemonset crowdsec-agent in default namespace is using the default security context, which allows root privileges",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_crowdsec.yaml",
+    "id": "KSV-0118",
+    "message": "deployment crowdsec-lapi in default namespace is using the default security context, which allows root privileges",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_csi-driver-smb.yaml",
+    "id": "KSV-0009",
+    "message": "DaemonSet 'csi-smb-node' should not set 'spec.template.spec.hostNetwork' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_csi-driver-smb.yaml",
+    "id": "KSV-0009",
+    "message": "Deployment 'csi-smb-controller' should not set 'spec.template.spec.hostNetwork' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_csi-driver-smb.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'csi-resizer' of Deployment 'csi-smb-controller' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_csi-driver-smb.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'node-driver-registrar' of DaemonSet 'csi-smb-node' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_csi-driver-smb.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'smb' of DaemonSet 'csi-smb-node' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_csi-driver-smb.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'smb' of Deployment 'csi-smb-controller' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_csi-driver-smb.yaml",
+    "id": "KSV-0017",
+    "message": "Container 'smb' of DaemonSet 'csi-smb-node' should set 'securityContext.privileged' to false",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_csi-driver-smb.yaml",
+    "id": "KSV-0017",
+    "message": "Container 'smb' of Deployment 'csi-smb-controller' should set 'securityContext.privileged' to false",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_csi-driver-smb.yaml",
+    "id": "KSV-0041",
+    "message": "ClusterRole 'csi-smb-node-secret-role' shouldn't have access to manage resource 'secrets'",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_csi-driver-smb.yaml",
+    "id": "KSV-0041",
+    "message": "ClusterRole 'smb-external-provisioner-role' shouldn't have access to manage resource 'secrets'",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_hermes-readonly.yaml",
+    "id": "KSV-0046",
+    "message": "ClusterRole 'hermes-cluster-reader' shouldn't manage all resources",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ingress-nginx.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'nginx-ingress' of DaemonSet 'nginx-ingress-controller' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ingress-nginx.yaml",
+    "id": "KSV-0041",
+    "message": "ClusterRole 'nginx-ingress' shouldn't have access to manage resource 'secrets'",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_ingress-nginx.yaml",
+    "id": "KSV-0056",
+    "message": "ClusterRole 'nginx-ingress' should not have access to resources [\"services\", \"endpoints\", \"endpointslices\", \"networkpolicies\", \"ingresses\"] for verbs [\"create\", \"update\", \"patch\", \"delete\", \"deletecollection\", \"impersonate\", \"*\"]",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_kite.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'kite' of Deployment 'kite' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_kite.yaml",
+    "id": "KSV-0044",
+    "message": "Role permits wildcard verb on wildcard resource",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_kite.yaml",
+    "id": "KSV-0046",
+    "message": "ClusterRole 'kite' shouldn't manage all resources",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_kite.yaml",
+    "id": "KSV-0118",
+    "message": "container kite in kite namespace is using the default security context",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_kite.yaml",
+    "id": "KSV-0118",
+    "message": "deployment kite in kite namespace is using the default security context, which allows root privileges",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_mariadb-operator.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'cert-controller' of Deployment 'mariadb-operator-cert-controller' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_mariadb-operator.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'controller' of Deployment 'mariadb-operator' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_mariadb-operator.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'webhook' of Deployment 'mariadb-operator-webhook' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_mariadb-operator.yaml",
+    "id": "KSV-0041",
+    "message": "ClusterRole 'mariadb-operator' shouldn't have access to manage resource 'secrets'",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_mariadb-operator.yaml",
+    "id": "KSV-0041",
+    "message": "ClusterRole 'mariadb-operator-cert-controller' shouldn't have access to manage resource 'secrets'",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_mariadb-operator.yaml",
+    "id": "KSV-0046",
+    "message": "ClusterRole 'mariadb-operator-edit' shouldn't manage all resources",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_mariadb-operator.yaml",
+    "id": "KSV-0046",
+    "message": "ClusterRole 'mariadb-operator-view' shouldn't manage all resources",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_mariadb-operator.yaml",
+    "id": "KSV-0056",
+    "message": "ClusterRole 'mariadb-operator' should not have access to resources [\"services\", \"endpoints\", \"endpointslices\", \"networkpolicies\", \"ingresses\"] for verbs [\"create\", \"update\", \"patch\", \"delete\", \"deletecollection\", \"impersonate\", \"*\"]",
+    "count": 2,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_mariadb-operator.yaml",
+    "id": "KSV-0114",
+    "message": "ClusterRole 'mariadb-operator-cert-controller' should not have access to resources [\"mutatingwebhookconfigurations\", \"validatingwebhookconfigurations\"] for verbs [\"create\", \"update\", \"patch\", \"delete\", \"deletecollection\", \"impersonate\", \"*\"]",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_mariadb-operator.yaml",
+    "id": "KSV-0118",
+    "message": "container mariadb-operator in default namespace is using the default security context",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_mariadb-operator.yaml",
+    "id": "KSV-0118",
+    "message": "container mariadb-operator-cert-controller in default namespace is using the default security context",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_mariadb-operator.yaml",
+    "id": "KSV-0118",
+    "message": "container mariadb-operator-webhook in default namespace is using the default security context",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_mariadb-operator.yaml",
+    "id": "KSV-0118",
+    "message": "deployment mariadb-operator in default namespace is using the default security context, which allows root privileges",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_mariadb-operator.yaml",
+    "id": "KSV-0118",
+    "message": "deployment mariadb-operator-cert-controller in default namespace is using the default security context, which allows root privileges",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_mariadb-operator.yaml",
+    "id": "KSV-0118",
+    "message": "deployment mariadb-operator-webhook in default namespace is using the default security context, which allows root privileges",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_metrics-server.yaml",
+    "id": "KSV-0118",
+    "message": "deployment metrics-server in metrics-server namespace is using the default security context, which allows root privileges",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_monitoring.yaml",
+    "id": "KSV-0009",
+    "message": "DaemonSet 'vm-k8s-stack-prometheus-node-exporter' should not set 'spec.template.spec.hostNetwork' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_monitoring.yaml",
+    "id": "KSV-0010",
+    "message": "DaemonSet 'vm-k8s-stack-prometheus-node-exporter' should not set 'spec.template.spec.hostPID' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_monitoring.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'sync-job' of Job 'vm-k8s-stack-victoria-metrics-k8s-stack-sync-job' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_monitoring.yaml",
+    "id": "KSV-0041",
+    "message": "ClusterRole 'vm-k8s-stack-kube-state-metrics' shouldn't have access to manage resource 'secrets'",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_monitoring.yaml",
+    "id": "KSV-0041",
+    "message": "ClusterRole 'vm-k8s-stack-victoria-metrics-operator' shouldn't have access to manage resource 'secrets'",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_monitoring.yaml",
+    "id": "KSV-0045",
+    "message": "Role permits wildcard verb on specific resources",
+    "count": 3,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_monitoring.yaml",
+    "id": "KSV-0046",
+    "message": "ClusterRole 'vm-k8s-stack-victoria-metrics-operator' shouldn't manage all resources",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_monitoring.yaml",
+    "id": "KSV-0050",
+    "message": "ClusterRole 'vm-k8s-stack-victoria-metrics-operator' should not have access to resources [\"roles\", \"rolebindings\"] for verbs [\"escalate\", \"bind\", \"impersonate\", \"*\"] as they can lead to privilege escalation",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_monitoring.yaml",
+    "id": "KSV-0056",
+    "message": "ClusterRole 'vm-k8s-stack-victoria-metrics-operator' should not have access to resources [\"services\", \"endpoints\", \"endpointslices\", \"networkpolicies\", \"ingresses\"] for verbs [\"create\", \"update\", \"patch\", \"delete\", \"deletecollection\", \"impersonate\", \"*\"]",
+    "count": 2,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_monitoring.yaml",
+    "id": "KSV-0118",
+    "message": "container vm-k8s-stack-victoria-metrics-k8s-stack-sync-job in monitoring namespace is using the default security context",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_monitoring.yaml",
+    "id": "KSV-0118",
+    "message": "job vm-k8s-stack-victoria-metrics-k8s-stack-sync-job in monitoring namespace is using the default security context, which allows root privileges",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_monitoring.yaml",
+    "id": "KSV-0118",
+    "message": "job vm-k8s-stack-victoria-metrics-operator-cleanup-hook in monitoring namespace is using the default security context, which allows root privileges",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_monitoring.yaml",
+    "id": "KSV-0121",
+    "message": "daemonset vm-k8s-stack-prometheus-node-exporter in monitoring namespace shouldn't have volumes set to {\"/\", \"/proc\", \"/sys\"}",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_netbird.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'netbird-operator' of Deployment 'netbird-netbird-operator' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_netbird.yaml",
+    "id": "KSV-0041",
+    "message": "ClusterRole 'netbird-netbird-operator' shouldn't have access to manage resource 'secrets'",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_netbird.yaml",
+    "id": "KSV-0046",
+    "message": "ClusterRole 'netbird-cluster-reader' shouldn't manage all resources",
+    "count": 6,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_netbird.yaml",
+    "id": "KSV-0056",
+    "message": "ClusterRole 'netbird-netbird-operator' should not have access to resources [\"services\", \"endpoints\", \"endpointslices\", \"networkpolicies\", \"ingresses\"] for verbs [\"create\", \"update\", \"patch\", \"delete\", \"deletecollection\", \"impersonate\", \"*\"]",
+    "count": 2,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  },
+  {
+    "target": "infrastructure_base_snapshot-controller.yaml",
+    "id": "KSV-0118",
+    "message": "deployment snapshot-controller in snapshot-controller namespace is using the default security context, which allows root privileges",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+  }
+]

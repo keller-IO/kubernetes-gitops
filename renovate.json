@@ -121,13 +121,22 @@
       "automerge": true
     },
     {
-      "description": "Automerge low-risk digest, pin and patch updates after CI.",
+      "description": "Automerge digest, pin and patch updates only for classified stateless leaf apps after CI.",
       "matchUpdateTypes": [
         "digest",
         "pin",
         "patch"
       ],
-      "automerge": true
+      "automerge": true,
+      "matchFileNames": [
+        "apps/base/collabora/**",
+        "apps/base/gatus/**",
+        "apps/base/gatus-public/**",
+        "apps/base/icecast/**",
+        "apps/base/phpmyadmin/**",
+        "infrastructure/base/kite/**",
+        "infrastructure/base/kubernetes-mcp/**"
+      ]
     },
     {
       "description": "Automerge minor updates only for stateless leaf apps.",
@@ -177,7 +186,8 @@
         "infrastructure/base/crowdsec/**",
         "infrastructure/base/csi-driver-smb/**",
         "infrastructure/base/netbird/**",
-        "infrastructure/base/snapshot-controller/**"
+        "infrastructure/base/snapshot-controller/**",
+        "apps/base/goloom/**"
       ],
       "automerge": false
     },
@@ -248,6 +258,15 @@
       ],
       "matchCurrentValue": "/-\\d+-system-/",
       "versioning": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)-(?<build>\\d+)-(?<compatibility>system-[a-z0-9-]+)$"
+    },
+    {
+      "description": "CI and GitOps control-plane dependencies require manual review.",
+      "matchFileNames": [
+        ".github/**",
+        "scripts/ci/**",
+        "clusters/**"
+      ],
+      "automerge": false
     },
     {
       "description": "SUC runtime, preflight Python and kubectl updates require manual review.",
