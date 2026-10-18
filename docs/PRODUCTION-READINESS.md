@@ -312,6 +312,12 @@ alertmanager:
       auf `Basic base64(mcp:<passwort>)` setzen; die Zugangsdaten nicht committen.
 - [x] RBAC read-only halten: keine Write-Verben, kein Secret-Zugriff. CI prüft das über
       `just guardrails`.
+- [x] Kein `nodes/proxy`: Bereits GET erlaubt laut [Kubernetes-RBAC-Dokumentation](https://kubernetes.io/docs/concepts/security/rbac-good-practices/#access-to-proxy-subresource-of-nodes)
+      die Ausführung von Befehlen über die Kubelet-API. `just test` blockiert diese
+      Berechtigung einschließlich Wildcards, Trivy prüft das gerenderte RBAC.
+      Die zugehörige Ausnahme KSV-0047 entfällt, die Security-Baseline sinkt von 277 auf 276 Findings.
+      Beim MCP-Server v0.0.61 entfallen dadurch Node-Logs und die Kubelet-Statistikzusammenfassung;
+      Pod-Logs und Node-/Pod-Metriken über `metrics.k8s.io` bleiben erlaubt.
 
 ---
 
