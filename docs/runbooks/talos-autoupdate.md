@@ -12,7 +12,8 @@ Repository `keller-IO/infrastructure`, nicht in einen manuellen Patch.
 Die Live-Pruefung am 18.10.2026 bestaetigt acht Ready-Nodes (drei Control-Planes,
 fuenf Worker), Talos **v1.13.4** und Kubernetes **v1.36.0**. Der aktuelle
 IaC-Ref `keller/main` (`685f5d9`) beschreibt dieselben acht Nodes mit 6-GiB-CPs
-und 8-/12-GiB-Workern. Der lokale IaC-Branch `main` liegt dagegen 31 Commits
+und 8-/12-GiB-Workern. Seit dem Nachmittag des 18.10. laufen wrk1 bis wrk3 und
+wrk5 mit 12 GB, wrk4 mit 8 GB (keller-IO/infrastructure#17 gleicht die tfvars an). Der lokale IaC-Branch `main` liegt dagegen 31 Commits
 zurueck und enthaelt eine andere Schematic; Abgleiche erfolgen gegen den
 aktuellen Remote-Ref. Kapazitaet, laufende Wartung und belegte Blocker stehen
 in der [Live-Abnahme](talos-live-audit-2026-10-18.md).
@@ -39,9 +40,11 @@ denselben Cluster aktualisieren.
 
 1. Die [Live-Abnahme](talos-live-audit-2026-10-18.md) vor dem Freigabetermin
    aktualisieren. Der Kubernetes-Zugang funktioniert; ein zusaetzlicher
-   Agent-Zugang ist keine technische Voraussetzung. `kellerio-wrk4` ist bereits
-   cordoned: Grund und Ende dieser Wartung zuerst klaeren, keinen zweiten Node
-   parallel in Wartung nehmen. Der Drain-Client ist auf die beobachtete
+   Agent-Zugang ist keine technische Voraussetzung. Stand 18.10.2026 abends ist
+   kein Node mehr cordoned: Der Cordon auf `kellerio-wrk4` (06:18 UTC, Wartung
+   aus einer Agent-Sitzung) ist aufgehoben, seine Systemplatte liegt seit 17:19
+   auf cloud62 `local-zfs` statt Ceph. Vor jeder Freigabe trotzdem pruefen, dass
+   keine andere Wartung laeuft, und keinen zweiten Node parallel in Wartung nehmen. Der Drain-Client ist auf die beobachtete
    Kubernetes-Version 1.36.0 angepasst.
 2. Nur CNPG-Cluster mit einer Instanz auf dem **zu drainenden Node** brauchen
    mindestens drei gesunde Instanzen, `affinity.podAntiAffinityType: required`,
@@ -55,9 +58,14 @@ denselben Cluster aktualisieren.
    separates Unterbrechungsrisiko fuer Worker-Updates.
 3. Vor zusaetzlichen Datenbankreplicas **N-1-Kapazitaet und Ceph-Kapazitaet**
    nachweisen. HA3 fuer alle neun CNPG-Cluster braucht zusaetzlich 6656 MiB
-   RAM-Requests, 2600m CPU und 268 GiB logischen PVC-Speicher. Das passt derzeit
-   nicht in N-1. Die [Live-Abnahme](talos-live-audit-2026-10-18.md) nennt
-   konkrete Zielkapazitaeten. Keine blinde Erhoehung, keine PDB-Abschaltung,
+   RAM-Requests, 2600m CPU und 268 GiB logischen PVC-Speicher. Seit der
+   RAM-Erweiterung vom 18.10. besteht die N-1-Rechnung mit 20 % Reserve
+   rechnerisch (nach Ausfall des groessten Workers ca. 15800m / 41802 MiB gegen
+   benoetigte 14444m / 40592 MiB, ca. 1,2 GiB Spielraum, siehe #286). Zwei
+   weitere Worker sind daraus nicht mehr abzuleiten. Harte Platzierungsregeln,
+   Reserve anderer Workloads und Ceph-Freikapazitaet sind damit noch **nicht**
+   nachgewiesen. Die Zahlen der [Live-Abnahme](talos-live-audit-2026-10-18.md)
+   sind eine historische Momentaufnahme. Keine blinde Erhoehung, keine PDB-Abschaltung,
    keine Request-Reduktion aus einer einzelnen Nutzungsprobe. Replikationsaufbau
    und Rebalancing vor Node-Freigabe abschliessen. Ceph-RBD bleibt bestehen;
    die Homelab-Migration auf lokale Disks wird nicht mit dem OS-Update vermischt.
@@ -74,16 +82,29 @@ denselben Cluster aktualisieren.
    completed Backups und Restore-Nachweis verlangen. Ceph/CSI-Gesundheit pruefen;
    `Running`, `Ready` und ein gebundenes PVC beweisen kein funktionierendes I/O.
    Siehe [CephFS-Learning](../learnings/external-cephfs-client-stall-recovery.md).
-6. Ein dediziertes, zeitlich gueltiges Talos-mTLS-Credential ausserhalb von Git
-   provisionieren: Namespace `system-upgrade-controller`, Secret `talosconfig`,
-   Key `talosconfig`. Das bestehende OpenTofu-Modul stellt die Konfiguration
-   bereit; die Secret-Provisionierung muss dort als separater, reviewed Schritt
-   ergaenzt werden. CA, Client-Rolle
-   fuer OS-Upgrades und die Erreichbarkeit jedes Node-TCP-Endpunkts verifizieren.
-   Vor Freigabe mit exakt diesem Credential fuer jeden Node pruefen:
+6. Das Talos-mTLS-Credential stellt **Talos selbst** aus (#287):
+   - OpenTofu (`keller-IO/infrastructure`, Env `kellerIO`,
+     `extra_controlplane_config_patches`) aktiviert auf den Control Planes
+     `machine.features.kubernetesTalosAPIAccess` mit `allowedRoles: [os:admin]`
+     und `allowedKubernetesNamespaces: [system-upgrade-controller]`.
+   - GitOps legt die CR `talos.dev/v1alpha1 ServiceAccount` `talosconfig`
+     (`talos-serviceaccount.yaml`) mit `roles: [os:admin]` an.
+   - Talos erzeugt daraus Secret `talosconfig`, Key **`config`**:
+     Client-Zertifikat der OS-CA, **6 h gueltig, 1 h vor Ablauf automatisch
+     erneuert**. Kein Zertifikat in Git, im Tofu-State oder als Handarbeit; eine
+     Rotation braucht keinen Eingriff.
+   - **Rolle:** `os:admin` ist zwingend. In Talos 1.13 verlangt
+     `MachineService/Upgrade` genau diese Rolle, `os:operator` reicht nicht.
+     Begrenzt wird ueber den Namespace und darueber, dass nur die Jobs des Plans
+     `talos` das Secret mounten.
+   - **Reihenfolge:** erst das Tofu-Feature ausrollen (die CRD
+     `serviceaccounts.talos.dev` existiert erst danach), dann die GitOps-CR
+     syncen.
+   - Vor Freigabe mit exakt diesem Credential, aus einem HostNetwork-Pfad wie
+     dem Job, fuer jeden Node pruefen:
 
    ```sh
-   talosctl --talosconfig <dediziertes-credential> -e <node-ip> -n <node-ip> version
+   talosctl --talosconfig /var/run/secrets/talos.dev/config -e <node-ip> -n <node-ip> version
    ```
 
    Der Prepare-Check erkennt ein fehlendes oder leeres Credential. Er ersetzt

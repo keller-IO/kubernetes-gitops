@@ -9,6 +9,7 @@ resources:
   - namespace.yaml
   - job-defaults.yaml
   - talos-plan.yaml
+  - talos-serviceaccount.yaml
 patches:
   - path: patch-controller.yaml
   - path: patch-rbac.yaml
