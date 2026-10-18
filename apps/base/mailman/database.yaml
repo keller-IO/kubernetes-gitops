@@ -51,7 +51,15 @@ spec:
         secretAccessKey: { name: mailman-backup-s3, key: SECRET_ACCESS_KEY }
         region: { name: mailman-backup-s3, key: region } # Garage erzwingt Region-Match bei HeadBucket
       wal: { compression: gzip }
-      data: { compression: gzip }
+      # Garage braucht fuer CompleteMultipartUpload bei grossen Base-Backups
+      # laenger als das boto3-Read-Timeout von 60 s. barman wiederholt den
+      # Aufruf dann, Garage hat den Upload aber schon abgeschlossen und
+      # antwortet 404 NoSuchUpload -> Backup "failed" (mailman 18.10.2026
+      # 02:30, mastodon 18.10.2026 07:52). Groessere Teile (64 MB statt 5 MB)
+      # verkuerzen das Zusammensetzen, das Timeout faengt den Rest ab.
+      data:
+        compression: gzip
+        additionalCommandArgs: ["--read-timeout=600", "--min-chunk-size=64MB"]
   monitoring:
     enablePodMonitor: true
 ---
