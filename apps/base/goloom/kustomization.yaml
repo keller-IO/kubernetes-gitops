@@ -11,6 +11,7 @@ resources:
   - pvc.yaml
   - database.yaml
   - migration/rbac.yaml
+  - migration/hooks.yaml
 generators:
   - ./secret-generator.yaml
 # Einmal-Migration SQLite -> Postgres (Skripte lokal gegen eine Kopie der

@@ -4,11 +4,14 @@ image:
   pullPolicy: IfNotPresent
 
 replicaCount: 1
+# Seit der Umstellung (Hooks in migration/hooks.yaml) Postgres via CNPG goloom-pg;
+# DATABASE_URL liest das Chart aus goloom-secrets. Medien bleiben auf goloom-data.
 database:
-  type: sqlite
+  type: postgres
 persistence:
   enabled: true
-  # PVC liegt in pvc.yaml (Prune=false/Delete=false), nicht im Chart.
+  # PVC liegt in pvc.yaml (Prune=false/Delete=false), nicht im Chart. Haelt nur
+  # noch die Medien (/app/data/media) und die alte goloom.db als Rueckfallstand.
   existingClaim: goloom-data
   storageClass: ceph-rbd
   accessMode: ReadWriteOnce
