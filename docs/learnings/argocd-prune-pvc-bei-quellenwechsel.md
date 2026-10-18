@@ -44,5 +44,6 @@ Git, damit ein Restore auf einem neuen Cluster frisch provisioniert.
 - Vor jedem Quellenwechsel einer App (vendored Chart -> Git-/Helm-Quelle, Single-
   -> Multi-Source) pruefen, dass alle PVCs `Prune=false` tragen, oder automatisches
   Prune fuer die App waehrend der Umstellung aussetzen.
-- Offen: ein CI-Guardrail, der fuer gerenderte PVCs in `apps/` die Annotation
-  verlangt, mit Ausnahmeliste in `scripts/ci/known-gaps/`.
+- CI: `scripts/ci/check-pvc.py` verlangt fuer gerenderte PVCs in `apps/` exakt
+  `Prune=false,Delete=false`. Bestehende Luecken stehen einzeln in
+  `scripts/ci/known-gaps/unprotected-pvcs.txt`; neue PVCs haben keine Ausnahme.
