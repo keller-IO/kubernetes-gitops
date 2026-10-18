@@ -230,6 +230,11 @@ central Ansible runbook. The final enabled Ansible state is commit `fe9d42d`.
   reports the normalized runtime provider as `custom`. The gateway transport is
   Chat Completions, the app-level retry count is one attempt, auto-recovery is
   disabled, and the sole fallback is `openai-codex` with `gpt-5.6-sol`.
+- The pinned Hermes revision can rebuild its primary client once after an
+  exhausted transient connection or timeout failure and send one final primary
+  attempt. This hard-coded transport exception is not an additional LiteLLM
+  retry and does not apply to the accepted HTTP 429 fallback path; its duplicate
+  execution risk is recorded in ADR 0006 and must be reassessed on upgrade.
 - Normal completion and streaming succeeded through Blablador. A separate
   read-only tool turn completed two terminal tool calls; all three API calls in
   that turn used `hermes-blablador` rather than Codex.
