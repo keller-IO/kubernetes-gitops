@@ -4,7 +4,7 @@ image:
   pullPolicy: IfNotPresent
 
 replicaCount: 1
-# Seit der Umstellung (Hooks in migration/hooks.yaml) Postgres via CNPG goloom-pg;
+# Postgres via CNPG goloom-pg (database.yaml) seit 18.10.2026, vorher SQLite.
 # DATABASE_URL liest das Chart aus goloom-secrets. Medien bleiben auf goloom-data.
 database:
   type: postgres

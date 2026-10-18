@@ -1,13 +1,12 @@
-# Offsite-Backup von Goloom: PVC goloom-data -> Garage Potsdam, Bucket backup-goloom.
+# Offsite-Backup der Goloom-Medien: PVC goloom-data -> Garage Potsdam, Bucket backup-goloom.
 #
-#   sqlite/goloom-<Zeit>.db.gz   konsistente Kopie per SQLite-Backup-API, 30 Tage
 #   media/current/               Spiegel von /app/data/media (rclone sync)
 #   media/archive/<Zeit>/        von sync geloeschte/ueberschriebene Dateien, 30 Tage
 #
-# Die DB laeuft im WAL-Modus; ein Dateikopieren waere nicht konsistent. Der
-# Init-Container zieht deshalb mit `sqlite3 .backup` eine Kopie, prueft sie per
-# integrity_check und packt sie. Erst danach laedt rclone hoch — scheitert die
-# Pruefung, bricht der Job vor dem Upload ab.
+# Die Datenbank liegt seit 18.10.2026 in Postgres (CNPG goloom-pg) und wird vom
+# Operator nach s3://backup-goloom/cnpg/ gesichert (database.yaml). Unter sqlite/
+# liegen die frueheren SQLite-Staende; sie werden nicht mehr geloescht, der
+# letzte ist goloom-2026-10-18T052756Z.db.gz (Stand der Migration).
 #
 # goloom-data ist RWO: der Pod muss auf dem Node der App laufen (podAffinity).
 # Die Labels hier duerfen den Selector von Deployment/Service nicht treffen,
@@ -51,39 +50,10 @@ spec:
                       app.kubernetes.io/name: goloom
                       app.kubernetes.io/instance: goloom
           securityContext:
-            # Gleiche UID/GID wie die App, damit sqlite3 die -shm-Datei oeffnen kann.
             runAsNonRoot: true
             runAsUser: 65532
             runAsGroup: 65532
             seccompProfile: { type: RuntimeDefault }
-          initContainers:
-            - name: snapshot
-              image: keinos/sqlite3:3.53.4 # renovate: image=keinos/sqlite3
-              command: ["/bin/sh", "-c"]
-              args:
-                - |
-                  set -eu
-                  STAMP=$(date -u +%Y-%m-%dT%H%M%SZ)
-                  OUT=/work/goloom-${STAMP}.db
-                  sqlite3 /data/goloom.db ".backup ${OUT}"
-                  CHECK=$(sqlite3 "${OUT}" "pragma integrity_check;")
-                  if [ "${CHECK}" != "ok" ]; then echo "integrity_check: ${CHECK}"; exit 1; fi
-                  sqlite3 "${OUT}" "select 'users=' || count(*) from users; select 'teams=' || count(*) from teams; select 'media_items=' || count(*) from media_items;"
-                  gzip -9 "${OUT}"
-                  sha256sum "${OUT}.gz"
-              env:
-                - { name: HOME, value: /work }
-              resources:
-                requests: { cpu: 50m, memory: 64Mi }
-                limits: { memory: 256Mi }
-              securityContext:
-                allowPrivilegeEscalation: false
-                readOnlyRootFilesystem: true
-                capabilities: { drop: ["ALL"] }
-              volumeMounts:
-                # Schreibbar gemountet: sqlite3 muss bei WAL die -shm-Datei mappen.
-                - { name: data, mountPath: /data }
-                - { name: work, mountPath: /work }
           containers:
             - name: rclone
               image: rclone/rclone:1.75.2 # renovate: image=rclone/rclone
@@ -92,7 +62,6 @@ spec:
                 - |
                   set -eu
                   STAMP=$(date -u +%Y-%m-%dT%H%M%SZ)
-                  rclone copy /work garage:backup-goloom/sqlite --include "goloom-*.db.gz" -v
                   if [ -d /data/media ]; then
                     rclone sync /data/media garage:backup-goloom/media/current \
                       --backup-dir "garage:backup-goloom/media/archive/${STAMP}" \
@@ -100,9 +69,7 @@ spec:
                   else
                     echo "noch kein /data/media"
                   fi
-                  rclone delete garage:backup-goloom/sqlite --min-age 30d -v
                   rclone delete garage:backup-goloom/media/archive --min-age 30d --rmdirs -v
-                  rclone lsl garage:backup-goloom/sqlite | tail -3
                   rclone size garage:backup-goloom
               env:
                 - { name: HOME, value: /tmp }
@@ -130,13 +97,10 @@ spec:
                 capabilities: { drop: ["ALL"] }
               volumeMounts:
                 - { name: data, mountPath: /data, readOnly: true }
-                - { name: work, mountPath: /work, readOnly: true }
                 - { name: tmp, mountPath: /tmp }
           volumes:
             - name: data
               persistentVolumeClaim:
                 claimName: goloom-data
-            - name: work
-              emptyDir: { sizeLimit: 2Gi }
             - name: tmp
               emptyDir: { sizeLimit: 256Mi }

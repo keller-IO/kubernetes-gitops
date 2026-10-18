@@ -339,42 +339,41 @@ Ablauf: Manifest anwenden, `kubectl get restore -n kimai -w` bis
 WordPress analog mit `wordpress-mariadb` / `wordpress-backup-s3` und dem
 Instanz-Prefix (`mariadb-wordpress-1` etc.) im jeweiligen Namespace.
 
-## Goloom (SQLite + Medien)
+## Goloom (Postgres + Medien)
 
-Der CronJob `goloom-backup` (03:45, `apps/base/goloom/backup-cronjob.yaml`)
-sichert nach `s3://backup-goloom/`, Key `backup-goloom`, Secret `goloom-backup-s3`:
+Seit 18.10.2026 laeuft Goloom auf Postgres (#270/#272), vorher auf SQLite.
 
-| Pfad | Inhalt | Aufbewahrung |
-|---|---|---|
-| `sqlite/goloom-<Zeit>.db.gz` | Kopie per `sqlite3 .backup`, vor dem Upload per `integrity_check` geprüft | 30 Tage |
-| `media/current/` | Spiegel von `/app/data/media` | aktuell |
-| `media/archive/<Zeit>/` | von `sync` gelöschte/überschriebene Dateien | 30 Tage |
+| Was | Wie | Ziel | Aufbewahrung |
+|---|---|---|---|
+| Datenbank | CNPG `goloom-pg`, WAL-Archiv + `ScheduledBackup` 02:50 | `s3://backup-goloom/cnpg/` | 30 Tage (PITR) |
+| Medien | CronJob `goloom-backup` 03:45, `rclone sync` von `/app/data/media` | `media/current/`, Archiv `media/archive/<Zeit>/` | Archiv 30 Tage |
+| alte SQLite-Staende | bis 18.10.2026 vom CronJob | `sqlite/` | dauerhaft, nicht mehr bereinigt |
 
-Prüfen: Log des letzten Jobs (`kubectl -n goloom logs job/<name> -c snapshot`
-zeigt Zeilenzahlen und SHA256), Liste per `rclone lsl` bzw. `curl --aws-sigv4`
-auf `backup-goloom?list-type=2&prefix=sqlite/`.
+Key `backup-goloom` (RW nur auf diesen Bucket), Secret `goloom-backup-s3`.
+Letzter SQLite-Stand = Stand der Migration: `sqlite/goloom-2026-10-18T052756Z.db.gz`;
+die Datei `goloom.db` liegt ausserdem eingefroren auf `goloom-data`.
 
-**Restore** (überschreibt den Stand auf `goloom-data`):
+Pruefen: Datenbank wie bei den uebrigen CNPG-Clustern (`pg_stat_archiver` im Pod,
+`kubectl -n goloom get backups.postgresql.cnpg.io` — der Kurzname `backup` loest auf
+das MariaDB-CRD auf). Medien: Log des letzten CronJob-Laufs.
 
-1. `app-goloom` in ArgoCD auf manuellen Sync stellen. Sonst setzt selfHeal die
-   Replikas sofort zurück: Der Chart erzwingt bei SQLite `replicas: 1`, ein
-   Skalieren über Git geht nicht.
-2. `kubectl -n goloom scale deploy goloom --replicas=0` und warten, bis der Pod weg ist.
-3. Wegwerf-Pod mit `goloom-data` unter `/data` (UID/GID 65532, Restricted-PSA):
-   den gewünschten `sqlite/goloom-<Zeit>.db.gz` holen und nach `/data/goloom.db`
-   entpacken, **`goloom.db-wal` und `goloom.db-shm` löschen**, danach
-   `media/current/` nach `/data/media/` kopieren. Eine Vorlage für die
-   rclone-Umgebung ist der CronJob.
-4. `pragma integrity_check` auf `/data/goloom.db`, Pod löschen, Deployment
-   wieder auf 1 skalieren, Auto-Sync wieder einschalten.
-5. **`ENCRYPTION_KEY` aus `secret.sops.yaml` muss derselbe bleiben.** Damit sind
-   die Zugangstoken der verbundenen Social-Media-Konten verschlüsselt; mit einem
-   neuen Key müssen alle Konten neu verbunden werden.
+**Restore Datenbank:** wie im Abschnitt *Restore (Point-in-Time / Disaster
+Recovery)* mit `goloom-pg` und `s3://backup-goloom/cnpg/`. Die App vorher stoppen.
+Weil ArgoCD die Replikas per selfHeal zuruecksetzt, waehrend des Restores Auto-Sync fuer
+`app-goloom` aussetzen.
 
-Restore-Test 14.10.2026: Stand aus Garage geladen, SHA256 gleich dem Job-Log,
-`integrity_check` ok, Goloom v0.2.9 startete lokal darauf (`/healthz` 200,
-Nutzer vorhanden). Medien waren noch keine vorhanden. Den Medien-Pfad nach dem
-ersten Upload einmal mitprüfen.
+**Restore Medien:** Wegwerf-Pod mit `goloom-data` unter `/data` (UID/GID 65532,
+Restricted-PSA, per podAffinity auf dem Node der App oder bei gestoppter App),
+`media/current/` nach `/data/media/` kopieren; Vorlage fuer die rclone-Umgebung ist
+der CronJob.
+
+**`ENCRYPTION_KEY` aus `secret.sops.yaml` muss derselbe bleiben.** Damit sind die
+Zugangstoken der verbundenen Social-Media-Konten verschluesselt; mit einem neuen Key
+muessen alle Konten neu verbunden werden.
+
+Restore-Tests: SQLite-Stand 14.10.2026 (lokal, `/healthz` 200). Fuer `goloom-pg` steht
+ein eigener Recovery-Test noch aus (erstes Basis-Backup 18.10.2026 `completed`).
+Migration SQLite -> Postgres: `docs/learnings/goloom-sqlite-nach-postgres.md`.
 
 ---
 
