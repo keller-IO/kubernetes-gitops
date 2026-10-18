@@ -1,0 +1,58 @@
+# Plan ContainerSpec cannot express resources; admission defaults cover prepare,
+# drain and upgrade containers, including the controller-generated Jobs.
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: upgrade-job-resources
+spec:
+  limits:
+    - type: Container
+      defaultRequest:
+        cpu: 100m
+        memory: 64Mi
+      default:
+        cpu: 500m
+        memory: 256Mi
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: talos-upgrade
+---
+# Controller RBAC stays on its upstream SA; Jobs receive only eviction + the
+# separately declared read-only health preflight permissions.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: talos-upgrade-preflight
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: talos-upgrade-preflight
+subjects:
+  - kind: ServiceAccount
+    name: talos-upgrade
+    namespace: system-upgrade-controller
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: talos-upgrade-preflight
+rules:
+  - apiGroups: [""]
+    resources: [namespaces, nodes, pods, persistentvolumeclaims]
+    verbs: [get, list]
+  - apiGroups: [apps]
+    resources: [deployments, statefulsets, daemonsets]
+    verbs: [get, list]
+  - apiGroups: [postgresql.cnpg.io]
+    resources: [clusters]
+    verbs: [get, list]
+  - apiGroups: [admissionregistration.k8s.io]
+    resources: [mutatingwebhookconfigurations, validatingwebhookconfigurations]
+    verbs: [get, list]
+  - nonResourceURLs: [/version]
+    verbs: [get]
+  - apiGroups: [upgrade.cattle.io]
+    resources: [plans]
+    verbs: [get, list]

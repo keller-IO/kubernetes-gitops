@@ -52,6 +52,32 @@
       ],
       "datasourceTemplate": "docker",
       "versioningTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "description": "Talos SUC Plan version and explicit installer tag track the same Talos release.",
+      "managerFilePatterns": [
+        "infrastructure/base/system-upgrade-controller/talos-plan.yaml"
+      ],
+      "matchStrings": [
+        "version:\\s*(?<currentValue>v\\d+\\.\\d+\\.\\d+)\\s+# renovate: datasource=github-releases depName=siderolabs/talos",
+        "--image=factory\\.talos\\.dev/nocloud-installer/[a-f0-9]{64}:(?<currentValue>v\\d+\\.\\d+\\.\\d+)"
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "siderolabs/talos",
+      "versioningTemplate": "semver"
+    },
+    {
+      "customType": "regex",
+      "description": "SUC generated drain image lives in a ConfigMap string, outside the Kubernetes image extractor.",
+      "managerFilePatterns": [
+        "infrastructure/base/system-upgrade-controller/patch-controller.yaml"
+      ],
+      "matchStrings": [
+        "SYSTEM_UPGRADE_JOB_KUBECTL_IMAGE:\\s*[\\\"\\']?(?<depName>rancher/kubectl):(?<currentValue>v\\d+\\.\\d+\\.\\d+)"
+      ],
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "docker"
     }
   ],
   "packageRules": [
@@ -222,6 +248,52 @@
       ],
       "matchCurrentValue": "/-\\d+-system-/",
       "versioning": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)-(?<build>\\d+)-(?<compatibility>system-[a-z0-9-]+)$"
+    },
+    {
+      "description": "SUC runtime, preflight Python and kubectl updates require manual review.",
+      "matchFileNames": [
+        "infrastructure/base/system-upgrade-controller/**"
+      ],
+      "automerge": false
+    },
+    {
+      "description": "Talos CLI uses release dates and versions from the same source as Plan/installer.",
+      "matchFileNames": [
+        "infrastructure/base/system-upgrade-controller/**"
+      ],
+      "matchPackageNames": [
+        "ghcr.io/siderolabs/talosctl"
+      ],
+      "overrideDatasource": "github-releases",
+      "overridePackageName": "siderolabs/talos"
+    },
+    {
+      "description": "Keep Plan, talosctl and installer in one patch release on the reviewed 1.13 line; advancing a minor requires a separate reviewed compatibility change.",
+      "matchFileNames": [
+        "infrastructure/base/system-upgrade-controller/**"
+      ],
+      "matchPackageNames": [
+        "siderolabs/talos",
+        "ghcr.io/siderolabs/talosctl"
+      ],
+      "groupName": "infrastructure/talos",
+      "allowedVersions": "/^v?1\\.13\\.\\d+$/",
+      "minimumReleaseAge": "7 days",
+      "automerge": false
+    },
+    {
+      "description": "Automerge Talos patches only after seven days and required CI; component defaults keep every other upgrade manual.",
+      "matchFileNames": [
+        "infrastructure/base/system-upgrade-controller/**"
+      ],
+      "matchPackageNames": [
+        "siderolabs/talos",
+        "ghcr.io/siderolabs/talosctl"
+      ],
+      "matchUpdateTypes": [
+        "patch"
+      ],
+      "automerge": true
     }
   ],
   "argocd": {
