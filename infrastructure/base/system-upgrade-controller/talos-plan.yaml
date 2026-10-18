@@ -49,7 +49,7 @@ spec:
     - key: CriticalAddonsOnly
       operator: Exists
   prepare:
-    image: docker.io/library/python:3.14.0-alpine
+    image: docker.io/library/python:3.14.8-alpine
     command: [python3, -c]
     args: ["$(PREFLIGHT_SCRIPT)"]
     envs:
