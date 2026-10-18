@@ -1,188 +1,77 @@
-# CI: lint + validate every manifest renders & passes schema, plus a security scan.
-# GitHub Actions is the leading CI path.
+# GitHub is the leading CI. Both required jobs use the locked local dev shell.
 name: ci
 
 on:
   pull_request:
+  merge_group:
   push:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
-  # Exercise real dependency extraction, including CNPG and nonstandard filenames.
-  renovate:
-    runs-on: ubuntu-latest
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v7
-      - name: Validate Renovate configuration and extraction
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: cachix/install-nix-action@448cde739abec1eaf0646249e3d25bb8d9bc7702 # v31.11.2
+      - name: Generate local agent configuration
+        run: nix develop --command just agents-setup
+      - name: Static validation, security and regression tests
         env:
           GITHUB_COM_TOKEN: ${{ github.token }}
-        run: |
-          docker run --rm --user "$(id -u):$(id -g)" \
-            -e HOME=/tmp -e GITHUB_COM_TOKEN \
-            -v "$PWD:/repo:ro" -w /repo --entrypoint bash \
-            renovate/renovate:43.280.4 scripts/ci/check-renovate.sh
+        run: nix develop --command just validate
 
-  # YAML syntax / formatting.
-  lint:
-    runs-on: ubuntu-latest
+  integration:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [install, upgrade]
     steps:
-      - uses: actions/checkout@v7
-      - name: Install yamllint
-        run: pipx install yamllint
-      - name: yamllint
-        run: yamllint -s .
-
-  # Repository safety invariants for AI-assisted GitOps changes.
-  guardrails:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - name: guardrails
-        run: bash -n scripts/ci/guardrails.sh && scripts/ci/guardrails.sh
-
-  # Render every overlay (helm inflation enabled) and validate against K8s/CRD schemas.
-  validate:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: azure/setup-helm@v5
-
-      - name: Install kustomize + kubeconform + yq
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: cachix/install-nix-action@448cde739abec1eaf0646249e3d25bb8d9bc7702 # v31.11.2
+      - name: Install and upgrade pilot apps through ArgoCD
         env:
-          # renovate: datasource=github-releases depName=kubernetes-sigs/kustomize
-          KUSTOMIZE_VERSION: 5.8.3
-          # renovate: datasource=github-releases depName=mikefarah/yq
-          YQ_VERSION: 4.54.1
-        run: |
-          set -euo pipefail
-          curl -sSfL "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v${KUSTOMIZE_VERSION}/kustomize_v${KUSTOMIZE_VERSION}_linux_amd64.tar.gz" | tar xz kustomize
-          curl -sSfL https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz | tar xz
-          sudo mv kustomize kubeconform /usr/local/bin/
-          curl -sSfL "https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION}/yq_linux_amd64" -o yq
-          sudo install -m 0755 yq /usr/local/bin/yq
-          # KSOPS-Stub: CI hat keinen age-Key, Secrets werden nicht gerendert.
-          printf '#!/bin/sh\nexit 0\n' | sudo tee /usr/local/bin/ksops >/dev/null
-          sudo chmod +x /usr/local/bin/ksops
+          CI_BASE_REVISION: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+          CI_CANDIDATE_REVISION: ${{ github.sha }}
+          CI_INTEGRATION_MODE: ${{ matrix.mode }}
+          CI_INTEGRATION_ARTIFACTS: ${{ runner.temp }}/ci-integration
+        run: nix develop --command just "integration-$CI_INTEGRATION_MODE"
+      - name: Keep sanitized diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ci-integration-${{ matrix.mode }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/ci-integration
+          if-no-files-found: error
+          retention-days: 7
 
-      - name: Render manifests + kubeconform
-        run: |
-          set -euo pipefail
-          for dir in apps/overlays/main/*/ infrastructure/base/*/; do
-            [ -f "$dir/kustomization.yaml" ] || continue
-            echo "== $dir"
-            bash scripts/render.sh "$dir" \
-              | kubeconform -strict -ignore-missing-schemas -summary
-          done
-
-      - name: LiteLLM manifest contract
-        run: bash -n scripts/ci/check-litellm.sh && scripts/ci/check-litellm.sh
-
-      - name: LiteLLM policy and network probe tests
-        env:
-          PYTHONDONTWRITEBYTECODE: "1"
-        run: |
-          PYTHONPATH=apps/base/litellm python3 -m unittest apps/base/litellm/test_request_policy.py
-          python3 -m unittest apps/base/litellm/test_network_probe.py
-
-  # Render every overlay/base and fail on an HPA a chart brought unasked, or
-  # one that autoscales on memory. See docs/learnings/collabora-hpa-runaway.md
-  # and scripts/ci/check-hpa.sh.
-  hpa-safety:
-    runs-on: ubuntu-latest
+  # This stable check is the only status required by the main ruleset. A failed,
+  # cancelled, skipped or missing dependency never turns into a successful gate.
+  ci-required:
+    if: always()
+    needs: [validate, integration]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v7
-
-      - uses: azure/setup-helm@v5
-
-      - name: Install kustomize + yq
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Require every safety gate
         env:
-          # renovate: datasource=github-releases depName=kubernetes-sigs/kustomize
-          KUSTOMIZE_VERSION: 5.8.3
-          # renovate: datasource=github-releases depName=mikefarah/yq
-          YQ_VERSION: 4.54.1
-        run: |
-          set -euo pipefail
-          curl -sSfL "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v${KUSTOMIZE_VERSION}/kustomize_v${KUSTOMIZE_VERSION}_linux_amd64.tar.gz" | tar xz kustomize
-          sudo mv kustomize /usr/local/bin/
-          curl -sSfL "https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION}/yq_linux_amd64" -o yq
-          sudo install -m 0755 yq /usr/local/bin/yq
-          # KSOPS-Stub: CI hat keinen age-Key, Secrets werden nicht gerendert.
-          printf '#!/bin/sh\nexit 0\n' | sudo tee /usr/local/bin/ksops >/dev/null
-          sudo chmod +x /usr/local/bin/ksops
-
-      - name: check-hpa
-        run: bash -n scripts/ci/check-hpa.sh && scripts/ci/check-hpa.sh
-
-  # Reject decrypted real secrets while allowing explicit blueprint placeholders.
-  secrets-check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - name: Install yq
-        env:
-          # renovate: datasource=github-releases depName=mikefarah/yq
-          YQ_VERSION: 4.54.1
-        run: |
-          set -euo pipefail
-          curl -sSfL "https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION}/yq_linux_amd64" -o yq
-          sudo install -m 0755 yq /usr/local/bin/yq
-      - name: Reject unencrypted real *.sops.yaml
-        run: |
-          bash -n scripts/ci/check-sops.sh
-          bash -n scripts/ci/test-check-sops.sh
-          bash scripts/ci/test-check-sops.sh
-          scripts/ci/check-sops.sh
-
-  # Static security scan of the rendered manifests (misconfig) + repo (secrets).
-  # Reports findings; does NOT fail the build yet — add `--exit-code 1` to enforce.
-  security:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: azure/setup-helm@v5
-
-      - name: Install kustomize + Trivy + yq
-        env:
-          # renovate: datasource=github-releases depName=kubernetes-sigs/kustomize
-          KUSTOMIZE_VERSION: 5.8.3
-          # renovate: datasource=github-releases depName=aquasecurity/trivy
-          TRIVY_VERSION: 0.75.0
-          # renovate: datasource=github-releases depName=mikefarah/yq
-          YQ_VERSION: 4.54.1
-        run: |
-          set -euo pipefail
-          # Gepinnter Direkt-Download statt install_kustomize.sh: das Script fragt
-          # die GitHub-API nach "latest" und läuft auf Shared-Runnern ins Rate-Limit.
-          curl -sSfL "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v${KUSTOMIZE_VERSION}/kustomize_v${KUSTOMIZE_VERSION}_linux_amd64.tar.gz" | tar xz kustomize
-          sudo mv kustomize /usr/local/bin/
-          # Gepinnter Direkt-Download statt install.sh: das godownloader-Script
-          # fragt die GitHub-API nach "latest" und läuft auf Shared-Runnern
-          # regelmäßig ins anonyme Rate-Limit.
-          curl -sSfL "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz" | tar xz trivy
-          sudo mv trivy /usr/local/bin/
-          curl -sSfL "https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION}/yq_linux_amd64" -o yq
-          sudo install -m 0755 yq /usr/local/bin/yq
-          # KSOPS-Stub: CI hat keinen age-Key, Secrets werden nicht gerendert.
-          printf '#!/bin/sh\nexit 0\n' | sudo tee /usr/local/bin/ksops >/dev/null
-          sudo chmod +x /usr/local/bin/ksops
-
-      - name: Render manifests
-        run: |
-          set -euo pipefail
-          mkdir -p rendered
-          for dir in apps/overlays/main/*/ infrastructure/base/*/; do
-            [ -f "$dir/kustomization.yaml" ] || continue
-            name=$(echo "$dir" | tr '/' '_')
-            bash scripts/render.sh "$dir" > "rendered/${name}.yaml"
-          done
-
-      - name: Trivy misconfiguration scan
-        run: trivy config --severity HIGH,CRITICAL rendered
-
-      - name: Trivy secret scan
-        run: trivy fs --scanners secret --severity HIGH,CRITICAL .
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: python3 scripts/ci/check-required.py "$NEEDS_JSON"

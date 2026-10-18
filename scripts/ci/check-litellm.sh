@@ -11,7 +11,11 @@ fail() {
 }
 
 rendered="$({
-  kustomize build --enable-alpha-plugins --enable-exec apps/base/litellm
+  if (($#)); then
+    cat "${1:?Expected pre-rendered LiteLLM manifest}"
+  else
+    kustomize build --enable-alpha-plugins --enable-exec apps/base/litellm
+  fi
 } | yq eval '
   (select(.kind == "Secret") | .data[]?) = "REDACTED" |
   (select(.kind == "Secret") | .stringData[]?) = "REDACTED"
@@ -278,11 +282,7 @@ assert_source_eq apps/base/litellm/secret-generator.yaml '.metadata.annotations[
 assert_source_eq apps/base/litellm/secret-generator.yaml '.files | join(",")' ./secret.sops.yaml 'KSOPS generator must reference the encrypted Secret'
 
 rendered_secret_count="$(manifest_query '[select(.kind == "Secret" and .metadata.name == "litellm")] | length')"
-ksops_bin="$(command -v ksops)"
 expected_secret_count=1
-if [[ "$(wc -l <"$ksops_bin")" == 2 ]] && grep -qx 'exit 0' "$ksops_bin"; then
-  expected_secret_count=0
-fi
 [[ "$rendered_secret_count" == "$expected_secret_count" ]] || fail 'KSOPS did not render the expected Secret count'
 assert_manifest_eq '[select(.kind == "Secret")] | length' "$expected_secret_count" 'render must contain exactly the expected Secret count'
 if [[ "$expected_secret_count" == 1 ]]; then

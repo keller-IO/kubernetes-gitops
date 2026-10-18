@@ -13,8 +13,8 @@
 #      tuning problem — this is never an acceptable exception.
 #
 # Requires on PATH: kustomize, helm (kustomize shells out to it for
-# --enable-helm), yq (mikefarah/yq "yq-go"), jq, and a ksops stub (see
-# .github/workflows/ci.yml for the exact stub CI installs).
+# --enable-helm), yq (mikefarah/yq "yq-go"), jq, and real KSOPS. The shared
+# renderer generates synthetic SOPS secrets without production keys.
 #
 # Allowlist: scripts/ci/known-gaps/hpa-allowlist.txt ("<namespace>/<name>" per
 # line). Empty by design as of 2026-07-28 — no HPA currently renders here.
@@ -36,15 +36,19 @@ is_allowed() {
   [[ -n "$allowed_keys" ]] && grep -qxF "$key" <<<"$allowed_keys"
 }
 
-for dir in apps/overlays/main/*/ infrastructure/base/*/; do
-  [ -f "${dir}kustomization.yaml" ] || continue
-
-  rendered="$work/rendered.yaml"
-  bash scripts/render.sh "$dir" > "$rendered"
+if (($# > 0)); then
+  render_dir="$1"
+else
+  render_dir="$work/rendered"
+  bash scripts/ci/render-all.sh "$render_dir"
+fi
+for rendered in "$render_dir"/*.yaml; do
+  [[ -f "$rendered" ]] || { echo "ERROR: no rendered manifests" >&2; exit 1; }
+  dir="$(basename "$rendered")"
 
   hpas_json="$work/hpas.json"
   : > "$hpas_json"
-  yq eval-all -o=json 'select(.kind == "HorizontalPodAutoscaler")' "$rendered" > "$hpas_json" 2>/dev/null || true
+  yq eval-all -o=json 'select(.kind == "HorizontalPodAutoscaler")' "$rendered" > "$hpas_json"
   [ -s "$hpas_json" ] || continue
 
   while IFS= read -r key; do

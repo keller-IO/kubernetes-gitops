@@ -222,6 +222,14 @@
       ],
       "matchCurrentValue": "/-\\d+-system-/",
       "versioning": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)-(?<build>\\d+)-(?<compatibility>system-[a-z0-9-]+)$"
+    },
+    {
+      "description": "CI workflow dependencies control the safety gates and require manual review.",
+      "matchFileNames": [
+        ".github/**",
+        "scripts/ci/**"
+      ],
+      "automerge": false
     }
   ],
   "argocd": {
