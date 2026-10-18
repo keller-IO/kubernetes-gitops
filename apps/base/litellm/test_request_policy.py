@@ -102,6 +102,51 @@ class RequestPolicyTests(unittest.TestCase):
         self.assertIsNone(validate_proxy_request(data))
         self.assertEqual(data, original)
 
+    def test_accepts_only_hermes_usage_stream_options(self):
+        # Mutation caught: rejecting Hermes' usage stream extension or allowing it to carry controls.
+        data = proxy_data(
+            {
+                "model": MODEL,
+                "messages": [],
+                "stream": True,
+                "stream_options": {"include_usage": True},
+            }
+        )
+        original = copy.deepcopy(data)
+
+        self.assertIsNone(validate_proxy_request(data))
+        self.assertEqual(data, original)
+
+        invalid_values = (
+            {"include_usage": False},
+            {"include_usage": True, "extra": True},
+            {},
+            True,
+            {"include_usage": 1},
+            {"include_usage": 1.0},
+        )
+        for value in invalid_values:
+            with self.subTest(value=value):
+                invalid = proxy_data(
+                    {
+                        "model": MODEL,
+                        "messages": [],
+                        "stream": True,
+                        "stream_options": value,
+                    }
+                )
+                self.assert_rejected_without_mutation(invalid, "stream_options")
+
+        non_streaming = proxy_data(
+            {
+                "model": MODEL,
+                "messages": [],
+                "stream": False,
+                "stream_options": {"include_usage": True},
+            }
+        )
+        self.assert_rejected_without_mutation(non_streaming, "stream_options")
+
     def test_rejects_other_model_or_missing_messages(self):
         # Mutation caught: accepting a different route target or a body without list-valued messages.
         cases = (
@@ -125,6 +170,21 @@ class RequestPolicyTests(unittest.TestCase):
         )
 
         self.assert_rejected_without_mutation(data, "frequency_penalty")
+        with self.assertRaises(PolicyViolation) as raised:
+            validate_proxy_request(data)
+        self.assertNotIn("provider-value-must-not-leak", str(raised.exception))
+
+    def test_rejects_reasoning_effort_without_mutation(self):
+        # Regression contract: Hermes must suppress this unverified field instead of proxying it.
+        data = proxy_data(
+            {
+                "model": MODEL,
+                "messages": [],
+                "reasoning_effort": "provider-value-must-not-leak",
+            }
+        )
+
+        self.assert_rejected_without_mutation(data, "reasoning_effort")
         with self.assertRaises(PolicyViolation) as raised:
             validate_proxy_request(data)
         self.assertNotIn("provider-value-must-not-leak", str(raised.exception))

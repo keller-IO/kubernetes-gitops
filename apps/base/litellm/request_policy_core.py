@@ -8,6 +8,7 @@ COMMON_CHAT_PARAMETERS = frozenset(
         "temperature",
         "max_tokens",
         "stream",
+        "stream_options",
         "tools",
         "tool_choice",
     }
@@ -68,6 +69,15 @@ def validate_proxy_request(data: Mapping[str, object]) -> None:
         raise PolicyViolation("model")
     if not isinstance(body.get("messages"), list):
         raise PolicyViolation("messages")
+    if "stream_options" in body:
+        stream_options = body["stream_options"]
+        if (
+            body.get("stream") is not True
+            or not isinstance(stream_options, Mapping)
+            or frozenset(stream_options) != {"include_usage"}
+            or stream_options.get("include_usage") is not True
+        ):
+            raise PolicyViolation("stream_options")
 
     if any(not isinstance(field, str) for field in body):
         raise PolicyViolation("proxy_server_request.body")

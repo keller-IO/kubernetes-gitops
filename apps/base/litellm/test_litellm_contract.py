@@ -110,16 +110,22 @@ class StubState:
             self.scenario = scenario
             self.attempts = 0
             self.deployment_ids = []
+            self.bodies = []
 
-    def record(self, deployment_id):
+    def record(self, deployment_id, body):
         with self._lock:
             self.attempts += 1
             self.deployment_ids.append(deployment_id)
+            self.bodies.append(body)
             return self.scenario
 
     def snapshot(self):
         with self._lock:
             return self.attempts, tuple(self.deployment_ids)
+
+    def body_snapshot(self):
+        with self._lock:
+            return tuple(self.bodies)
 
 
 class StubHandler(BaseHTTPRequestHandler):
@@ -127,8 +133,8 @@ class StubHandler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         content_length = int(self.headers.get("content-length", "0"))
-        self.rfile.read(content_length)
-        scenario = self.server.state.record(self.headers.get("x-stub-deployment-id"))
+        body = json.loads(self.rfile.read(content_length))
+        scenario = self.server.state.record(self.headers.get("x-stub-deployment-id"), body)
 
         if scenario == "stream_failure":
             self.send_response(200)
@@ -326,6 +332,15 @@ litellm_settings:
         self.assertEqual(response.status_code, 400)
         self.assertEqual(self.server.state.snapshot()[0], 0)
 
+        response = self.client.post(
+            "/v1/chat/completions",
+            json=self.request_body(reasoning_effort="medium"),
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("reasoning_effort", response.json()["error"]["message"])
+        self.assertEqual(self.server.state.snapshot()[0], 0)
+
     def test_proxy_snapshot_matches_pinned_injected_fields(self):
         original = self.callback.async_pre_call_hook
         captured = {}
@@ -440,7 +455,7 @@ litellm_settings:
         with self.client.stream(
             "POST",
             "/v1/chat/completions",
-            json=self.request_body(stream=True),
+            json=self.request_body(stream=True, stream_options={"include_usage": True}),
         ) as response:
             self.assertEqual(response.status_code, 200)
             try:
@@ -462,6 +477,12 @@ litellm_settings:
             )
         )
         self.assert_single_attempt()
+        upstream_bodies = self.server.state.body_snapshot()
+        self.assertEqual(len(upstream_bodies), 1)
+        upstream_stream_options = upstream_bodies[0].get("stream_options")
+        self.assertIsInstance(upstream_stream_options, dict)
+        self.assertEqual(frozenset(upstream_stream_options), {"include_usage"})
+        self.assertIs(upstream_stream_options["include_usage"], True)
 
 
 if __name__ == "__main__":
