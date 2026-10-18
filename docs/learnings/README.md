@@ -40,3 +40,6 @@ Format und Kriterien: siehe AGENTS.md → „Operational Learnings".
 - [ArgoCD prunt die PVC beim Quellenwechsel](argocd-prune-pvc-bei-quellenwechsel.md)
   — Umstellung auf eine Multi-Source-Application loeschte `goloom-data`; PVCs
   zustandsbehafteter Apps gehoeren mit `Prune=false,Delete=false` in den eigenen Base.
+- [Goloom: SQLite nach Postgres](goloom-sqlite-nach-postgres.md) — kein Upstream-Werkzeug;
+  JSON-Export, typgenaue Casts (`''` -> `NULL`, JSON -> `text[]`), eine Transaktion mit
+  Zeilenpruefung, Umstellung per PreSync-Hooks.

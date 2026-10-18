@@ -10,16 +10,5 @@ resources:
   - service-account.yaml
   - pvc.yaml
   - database.yaml
-  - migration/rbac.yaml
-  - migration/hooks.yaml
 generators:
   - ./secret-generator.yaml
-# Einmal-Migration SQLite -> Postgres (Skripte lokal gegen eine Kopie der
-# Produktivdaten getestet). Nach der Umstellung entfernen.
-configMapGenerator:
-  - name: goloom-pg-migration
-    files:
-      - migration/export.sh
-      - migration/import.sh
-      - migration/import.sql
-      - postgres-schema.sql=migration/postgres-schema-v0.3.0.sql
