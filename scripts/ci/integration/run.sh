@@ -184,6 +184,7 @@ sync_phase() {
   local label="$1" generated_revision name remaining=120
   generated_revision="$(cat "$TASK_TMP/$label-revision")"
   python3 "$HERE/prepare.py" appset "$TASK_TMP/$label" "$TASK_TMP/$label-appset.yaml" "$generated_revision"
+  ci_kube apply -f "$TASK_TMP/$label/app-projects.yaml" # guardrails: allow-live-mutation
   ci_kube apply -f "$TASK_TMP/$label-appset.yaml" # guardrails: allow-live-mutation
   while ((remaining--)); do
     if ci_kube -n argocd get applications -o json | jq -e --arg revision "$generated_revision" '

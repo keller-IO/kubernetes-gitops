@@ -47,7 +47,8 @@ separate Git history containing only test overlays, synthetic encrypted secrets,
 and provenance. A read-only HTTP server inside Kind serves that repository over
 the cluster network; no GitHub push credential is involved. Argo CD's actual Git
 directory generator, production ApplicationSet template and conditional
-multi-source template patch create the Applications. Generated repository SHAs
+multi-source template patch create the Applications. Production AppProjects are
+installed too, so their source, namespace and resource permissions apply. Generated repository SHAs
 are immutable, and the Goloom upstream chart tag is resolved to a Git SHA first.
 Each phase records the original source SHA and selected chart references in its
 provenance artifact.

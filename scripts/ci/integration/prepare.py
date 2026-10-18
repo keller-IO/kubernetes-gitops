@@ -116,6 +116,8 @@ return hs
     db_secret["type"] = "kubernetes.io/basic-auth"
     encrypted(local / "db-app.sops.yaml", db_secret, recipient)
     appset = load(root / "clusters/main/appset-apps.yaml")
+    projects = list(yaml.safe_load_all((root / "clusters/main/projects.yaml").read_text()))
+    (output / "app-projects.yaml").write_text(yaml.safe_dump_all(projects, sort_keys=False))
     source = copy.deepcopy(appset["spec"]["template"]["spec"]["sources"][0])
     # Resolve the chart tag to an immutable Git SHA before ArgoCD ever sees it.
     refs = subprocess.check_output(["git", "ls-remote", source["repoURL"],
@@ -134,13 +136,12 @@ def application_set(output, git_revision):
     provenance = json.loads((output / "provenance.json").read_text())
     url = "http://ci-git.argocd.svc.cluster.local:8080/pilot.git"
     # Exercise the candidate's actual template/templatePatch and Git directory
-    # generator. Only the source, SHA, selected directories and project change.
+    # generator. Only the source, SHA and selected directories change.
     result = load(output / "application-set.yaml")
     result["metadata"] = {"name": "ci-pilot", "namespace": "argocd"}
     result["spec"]["generators"] = [{"git": {"repoURL": url, "revision": git_revision,
         "directories": [{"path": "gatus"}, {"path": "goloom"}]}}]
     template = result["spec"]["template"]["spec"]
-    template["project"] = "default"
     template["source"]["repoURL"] = url
     template["source"]["targetRevision"] = git_revision
     template["sources"] = [provenance["goloomSource"], {"repoURL": url,

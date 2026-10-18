@@ -36,6 +36,9 @@ for path in (root/'generated').rglob('*.sops.yaml'):
     assert encrypted['sops']['age']
     assert all(value.startswith('ENC[') for value in encrypted['stringData'].values())
 spec = yaml.safe_load((root/'appset.yaml').read_text())['spec']
+assert spec['template']['spec']['project'] == 'apps'
+projects = list(yaml.safe_load_all((root/'generated/app-projects.yaml').read_text()))
+assert any(x['kind'] == 'AppProject' and x['metadata']['name'] == 'apps' for x in projects)
 generator = spec['generators'][0]['git']
 assert {x['path'] for x in generator['directories']} == {'gatus', 'goloom'}
 assert generator['revision'] == '1'*40

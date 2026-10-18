@@ -5,6 +5,7 @@ same `just validate` command used locally. Run `just agents-setup` once after a
 checkout, then `just validate`. `just integration` runs the fresh-install and
 upgrade pilots described in [ci-integration.md](ci-integration.md); CI uses two
 separate runners for these scenarios. Missing runtime/tooling is a failed test.
+The obsolete Forgejo workflow was removed to avoid a second, divergent gate.
 
 ## Required checks
 
