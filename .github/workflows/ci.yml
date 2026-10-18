@@ -81,6 +81,13 @@ jobs:
       - name: LiteLLM manifest contract
         run: bash -n scripts/ci/check-litellm.sh && scripts/ci/check-litellm.sh
 
+      - name: Talos upgrade safety and preflight
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          bash scripts/ci/check-talos-upgrade.sh
+          python3 -m unittest discover -s scripts/ci -p 'test_talos_*.py'
+
       - name: LiteLLM policy and network probe tests
         env:
           PYTHONDONTWRITEBYTECODE: "1"

@@ -23,6 +23,15 @@ Schnellstart-Checkliste (Reihenfolge):
 
 ## 1. Bootstrap & Talos
 
+**Autoupdate (18.10.2026):** GitOps-SUC mit explizitem Node-Opt-in, sequentiellem
+PDB-respektierendem Drain, fuenf Minuten Pause und Live-Recovery-Prepare ist
+implementiert. **Noch nicht aktiviert:** NetBird-API-Proxy derzeit auf TCP/443
+nicht erreichbar, keine bestaetigte Live-Abnahme, zehn CNPG-Singletons im
+Git-Stand; N-1-Kapazitaet/HA und dediziertes Talos-mTLS-Secret muessen vorliegen.
+Siehe [Talos-Runbook](runbooks/talos-autoupdate.md),
+[Learnings](learnings/talos-upgrade-drain-safety.md) und
+[NetBird-Zugang](runbooks/netbird-cluster-access.md).
+
 **Dateien:** (Talos-Config liegt außerhalb dieses Repos — `talosctl`/`talconfig`),
 `infrastructure/base/cilium/values.yaml`
 

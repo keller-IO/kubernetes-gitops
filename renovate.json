@@ -293,6 +293,8 @@
       "matchUpdateTypes": [
         "patch"
       ],
+      "platformAutomerge": false,
+      "ignoreTests": false,
       "automerge": true
     }
   ],

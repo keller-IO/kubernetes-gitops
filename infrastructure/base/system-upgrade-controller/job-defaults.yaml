@@ -40,7 +40,7 @@ metadata:
   name: talos-upgrade-preflight
 rules:
   - apiGroups: [""]
-    resources: [namespaces, nodes, pods, persistentvolumeclaims]
+    resources: [namespaces, nodes, pods]
     verbs: [get, list]
   - apiGroups: [apps]
     resources: [deployments, statefulsets, daemonsets]

@@ -3,6 +3,10 @@
 Destillierte Erkenntnisse aus Operationen, die nicht beim ersten Versuch funktioniert haben.
 Format und Kriterien: siehe AGENTS.md → „Operational Learnings".
 
+- [Talos: sichere Drains und Homelab-Learnings](talos-upgrade-drain-safety.md) —
+  SUC ohne Self-Block, echte Recovery-Pausen, CNPG-/Webhook-Gates und getrennte
+  Aktivierung nach Cluster-Abnahme.
+
 - [Agent-Guardrails](agent-command-guardrails.md) — Agenten arbeiten via GitOps/PR;
   Live-Cluster-Zugriff bleibt read-only und CI blockiert gefaehrliche Automationsmuster.
 - [ArgoCD dauerhaft OutOfSync](argocd-dauerhaft-outofsync.md) — nicht Drift, sondern

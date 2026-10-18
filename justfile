@@ -30,6 +30,8 @@ test:
       bash scripts/render.sh "$dir" | kubeconform -strict -ignore-missing-schemas -summary
     done
     ./scripts/ci/check-litellm.sh
+    bash scripts/ci/check-talos-upgrade.sh
+    PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s scripts/ci -p 'test_talos_*.py'
     PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s apps/base/nextcloud-yealink-phonebook -p 'test_*.py'
     PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=apps/base/litellm python3 -m unittest apps/base/litellm/test_request_policy.py
     PYTHONDONTWRITEBYTECODE=1 python3 -m unittest apps/base/litellm/test_network_probe.py

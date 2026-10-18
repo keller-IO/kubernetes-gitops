@@ -24,3 +24,10 @@ patches:
 images:
   - name: rancher/system-upgrade-controller
     newTag: v0.20.2
+configMapGenerator:
+  - name: talos-upgrade-preflight
+    files:
+      - preflight.py
+generatorOptions:
+  # Plan env references are CRD fields, not Kustomize built-in name references.
+  disableNameSuffixHash: true
