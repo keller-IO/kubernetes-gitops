@@ -42,6 +42,16 @@ spec:
   bootstrap:
     pg_basebackup:
       source: mastodon02
+      # CNPG haelt die Datenbank aus diesem Block fuer die Anwendungs-DB und
+      # fuehrt dort die Monitoring-Queries aus. Ohne Angabe ist das `app`, die
+      # es in der Kopie nicht gibt — bis 18.10.2026 scheiterten deshalb alle
+      # Queries mit `database "app" does not exist` (kein Replikations-Lag).
+      # Das Secret traegt das Kennwort der Quelle; verwaltet CNPG den Owner
+      # nach der Promotion, bleibt es dasselbe. Wirkt ohne Neustart.
+      database: mastodon_production
+      owner: mastodon
+      secret:
+        name: mastodon-db-app
   # Die Quelle braucht `wal_keep_size = '8GB'` (Drop-in
   # conf.d/10-kellerio-migration.conf auf mastodon02): Ohne Slot und ohne Archiv
   # reisst die Replikation sonst bei Cluster-Ausfaellen ab (07.10.2026, Stromarbeiten).
