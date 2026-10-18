@@ -59,16 +59,21 @@ ci_helm() {
 }
 
 ci_preload_image() {
-  local image="$1" cluster="$2" attempt provider="${KIND_EXPERIMENTAL_PROVIDER:-docker}"
+  local image="$1" cluster="$2" mirrors="$3" mirror attempt provider="${KIND_EXPERIMENTAL_PROVIDER:-docker}"
   ci_runtime_guard || return
   [[ "$cluster" == keller-ci-* ]] || { echo 'Refusing non-CI image load' >&2; return 1; }
+  mirror="$(jq -er --arg image "$image" '.[$image] // error("No reviewed digest mirror for " + $image)' "$mirrors")" || return
+  [[ "$mirror" =~ ^docker\.io/library/redis@sha256:[a-f0-9]{64}$ ]] || {
+    echo 'Refusing an unpinned Redis mirror' >&2; return 1;
+  }
   for attempt in 1 2 3; do
-    if "$provider" pull "$image"; then
+    if "$provider" pull "$mirror"; then
+      "$provider" tag "$mirror" "$image" || return
       # guardrails: allow-live-mutation — load into this invocation's unique local Kind cluster only.
       kind load docker-image --name "$cluster" "$image"
       return
     fi
-    [[ "$attempt" != 3 ]] || { echo "Image pull failed after 3 attempts: $image" >&2; return 1; }
+    [[ "$attempt" != 3 ]] || { echo "Image pull failed after 3 attempts: $mirror" >&2; return 1; }
     sleep 5
   done
 }

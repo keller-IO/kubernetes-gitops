@@ -184,7 +184,7 @@ install_control_plane() {
         --namespace "$namespace" --values "$TASK_TMP/$label/$component-values.yaml" >"$TASK_TMP/bootstrap.yaml"
       redis_image="$(yq eval -r 'select(.kind == "Deployment" and .metadata.name == "argocd-redis") | .spec.template.spec.containers[] | .image' "$TASK_TMP/bootstrap.yaml")"
       [[ -n "$redis_image" && "$redis_image" != *$'\n'* ]] || { echo 'Expected exactly one Redis bootstrap image' >&2; return 1; }
-      ci_preload_image "$redis_image" "$CLUSTER"
+      ci_preload_image "$redis_image" "$CLUSTER" "$HERE/registry-mirrors.json"
     fi
     ci_helm upgrade --install "$component" "$chart" --repo "$repo" --version "$version" \
       --namespace "$namespace" --create-namespace --values "$TASK_TMP/$label/$component-values.yaml" \
