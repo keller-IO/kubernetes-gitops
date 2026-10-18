@@ -34,8 +34,42 @@ Pods; `deleteLocalData` erlaubt das Verwerfen von `emptyDir`. Beides wird hier
 vorsorglich deaktiviert. Ein dadurch blockierter Drain ist zu analysieren,
 nicht durch pauschales Umgehen der Schutzmechanismen aufzuloesen.
 
+## Live-Abnahme und Korrekturen am 18.10.2026
+
+Der [Live-Audit](../runbooks/talos-live-audit-2026-10-18.md) bestaetigte die
+Versionen und neun aktive CNPG-Singletons. Er widerlegte die Annahme, dass alle
+Datenbanken vor **jedem** Node-Update HA3 brauchen: keine Instanz laeuft auf einer
+Control-Plane. HA und harte Streuung werden deshalb nur fuer Cluster geprueft,
+deren Instanz der konkrete Drain betrifft. Alle DBs muessen weiterhin global
+gesund sein. Eine schon vorhandene Wartung (wrk4 cordoned) blockiert weiter.
+
+`deleteEmptydirData: false` verhindert Datenverlust, kann aber selbst
+Standard-Pods mit `/tmp` oder CSI-Unix-Sockets nicht drainieren. Allein der
+native Fehler ist zu spaet: der Node ist dann bereits cordoned. Prepare prueft
+deshalb Zielnode-Pods vor dem Cordoning auf unmanaged Pods und blockierende
+`emptyDir`-Volumes. Das muss die native SUC-Auswahl respektieren: alle Pods mit
+`upgrade.cattle.io/controller` sind vom Drain ausgenommen, sonst blockiert das
+`/tmp` des eigenen Controllers dessen Node. Normale Jobs sind nicht pauschal
+ausgenommen; auch Backup-/Migrationsjobs koennen `emptyDir` verwenden.
+
+Bei Mailman/Mastodon widersprachen neuere `lastSuccessfulBackup`-Zeitstempel
+dem fehlgeschlagenen Backup-CR und `LastBackupSucceeded=False`. Prepare lehnt
+einen Drain mit betroffener Datenbank bei explizit fehlgeschlagenem letztem
+Backup ab. Ein completed Backup plus Restore-Abnahme bleibt eine separate
+Voraussetzung; ein einzelner Status-Zeitstempel ist kein Beleg fuer Recovery.
+
+Diese Muster sind in den Tests abgesichert: CP ohne DB darf gesunde Worker-
+Singletons unveraendert lassen; ungesunde DBs blockieren global; unmanaged
+Pods/`emptyDir` stoppen am Zielnode; SUC-Controller/-Jobs sind ausgenommen,
+normale Jobs werden auf Drain-Blocker geprueft; ein betroffenes fehlgeschlagenes
+Backup blockiert. Der vollstaendige CI-Security-Check verlangt zudem explizite
+Nonroot-Vorgaben am Controller-Pod, nicht nur dessen Container.
+
 Die Implementierung ist mit Offline-Recovery-Tests und Manifest-Vertraegen
 abgesichert (`scripts/ci/test_talos_preflight.py`, `check-talos-upgrade.sh`).
-Cluster-/Storage-/Auth-Abnahme steht aus; Details im
-[Runbook](../runbooks/talos-autoupdate.md). Live-Inspektion war wegen des
-[NetBird-Zugangsproblems](../runbooks/netbird-cluster-access.md) blockiert.
+Clusterinventar, Storage-Bindung und Webhook-Ausnahme sind jetzt live geprueft.
+Talos-mTLS/Erweiterungen, echte Reboot-/I/O-/Restore-Abnahme und die belegten
+Worker-Blocker bleiben offen; Details im
+[Runbook](../runbooks/talos-autoupdate.md). Das fruehere
+[NetBird-Zugangsproblem](../runbooks/netbird-cluster-access.md) ist fuer die
+Kubernetes-API behoben.

@@ -4,6 +4,7 @@ Operative Schritt-für-Schritt-Anleitungen (Restore, Rotationen, Incident-Respon
 Pro Vorgang eine Markdown-Datei.
 
 - [talos-autoupdate.md](talos-autoupdate.md) — Aktivierung, Drain-/Recovery-Gates und Abnahme automatischer Talos-Patches.
+- [talos-live-audit-2026-10-18.md](talos-live-audit-2026-10-18.md) — verifizierte Nodes, N-1-Kapazitaet, Datenbanken, Backups und konkrete Freigabeschritte.
 - [netbird-cluster-access.md](netbird-cluster-access.md) — Read-only-Clusterzugang ueber den jit-Tenant und Proxy-Policy-Diagnose.
 
 - [inbetriebnahme.md](inbetriebnahme.md) — Go-Live-Checkliste (Blaupause → Produktion),

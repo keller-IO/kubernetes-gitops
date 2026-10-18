@@ -9,21 +9,25 @@ bekommt durch diese Aenderung das Opt-in-Label `keller.io/talos-upgrade=enabled`
 Dieses Label gehoert nach Abnahme in die deklarative Talos-Node-Konfiguration im
 Repository `keller-IO/infrastructure`, nicht in einen manuellen Patch.
 
-Der IaC-Stand nennt drei Control-Planes (2 GiB) und drei Worker (8 GiB), Talos
-`v1.13.4`, Plattform `nocloud`, Schematic
-`3abf06e1d81e509d779dc256f9feae6cd6d82c69337c661cbfc383a92594faf5`.
-Diese Angaben sind **kein Live-Inventar**. Das initiale Plan-Ziel entspricht
-diesem Stand. Renovate aktualisiert Patch-Versionen innerhalb 1.13 nach sieben
-Tagen und erfolgreicher CI. Minor-/Major-Wechsel brauchen Review und eine
-Anpassung der erlaubten Versionslinie; keine Minor-Version ueberspringen.
+Die Live-Pruefung am 18.10.2026 bestaetigt acht Ready-Nodes (drei Control-Planes,
+fuenf Worker), Talos **v1.13.4** und Kubernetes **v1.36.0**. Der aktuelle
+IaC-Ref `keller/main` (`685f5d9`) beschreibt dieselben acht Nodes mit 6-GiB-CPs
+und 8-/12-GiB-Workern. Der lokale IaC-Branch `main` liegt dagegen 31 Commits
+zurueck und enthaelt eine andere Schematic; Abgleiche erfolgen gegen den
+aktuellen Remote-Ref. Kapazitaet, laufende Wartung und belegte Blocker stehen
+in der [Live-Abnahme](talos-live-audit-2026-10-18.md).
+Das initiale Plan-Ziel bleibt v1.13.4. Die Bootstrap-Schematic ist
+`3abf06e1d81e509d779dc256f9feae6cd6d82c69337c661cbfc383a92594faf5`, Plattform
+`nocloud`; deren tatsaechliche Erweiterungen muessen noch per Talos geprueft werden.
+Renovate aktualisiert Patch-Versionen innerhalb 1.13 nach sieben Tagen und
+erfolgreicher CI. Minor-/Major-Wechsel brauchen Review und eine Anpassung der
+erlaubten Versionslinie; keine Minor-Version ueberspringen.
 Talos-OS-Updates aktualisieren Kubernetes nicht.
 
-Am 18.10.2026 hatte `main` weder Branch Protection noch aktive Rulesets.
-Fuer Talos-Patches gilt deshalb `platformAutomerge: false`, `ignoreTests: false`:
-Renovate prueft die Checks selbst vor dem Merge. Eine separate Absicherung von
-`main` durch verpflichtende CI-Checks bleibt empfohlen; diese Aenderung schreibt
-keine Repository-Einstellungen um. Siehe
-[Renovate platformAutomerge](https://docs.renovatebot.com/configuration-options/#platformautomerge).
+Das aktive Ruleset `main_protection` erzwingt inzwischen den erfolgreichen Check
+`ci-required` und einen aktuellen PR-Stand. Fuer Talos-Patches bleiben
+`platformAutomerge: false`, `ignoreTests: false` gesetzt. CI- und Integrations-
+Vertrag: [ci-safety.md](ci-safety.md).
 
 Das Homelab nutzt seit 15.10.2026 Omni. keller-main ist laut vorhandener IaC
 weiter OpenTofu/Talos-verwaltet. Deshalb wird hier der vorherige SUC-Ablauf mit
@@ -33,23 +37,30 @@ denselben Cluster aktualisieren.
 
 ## Vor der Aktivierung
 
-1. Read-only-Zugang gemaess [NetBird-Zugang](netbird-cluster-access.md) herstellen;
-   den tatsaechlichen Talos-/Kubernetes-Stand, Node-Rollen, Ressourcen und
-   Webhooks erfassen. Die Drain-kubectl-Version muss innerhalb der offiziellen
-   Versionsabweichung von einer Minor-Version zur API liegen.
-2. Die aktiven CNPG-Cluster muessen mindestens drei gesunde Instanzen,
-   `affinity.podAntiAffinityType: required` und aktivierte PDBs haben. Es braucht
-   zwei moegliche Standbys, damit der Neustart einer Replica den naechsten
-   Switchover nicht blockiert. `failoverDelay: 30` nach Abgleich mit den
-   Verfuegbarkeitsanforderungen setzen. Der aktuelle Git-Stand enthaelt zehn
-   Singletons (einschliesslich des ausgeschlossenen Authentik-Bestands);
-   Live-Zustand und aktive Cluster bleiben zu pruefen.
-3. Vor zusaetzlichen Datenbankreplicas **N-1-Kapazitaet und Ceph-Kapazitaet** aus
-   aktuellen Requests und Messwerten nachweisen. Die Implementierung skaliert
-   Datenbanken nicht blind hoch und deaktiviert keine PDBs. Replikationsaufbau
-   und kontrolliertes Rebalancing zuerst abschliessen; erst danach Nodes
-   freigeben. Ceph-RBD bleibt bestehen. Die Homelab-Migration von Datenbanken auf
-   lokale Disks wird nicht mit einem OS-Update vermischt.
+1. Die [Live-Abnahme](talos-live-audit-2026-10-18.md) vor dem Freigabetermin
+   aktualisieren. Der Kubernetes-Zugang funktioniert; ein zusaetzlicher
+   Agent-Zugang ist keine technische Voraussetzung. `kellerio-wrk4` ist bereits
+   cordoned: Grund und Ende dieser Wartung zuerst klaeren, keinen zweiten Node
+   parallel in Wartung nehmen. Der Drain-Client ist auf die beobachtete
+   Kubernetes-Version 1.36.0 angepasst.
+2. Nur CNPG-Cluster mit einer Instanz auf dem **zu drainenden Node** brauchen
+   mindestens drei gesunde Instanzen, `affinity.podAntiAffinityType: required`,
+   aktivierte Anti-Affinity und PDBs. Es braucht zwei moegliche Standbys, damit
+   der Neustart einer Replica den naechsten Switchover nicht blockiert.
+   `failoverDelay: 30` mit den Verfuegbarkeitsanforderungen abgleichen. Global
+   muessen weiterhin alle CNPG-Replicas gesund und Switchovers abgeschlossen
+   sein. Neun Singletons sind live, der zehnte Authentik-CR ist nur Altbestand.
+   Keine DB-Instanz laeuft auf Control-Planes; deren Update verlangt deshalb
+   keine pauschale Worker-DB-Skalierung. Fuenf MariaDB-Singletons bleiben ein
+   separates Unterbrechungsrisiko fuer Worker-Updates.
+3. Vor zusaetzlichen Datenbankreplicas **N-1-Kapazitaet und Ceph-Kapazitaet**
+   nachweisen. HA3 fuer alle neun CNPG-Cluster braucht zusaetzlich 6656 MiB
+   RAM-Requests, 2600m CPU und 268 GiB logischen PVC-Speicher. Das passt derzeit
+   nicht in N-1. Die [Live-Abnahme](talos-live-audit-2026-10-18.md) nennt
+   konkrete Zielkapazitaeten. Keine blinde Erhoehung, keine PDB-Abschaltung,
+   keine Request-Reduktion aus einer einzelnen Nutzungsprobe. Replikationsaufbau
+   und Rebalancing vor Node-Freigabe abschliessen. Ceph-RBD bleibt bestehen;
+   die Homelab-Migration auf lokale Disks wird nicht mit dem OS-Update vermischt.
 4. RWO-Anwendungen pruefen: `Recreate` oder eine vom Chart garantierte
    Single-Writer-Strategie, funktionierende Readiness-/Startup-Probes,
    ausreichende `terminationGracePeriodSeconds` und bei Bedarf `preStop`.
@@ -57,14 +68,17 @@ denselben Cluster aktualisieren.
    `emptyDir` koennen einen Drain absichtlich blockieren. Daten erst bewerten,
    nicht `force` oder `deleteEmptydirData` pauschal einschalten.
 5. Backup-Erfolg und Wiederherstellbarkeit von Datenbanken/PVCs sowie einen
-   aktuellen etcd-Recovery-Punkt bestaetigen. Ceph/CSI-Gesundheit pruefen;
+   aktuellen etcd-Recovery-Punkt bestaetigen. Mailman und Mastodon haben aktuell
+   fehlgeschlagene Backup-CRs sowie `LastBackupSucceeded=False`; einen neueren
+   `lastSuccessfulBackup`-Zeitstempel nicht allein als Erfolg werten. Neue
+   completed Backups und Restore-Nachweis verlangen. Ceph/CSI-Gesundheit pruefen;
    `Running`, `Ready` und ein gebundenes PVC beweisen kein funktionierendes I/O.
    Siehe [CephFS-Learning](../learnings/external-cephfs-client-stall-recovery.md).
 6. Ein dediziertes, zeitlich gueltiges Talos-mTLS-Credential ausserhalb von Git
    provisionieren: Namespace `system-upgrade-controller`, Secret `talosconfig`,
    Key `talosconfig`. Das bestehende OpenTofu-Modul stellt die Konfiguration
    bereit; die Secret-Provisionierung muss dort als separater, reviewed Schritt
-   ergaenzt werden. Kein Admin-Kubeconfig fuer Agenten verwenden. CA, Client-Rolle
+   ergaenzt werden. CA, Client-Rolle
    fuer OS-Upgrades und die Erreichbarkeit jedes Node-TCP-Endpunkts verifizieren.
    Vor Freigabe mit exakt diesem Credential fuer jeden Node pruefen:
 
@@ -83,7 +97,11 @@ denselben Cluster aktualisieren.
    ist der Upgrade-Owner, OpenTofu weiter Provisionierungs-/Config-Owner.
    Vor spaeteren `tofu apply` die Bootstrap-Version nachziehen und den Plan auf
    konkurrierende OS-/Kubernetes-Aenderungen pruefen.
-8. Zuerst einen Worker als Canary in IaC freigeben. Reboot, neue OS-Version,
+8. Nach Abschluss der bestehenden Wartung und Talos-Abnahme zunaechst cp1 oder
+   cp3 als Canary in IaC freigeben. Dort wurden keine normalen Drain-Kandidaten
+   beobachtet. cp2 hat einen SMB-Controller mit blockierendem Socket-`emptyDir`.
+   Worker erst nach der getrennten DB-/Kapazitaets-/Storage-Abnahme aktivieren.
+   Reboot, neue OS-Version,
    Scheduling, DB-Readiness, Services und echtes Volume-I/O abnehmen. Danach die
    restlichen Nodes deklarativ freigeben. Keine automatische Aktivierung allein
    aufgrund eines gruenen Manifest-Tests.
@@ -96,13 +114,20 @@ Controller-Anti-Affinitaet selektiert nur Controller. Der Controller darf beim
 Reboot seines eigenen Nodes auf eine andere Control-Plane wechseln.
 
 Vor **jedem** Drain liest das Python-Prepare ausschliesslich Kubernetes-Status:
-alle Nodes Ready und schedulable, CNPG vollstaendig gesund und verteilt,
+alle Nodes Ready und schedulable, alle CNPG-Replicas gesund und Switchovers
+abgeschlossen; betroffene Datenbanken brauchen HA und reale Node-Streuung,
 Deployment-/StatefulSet-/DaemonSet-Replicas und laufende Nicht-Job-Pods bereit,
 kein fail-closed Pod-Webhook fuer `kube-system`. Bereits durch diesen Plan als
 bearbeitet markierte Nodes muessen die Ziel-OS-Version melden. Diese Bedingungen
 muessen 60 Sekunden durchgehend erfuellt sein. API-/RBAC-/TLS-Fehler setzen die
 Wartezeit zurueck; nach 15 Minuten bricht Prepare vor dem Cordoning ab.
-Kurzlebige Jobs werden nicht pauschal als unbereite Workloads gewertet.
+Jobs werden nicht pauschal als unbereite Workloads gewertet; normale aktive
+Jobs auf dem Zielnode werden aber wie andere Drain-Kandidaten auf `emptyDir`
+geprueft. Mirrors und DaemonSets sind ausgenommen. SUC-Pods mit Label
+`upgrade.cattle.io/controller` folgen derselben Ausnahme wie im nativen Drain.
+Unmanaged Pods und nicht freigegebene `emptyDir`-Volumes stoppen vor dem
+Cordoning. Das verhindert einen vermeidbaren Drain-Fehler mit cordoned Node.
+Ein explizit fehlgeschlagenes letztes Backup einer betroffenen DB blockiert auch.
 
 Dann evictet SUC unter Beachtung der PDBs und der Pod-Grace-Periods, bis zu
 20 Minuten. Kein Force-Delete, kein Eviction-Bypass, kein pauschales Loeschen
@@ -130,7 +155,7 @@ keine pauschalen Pod-Deletes oder Secret-Leserechte.
 
 ## Beobachten und bei Fehlern stoppen
 
-Mit dem gesondert geprueften Read-only-Kontext:
+Mit dem expliziten Kubernetes-Kontext:
 
 ```sh
 kubectl --kubeconfig ~/.kube/keller.yaml --context keller-main get nodes -o wide

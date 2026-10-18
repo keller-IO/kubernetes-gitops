@@ -1,5 +1,12 @@
 # keller-main ueber NetBird pruefen
 
+**Aktueller Stand 18.10.2026:** Der Kubernetes-Zugang funktioniert wieder.
+Die unten dokumentierten Timeouts sind historische Befunde. Die Talos-Live-
+Inspektion konnte Versionen, Ressourcen, DBs und Drain-Blocker erfassen; siehe
+[Live-Abnahme](talos-live-audit-2026-10-18.md). Die konkrete externe
+Policy-/Proxy-Korrektur ist nicht bekannt. Der separate MCP- und
+Dokumentationshost blieben bei der erneuten Pruefung unerreichbar.
+
 ## Zugriffspfad
 
 `~/.kube/keller.yaml`, Kontext `keller-main`, zeigt auf

@@ -29,13 +29,15 @@ def selector_matches(selector, labels):
     return True
 
 
-def blockers(state, target, namespace):
+def blockers(state, target, node_name):
     errors = []
     plan_hash = state["plan"].get("status", {}).get("latestHash")
     if not plan_hash or state["plan"].get("status", {}).get("latestVersion") != target:
         errors.append("Talos Plan has not resolved the requested version")
     if not state["nodes"]:
         errors.append("no nodes returned")
+    if not any(node["metadata"]["name"] == node_name for node in state["nodes"]):
+        errors.append("target node missing from snapshot")
     client = re.search(r":v(\d+)\.(\d+)\.\d+(?:@|$)", os.environ.get("DRAIN_KUBECTL_IMAGE", ""))
     server = state["server_version"]
     server_minor = re.match(r"\d+", server["minor"])
@@ -61,8 +63,14 @@ def blockers(state, target, namespace):
     for db in state["clusters"]:
         name = db["metadata"]["namespace"] + "/" + db["metadata"]["name"]
         spec, status = db["spec"], db.get("status", {})
-        # Three instances preserve a second switchover candidate during recovery.
-        if (spec.get("instances", 0) < 3 or spec.get("enablePDB", True) is not True
+        db_pods = [pod for pod in state["pods"]
+                   if pod["metadata"].get("namespace") == db["metadata"]["namespace"]
+                   and pod["metadata"].get("labels", {}).get("cnpg.io/cluster") == db["metadata"]["name"]
+                   and not any(o.get("kind") == "Job" for o in pod["metadata"].get("ownerReferences", []))]
+        affected = any(pod.get("spec", {}).get("nodeName") == node_name for pod in db_pods)
+        # HA is required only where this drain evicts a DB instance. A control
+        # plane without DB Pods must not require scaling unrelated worker DBs.
+        if affected and (spec.get("instances", 0) < 3 or spec.get("enablePDB", True) is not True
                 or spec.get("affinity", {}).get("podAntiAffinityType") != "required"
                 or spec.get("affinity", {}).get("enablePodAntiAffinity", True) is not True):
             errors.append(f"CNPG {name}: require >=3 instances, required spreading and PDBs")
@@ -70,14 +78,14 @@ def blockers(state, target, namespace):
                 or not status.get("currentPrimary")
                 or status.get("targetPrimary") != status.get("currentPrimary")):
             errors.append(f"CNPG {name}: replicas or switchover not settled")
-        replicas = [pod for pod in state["pods"]
-                    if pod["metadata"].get("namespace") == db["metadata"]["namespace"]
-                    and pod["metadata"].get("labels", {}).get("cnpg.io/cluster") == db["metadata"]["name"]
-                    and not pod["metadata"].get("deletionTimestamp") and ready(pod)
-                    and not any(o.get("kind") == "Job" for o in pod["metadata"].get("ownerReferences", []))]
+        replicas = [pod for pod in db_pods if not pod["metadata"].get("deletionTimestamp") and ready(pod)]
         placement = {pod.get("spec", {}).get("nodeName") for pod in replicas}
-        if len(replicas) != spec.get("instances") or None in placement or len(placement) != len(replicas):
+        if (len(replicas) != spec.get("instances") or None in placement
+                or (affected and len(placement) != len(replicas))):
             errors.append(f"CNPG {name}: Ready replicas must actually occupy distinct nodes")
+        if affected and any(c.get("type") == "LastBackupSucceeded" and c.get("status") != "True"
+                            for c in status.get("conditions", [])):
+            errors.append(f"CNPG {name}: latest backup did not succeed")
     for obj in state["workloads"]:
         spec, status = obj["spec"], obj.get("status", {})
         desired = (status.get("desiredNumberScheduled", 0) if obj["kind"] == "DaemonSet"
@@ -89,11 +97,24 @@ def blockers(state, target, namespace):
         meta, status = pod["metadata"], pod.get("status", {})
         if status.get("phase") in ("Succeeded", "Failed"):
             continue
-        # Jobs have separate lifecycles; the running prepare Pod cannot be Ready.
-        if any(owner.get("kind") == "Job" for owner in meta.get("ownerReferences", [])):
-            continue
-        if meta.get("deletionTimestamp") or not ready(pod):
+        # Jobs have separate readiness lifecycles, but ordinary active Jobs can
+        # still block drain. Only SUC-labelled Pods are exempt from its selector.
+        is_job = any(owner.get("kind") == "Job" for owner in meta.get("ownerReferences", []))
+        if not is_job and (meta.get("deletionTimestamp") or not ready(pod)):
             errors.append(f'pod {meta["namespace"]}/{meta["name"]} not settled')
+        if pod.get("spec", {}).get("nodeName") != node_name:
+            continue
+        owners = meta.get("ownerReferences", [])
+        if ("upgrade.cattle.io/controller" in meta.get("labels", {})
+                or meta.get("annotations", {}).get("kubernetes.io/config.mirror")
+                or any(o.get("kind") == "DaemonSet" for o in owners)):
+            continue
+        drain = state["plan"].get("spec", {}).get("drain", {})
+        if not drain.get("force", False) and not any(o.get("controller") for o in owners):
+            errors.append(f'pod {meta["namespace"]}/{meta["name"]}: unmanaged Pod blocks drain')
+        empty_dirs = [v["name"] for v in pod.get("spec", {}).get("volumes", []) if "emptyDir" in v]
+        if empty_dirs and not drain.get("deleteEmptydirData", False):
+            errors.append(f'pod {meta["namespace"]}/{meta["name"]}: emptyDir blocks drain ({", ".join(empty_dirs)})')
     for config in state["webhooks"]:
         for webhook in config.get("webhooks", []):
             if webhook.get("failurePolicy", "Fail") != "Fail":
@@ -143,12 +164,12 @@ class API:
         }
 
 
-def wait_until_safe(snapshot, target, namespace, *, clock=time.monotonic, sleep=time.sleep,
+def wait_until_safe(snapshot, target, namespace, node_name, *, clock=time.monotonic, sleep=time.sleep,
                     timeout=900, stable=60, poll=15):
     deadline, since, previous = clock() + timeout, None, None
     while clock() < deadline:
         try:
-            errors = blockers(snapshot(namespace), target, namespace)
+            errors = blockers(snapshot(namespace), target, node_name)
         except Exception as exc:
             # Never log API response bodies, tokens, or secret file contents.
             errors = [f"preflight API/validation failure: {type(exc).__name__}"]
@@ -174,7 +195,7 @@ def main():
     credential = Path("/var/run/secrets/talos.dev/talosconfig")
     if not credential.is_file() or not credential.read_bytes().strip():
         raise RuntimeError("talosconfig credential missing; refusing to drain")
-    wait_until_safe(API().snapshot, target, os.environ["POD_NAMESPACE"])
+    wait_until_safe(API().snapshot, target, os.environ["POD_NAMESPACE"], os.environ["NODE_NAME"])
 
 
 if __name__ == "__main__":

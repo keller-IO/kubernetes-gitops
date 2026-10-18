@@ -23,14 +23,17 @@ Schnellstart-Checkliste (Reihenfolge):
 
 ## 1. Bootstrap & Talos
 
-**Autoupdate (18.10.2026):** GitOps-SUC mit explizitem Node-Opt-in, sequentiellem
-PDB-respektierendem Drain, fuenf Minuten Pause und Live-Recovery-Prepare ist
-implementiert. **Noch nicht aktiviert:** NetBird-API-Proxy derzeit auf TCP/443
-nicht erreichbar, keine bestaetigte Live-Abnahme, zehn CNPG-Singletons im
-Git-Stand; N-1-Kapazitaet/HA und dediziertes Talos-mTLS-Secret muessen vorliegen.
-Siehe [Talos-Runbook](runbooks/talos-autoupdate.md),
-[Learnings](learnings/talos-upgrade-drain-safety.md) und
-[NetBird-Zugang](runbooks/netbird-cluster-access.md).
+**Autoupdate (18.10.2026):** SUC und zielnode-bezogenes Prepare sind implementiert,
+Live-Cluster geprueft: 8 Ready-Nodes, Talos 1.13.4 / K8s 1.36.0; Storage-Bindung
+und NetBird-Webhook-Ausnahme bestaetigt. **Noch nicht aktiviert:** wrk4 ist schon
+cordoned; neun CNPG-Singletons, fehlende N-1-Kapazitaet fuer HA3 und fehlgeschlagene
+Mailman-/Mastodon-Backups verhindern Worker-Freigabe. Zusaetzlich Talos-mTLS,
+Schematic/Erweiterungen, etcd-Recovery und In-Cluster-API-Erreichbarkeit abnehmen.
+Die CPs cp1/cp3 sind nach Ende der bestehenden Wartung die kleinsten Canary-
+Kandidaten, ohne pauschale Worker-DB-Skalierung. Details und Zahlen:
+[Live-Abnahme](runbooks/talos-live-audit-2026-10-18.md),
+[Talos-Runbook](runbooks/talos-autoupdate.md),
+[Learnings](learnings/talos-upgrade-drain-safety.md).
 
 **Dateien:** (Talos-Config liegt außerhalb dieses Repos — `talosctl`/`talconfig`),
 `infrastructure/base/cilium/values.yaml`
