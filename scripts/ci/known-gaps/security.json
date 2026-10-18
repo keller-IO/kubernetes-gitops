@@ -1664,14 +1664,6 @@
     "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
   },
   {
-    "target": "infrastructure_base_kubernetes-mcp.yaml",
-    "id": "KSV-0047",
-    "message": "Role permits privilege escalation from node proxy",
-    "count": 1,
-    "expires": "2027-01-18",
-    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
-  },
-  {
     "target": "infrastructure_base_mariadb-operator.yaml",
     "id": "KSV-0014",
     "message": "Container 'cert-controller' of Deployment 'mariadb-operator-cert-controller' should set 'securityContext.readOnlyRootFilesystem' to true",

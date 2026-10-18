@@ -27,6 +27,17 @@ coverage = module('check-source-coverage')
 
 
 class Guards(unittest.TestCase):
+    def test_mcp_rbac_cannot_grant_node_proxy_access(self):
+        # GET on nodes/proxy can execute commands through the kubelet API.
+        path = ROOT.parent.parent / 'infrastructure/base/kubernetes-mcp/rbac.yaml'
+        for doc in yaml.safe_load_all(path.read_text()):
+            for rule in doc.get('rules', []):
+                if {'', '*'} & set(rule.get('apiGroups', [])):
+                    self.assertFalse(
+                        {'nodes/proxy', 'nodes/*', '*/proxy', '*'} & set(rule.get('resources', [])),
+                        f"{path}: node proxy access is not read-only",
+                    )
+
     def test_external_source_mutation_or_new_application_blocks(self):
         doc = {'kind': 'Application', 'metadata': {'name': 'external'}, 'spec': {'source': {'repoURL': 'https://example.invalid/app.git', 'path': 'k8s', 'targetRevision': 'main'}}}
         baseline = [{'name': 'external', 'spec': doc['spec'], 'reason': 'Separate repo owns deployment'}]
