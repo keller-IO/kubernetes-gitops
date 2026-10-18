@@ -289,6 +289,8 @@ kind: PersistentVolumeClaim
 metadata:
   name: mailman-core-data
   namespace: mailman
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
 spec:
   accessModes: ["ReadWriteOnce"]
   storageClassName: ceph-rbd # CHANGE ME
@@ -301,6 +303,8 @@ kind: PersistentVolumeClaim
 metadata:
   name: mailman-web-data
   namespace: mailman
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
 spec:
   accessModes: ["ReadWriteOnce"]
   storageClassName: ceph-rbd

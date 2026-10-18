@@ -392,7 +392,11 @@ spec: { schedule: "0 0 2 * * *", cluster: { name: forgejo-pg } }
       über `just integration` und die CI-Matrix verdrahtet; Details und Grenzen:
       [CI-Sicherheit](runbooks/ci-safety.md), [Integration](runbooks/ci-integration.md).
 - [ ] Produktive Kubernetes-Version read-only gegen den CI-Pin 1.36.1 prüfen.
-- [ ] Bestehende 14 PVC- und 277 Security-Lücken abbauen; Security-Ausnahmen
+- [x] Alle 14 bisherigen PVC-Lücken geschlossen: direkt von ArgoCD verwaltete
+      App-PVCs tragen `Prune=false,Delete=false`, ohne Retention-Ausnahmen.
+      Schutz greift nach dem Sync gegen Argo-Prune und App-Löschung; Namespace-
+      Löschung und Storage-Ausfälle brauchen weiterhin Backups und Restore-Tests.
+- [ ] Initiale 277 Security-Befunde systematisch abbauen; Security-Ausnahmen
       laufen am 18.01.2027 ab.
 - [ ] Produktions-Health nach Merge als Automerge-Schranke und regelmäßige
       isolierte Backup-Restore-Tests ergänzen.

@@ -76,11 +76,13 @@ they neither install the CRDs nor establish their presence in production.
 ## Retention and security debt
 
 Rendered application PVCs require exact Argo `Prune=false,Delete=false` options.
-Spaces around `=` and duplicate values are rejected. The existing 14 unprotected
-PVCs are listed individually in `known-gaps/unprotected-pvcs.txt`; retrofit their
-source/Helm values before migrating chart sources. StatefulSet-created claim
-templates are not directly tracked/pruned by Argo and need separate retention
-review when changing StatefulSets.
+Spaces around `=` and duplicate values are rejected. All 14 previously
+unprotected PVCs now carry both options through their manifests or native Helm
+annotation values; `known-gaps/unprotected-pvcs.txt` has no exceptions. Verify
+the annotations have synced before migrating chart sources. They protect against
+Argo prune and application deletion, not namespace deletion or storage failure.
+StatefulSet-created claim templates are not directly tracked/pruned by Argo and
+need separate retention review when changing StatefulSets.
 
 Trivy uses the locked dev-shell version and a digest-pinned checks bundle in
 `security-config.json`. The initial 277 HIGH/CRITICAL misconfigurations are
