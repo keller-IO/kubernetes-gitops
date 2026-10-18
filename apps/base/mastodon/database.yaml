@@ -42,6 +42,9 @@ spec:
   bootstrap:
     pg_basebackup:
       source: mastodon02
+  # Die Quelle braucht `wal_keep_size = '8GB'` (Drop-in
+  # conf.d/10-kellerio-migration.conf auf mastodon02): Ohne Slot und ohne Archiv
+  # reisst die Replikation sonst bei Cluster-Ausfaellen ab (07.10.2026, Stromarbeiten).
   replica:
     enabled: true
     source: mastodon02
@@ -73,6 +76,12 @@ spec:
     retentionPolicy: "30d"
     barmanObjectStore:
       destinationPath: s3://backup-mastodon/cnpg/
+      # Re-Seed am 18.10.2026: Der neu angelegte Cluster darf nicht in den Pfad des
+      # alten (`mastodon-pg`) archivieren, sonst bricht barman-cloud-check-wal-archive
+      # mit "Expected empty archive" ab. Der alte Prefix
+      # s3://backup-mastodon/cnpg/mastodon-pg/ enthaelt nur Replikat-Kopien und
+      # kann nach erfolgreichem neuem Base-Backup geloescht werden.
+      serverName: mastodon-pg-r2
       endpointURL: http://192.168.23.21:3900
       s3Credentials:
         accessKeyId: { name: mastodon-backup-s3, key: ACCESS_KEY_ID }

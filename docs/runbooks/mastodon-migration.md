@@ -233,6 +233,36 @@ neu angelegt werden. ArgoCD legt ihn dabei sofort aus seiner **zwischen-
 gespeicherten** Revision neu an — erst `argocd.argoproj.io/refresh=hard`
 setzen, warten bis die Application auf dem neuen Commit steht, dann löschen.
 
+## Re-Seed des Replikats
+
+Symptom: `mastodon-pg` steht still (replay LSN friert ein), im Pod-Log
+`requested WAL segment ... has already been removed`. So geschehen am
+07.10.2026 nach den Stromarbeiten: Die Quelle hatte `wal_keep_size = 0`, keinen
+Replikationsslot und kein Archiv, also fehlte das WAL, sobald das Replikat
+laenger als wenige Minuten weg war. Eine Reparatur ohne neues Basebackup gibt es
+nicht. Begleitfehler: `role "cnpg_metrics_exporter" does not exist` — die Rolle
+(`LOGIN`, `pg_monitor`) muss auf der Quelle existieren, weil sie physisch
+mitrepliziert wird.
+
+Ablauf (18.10.2026, ca. 30 min fuer 21 GB):
+
+1. Quelle pruefen: `show wal_keep_size` muss `8GB` sein (Drop-in
+   `conf.d/10-kellerio-migration.conf` auf mastodon02, ca. 1,3 GiB WAL/Tag ->
+   rund sechs Tage Puffer); Rolle `cnpg_metrics_exporter` vorhanden.
+2. Neuen `serverName` in `spec.backup.barmanObjectStore` setzen (`-r2`, `-r3`, ...),
+   sonst scheitert die WAL-Archivierung des neuen Clusters mit "Expected empty
+   archive". Per PR mergen.
+3. `argocd.argoproj.io/refresh=hard` auf die Application setzen und warten, bis
+   sie auf dem Merge-Commit steht (Reihenfolge-Falle aus Phase 3).
+4. `kubectl -n mastodon delete cluster mastodon-pg`; ArgoCD legt den Cluster neu
+   an, Job `mastodon-pg-1-pgbasebackup` zieht die Daten.
+5. Pruefen: `pg_is_in_recovery()` = t, WAL-Receiver `streaming`, Abstand zu
+   `pg_current_wal_lsn()` der Quelle klein, `pg_stat_archiver` ohne juengeren
+   Fehler, Condition `ContinuousArchiving=True`, Metrik
+   `cnpg_pg_replication_lag` auf Port 9187. Danach On-Demand-Backup anlegen.
+6. Nacharbeit: alten S3-Prefix `cnpg/mastodon-pg/` loeschen, sobald das neue
+   Base-Backup `completed` ist.
+
 ## Phase 4: Cutover
 
 Vorbedingung: Replikation ist aktuell (`pg_last_wal_receive_lsn()` folgt der
