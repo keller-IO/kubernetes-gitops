@@ -28,7 +28,9 @@ gh api repos/keller-IO/kubernetes-gitops/rules/branches/main
 This intentionally blocks older PRs until their branch includes the new workflow.
 Required review count stays zero for otherwise eligible automated Renovate PRs.
 Existing Renovate restrictions keep stateful apps/controllers manual; CI workflow
-dependencies also stay manual. Review changes to workflows, check scripts,
+and GitOps control-plane dependencies also stay manual. Goloom is explicitly
+included as a stateful app. Digest/pin/patch automerge is limited to the named
+stateless leaf apps; new or unclassified apps default to manual review. Review changes to workflows, check scripts,
 schema pins and known-gap baselines as security-sensitive code before merging.
 This is a repository review policy, not an enforced per-path approval rule.
 
