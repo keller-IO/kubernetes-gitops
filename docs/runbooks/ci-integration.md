@@ -36,6 +36,14 @@ This command changes no host services. Hosts without the required cgroup,
 container runtime, disk, or memory capacity fail the test. There is no successful
 skip or fallback to a render-only test.
 
+The Redis image selected by the tested Argo chart is pulled on the local runtime
+with at most three attempts and loaded into Kind before Helm installs Argo.
+This avoids waiting eight minutes for an in-node registry pull failure. The image
+reference is preserved; permanent pull failures fail the job. A hosted install
+run exposed this as an `argocd-redis` ImagePullBackOff while the same image worked
+in the parallel upgrade run. Diagnostics include waiting-container messages and
+event messages so registry errors can be distinguished from application failures.
+
 The pinned Kubernetes 1.36.1 node image is the official Kind 0.32.0 release image
 ([release](https://github.com/kubernetes-sigs/kind/releases/tag/v0.32.0)), pinned by
 digest. This matches Talos 1.13.4's default Kubernetes version; confirm it against

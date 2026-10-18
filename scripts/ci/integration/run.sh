@@ -21,7 +21,7 @@ while (($#)); do
   esac
 done
 [[ "$MODE" == install || "$MODE" == upgrade ]] || { echo "mode must be install or upgrade" >&2; exit 2; }
-for tool in kind kubectl helm git jq sops age-keygen python3 curl rg; do
+for tool in kind kubectl helm git jq yq sops age-keygen python3 curl rg; do
   command -v "$tool" >/dev/null || { echo "Missing $tool; run through nix develop" >&2; exit 2; }
 done
 python3 -c 'import yaml'
@@ -51,7 +51,11 @@ cleanup() {
   if [[ "$created" == true ]]; then
     # Whitelist diagnostics: no pod logs, Secret objects, env, or kubeconfig.
     ci_kube get pods -A -o wide >"$ARTIFACTS/pods.txt" 2>&1
-    ci_kube get events -A -o custom-columns='NAMESPACE:.metadata.namespace,REASON:.reason,TYPE:.type,OBJECT:.involvedObject.name' >"$ARTIFACTS/events.txt" 2>&1
+    ci_kube get pods -A -o json | jq '[.items[] | {
+      namespace:.metadata.namespace, name:.metadata.name,
+      waiting:[.status.containerStatuses[]? | select(.state.waiting != null) |
+        {name,reason:.state.waiting.reason,message:.state.waiting.message}]}]' >"$ARTIFACTS/image-pulls.json"
+    ci_kube get events -A -o custom-columns='NAMESPACE:.metadata.namespace,REASON:.reason,TYPE:.type,OBJECT:.involvedObject.name,MESSAGE:.message' >"$ARTIFACTS/events.txt" 2>&1
     ci_kube -n argocd get applications -o json | jq '[.items[] | {
       name:.metadata.name, sync:.status.sync.status, health:.status.health.status,
       revisions:.status.sync.revisions, phase:.status.operationState.phase,
@@ -167,12 +171,21 @@ check_app_data() {
 }
 
 install_control_plane() {
-  local label="$1" component version repo chart namespace
+  local label="$1" component version repo chart namespace redis_image
   for component in argocd cnpg; do
     version="$(jq -r ".${component}Chart.version" "$TASK_TMP/$label/provenance.json")"
     repo="$(jq -r ".${component}Chart.repo" "$TASK_TMP/$label/provenance.json")"
     chart="$(jq -r ".${component}Chart.name" "$TASK_TMP/$label/provenance.json")"
     namespace=argocd; [[ "$component" != cnpg ]] || namespace=cnpg-system
+    if [[ "$component" == argocd ]]; then
+      # Resolve the exact chart-selected Redis image. Pull on the local runtime
+      # with bounded retries, then load it into Kind before Helm waits for it.
+      helm template "$component" "$chart" --repo "$repo" --version "$version" \
+        --namespace "$namespace" --values "$TASK_TMP/$label/$component-values.yaml" >"$TASK_TMP/bootstrap.yaml"
+      redis_image="$(yq eval -r 'select(.kind == "Deployment" and .metadata.name == "argocd-redis") | .spec.template.spec.containers[] | .image' "$TASK_TMP/bootstrap.yaml")"
+      [[ -n "$redis_image" && "$redis_image" != *$'\n'* ]] || { echo 'Expected exactly one Redis bootstrap image' >&2; return 1; }
+      ci_preload_image "$redis_image" "$CLUSTER"
+    fi
     ci_helm upgrade --install "$component" "$chart" --repo "$repo" --version "$version" \
       --namespace "$namespace" --create-namespace --values "$TASK_TMP/$label/$component-values.yaml" \
       --wait --timeout 8m

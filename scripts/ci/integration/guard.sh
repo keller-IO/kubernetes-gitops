@@ -57,3 +57,18 @@ ci_helm() {
   # guardrails: allow-live-mutation — Helm can write only to the same temporary Kind cluster.
   helm "$@" --kubeconfig "$CI_KUBECONFIG" --kube-context "$CI_CONTEXT" # guardrails: allow-live-mutation
 }
+
+ci_preload_image() {
+  local image="$1" cluster="$2" attempt provider="${KIND_EXPERIMENTAL_PROVIDER:-docker}"
+  ci_runtime_guard || return
+  [[ "$cluster" == keller-ci-* ]] || { echo 'Refusing non-CI image load' >&2; return 1; }
+  for attempt in 1 2 3; do
+    if "$provider" pull "$image"; then
+      # guardrails: allow-live-mutation — load into this invocation's unique local Kind cluster only.
+      kind load docker-image --name "$cluster" "$image"
+      return
+    fi
+    [[ "$attempt" != 3 ]] || { echo "Image pull failed after 3 attempts: $image" >&2; return 1; }
+    sleep 5
+  done
+}

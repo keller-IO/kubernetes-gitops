@@ -28,6 +28,7 @@ test:
     python3 scripts/ci/test-check-schemas.py
     bash scripts/ci/test-render-all.sh
     bash scripts/ci/integration/test-guards.sh
+    bash scripts/ci/integration/test-image-pull.sh
     bash scripts/ci/integration/test-prepare.sh
     PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s apps/base/nextcloud-yealink-phonebook -p 'test_*.py'
     PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=apps/base/litellm python3 -m unittest apps/base/litellm/test_request_policy.py
