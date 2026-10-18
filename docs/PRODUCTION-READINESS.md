@@ -569,7 +569,8 @@ ein Agent-DaemonSet ist deshalb bewusst nicht Teil davon.
 | Gruppe `k8s_readonly` | Nutzergruppe, bestand schon |
 | Gruppe `k8s_ops` | Nutzergruppe, vor dem Merge in NetBird anlegen |
 | Gruppe `k8s_api_proxy` | Peer-Gruppe, nur die Proxy-Pods |
-| Policy „Kubernetes API access" | `k8s_admin` + `k8s_readonly` + `k8s_ops` → `k8s_api_proxy`, tcp/443 |
+| Policy „Kubernetes API proxy" (seit 18.10.2026) | `k8s_admin` + `k8s_readonly` → `k8s_api_proxy`, tcp/443. `k8s_ops` existiert in NetBird (noch) nicht. |
+| Policy „Kubernetes API access" | `k8s_admin` + `k8s_readonly` → Resource `standard` = 192.168.2.0/24, tcp/443. Zeigte ursprünglich auf `k8s_api_proxy`, seit 04.08.2026 auf die /24 — **trägt kubectl über den Proxy nicht**. |
 
 **Warum keine `Group`-/`NBPolicy`-CRs**, obwohl es die CRDs gibt:
 - Der Group-Controller sucht **nie nach Namen** (nur `status.GroupID`, initial leer) und
