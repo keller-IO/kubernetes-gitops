@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: Secret
+metadata:
+    name: goloom-db-app
+    namespace: goloom
+type: kubernetes.io/basic-auth
+stringData:
+    username: ENC[AES256_GCM,data:E4JiC4LN,iv:QYgo7QiYqKKBIRLyu02awxizkiEJWdHHC0tM8f1KYXg=,tag:d3cxKiasoT6YhwcdneebvA==,type:str]
+    password: ENC[AES256_GCM,data:11ZPuW8n4iuV1/pK4d6hEOg/nqGIL2biaxVEdwPB1jcTar0Ax/eFlw==,iv:p20Mh9iYO5BnuNvqefcU51rfLECOEpIvvieA1VLybbQ=,tag:HRmPC5UN/Q987b9eD7WK7w==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBBY2VqYzJXUTZ2YUVlajYy
+            SktjMTVQSnpxbk9mYnVyVmRPTS9jTUtnRUh3CmJtaUtzaW1VOHdodk53Z1p5OGFD
+            cExxa1NFZ1hWeitNbldXb0dsWElXWTQKLS0tIEgya3ZxVEcxTkI5Vk5BbnhSRHRl
+            MmVEUlg5RjB2OXloUVBRRHI0V0g3RmcKvkTD+99zoQ/2wwtWShnztPx0BidjKc6+
+            vpMhOajodsVZrRsG4rvEnWScAc+IMVH0vYx3Ds0iRtSSpfa3zipBTA==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age17x04ga87qyu9lzcuja9k83z90veew9cez7jusul4y5xyr09xaejs9rq755
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBxWmkway9aTFA3elFEMnov
+            b2t4c2g0QS9GeXlaZHBPL21NdlpDcFhVRUJBCmZaUm8raFNZeSs3dTBjckxXN25I
+            NENna2dZVFJ5RFY0WExOR3p3bitzQlUKLS0tIEE2UlA0SkNJRkJ2cUpMMTJFQnlK
+            L1FITzlheTdQc0JTRW02TEJUV0FsSjAKX9CGXkwIV0IV8KnHNLw7QJY7KJnVTUhl
+            Fllvj/4H1wRziNkwEfWl6MXIJD8UgOhUhDfcUyyBSJCyghyO1c3+Sw==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1hjq0mgzc2npw9lhtwr49qqrfvkxzc2ss8qu7e06fk5n84qm7xs7qrgxfxa
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-10-18T05:09:38Z"
+    mac: ENC[AES256_GCM,data:YASFHNnBjksyvAOkB9SDaYkkzNdG9kzzxgpoZv1h2Fk5eJRnc0RQKNQxiCoK09kSIUNCcAX0gbC+UvFZIK/IzfM4aNaWUFVE5XuUXt7TTQ6BYAP3u2kL3o4w23qH4FMPjfJTDTQMdGhijsxv05li7Pefh5ow4z0HOIgFi425wGw=,iv:dxO9LwaQ8KNrOos5TZfltvvD2dhExIMJvs6h8hhu0QM=,tag:rGKgm3mu04ByskSaYvVTBA==,type:str]
+    version: 3.13.3
