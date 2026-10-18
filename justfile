@@ -25,6 +25,7 @@ test:
     #!/usr/bin/env bash
     set -euo pipefail
     PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s scripts/ci -p 'test_*.py'
+    bash scripts/ci/check-talos-upgrade.sh
     python3 scripts/ci/test-check-schemas.py
     bash scripts/ci/test-render-all.sh
     bash scripts/ci/integration/test-guards.sh

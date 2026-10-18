@@ -1,0 +1,117 @@
+apiVersion: upgrade.cattle.io/v1
+kind: Plan
+metadata:
+  name: talos
+  annotations:
+    # Apply after the CRD and controller resources.
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+  labels:
+    # SUC copies these labels to Jobs. Never match controller anti-affinity.
+    app.kubernetes.io/name: talos-upgrade
+    app.kubernetes.io/component: upgrade
+spec:
+  concurrency: 1
+  exclusive: false
+  postCompleteDelay: 5m
+  serviceAccountName: talos-upgrade
+  jobActiveDeadlineSecs: 5400
+  # Initial target matches kellerIO OpenTofu; never jump minor lines implicitly.
+  version: v1.13.4 # renovate: datasource=github-releases depName=siderolabs/talos versioning=semver
+  nodeSelector:
+    matchLabels:
+      kubernetes.io/os: linux
+      # Activation is a separate human-reviewed operation after prerequisites.
+      keller.io/talos-upgrade: enabled
+  cordon: true
+  secrets:
+    # Externally provisioned mTLS config; no plaintext or credentials in Git.
+    - name: talosconfig
+      path: /var/run/secrets/talos.dev
+      # Credential rotation must not hash into a fresh whole-cluster upgrade.
+      # This also makes the mount optional in SUC; prepare must check the file.
+      ignoreUpdates: true
+      defaultMode: 0444
+  drain:
+    force: false
+    ignoreDaemonSets: true
+    deleteEmptydirData: false
+    timeout: 20m
+    # No gracePeriod override: respect each workload's termination grace period.
+    # No disableEviction: PDBs remain binding, including while a DB recovers.
+  tolerations:
+    - key: node-role.kubernetes.io/control-plane
+      operator: Exists
+      effect: NoSchedule
+    - key: node-role.kubernetes.io/etcd
+      operator: Exists
+      effect: NoExecute
+    - key: CriticalAddonsOnly
+      operator: Exists
+  prepare:
+    image: docker.io/library/python:3.14.0-alpine
+    command: [python3, -c]
+    args: ["$(PREFLIGHT_SCRIPT)"]
+    envs:
+      - name: PREFLIGHT_SCRIPT
+        valueFrom:
+          configMapKeyRef:
+            name: talos-upgrade-preflight
+            key: preflight.py
+      - name: DRAIN_KUBECTL_IMAGE
+        valueFrom:
+          configMapKeyRef:
+            name: default-controller-env
+            key: SYSTEM_UPGRADE_JOB_KUBECTL_IMAGE
+      - name: NODE_NAME
+        valueFrom:
+          fieldRef:
+            fieldPath: spec.nodeName
+      - name: POD_NAMESPACE
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.namespace
+    securityContext:
+      privileged: false
+      runAsNonRoot: true
+      runAsUser: 65534
+      runAsGroup: 65534
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      seccompProfile:
+        type: RuntimeDefault
+      capabilities:
+        drop: [ALL]
+  upgrade:
+    image: ghcr.io/siderolabs/talosctl:v1.13.4
+    envs:
+      - name: NODE_IP
+        valueFrom:
+          fieldRef:
+            fieldPath: status.hostIP
+    command: [/talosctl]
+    args:
+      - --talosconfig=/var/run/secrets/talos.dev/talosconfig
+      - -e
+      - $(NODE_IP)
+      - -n
+      - $(NODE_IP)
+      - upgrade
+      - --image=factory.talos.dev/nocloud-installer/3abf06e1d81e509d779dc256f9feae6cd6d82c69337c661cbfc383a92594faf5:v1.13.4
+      - --drain=false
+      # On-node process cannot survive its own reboot. This acknowledges the
+      # request only; prepare verifies recovery before the NEXT node can drain.
+      # Plan Complete is not a reboot/recovery result; final postflight is required.
+      - --wait=false
+      - --timeout=20m
+    securityContext:
+      privileged: false
+      runAsNonRoot: true
+      runAsUser: 65534
+      runAsGroup: 65534
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      seccompProfile:
+        type: RuntimeDefault
+      capabilities:
+        drop: [ALL]
