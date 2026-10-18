@@ -37,14 +37,18 @@ this runbook.
 
 ## Blablador provider contract
 
-Verified on 2026-10-13 with model `openai/alias-code`.
+Base contract verified on 2026-10-13 with model `openai/alias-code`.
+Hermes' usage-stream request shape was reverified on 2026-10-17.
 
 - Status: pass (3/3 contract tests).
-- Observed request latency range: 0.998-7.121 seconds.
+- Latest observed request latency range: 1.589-33.000 seconds.
 - Streaming compatibility: pass.
 - Deterministic forced-tool compatibility: pass.
 - `COMMON_CHAT_PARAMETERS`: `temperature`, `max_tokens`, `stream`, `tools`,
-  `tool_choice`.
+  `tool_choice`, `stream_options`.
+- Hermes usage-stream extension: pass. Blablador accepts exactly the exercised
+  `stream_options: {include_usage: true}` shape; the gateway rejects other
+  `stream_options` values.
 
 The parameter set excludes `model` and `messages`; those are handled separately
 by the gateway configuration. Contract evidence contains no credentials,
@@ -53,9 +57,10 @@ provider-generated content.
 
 ## Pinned LiteLLM proxy contract
 
-Verified on 2026-10-14 against the immutable image reference above with the
-container network disabled. The test process used only a loopback
-OpenAI-compatible stub.
+Base contract verified on 2026-10-14 against the immutable image reference
+above with the container network disabled. Hermes' exact `stream_options`
+shape and the rejection of `reasoning_effort` were reverified on 2026-10-18.
+The test process used only a loopback OpenAI-compatible stub.
 
 - Status: pass (8/8 contract tests).
 - Callback loading: pass from its config directory without relying on that
@@ -80,6 +85,9 @@ OpenAI-compatible stub.
   occurs when the stream then fails.
 - Stable deployment ID observed on every upstream attempt:
   `hermes-blablador`.
+- The streaming test includes Hermes' exact
+  `stream_options: {include_usage: true}` request shape and still proves one
+  upstream attempt after the first returned chunk.
 
 Reproduce from the repository root:
 

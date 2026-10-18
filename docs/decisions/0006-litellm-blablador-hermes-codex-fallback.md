@@ -111,6 +111,8 @@ Header unter `proxy_server_request`:
 - `messages` muss vorhanden und listenfoermig sein.
 - Erlaubt werden nur die nach dem Provider-Contract empirisch bestaetigten
   OpenAI-Chat-Parameter.
+- Hermess Streaming-Erweiterung wird ausschliesslich in der gegen Blablador
+  verifizierten Form `stream_options: {include_usage: true}` akzeptiert.
 - `extra_body`, unbekannte providergerichtete Felder, Routing-, Retry-,
   Fallback-, Drop-, API-Basis- und Timeout-Overrides werden mit HTTP 400
   abgewiesen.
@@ -157,6 +159,12 @@ fallback_providers:
   - provider: openai-codex
     model: gpt-5.6-sol
 ```
+
+Der explizite Override
+`model_overrides.custom.hermes-blablador.supports_reasoning` mit Wert `false`
+markiert den Alias fuer die gepinnte Hermes-Version als nicht reasoning-faehig.
+Dadurch fuegt Hermes nicht automatisch `reasoning_effort` hinzu; dieses nicht
+gegen Blablador abgenommene Feld bleibt an der Gateway-Grenze verboten.
 
 Hermess App-Level-Retry wird mit `agent.api_max_retries: 1` auf einen Versuch
 begrenzt. In der gepinnten Version ist dies trotz des Variablennamens das

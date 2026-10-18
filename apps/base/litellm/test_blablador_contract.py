@@ -61,6 +61,7 @@ class BlabladorContractTests(unittest.TestCase):
             temperature=0,
             max_tokens=32,
             stream=True,
+            stream_options={"include_usage": True},
         )
         chunk_count = 0
         try:
