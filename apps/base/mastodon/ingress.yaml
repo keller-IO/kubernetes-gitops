@@ -1,0 +1,55 @@
+# Eigener Ingress statt des Chart-Ingress (ingress.enabled: false in values.yaml):
+# das Chart kennt nur / und /api/v1/streaming, hier kommt /system fuer die Medien
+# dazu. Zwei Ingress-Objekte fuer denselben Host waeren bei nginx-inc ein Fall
+# fuer mergeable master/minion — ein Objekt ist einfacher und nachvollziehbarer.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: mastodon
+  namespace: mastodon
+  annotations:
+    # jit.social liegt in keiner dnsZones-Selektorliste des ClusterIssuers (DNS bei
+    # Cloudflare, nicht auf dns01) und hat auch keinen http01-Solver dort: mit
+    # letsencrypt-prod bliebe das Zertifikat dauerhaft pending. Deshalb wie goloom:
+    # eigener Issuer (issuer.yaml) mit HTTP-01 und edit-in-place, damit nginx-inc
+    # keinen zweiten Ingress fuer denselben Host verwirft (docs/learnings/
+    # flurfunk-dns-and-http01-chain.md).
+    cert-manager.io/issuer: mastodon-letsencrypt
+    acme.cert-manager.io/http01-edit-in-place: "true"
+    # mastodon-tls steht seit dem Cutover am 19.10.2026, daher "true" (wie goloom):
+    # Erneuerungen gehen trotz Redirect, weil LE ihm auf https folgt und das
+    # Secret dann existiert.
+    # ⚠️ Bei einer Neuausstellung ohne Secret (Namespace neu, Secret geloescht)
+    # vorher auf "false" stellen — sonst lehnt nginx-inc den TLS-Handshake ab und
+    # die HTTP-01-Challenge scheitert dauerhaft (gleiche Falle wie jitcloud, #169).
+    nginx.org/ssl-redirect: "true"
+    nginx.org/redirect-to-https: "true"
+    nginx.org/websocket-services: "mastodon-streaming"
+    # Medien-URLs /system/<pfad> auf den Bucket-Pfad abbilden. nginx-inc haengt den
+    # Wert unveraendert an proxy_pass an (wie bei rewrite=/ fuer /push/): OHNE
+    # abschliessenden Slash wuerde /system/x zu /jit-social-mediax.
+    nginx.org/rewrites: "serviceName=rgw rewrite=/jit-social-media/"
+    # Mastodon erlaubt Uploads bis 99 MB (Videos); 100m deckt das mit Rand ab.
+    nginx.org/client-max-body-size: "100m"
+    # Streaming ist eine lange offene Verbindung, kein Request-Response.
+    nginx.org/proxy-read-timeout: "3600s"
+    nginx.org/proxy-send-timeout: "3600s"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: [jit.social]
+      secretName: mastodon-tls
+  rules:
+    - host: jit.social
+      http:
+        paths:
+          # Reihenfolge: spezifisch vor allgemein.
+          - path: /api/v1/streaming
+            pathType: Prefix
+            backend: { service: { name: mastodon-streaming, port: { number: 4000 } } }
+          - path: /system/
+            pathType: Prefix
+            backend: { service: { name: rgw, port: { number: 7480 } } }
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: mastodon-web, port: { number: 3000 } } }

@@ -1,6 +1,6 @@
 # ADR 0006 - LiteLLM fuer Blablador mit Hermes-Codex-Fallback
 
-- **Status:** Angenommen, Gateway umgesetzt; Hermes-Aktivierung ausstehend
+- **Status:** Umgesetzt und am 2026-10-18 vollstaendig abgenommen
 - **Datum:** 2026-10-12
 - **Freigegeben:** 2026-10-12
 - **Ersetzt:** ADR 0005
@@ -10,10 +10,11 @@
 
 ## Ausgangslage
 
-Hermes laeuft auf `hermes01` (`192.168.2.37`) und nutzt derzeit direkt
-`openai-codex` mit `gpt-5.6-sol`. Die Authentisierung besteht aus von Hermes
-verwalteten OAuth-Access- und Refresh-Tokens. Es ist kein OpenAI-Platform-
-API-Key vorhanden.
+Zum Entscheidungszeitpunkt lief Hermes auf `hermes01` (`192.168.2.37`) direkt
+mit `openai-codex` und `gpt-5.6-sol`. Seit der Abnahme am 18.10.2026 ist
+`hermes-blablador` der Primaerpfad; Codex bleibt der direkte Fallback und
+Rollbackpfad. Die Codex-Authentisierung besteht aus von Hermes verwalteten
+OAuth-Access- und Refresh-Tokens. Es ist kein OpenAI-Platform-API-Key vorhanden.
 
 Fuer Blablador existiert ein API-Key. Die authentifizierte Modellabfrage am
 12.10.2026 bestaetigte `alias-code` als account-sichtbare Modell-ID. Der Key
@@ -166,13 +167,19 @@ markiert den Alias fuer die gepinnte Hermes-Version als nicht reasoning-faehig.
 Dadurch fuegt Hermes nicht automatisch `reasoning_effort` hinzu; dieses nicht
 gegen Blablador abgenommene Feld bleibt an der Gateway-Grenze verboten.
 
-Hermess App-Level-Retry wird mit `agent.api_max_retries: 1` auf einen Versuch
-begrenzt. In der gepinnten Version ist dies trotz des Variablennamens das
-minimale Gesamtversuchsbudget: Die Schleife startet mit Zaehler `0`, laeuft nur
-solange er kleiner als `api_max_retries` ist und wechselt nach dem ersten Fehler
-zum Fallback. Die zusaetzliche Auto-Recovery-Schleife wird mit
-`agent.auto_recovery_cycles: 0` deaktiviert, damit ein ausgefallener
-Primaerpfad nicht minutenlang vor dem Codex-Fallback wiederholt wird.
+Hermess regulaerer App-Level-Retry wird mit `agent.api_max_retries: 1` auf einen
+Versuch begrenzt. Die Schleife startet mit Zaehler `0` und laeuft nur, solange
+er kleiner als `api_max_retries` ist. Als fest verdrahtete Ausnahme baut die
+gepinnte Hermes-Version den Primaerclient nach einem erschoepften transienten
+Connection- oder Timeoutfehler einmal neu auf und sendet einen letzten
+Primaerversuch; dieser Pfad ist nicht separat konfigurierbar. HTTP-Fehler wie
+429 gehen ohne diesen Transport-Rebuild direkt zum Fallback. Die zusaetzliche
+Auto-Recovery-Schleife wird mit `agent.auto_recovery_cycles: 0` deaktiviert,
+damit ein ausgefallener Primaerpfad nicht minutenlang vor dem Codex-Fallback
+wiederholt wird. Damit kann ein upstream-seitig bereits angenommener Request
+bei verlorenem Transportergebnis im Ausnahmefall einmal doppelt ausgefuehrt
+werden; dieses begrenzte Verfuegbarkeitsrisiko wird fuer die gepinnte Revision
+akzeptiert und vor jedem Hermes-Upgrade erneut bewertet.
 
 Es gilt bewusst Hermess eingebaute Fallback-Klassifizierung. Neben Timeouts,
 Verbindungsfehlern, 429 und 5xx koennen daher je nach Hermes-Version auch
@@ -380,7 +387,7 @@ Mangels Datenbank und Volumes existieren weder Datenmigration noch Restore.
 
 - [x] `alias-code` besteht Chat-, Streaming- und Tool-Calling-Contract.
 - [x] Blablador-Key liegt SOPS-verschluesselt im GitOps-Repo.
-- [ ] Dedizierter Master-Key liegt in SOPS und Ansible Vault.
+- [x] Dedizierter Master-Key liegt in SOPS und Ansible Vault.
 - [x] Image-Provenienz, Digest und Vulnerability-Scan sind akzeptiert.
 - [x] Request-Policy und gepinnter LiteLLM-Contract sind gruen.
 - [x] Quell-IP-, XFF-Spoofing-, Pfad-/Methoden-, Body-, Rate- und
@@ -388,9 +395,9 @@ Mangels Datenbank und Volumes existieren weder Datenmigration noch Restore.
 - [x] Cilium erlaubt nur Cluster-DNS und Blablador HTTPS mit FQDN plus SNI.
 - [x] Chat, Streaming und Tool Call funktionieren live ueber den Gateway.
 - [x] Master-Key-Rotation akzeptiert den neuen und verweigert den alten Key.
-- [ ] Hermes verwendet Blablador als Primaerpfad und Codex sichtbar als
+- [x] Hermes verwendet Blablador als Primaerpfad und Codex sichtbar als
       Fallback; danach kehrt ein neuer Turn zu Blablador zurueck.
-- [ ] Hermes-Rollback auf Codex wurde aus Ansible erfolgreich geuebt.
+- [x] Hermes-Rollback auf Codex wurde aus Ansible erfolgreich geuebt.
 
 ## Konsequenzen
 

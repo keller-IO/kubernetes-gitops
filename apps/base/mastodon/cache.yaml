@@ -13,7 +13,12 @@ metadata:
     app.kubernetes.io/component: cache
 spec:
   serviceName: mastodon-valkey
-  replicas: 0 # migration staging: start only after dump.rdb was restored to the PVC
+  # AOF seit 19.10.2026: nach dem Cutover live per CONFIG SET appendonly yes
+  # eingeschaltet, der Rewrite meldete aof_last_bgrewrite_status:ok, erst danach
+  # hier festgeschrieben. ⚠️ Bei einem leeren PVC mit eingespieltem dump.rdb
+  # vorher wieder "no" setzen: Valkey laedt mit appendonly yes nur den AOF und
+  # ignoriert das RDB, startet also leer.
+  replicas: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: mastodon-valkey
@@ -33,9 +38,9 @@ spec:
           image: valkey/valkey:9.2-alpine # renovate: image=valkey/valkey
           # $(REDISCLI_AUTH) is expanded from the env var below; valkey-cli also
           # reads REDISCLI_AUTH automatically, so the readiness probe stays authed.
-          # First start must load the restored dump.rdb. Enable AOF online only
-          # after verifying that dataset, then persist appendonly=yes via GitOps.
-          args: ["--appendonly", "no", "--requirepass", "$(REDISCLI_AUTH)"]
+          # appendonlydir/ on the PVC exists since 2026-10-19, so a restart loads
+          # the AOF (base RDB + incr). See the warning above for a fresh PVC.
+          args: ["--appendonly", "yes", "--requirepass", "$(REDISCLI_AUTH)"]
           env:
             - name: REDISCLI_AUTH
               valueFrom:
@@ -46,11 +51,14 @@ spec:
             - name: valkey
               containerPort: 6379
           resources:
+            # Datenbestand aus mastodon02: 171 MB used_memory (116.133 Keys, RDB 92 MB,
+            # gemessen 19.10.2026). 256Mi waeren beim Laden und beim BGSAVE (fork,
+            # Copy-on-Write) ein OOM-Risiko -> 512Mi Limit.
             requests:
               cpu: 50m
-              memory: 64Mi
-            limits:
               memory: 256Mi
+            limits:
+              memory: 512Mi
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:

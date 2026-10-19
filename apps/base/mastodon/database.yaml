@@ -55,13 +55,40 @@ spec:
   # Die Quelle braucht `wal_keep_size = '8GB'` (Drop-in
   # conf.d/10-kellerio-migration.conf auf mastodon02): Ohne Slot und ohne Archiv
   # reisst die Replikation sonst bei Cluster-Ausfaellen ab (07.10.2026, Stromarbeiten).
+  # PROMOTION im Cutover-Fenster 19.10.2026: replica.enabled ist false, damit
+  # beendet CNPG den Recovery-Modus und macht mastodon-pg-1 schreibfaehig.
+  # Reihenfolge (Runbook, Phase 4): Mastodon auf mastodon02 gestoppt, sent_lsn auf
+  # der Quelle == replay-LSN hier, Valkey-RDB und Medien-Delta uebernommen — ERST
+  # DANN diesen PR mergen. Die App spricht mastodon_production an; das Kennwort
+  # der Rolle setzt der managed-Block unten (siehe dort).
+  # Nicht rueckgaengig machbar: ein einmal promoteter Cluster wird nicht wieder
+  # Replica; Rollback auf mastodon02 ist danach nur per Rueck-Dump moeglich.
+  # `source` bleibt als Verweis auf den externalCluster stehen (kein Distributed-
+  # Topology-Setup, daher weder replica.primary noch replica.self).
   replica:
-    enabled: true
+    enabled: false
     source: mastodon02
-  # PROMOTION beim Cutover: replica.enabled auf false setzen, NACHDEM die
-  # Bestandsinstanz gestoppt und der letzte WAL angekommen ist. Kein ALTER ROLE
-  # noetig — mastodon-db-app traegt seit 23.09.2026 das Kennwort der Quelle,
-  # und die App spricht die mitgebrachte Datenbank mastodon_production an.
+  # ⚠️ Die Rolle `mastodon` hat auf der Quelle KEIN Kennwort (rolpassword NULL,
+  # lokale peer-Auth ueber den Unix-Socket); die physische Kopie bringt das mit.
+  # Das Kennwort in mastodon-db-app (= DB_PASS aus .env.production) ist in der DB
+  # also nirgends gesetzt — ohne diesen Block scheitert jeder TCP-Login der App
+  # nach der Promotion mit "password authentication failed" (am 19.10.2026 auf der
+  # Replik nachgewiesen). Managed Roles setzt es auf dem Primary deklarativ; Attribute
+  # entsprechen der Quelle (login, createdb, kein Superuser).
+  managed:
+    roles:
+      - name: mastodon
+        ensure: present
+        login: true
+        createdb: true
+        # Die CNPG-Defaults ausdruecklich setzen: roles ist eine atomare Liste,
+        # ArgoCD vergleicht sie als Ganzes — fehlen die vom Webhook ergaenzten
+        # Felder hier, steht die App dauerhaft auf OutOfSync (19.10.2026,
+        # docs/learnings/argocd-dauerhaft-outofsync.md).
+        connectionLimit: -1
+        inherit: true
+        passwordSecret:
+          name: mastodon-db-app
   externalClusters:
     - name: mastodon02
       connectionParameters:

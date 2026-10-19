@@ -1,0 +1,270 @@
+# Medien-Retention fuer den Cluster-Betrieb (Ersatz fuer den woechentlichen Cron
+# des Users `mastodon` auf mastodon02). Chart 1.2.5 bringt keinen CronJob dafuer mit;
+# ohne diese Jobs waechst der Remote-Cache im Ceph-RGW (Quota 100 GiB) unbegrenzt.
+#
+# Parameter bewusst schaerfer als auf dem Altserver (Runbook, Abschnitt
+# "Getroffene Entscheidungen"): dort liessen die Defaults 514.064 Cache-Dateien
+# aelter als 30 Tage liegen (kein --prune-profiles, preview_cards erst ab 180 Tagen).
+#
+# Image, Env und Secrets entsprechen dem Sidekiq-Pod des Charts (ohne SMTP). Die
+# Jobs brauchen eine schreibfaehige DB: vor der Promotion (replica.enabled: true)
+# scheitern sie an der Read-only-Replica - harmlos, aber nicht vor dem Cutover testen.
+---
+# Remote-Medien (Anhaenge, Avatare, Header) aelter als 7 Tage aus dem RGW-Bucket entfernen;
+# --prune-profiles raeumt zusaetzlich Profilbilder entfernter/inaktiver Fremdprofile.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: mastodon-media-remove
+  namespace: mastodon
+  labels:
+    app.kubernetes.io/name: mastodon-retention
+    app.kubernetes.io/component: media-remove
+spec:
+  schedule: "30 3 * * *"
+  timeZone: Europe/Berlin
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 1800
+      ttlSecondsAfterFinished: 604800
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: mastodon-retention
+            app.kubernetes.io/component: media-remove
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 991
+            runAsGroup: 991
+            fsGroup: 991
+            seccompProfile: { type: RuntimeDefault }
+          containers:
+            - name: tootctl
+              image: ghcr.io/mastodon/mastodon:v4.5.19 # an values.yaml image.tag gekoppelt; Upgrade nur manuell
+              imagePullPolicy: IfNotPresent
+              command: ["bundle", "exec", "bin/tootctl"]
+              args: ["media", "remove", "--days", "7", "--prune-profiles", "--concurrency", "5"]
+              envFrom:
+                - configMapRef: { name: mastodon-env }
+              env:
+                - name: SECRET_KEY_BASE
+                  valueFrom: { secretKeyRef: { name: mastodon-secret, key: secret-key-base } }
+                - name: VAPID_PRIVATE_KEY
+                  valueFrom: { secretKeyRef: { name: mastodon-secret, key: vapid-private-key } }
+                - name: VAPID_PUBLIC_KEY
+                  valueFrom: { secretKeyRef: { name: mastodon-secret, key: vapid-public-key } }
+                - name: ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY
+                  valueFrom: { secretKeyRef: { name: mastodon-secret, key: are-primary-key } }
+                - name: ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY
+                  valueFrom: { secretKeyRef: { name: mastodon-secret, key: are-deterministic-key } }
+                - name: ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT
+                  valueFrom: { secretKeyRef: { name: mastodon-secret, key: are-derivation-salt } }
+                - name: AWS_ACCESS_KEY_ID
+                  valueFrom: { secretKeyRef: { name: mastodon-s3, key: AWS_ACCESS_KEY_ID } }
+                - name: AWS_SECRET_ACCESS_KEY
+                  valueFrom: { secretKeyRef: { name: mastodon-s3, key: AWS_SECRET_ACCESS_KEY } }
+                - name: DB_PASS
+                  valueFrom: { secretKeyRef: { name: mastodon-db-app, key: password } }
+                - name: DB_USER
+                  valueFrom: { secretKeyRef: { name: mastodon-db-app, key: username } }
+                - name: REDIS_PASSWORD
+                  valueFrom: { secretKeyRef: { name: mastodon-redis, key: password } }
+              resources:
+                requests: { cpu: 100m, memory: 512Mi }
+                limits: { memory: 1Gi }
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: { drop: ["ALL"] }
+              volumeMounts:
+                - { name: tmp, mountPath: /tmp }
+                - { name: app-tmp, mountPath: /opt/mastodon/tmp }
+                - { name: app-log, mountPath: /opt/mastodon/log }
+          volumes:
+            - name: tmp
+              emptyDir: { sizeLimit: 256Mi }
+            - name: app-tmp
+              emptyDir: { sizeLimit: 512Mi }
+            - name: app-log
+              emptyDir: { sizeLimit: 128Mi }
+
+---
+# Link-Vorschaubilder aelter als 30 Tage entfernen (Default waere 180 Tage).
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: mastodon-preview-cards-remove
+  namespace: mastodon
+  labels:
+    app.kubernetes.io/name: mastodon-retention
+    app.kubernetes.io/component: preview-cards-remove
+spec:
+  schedule: "10 4 * * *"
+  timeZone: Europe/Berlin
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 1800
+      ttlSecondsAfterFinished: 604800
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: mastodon-retention
+            app.kubernetes.io/component: preview-cards-remove
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 991
+            runAsGroup: 991
+            fsGroup: 991
+            seccompProfile: { type: RuntimeDefault }
+          containers:
+            - name: tootctl
+              image: ghcr.io/mastodon/mastodon:v4.5.19 # an values.yaml image.tag gekoppelt; Upgrade nur manuell
+              imagePullPolicy: IfNotPresent
+              command: ["bundle", "exec", "bin/tootctl"]
+              args: ["preview_cards", "remove", "--days", "30"]
+              envFrom:
+                - configMapRef: { name: mastodon-env }
+              env:
+                - name: SECRET_KEY_BASE
+                  valueFrom: { secretKeyRef: { name: mastodon-secret, key: secret-key-base } }
+                - name: VAPID_PRIVATE_KEY
+                  valueFrom: { secretKeyRef: { name: mastodon-secret, key: vapid-private-key } }
+                - name: VAPID_PUBLIC_KEY
+                  valueFrom: { secretKeyRef: { name: mastodon-secret, key: vapid-public-key } }
+                - name: ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY
+                  valueFrom: { secretKeyRef: { name: mastodon-secret, key: are-primary-key } }
+                - name: ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY
+                  valueFrom: { secretKeyRef: { name: mastodon-secret, key: are-deterministic-key } }
+                - name: ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT
+                  valueFrom: { secretKeyRef: { name: mastodon-secret, key: are-derivation-salt } }
+                - name: AWS_ACCESS_KEY_ID
+                  valueFrom: { secretKeyRef: { name: mastodon-s3, key: AWS_ACCESS_KEY_ID } }
+                - name: AWS_SECRET_ACCESS_KEY
+                  valueFrom: { secretKeyRef: { name: mastodon-s3, key: AWS_SECRET_ACCESS_KEY } }
+                - name: DB_PASS
+                  valueFrom: { secretKeyRef: { name: mastodon-db-app, key: password } }
+                - name: DB_USER
+                  valueFrom: { secretKeyRef: { name: mastodon-db-app, key: username } }
+                - name: REDIS_PASSWORD
+                  valueFrom: { secretKeyRef: { name: mastodon-redis, key: password } }
+              resources:
+                requests: { cpu: 100m, memory: 512Mi }
+                limits: { memory: 1Gi }
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: { drop: ["ALL"] }
+              volumeMounts:
+                - { name: tmp, mountPath: /tmp }
+                - { name: app-tmp, mountPath: /opt/mastodon/tmp }
+                - { name: app-log, mountPath: /opt/mastodon/log }
+          volumes:
+            - name: tmp
+              emptyDir: { sizeLimit: 256Mi }
+            - name: app-tmp
+              emptyDir: { sizeLimit: 512Mi }
+            - name: app-log
+              emptyDir: { sizeLimit: 128Mi }
+
+---
+# Objekte im Bucket ohne Datenbankeintrag entfernen. Laeuft woechentlich (So). ACHTUNG: listet
+# den ganzen Bucket - erster Lauf manuell mit --dry-run beobachten (siehe Runbook).
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: mastodon-media-remove-orphans
+  namespace: mastodon
+  labels:
+    app.kubernetes.io/name: mastodon-retention
+    app.kubernetes.io/component: media-remove-orphans
+spec:
+  schedule: "30 4 * * 0"
+  timeZone: Europe/Berlin
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 7200
+      ttlSecondsAfterFinished: 604800
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: mastodon-retention
+            app.kubernetes.io/component: media-remove-orphans
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 991
+            runAsGroup: 991
+            fsGroup: 991
+            seccompProfile: { type: RuntimeDefault }
+          containers:
+            - name: tootctl
+              image: ghcr.io/mastodon/mastodon:v4.5.19 # an values.yaml image.tag gekoppelt; Upgrade nur manuell
+              imagePullPolicy: IfNotPresent
+              command: ["bundle", "exec", "bin/tootctl"]
+              args: ["media", "remove-orphans"]
+              envFrom:
+                - configMapRef: { name: mastodon-env }
+              env:
+                - name: SECRET_KEY_BASE
+                  valueFrom: { secretKeyRef: { name: mastodon-secret, key: secret-key-base } }
+                - name: VAPID_PRIVATE_KEY
+                  valueFrom: { secretKeyRef: { name: mastodon-secret, key: vapid-private-key } }
+                - name: VAPID_PUBLIC_KEY
+                  valueFrom: { secretKeyRef: { name: mastodon-secret, key: vapid-public-key } }
+                - name: ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY
+                  valueFrom: { secretKeyRef: { name: mastodon-secret, key: are-primary-key } }
+                - name: ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY
+                  valueFrom: { secretKeyRef: { name: mastodon-secret, key: are-deterministic-key } }
+                - name: ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT
+                  valueFrom: { secretKeyRef: { name: mastodon-secret, key: are-derivation-salt } }
+                - name: AWS_ACCESS_KEY_ID
+                  valueFrom: { secretKeyRef: { name: mastodon-s3, key: AWS_ACCESS_KEY_ID } }
+                - name: AWS_SECRET_ACCESS_KEY
+                  valueFrom: { secretKeyRef: { name: mastodon-s3, key: AWS_SECRET_ACCESS_KEY } }
+                - name: DB_PASS
+                  valueFrom: { secretKeyRef: { name: mastodon-db-app, key: password } }
+                - name: DB_USER
+                  valueFrom: { secretKeyRef: { name: mastodon-db-app, key: username } }
+                - name: REDIS_PASSWORD
+                  valueFrom: { secretKeyRef: { name: mastodon-redis, key: password } }
+              resources:
+                requests: { cpu: 100m, memory: 512Mi }
+                limits: { memory: 1Gi }
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: { drop: ["ALL"] }
+              volumeMounts:
+                - { name: tmp, mountPath: /tmp }
+                - { name: app-tmp, mountPath: /opt/mastodon/tmp }
+                - { name: app-log, mountPath: /opt/mastodon/log }
+          volumes:
+            - name: tmp
+              emptyDir: { sizeLimit: 256Mi }
+            - name: app-tmp
+              emptyDir: { sizeLimit: 512Mi }
+            - name: app-log
+              emptyDir: { sizeLimit: 128Mi }
