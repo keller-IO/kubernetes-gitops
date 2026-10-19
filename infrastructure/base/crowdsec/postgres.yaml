@@ -5,6 +5,13 @@ metadata:
   namespace: crowdsec
 spec:
   instances: 1 # 3 for HA
+  # 14.10.2026: Bei instances: 1 legt CNPG ein PDB mit minAvailable 1 an, das
+  # null Unterbrechungen erlaubt — jeder `kubectl drain`/Talos-Upgrade des
+  # Workers blieb daran haengen. Ohne PDB raeumt der Drain den Pod, der Operator
+  # startet ihn mit derselben RBD-PVC auf einer anderen Node (ca. 1 min Ausfall,
+  # derselbe, den ein Node-Ausfall ohnehin bedeutet). Bei instances > 1 wieder
+  # auf true setzen.
+  enablePDB: false
   # Explizit gepinnt: ohne imageName waehlt der CNPG-Operator seine eigene
   # Default-Postgres-Version. Die steht dann nicht in Git, Renovate sieht sie
   # nicht, und ein Operator-Bump wechselt die DB-Version ungefragt. Dass das
