@@ -16,6 +16,16 @@ victoria-metrics-operator:
 # rendern solche Ressourcen; ohne diese CRDs schlagen deren Syncs komplett fehl.
 prometheus-operator-crds:
   enabled: true
+# Talos bindet kube-controller-manager- und kube-scheduler-Metriken an
+# 127.0.0.1; die Node-IP-Services des Charts koennen sie daher nicht erreichen.
+# Die Talos-etcd-Pods entsprechen nicht dem Chart-Selector und stellen dem
+# Chart damit ebenfalls kein Scrape-Ziel bereit.
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeEtcd:
+  enabled: false
 vmsingle:
   spec:
     retentionPeriod: "30d"

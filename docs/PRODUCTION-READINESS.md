@@ -292,6 +292,12 @@ https://auth.savar.de/realms/bgt
 
 **Dateien:** `infrastructure/base/monitoring/*`
 
+**Bewusster Talos-Scope:**
+- [x] `kubeControllerManager`, `kubeScheduler` und `kubeEtcd` sind deaktiviert:
+      Scheduler/Controller-Manager binden ihre Metriken nur an `127.0.0.1`, und die
+      Talos-etcd-Pods entsprechen nicht dem Chart-Selector. Der Render-Check verhindert
+      Services, VMServiceScrapes und Regelgruppen fuer diese unerreichbaren Ziele.
+
 **Offen:**
 - [ ] Grafana-Admin-Passwort aus SOPS-Secret statt Klartext (`adminPassword`).
 - [ ] **Alertmanager-Receiver** konfigurieren (aktuell `"null"`) — z.B. Matrix/Email/ntfy.
