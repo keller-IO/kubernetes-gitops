@@ -65,9 +65,31 @@ Dumps dürfen nicht dort abgelegt werden; Dumps direkt in den Cluster streamen.
 
 Keine mehr — beide sind entschieden:
 
-- **Volltextsuche** (23.09.2026): wird separat behandelt. Elasticsearch bleibt
-  deaktiviert, der Cutover läuft ohne Volltextsuche. Nachrüsten später per
-  OpenSearch und `tootctl search deploy`.
+- **Volltextsuche** (23.09.2026, geändert 19.10.2026): Der Cutover läuft ohne
+  Volltextsuche. Nachgerüstet wird mit **Elasticsearch 8.19** (nicht OpenSearch):
+  Mastodon ab 4.6 nutzt den elasticsearch-ruby-8.19-Client, der OpenSearch
+  ablehnt. Umsetzung in drei PRs:
+  1. **PR 1** (`apps/base/mastodon/search.yaml`, `search-network-policy.yaml`,
+     Secret `mastodon-elasticsearch`): eigenständige Single-Node-Komponente
+     `mastodon-search:9200`, Mastodon bleibt unverbunden (`elasticsearch.enabled: false`).
+  2. **PR 2**: Anbinden (`elasticsearch.enabled: true`, `hostname: mastodon-search`,
+     `tls: false`, `existingSecret: mastodon-elasticsearch`) und einmalig
+     `tootctl search deploy` (Index aus Postgres aufbauen; Bestandsinstanz hatte
+     ca. 2,1 GB Index). Vorher Ressourcenlage der Nodes prüfen.
+  3. **PR 3**: Aufräumen/Beobachtung (Alerts auf Heap/Disk, ggf. Scrape,
+     Sizing nachschärfen).
+  - **Sizing:** Heap 2 GiB (`-Xms2g -Xmx2g`), Pod requests 500m/3Gi, Limit 4Gi
+    (Rest für Page-Cache/Off-Heap), PVC 10Gi `ceph-rbd`; nicht auf `kellerio-wrk4`
+    (8 GiB), bevorzugt nicht auf Nodes mit Mastodon web/sidekiq.
+  - **`node.store.allow_mmap=false`:** Talos erlaubt kein `vm.max_map_count`-Tuning
+    per Init-Container; ohne mmap entfällt die Vorgabe, kostet etwas Suchperformance.
+  - **Read-only Root-FS:** Init-Container kopiert die Default-Config in ein emptyDir
+    (ES schreibt dort `elasticsearch.keystore`); `logs` und `/tmp` ebenfalls emptyDir.
+  - **Sicherheit:** `xpack.security` aus; Zugriff nur über CiliumNetworkPolicy
+    (Ingress 9200 nur von Mastodon-Rails-Pods und dem `deploy-search`-Job).
+  - **Backup-Ausnahme:** kein Garage-/S3-Backup; der Index ist jederzeit aus
+    Postgres rekonstruierbar (`tootctl search deploy`), Postgres wird per CNPG gesichert.
+  - Renovate bleibt per `packageRules` auf 8.19.x.
 - **Eingangsweg** (23.09.2026): **direkt über die UDM**, kein Cloudflare-Proxy
   und kein Tunnel. Cloudflare bleibt reiner DNS-Anbieter.
 

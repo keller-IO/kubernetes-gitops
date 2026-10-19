@@ -113,6 +113,13 @@
       ]
     },
     {
+      "description": "Mastodon search stays on the Elasticsearch 8.19 line (elasticsearch-ruby 8.19 client); no jump to 9.x.",
+      "matchPackageNames": [
+        "docker.elastic.co/elasticsearch/elasticsearch"
+      ],
+      "allowedVersions": "/^8\\.19\\.\\d+$/"
+    },
+    {
       "description": "Nix flake inputs are grouped and automerged after the global soak period.",
       "matchManagers": [
         "nix"
