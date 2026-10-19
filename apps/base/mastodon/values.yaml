@@ -73,9 +73,13 @@ mastodon:
         replicas: 1
         concurrency: 25
         queues: ["default,8", "push,6", "ingress,4", "mailers,2", "pull", "scheduler", "fasp"]
+    # 19.10.2026: bei 2Gi OOMKilled (Exit 137), als nach dem Poller-Fix (4.5.19)
+    # der Rueckstau an RedownloadMediaWorker anlief — ffmpeg verarbeitet Videos
+    # in mehreren der 25 Threads parallel. Gemessen 1,8 GiB im Normalbetrieb mit
+    # Rueckstau; der Altserver hatte 6,3 GiB fuer alles bei -c 75.
     resources:
-      requests: { cpu: 200m, memory: 512Mi }
-      limits: { memory: 2Gi }
+      requests: { cpu: 200m, memory: 1536Mi }
+      limits: { memory: 4Gi }
   streaming:
     replicas: 1 # Cutover 19.10.2026: oeffentlicher Betrieb
     image:
