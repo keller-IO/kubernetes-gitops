@@ -81,6 +81,12 @@ spec:
         ensure: present
         login: true
         createdb: true
+        # Die CNPG-Defaults ausdruecklich setzen: roles ist eine atomare Liste,
+        # ArgoCD vergleicht sie als Ganzes — fehlen die vom Webhook ergaenzten
+        # Felder hier, steht die App dauerhaft auf OutOfSync (19.10.2026,
+        # docs/learnings/argocd-dauerhaft-outofsync.md).
+        connectionLimit: -1
+        inherit: true
         passwordSecret:
           name: mastodon-db-app
   externalClusters:

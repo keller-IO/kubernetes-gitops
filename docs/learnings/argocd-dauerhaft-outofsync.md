@@ -27,6 +27,7 @@ Nachgewiesene Fälle in diesem Repo:
 | `MariaDB/*-mariadb` | schlanke CR | vom Operator gefüllte Felder | mariadb-operator |
 | `ValidatingWebhookConfiguration` + `Secret` (monitoring) | ohne CA | `caBundle` injiziert | VictoriaMetrics-Operator |
 | AppProtect-CRDs (`ap*.f5.com`) | Chart-Stand | großes Schema | Annotation-/Größenthematik |
+| `Cluster/mastodon-pg` (CNPG) | `managed.roles[]` ohne `connectionLimit`/`inherit` | `connectionLimit: -1`, `inherit: true` | CNPG-Webhook-Defaults; `roles` ist eine atomare Liste, ein Extra-Feld macht die ganze Liste ungleich (19.10.2026) |
 
 Der Klassiker ist `volumeMode` in `volumeClaimTemplates`: ArgoCD normalisiert dieses
 Feld bei StatefulSets nicht, deshalb sind **alle** Valkey-Caches betroffen. Das
