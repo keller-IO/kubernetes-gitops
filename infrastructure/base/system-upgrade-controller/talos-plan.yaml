@@ -17,7 +17,7 @@ spec:
   serviceAccountName: talos-upgrade
   jobActiveDeadlineSecs: 5400
   # Initial target matches kellerIO OpenTofu; never jump minor lines implicitly.
-  version: v1.13.4 # renovate: datasource=github-releases depName=siderolabs/talos versioning=semver
+  version: v1.13.11 # renovate: datasource=github-releases depName=siderolabs/talos versioning=semver
   nodeSelector:
     matchLabels:
       kubernetes.io/os: linux
@@ -49,7 +49,7 @@ spec:
     - key: CriticalAddonsOnly
       operator: Exists
   prepare:
-    image: docker.io/library/python:3.14.0-alpine
+    image: docker.io/library/python:3.14.8-alpine
     command: [python3, -c]
     args: ["$(PREFLIGHT_SCRIPT)"]
     envs:
@@ -83,7 +83,7 @@ spec:
       capabilities:
         drop: [ALL]
   upgrade:
-    image: ghcr.io/siderolabs/talosctl:v1.13.4
+    image: ghcr.io/siderolabs/talosctl:v1.13.11
     envs:
       - name: NODE_IP
         valueFrom:
@@ -97,7 +97,7 @@ spec:
       - -n
       - $(NODE_IP)
       - upgrade
-      - --image=factory.talos.dev/nocloud-installer/3abf06e1d81e509d779dc256f9feae6cd6d82c69337c661cbfc383a92594faf5:v1.13.4
+      - --image=factory.talos.dev/nocloud-installer/3abf06e1d81e509d779dc256f9feae6cd6d82c69337c661cbfc383a92594faf5:v1.13.11
       - --drain=false
       # On-node process cannot survive its own reboot. This acknowledges the
       # request only; prepare verifies recovery before the NEXT node can drain.
