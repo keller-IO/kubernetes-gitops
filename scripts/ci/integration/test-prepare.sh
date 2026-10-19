@@ -28,6 +28,7 @@ assert not any(x['kind'] in ('Ingress', 'CronJob', 'ScheduledBackup') for x in g
 cluster = next(x for x in goloom if x['kind'] == 'Cluster')
 assert cluster['spec']['storage']['storageClass'] == 'standard'
 assert 'backup' not in cluster['spec']
+assert cluster['spec']['instances'] == 1 and 'affinity' not in cluster['spec']
 pvc = next(x for x in goloom if x['kind'] == 'PersistentVolumeClaim')
 assert 'Prune=false' in pvc['metadata']['annotations']['argocd.argoproj.io/sync-options']
 assert any(x['kind'] == 'Secret' and x['metadata']['name'] == 'goloom-db-app' for x in goloom)

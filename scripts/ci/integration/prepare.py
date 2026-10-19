@@ -91,6 +91,9 @@ return hs
               if doc and doc["kind"] == "Cluster")
     db["spec"].pop("backup", None)
     db["spec"].pop("monitoring", None)
+    # kind CI has a single node: required anti-affinity with 2 instances never schedules.
+    db["spec"]["instances"] = 1
+    db["spec"].pop("affinity", None)
     db["spec"]["storage"] = {"size": "1Gi", "storageClass": "standard"}
     write(local / "database.yaml", db)
     pvc = load(root / "apps/base/goloom/pvc.yaml")
