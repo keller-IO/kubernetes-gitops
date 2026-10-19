@@ -13,10 +13,11 @@ metadata:
     app.kubernetes.io/component: cache
 spec:
   serviceName: mastodon-valkey
-  # Cutover: startet NACH dem Einspielen von dump.rdb. appendonly bleibt hier
-  # bewusst "no" — erst wenn INFO persistence einen erfolgreichen AOF-Rewrite
-  # meldet, wird appendonly yes per Folge-PR festgeschrieben. Sonst kann ein
-  # leerer AOF den restaurierten RDB-Bestand ueberstimmen.
+  # AOF seit 19.10.2026: nach dem Cutover live per CONFIG SET appendonly yes
+  # eingeschaltet, der Rewrite meldete aof_last_bgrewrite_status:ok, erst danach
+  # hier festgeschrieben. ⚠️ Bei einem leeren PVC mit eingespieltem dump.rdb
+  # vorher wieder "no" setzen: Valkey laedt mit appendonly yes nur den AOF und
+  # ignoriert das RDB, startet also leer.
   replicas: 1
   selector:
     matchLabels:
@@ -37,9 +38,9 @@ spec:
           image: valkey/valkey:9.2-alpine # renovate: image=valkey/valkey
           # $(REDISCLI_AUTH) is expanded from the env var below; valkey-cli also
           # reads REDISCLI_AUTH automatically, so the readiness probe stays authed.
-          # First start must load the restored dump.rdb. Enable AOF online only
-          # after verifying that dataset, then persist appendonly=yes via GitOps.
-          args: ["--appendonly", "no", "--requirepass", "$(REDISCLI_AUTH)"]
+          # appendonlydir/ on the PVC exists since 2026-10-19, so a restart loads
+          # the AOF (base RDB + incr). See the warning above for a fresh PVC.
+          args: ["--appendonly", "yes", "--requirepass", "$(REDISCLI_AUTH)"]
           env:
             - name: REDISCLI_AUTH
               valueFrom:
