@@ -126,8 +126,10 @@ denselben Cluster aktualisieren.
    `talosctl upgrade` schreibt `machine.install.image` nicht zurueck; GitOps
    ist der Upgrade-Owner, OpenTofu weiter Provisionierungs-/Config-Owner.
    Vor spaeteren `tofu apply` die Bootstrap-Version nachziehen und den Plan auf
-   konkurrierende OS-/Kubernetes-Aenderungen pruefen (`talos_version` in
-   `cluster.auto.tfvars` nach jedem gemergten Talos-PR nachziehen).
+   konkurrierende OS-/Kubernetes-Aenderungen pruefen. `talos_version` in
+   `cluster.auto.tfvars` erst nachziehen, wenn **alle** Nodes die neue Version
+   melden, nie vorab: Ein spaeteres Absenken ersetzt `talos_machine_secrets`
+   (neue Cluster-PKI). Zeigt `tofu plan` dort `must be replaced`, abbrechen.
 8. Nach Abschluss der bestehenden Wartung und Talos-Abnahme zunaechst cp1 oder
    cp3 als Canary in IaC freigeben. Dort wurden keine normalen Drain-Kandidaten
    beobachtet.
