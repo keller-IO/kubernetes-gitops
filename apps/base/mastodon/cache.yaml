@@ -76,6 +76,8 @@ kind: PersistentVolumeClaim
 metadata:
   name: mastodon-valkey-data
   namespace: mastodon
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
 spec:
   accessModes: ["ReadWriteOnce"]
   # Explizit, obwohl es der API-Server ohnehin defaultet: ArgoCD normalisiert

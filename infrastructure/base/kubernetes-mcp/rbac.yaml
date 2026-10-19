@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/name: kubernetes-mcp-server
 rules:
   - apiGroups: [""]
-    resources: [pods, pods/log, events, services, configmaps, persistentvolumeclaims, endpoints, namespaces, nodes, nodes/stats, nodes/proxy]
+    resources: [pods, pods/log, events, services, configmaps, persistentvolumeclaims, endpoints, namespaces, nodes, nodes/stats]
     verbs: [get, list, watch]
   - apiGroups: [apps]
     resources: [deployments, statefulsets, daemonsets, replicasets]

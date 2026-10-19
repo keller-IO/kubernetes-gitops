@@ -23,6 +23,18 @@ Schnellstart-Checkliste (Reihenfolge):
 
 ## 1. Bootstrap & Talos
 
+**Autoupdate (18.10.2026):** SUC und zielnode-bezogenes Prepare sind implementiert,
+Live-Cluster geprueft: 8 Ready-Nodes, Talos 1.13.4 / K8s 1.36.0; Storage-Bindung
+und NetBird-Webhook-Ausnahme bestaetigt. **Noch nicht aktiviert:** wrk4 ist schon
+cordoned; neun CNPG-Singletons, fehlende N-1-Kapazitaet fuer HA3 und fehlgeschlagene
+Mailman-/Mastodon-Backups verhindern Worker-Freigabe. Zusaetzlich Talos-mTLS,
+Schematic/Erweiterungen, etcd-Recovery und In-Cluster-API-Erreichbarkeit abnehmen.
+Die CPs cp1/cp3 sind nach Ende der bestehenden Wartung die kleinsten Canary-
+Kandidaten, ohne pauschale Worker-DB-Skalierung. Details und Zahlen:
+[Live-Abnahme](runbooks/talos-live-audit-2026-10-18.md),
+[Talos-Runbook](runbooks/talos-autoupdate.md),
+[Learnings](learnings/talos-upgrade-drain-safety.md).
+
 **Dateien:** (Talos-Config liegt außerhalb dieses Repos — `talosctl`/`talconfig`),
 `infrastructure/base/cilium/values.yaml`
 
@@ -312,6 +324,12 @@ alertmanager:
       auf `Basic base64(mcp:<passwort>)` setzen; die Zugangsdaten nicht committen.
 - [x] RBAC read-only halten: keine Write-Verben, kein Secret-Zugriff. CI prüft das über
       `just guardrails`.
+- [x] Kein `nodes/proxy`: Bereits GET erlaubt laut [Kubernetes-RBAC-Dokumentation](https://kubernetes.io/docs/concepts/security/rbac-good-practices/#access-to-proxy-subresource-of-nodes)
+      die Ausführung von Befehlen über die Kubelet-API. `just test` blockiert diese
+      Berechtigung einschließlich Wildcards, Trivy prüft das gerenderte RBAC.
+      Die zugehörige Ausnahme KSV-0047 entfällt, die Security-Baseline sinkt von 277 auf 276 Findings.
+      Beim MCP-Server v0.0.61 entfallen dadurch Node-Logs und die Kubelet-Statistikzusammenfassung;
+      Pod-Logs und Node-/Pod-Metriken über `metrics.k8s.io` bleiben erlaubt.
 
 ---
 
@@ -386,7 +404,11 @@ spec: { schedule: "0 0 2 * * *", cluster: { name: forgejo-pg } }
       über `just integration` und die CI-Matrix verdrahtet; Details und Grenzen:
       [CI-Sicherheit](runbooks/ci-safety.md), [Integration](runbooks/ci-integration.md).
 - [ ] Produktive Kubernetes-Version read-only gegen den CI-Pin 1.36.1 prüfen.
-- [ ] Bestehende 14 PVC- und 277 Security-Lücken abbauen; Security-Ausnahmen
+- [x] Alle 14 bisherigen PVC-Lücken geschlossen: direkt von ArgoCD verwaltete
+      App-PVCs tragen `Prune=false,Delete=false`, ohne Retention-Ausnahmen.
+      Schutz greift nach dem Sync gegen Argo-Prune und App-Löschung; Namespace-
+      Löschung und Storage-Ausfälle brauchen weiterhin Backups und Restore-Tests.
+- [ ] Initiale 277 Security-Befunde systematisch abbauen; Security-Ausnahmen
       laufen am 18.01.2027 ab.
 - [ ] Produktions-Health nach Merge als Automerge-Schranke und regelmäßige
       isolierte Backup-Restore-Tests ergänzen.

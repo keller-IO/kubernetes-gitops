@@ -30,11 +30,15 @@ redis:
 persistence:
   data:
     enabled: true
+    annotations:
+      argocd.argoproj.io/sync-options: Prune=false,Delete=false
     storageClass: ceph-rbd # CHANGE ME
     accessMode: ReadWriteOnce
     size: 5Gi
   media:
     enabled: true
+    annotations:
+      argocd.argoproj.io/sync-options: Prune=false,Delete=false
     # RWO statt CephFS/RWX: Single-Replica reicht; zurück auf ceph-fs/RWX,
     # sobald der CephFS-Treiber deployt ist (client.kubernetes braucht mds-Caps).
     storageClass: ceph-rbd
@@ -52,6 +56,8 @@ persistence:
           mountOptions: guest,vers=3.0,uid=1000,gid=1000,dir_mode=0777,file_mode=0666,noperm,cache=strict,noserverino
   export:
     enabled: true
+    annotations:
+      argocd.argoproj.io/sync-options: Prune=false,Delete=false
     storageClass: ceph-rbd # CHANGE ME
     accessMode: ReadWriteOnce
     size: 2Gi

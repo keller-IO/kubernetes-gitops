@@ -10,6 +10,8 @@ valkey-cluster:
 
 persistence:
   enabled: true
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
   storageClass: ceph-rbd # CHANGE ME
   size: 20Gi
 

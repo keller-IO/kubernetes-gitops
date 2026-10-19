@@ -91,6 +91,7 @@
             kubectl # cluster access
             talosctl # Talos node diagnostics and maintenance
             jq # parse Kubernetes and Talos JSON output
+            python3 # stdlib Talos preflight and contract tests
             cosign # verify container image signatures and provenance
             skopeo # inspect registry image metadata and resolve digests
             trivy # scan container images for vulnerabilities
