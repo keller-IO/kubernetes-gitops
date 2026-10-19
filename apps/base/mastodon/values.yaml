@@ -2,7 +2,7 @@
 # Migration staging: storage is prepared, but all app/cache workloads and Ingress stay disabled.
 image:
   repository: ghcr.io/mastodon/mastodon
-  tag: v4.5.19
+  tag: v4.7.3
   pullPolicy: IfNotPresent
 
 mastodon:
@@ -84,7 +84,7 @@ mastodon:
     replicas: 1 # Cutover 19.10.2026: oeffentlicher Betrieb
     image:
       repository: ghcr.io/mastodon/mastodon-streaming
-      tag: v4.5.19
+      tag: v4.7.3
     resources:
       requests: { cpu: 100m, memory: 256Mi }
       limits: { memory: 512Mi }
