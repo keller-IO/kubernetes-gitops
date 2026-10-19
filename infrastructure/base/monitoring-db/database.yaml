@@ -35,16 +35,23 @@ spec:
       owner: gatus
       secret:
         name: monitoring-pg-gatus
+  # connectionLimit/inherit explizit: der CNPG-Webhook setzt diese Defaults,
+  # roles ist eine atomare Liste, und ArgoCDs Diff kennt die Defaults nicht —
+  # ohne sie bliebe der Cluster dauerhaft OutOfSync (19.10.2026).
   managed:
     roles:
       - name: gatus_public
         ensure: present
         login: true
+        inherit: true
+        connectionLimit: -1
         passwordSecret:
           name: monitoring-pg-gatus-public
       - name: kite
         ensure: present
         login: true
+        inherit: true
+        connectionLimit: -1
         passwordSecret:
           name: monitoring-pg-kite
   # Backup nach Garage-S3 in den eigenen Bucket backup-monitoring-db (Key
