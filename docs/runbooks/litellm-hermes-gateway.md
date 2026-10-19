@@ -220,3 +220,38 @@ rollback path to Codex as the primary provider and verify that state. Rotate the
 SOPS key and Hermes's Ansible Vault value only afterward, and restore Blablador
 as primary only after the new key passes. Do not rely on Hermes classifying the
 old key's HTTP 400 response as a fallback-triggering error.
+
+## Hermes production acceptance
+
+Verified on 2026-10-18 with the pinned Hermes Agent revision documented in the
+central Ansible runbook. The final enabled Ansible state is commit `fe9d42d`.
+
+- The effective route is `custom:litellm` with model `hermes-blablador`; Hermes
+  reports the normalized runtime provider as `custom`. The gateway transport is
+  Chat Completions, the app-level retry count is one attempt, auto-recovery is
+  disabled, and the sole fallback is `openai-codex` with `gpt-5.6-sol`.
+- The pinned Hermes revision can rebuild its primary client once after an
+  exhausted transient connection or timeout failure and send one final primary
+  attempt. This hard-coded transport exception is not an additional LiteLLM
+  retry and does not apply to the accepted HTTP 429 fallback path; its duplicate
+  execution risk is recorded in ADR 0006 and must be reassessed on upgrade.
+- Normal completion and streaming succeeded through Blablador. A separate
+  read-only tool turn completed two terminal tool calls; all three API calls in
+  that turn used `hermes-blablador` rather than Codex.
+- A controlled rate probe produced 18 expected policy HTTP 400 responses before
+  the limit and then 102 HTTP 429 responses. The immediately following Hermes
+  turn completed through `openai-codex`; after the rate window expired, the next
+  turn returned to `hermes-blablador` with one API call.
+- Rollback commit `dd897a4` removed only `/etc/hermes/config.yaml` and
+  `/etc/hermes/.env`. The effective primary reverted to
+  `openai-codex`/`gpt-5.6-sol`, one bounded turn completed, and a second Ansible
+  run reported `changed=0`, `failed=0`.
+- Reactivation commit `fe9d42d` restored the managed files and passed the role
+  contract, syntax check, check mode, deployment, and a second idempotent run.
+  The final bounded turn reported `model=hermes-blablador`, `provider=custom`,
+  one API call, `completed=true`, and `failed=false`. The following five-minute
+  gateway error window was clean and the Deployment remained `1/1 Ready`.
+
+Acceptance records contain only dates, commit IDs, status classes, counts,
+provider/model transitions, and completion metadata. They exclude credentials,
+headers, prompts, responses, request/session identifiers, and tool arguments.
