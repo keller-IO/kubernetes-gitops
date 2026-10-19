@@ -358,6 +358,16 @@ Quelle, Lag im Sekundenbereich).
 6. Cutover-PR: Ingress sowie je eine Web-, Streaming- und Sidekiq-Replik
    aktivieren, `S3_ALIAS_HOST` und die `/system`-Route gemeinsam scharfstellen;
    automatische DB-Hooks bleiben aus.
+   **Drei Fallen, am 19.10.2026 vorab gefunden:**
+   - Die Rolle `mastodon` hat auf der Quelle **kein Kennwort** (peer-Auth über den
+     Socket). `mastodon-db-app` trägt zwar `DB_PASS` der `.env.production`, in der
+     DB gesetzt ist es aber nirgends: Login schlägt mit `password authentication
+     failed` fehl. Der Promotions-PR (#300) setzt es per `spec.managed.roles`.
+   - `letsencrypt-prod` hat für `jit.social` keinen Solver; deshalb eigener Issuer
+     `mastodon-letsencrypt` (HTTP-01, edit-in-place) in `issuer.yaml`.
+   - ArgoCD schließt **EndpointSlice** aus: die Slice `rgw` aus
+     `media-backend.yaml` vor dem Cutover-Merge einmalig von Hand anwenden, sonst
+     liefert `/system/` 502 bei grüner App.
 7. Verkehr umschalten, in dieser Reihenfolge:
    1. nginx auf mastodon02 auf `proxy_pass http://192.168.2.246;` mit
       `Host: jit.social` umstellen und neu laden. Ab hier bedient auch der
