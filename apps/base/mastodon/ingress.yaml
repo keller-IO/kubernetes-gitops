@@ -16,12 +16,14 @@ metadata:
     # flurfunk-dns-and-http01-chain.md).
     cert-manager.io/issuer: mastodon-letsencrypt
     acme.cert-manager.io/http01-edit-in-place: "true"
-    # ⚠️ ssl-redirect bleibt "false", bis das HTTP-01-Zertifikat steht. Mit "true"
-    # beantwortet nginx die ACME-Challenge mit einem 301 auf https und die
-    # Ausstellung scheitert dauerhaft (gleiche Falle wie bei jitcloud, #169).
-    # Direkt nach erfolgreicher Ausstellung auf "true" ziehen.
-    nginx.org/ssl-redirect: "false"
-    nginx.org/redirect-to-https: "false"
+    # mastodon-tls steht seit dem Cutover am 19.10.2026, daher "true" (wie goloom):
+    # Erneuerungen gehen trotz Redirect, weil LE ihm auf https folgt und das
+    # Secret dann existiert.
+    # ⚠️ Bei einer Neuausstellung ohne Secret (Namespace neu, Secret geloescht)
+    # vorher auf "false" stellen — sonst lehnt nginx-inc den TLS-Handshake ab und
+    # die HTTP-01-Challenge scheitert dauerhaft (gleiche Falle wie jitcloud, #169).
+    nginx.org/ssl-redirect: "true"
+    nginx.org/redirect-to-https: "true"
     nginx.org/websocket-services: "mastodon-streaming"
     # Medien-URLs /system/<pfad> auf den Bucket-Pfad abbilden. nginx-inc haengt den
     # Wert unveraendert an proxy_pass an (wie bei rewrite=/ fuer /push/): OHNE
