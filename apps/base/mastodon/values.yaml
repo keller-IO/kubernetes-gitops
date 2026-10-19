@@ -61,7 +61,7 @@ mastodon:
     existingSecret: mastodon-smtp
 
   web:
-    replicas: 1 # Cutover 23.09.2026: oeffentlicher Betrieb
+    replicas: 1 # Cutover 19.10.2026: oeffentlicher Betrieb
     resources:
       requests: { cpu: 200m, memory: 512Mi }
       limits: { memory: 2Gi }
@@ -77,7 +77,7 @@ mastodon:
       requests: { cpu: 200m, memory: 512Mi }
       limits: { memory: 2Gi }
   streaming:
-    replicas: 1 # Cutover 23.09.2026: oeffentlicher Betrieb
+    replicas: 1 # Cutover 19.10.2026: oeffentlicher Betrieb
     image:
       repository: ghcr.io/mastodon/mastodon-streaming
       tag: v4.5.18

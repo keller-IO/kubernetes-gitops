@@ -44,6 +44,12 @@ Dumps dürfen nicht dort abgelegt werden; Dumps direkt in den Cluster streamen.
   keinen CronJob dafür mit; der wöchentliche Cron des Altservers hat im Ziel
   kein Gegenstück. Ohne Ersatz wächst der Remote-Cache im RGW unbegrenzt.
   Eigener CronJob spätestens mit dem Cutover-PR, sonst füllt er Ceph.
+  **Umgesetzt (19.10.2026, Chart 1.2.5 bringt weiterhin keinen CronJob mit):**
+  `apps/base/mastodon/media-retention.yaml` mit drei CronJobs
+  (`mastodon-media-remove` täglich 03:30, `mastodon-preview-cards-remove` täglich
+  04:10, `mastodon-media-remove-orphans` sonntags 04:30, Europe/Berlin). Erster
+  Lauf nach dem Cutover manuell beobachten (`kubectl create job --from=cronjob/…`),
+  `remove-orphans` zuerst mit `--dry-run`.
   **Schärfer parametrisieren als auf dem Altserver:** dessen Cron läuft zwar
   (zuletzt 13.09. und 20.09.), trotzdem liegen dort 514.064 Cache-Dateien älter
   als 30 Tage. Ursache sind die Defaults — `media remove` fasst ohne

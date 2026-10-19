@@ -53,6 +53,7 @@ resources:
   - backup.yaml
   - media-backend.yaml
   - ingress.yaml
+  - media-retention.yaml
 
 generators:
   - ./secret-generator.yaml
