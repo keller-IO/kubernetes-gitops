@@ -1,0 +1,18 @@
+# jit.social liegt nicht im DNS-01-Selektor des ClusterIssuers (DNS bei Cloudflare)
+# und hat dort keinen HTTP-01-Solver. Eigener Issuer wie bei goloom; der Ingress
+# nutzt HTTP-01 edit-in-place, damit nginx-inc keinen zweiten Ingress fuer
+# denselben Host verwirft (docs/learnings/flurfunk-dns-and-http01-chain.md).
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: mastodon-letsencrypt
+  namespace: mastodon
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    privateKeySecretRef:
+      name: mastodon-letsencrypt-account
+    solvers:
+      - http01:
+          ingress:
+            ingressClassName: nginx

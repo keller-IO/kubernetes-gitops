@@ -13,7 +13,11 @@ metadata:
     app.kubernetes.io/component: cache
 spec:
   serviceName: mastodon-valkey
-  replicas: 0 # migration staging: start only after dump.rdb was restored to the PVC
+  # Cutover: startet NACH dem Einspielen von dump.rdb. appendonly bleibt hier
+  # bewusst "no" — erst wenn INFO persistence einen erfolgreichen AOF-Rewrite
+  # meldet, wird appendonly yes per Folge-PR festgeschrieben. Sonst kann ein
+  # leerer AOF den restaurierten RDB-Bestand ueberstimmen.
+  replicas: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: mastodon-valkey
@@ -46,11 +50,14 @@ spec:
             - name: valkey
               containerPort: 6379
           resources:
+            # Datenbestand aus mastodon02: 171 MB used_memory (116.133 Keys, RDB 92 MB,
+            # gemessen 19.10.2026). 256Mi waeren beim Laden und beim BGSAVE (fork,
+            # Copy-on-Write) ein OOM-Risiko -> 512Mi Limit.
             requests:
               cpu: 50m
-              memory: 64Mi
-            limits:
               memory: 256Mi
+            limits:
+              memory: 512Mi
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
