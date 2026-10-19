@@ -40,7 +40,19 @@ spec:
           # reads REDISCLI_AUTH automatically, so the readiness probe stays authed.
           # appendonlydir/ on the PVC exists since 2026-10-19, so a restart loads
           # the AOF (base RDB + incr). See the warning above for a fresh PVC.
-          args: ["--appendonly", "yes", "--requirepass", "$(REDISCLI_AUTH)"]
+          # appendfsync no: the kernel flushes the AOF (~30s). With everysec,
+          # slow ceph-rbd fsyncs blocked the single-threaded server and caused
+          # Redis::TimeoutError in web/sidekiq (19.10.2026). Trade-off: a crash
+          # can lose up to ~30s of writes (Sidekiq jobs) instead of ~1s.
+          args:
+            - "--appendonly"
+            - "yes"
+            - "--appendfsync"
+            - "no"
+            - "--no-appendfsync-on-rewrite"
+            - "yes"
+            - "--requirepass"
+            - "$(REDISCLI_AUTH)"
           env:
             - name: REDISCLI_AUTH
               valueFrom:
@@ -71,6 +83,9 @@ spec:
             exec:
               command: ["valkey-cli", "ping"]
             initialDelaySeconds: 5
+            # Short I/O stalls must not pull the only cache endpoint out of the Service.
+            timeoutSeconds: 5
+            failureThreshold: 3
           volumeMounts:
             - name: data
               mountPath: /data
