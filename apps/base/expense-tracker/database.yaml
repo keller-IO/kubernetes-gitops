@@ -13,6 +13,11 @@ spec:
     enablePodAntiAffinity: true
     podAntiAffinityType: required
     topologyKey: kubernetes.io/hostname
+  # Primary-Updates (Rolling Update nach Pod-Template-Aenderung) immer per
+  # Switchover. Default ist restart: der Primary wird dann in-place neu gestartet
+  # (19.10.2026: 1-6 min DB-Ausfall je Cluster nach der Affinity-Aenderung).
+  primaryUpdateMethod: switchover
+  primaryUpdateStrategy: unsupervised
   # Explizit gepinnt: ohne imageName waehlt der Operator seine Default-Version.
   # Die steht dann nicht in Git, Renovate sieht sie nicht, und ein
   # Operator-Bump wechselt die DB-Version ungefragt. 17.2 ist exakt das, was

@@ -16,6 +16,11 @@ spec:
     enablePodAntiAffinity: true
     podAntiAffinityType: required
     topologyKey: kubernetes.io/hostname
+  # Primary-Updates (Rolling Update nach Pod-Template-Aenderung) immer per
+  # Switchover. Default ist restart: der Primary wird dann in-place neu gestartet
+  # (19.10.2026: 1-6 min DB-Ausfall je Cluster nach der Affinity-Aenderung).
+  primaryUpdateMethod: switchover
+  primaryUpdateStrategy: unsupervised
   # Explizit gepinnt wie die uebrigen CNPG-Cluster: ohne imageName waehlt der
   # Operator seine Default-Version, und ein Operator-Bump wechselt sie ungefragt.
   imageName: ghcr.io/cloudnative-pg/postgresql:17.11 # renovate: image=ghcr.io/cloudnative-pg/postgresql

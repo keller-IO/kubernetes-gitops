@@ -62,6 +62,16 @@ denselben Cluster aktualisieren.
    DB-Ausfall laufen. Der SUC-Preflight erwartet weiterhin die staerkere
    HA-Stufe mit drei Instanzen; er kann daher bei einem Node mit einer
    Instanz weiter blockieren, bis das nachgewiesen oder bewusst bewertet ist.
+   Primary-Updates laufen ueber `primaryUpdateMethod: switchover` (mit
+   `primaryUpdateStrategy: unsupervised`), nicht per In-place-Restart. Bei nur
+   einer Instanz startet CNPG den Primary trotzdem direkt neu (kein Standby als
+   Ziel).
+
+   Lesson Learned (19.10.2026): Aenderungen am Pod-Template (Affinity,
+   Resources, Image) loesen ein Rolling Update aller Instanzen aus. Mit der
+   CNPG-Default-Methode `restart` wurde dabei jeder Primary in-place neu
+   gestartet und war 1-6 Minuten ausser Betrieb. Die Methode selbst ist nicht
+   Teil des Pod-Templates; sie vor solchen Aenderungen setzen.
 3. Vor zusaetzlichen Datenbankreplicas **N-1-Kapazitaet und Ceph-Kapazitaet**
    nachweisen. HA3 fuer alle neun CNPG-Cluster braucht zusaetzlich 6656 MiB
    RAM-Requests, 2600m CPU und 268 GiB logischen PVC-Speicher. Seit der
