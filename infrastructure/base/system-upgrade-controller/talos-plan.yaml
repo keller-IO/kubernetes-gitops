@@ -16,8 +16,8 @@ spec:
   postCompleteDelay: 5m
   serviceAccountName: talos-upgrade
   jobActiveDeadlineSecs: 5400
-  # Initial target matches kellerIO OpenTofu; never jump minor lines implicitly.
-  version: v1.13.11 # renovate: datasource=github-releases depName=siderolabs/talos versioning=semver
+  # Renovate proposes; a human merges. Never skip a minor line (preflight blocks it).
+  version: v1.14.4 # renovate: datasource=github-releases depName=siderolabs/talos versioning=semver
   nodeSelector:
     matchLabels:
       kubernetes.io/os: linux
@@ -37,7 +37,10 @@ spec:
   drain:
     force: false
     ignoreDaemonSets: true
-    deleteEmptydirData: false
+    # emptyDir is ephemeral by definition and is lost on every reschedule anyway.
+    # Live audit 19.10.2026: only tmp, caches, sockets and CNPG scratch/shm on
+    # the nodes; without this, practically every node blocks before cordon.
+    deleteEmptydirData: true
     timeout: 20m
     # No gracePeriod override: respect each workload's termination grace period.
     # No disableEviction: PDBs remain binding, including while a DB recovers.
@@ -85,7 +88,7 @@ spec:
       capabilities:
         drop: [ALL]
   upgrade:
-    image: ghcr.io/siderolabs/talosctl:v1.13.11
+    image: ghcr.io/siderolabs/talosctl:v1.14.4
     envs:
       - name: NODE_IP
         valueFrom:
@@ -99,7 +102,7 @@ spec:
       - -n
       - $(NODE_IP)
       - upgrade
-      - --image=factory.talos.dev/nocloud-installer/3abf06e1d81e509d779dc256f9feae6cd6d82c69337c661cbfc383a92594faf5:v1.13.11
+      - --image=factory.talos.dev/nocloud-installer/3abf06e1d81e509d779dc256f9feae6cd6d82c69337c661cbfc383a92594faf5:v1.14.4
       - --drain=false
       # On-node process cannot survive its own reboot. This acknowledges the
       # request only; prepare verifies recovery before the NEXT node can drain.
