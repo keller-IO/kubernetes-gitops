@@ -52,6 +52,7 @@ resources:
   - cache.yaml
   - backup.yaml
   - media-backend.yaml
+  - issuer.yaml
   - ingress.yaml
   - media-retention.yaml
 

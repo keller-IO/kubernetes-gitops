@@ -50,11 +50,14 @@ spec:
             - name: valkey
               containerPort: 6379
           resources:
+            # Datenbestand aus mastodon02: 171 MB used_memory (116.133 Keys, RDB 92 MB,
+            # gemessen 19.10.2026). 256Mi waeren beim Laden und beim BGSAVE (fork,
+            # Copy-on-Write) ein OOM-Risiko -> 512Mi Limit.
             requests:
               cpu: 50m
-              memory: 64Mi
-            limits:
               memory: 256Mi
+            limits:
+              memory: 512Mi
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
