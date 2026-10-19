@@ -340,6 +340,11 @@ alertmanager:
 - **CNPG** (roundcube, paperless, forgejo, mastodon, mailman): `backup.barmanObjectStore` im
   jeweiligen `database.yaml` (bzw. `postgres.yaml`) + `ScheduledBackup` in `backup.yaml`.
   Continuous WAL + base → PITR.
+- **Ausnahme mastodon-search (Elasticsearch 8.19):** bewusst ohne Backup. Der Index
+  ist aus Postgres per `tootctl search deploy` rekonstruierbar; die PVC (10Gi `ceph-rbd`)
+  trägt `Prune=false,Delete=false`. Security ist in ES abgeschaltet, Schutz = CiliumNetworkPolicy
+  `mastodon-search`; `node.store.allow_mmap=false` (kein `vm.max_map_count` auf Talos).
+  Mastodon wird erst in PR 2 angebunden, siehe `docs/runbooks/mastodon-migration.md`.
 - **MariaDB** (kimai, wordpress): `Backup` CR in `apps/base/<app>/backup.yaml` (logischer Dump).
 - **S3-Creds**: `<app>-backup-s3` Secret in jeder `secret.sops.yaml`.
 - **PVC-Checkpoints**: CSI-`VolumeSnapshot` für `ceph-rbd` ist mit

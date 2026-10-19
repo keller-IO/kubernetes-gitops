@@ -55,6 +55,8 @@ resources:
   - issuer.yaml
   - ingress.yaml
   - media-retention.yaml
+  - search.yaml
+  - search-network-policy.yaml
 
 generators:
   - ./secret-generator.yaml

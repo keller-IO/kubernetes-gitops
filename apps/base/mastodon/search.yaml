@@ -1,0 +1,147 @@
+# Elasticsearch 8.19 single node for Mastodon full-text search.
+# Mastodon >= 4.6 ships elasticsearch-ruby 8.19, which refuses OpenSearch, so we
+# run real Elasticsearch (decision 2026-10-19). Mastodon is NOT wired up yet
+# (values.yaml `elasticsearch.enabled: false`); see docs/runbooks/mastodon-migration.md.
+# The index is fully reconstructible from Postgres (`tootctl search deploy`),
+# therefore there is intentionally no Garage/S3 backup for it.
+# Security: xpack.security is off, protection is the CiliumNetworkPolicy in
+# search-network-policy.yaml (ingress 9200 only from Mastodon pods).
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mastodon-search
+  namespace: mastodon
+  labels:
+    app.kubernetes.io/name: mastodon-search
+    app.kubernetes.io/component: search
+spec:
+  serviceName: mastodon-search
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mastodon-search
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: mastodon-search
+        app.kubernetes.io/component: search
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      affinity:
+        nodeAffinity:
+          # wrk4 has only 8 GiB RAM (SystemOOM risk, see
+          # docs/learnings/mailman-whoosh-reindex-performance.md).
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values: ["kellerio-wrk4"]
+        podAntiAffinity:
+          # Prefer a node without Mastodon web/sidekiq so Rails and the 4 GiB
+          # ES heap+cache do not compete for the same memory.
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 50
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: mastodon
+                    app.kubernetes.io/part-of: rails
+      containers:
+        - name: elasticsearch
+          image: docker.elastic.co/elasticsearch/elasticsearch:8.19.23 # renovate: image=docker.elastic.co/elasticsearch/elasticsearch
+          env:
+            - name: cluster.name
+              value: mastodon
+            - name: discovery.type
+              value: single-node
+            - name: xpack.security.enabled
+              value: "false"
+            - name: xpack.security.http.ssl.enabled
+              value: "false"
+            - name: xpack.ml.enabled
+              value: "false"
+            # Talos nodes have a fixed vm.max_map_count; mmapfs would need 262144.
+            - name: node.store.allow_mmap
+              value: "false"
+            - name: bootstrap.memory_lock
+              value: "false"
+            # No outbound internet needed for the GeoIP database download.
+            - name: ingest.geoip.downloader.enabled
+              value: "false"
+            - name: ES_JAVA_OPTS
+              value: -Xms2g -Xmx2g
+          ports:
+            - name: http
+              containerPort: 9200
+          resources:
+            requests:
+              cpu: 500m
+              memory: 3Gi
+            limits:
+              memory: 4Gi
+          # No readOnlyRootFilesystem: ES writes config/elasticsearch.keystore at startup
+          # (verified: read-only root fails in KeyStoreWrapper.save) plus logs/tmp;
+          # tracked as known gap in scripts/ci/known-gaps/security.json.
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          startupProbe:
+            httpGet:
+              path: /_cluster/health?local=true
+              port: http
+            periodSeconds: 10
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /_cluster/health?local=true
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 6
+          volumeMounts:
+            - name: data
+              mountPath: /usr/share/elasticsearch/data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        annotations:
+          argocd.argoproj.io/sync-options: Prune=false,Delete=false
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        # Explicit, see docs/learnings/argocd-dauerhaft-outofsync.md.
+        volumeMode: Filesystem
+        storageClassName: ceph-rbd
+        resources:
+          requests:
+            storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mastodon-search
+  namespace: mastodon
+  labels:
+    app.kubernetes.io/name: mastodon-search
+    app.kubernetes.io/component: search
+spec:
+  selector:
+    app.kubernetes.io/name: mastodon-search
+  ports:
+    - name: http
+      port: 9200
+      targetPort: http

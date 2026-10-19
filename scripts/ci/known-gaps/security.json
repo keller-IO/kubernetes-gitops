@@ -320,6 +320,14 @@
     "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
   },
   {
+    "target": "apps_overlays_main_mastodon.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'elasticsearch' of StatefulSet 'mastodon-search' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Elasticsearch 8.19 writes config/elasticsearch.keystore at startup (tested: read-only root fails with KeyStoreWrapper.save); needs config emptyDir + init copy, follow-up."
+  },
+  {
     "target": "apps_overlays_main_matomo.yaml",
     "id": "KSV-0014",
     "message": "Container 'matomo' of Deployment 'matomo' should set 'securityContext.readOnlyRootFilesystem' to true",

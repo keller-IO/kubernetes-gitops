@@ -1,0 +1,27 @@
+# Ingress-only policy for the Elasticsearch pod (security is disabled in ES, this
+# is the access control). Deliberately NO egress section: a first egress rule
+# would put the endpoint into egress default-deny.
+# Allowed clients: Mastodon web/sidekiq (part-of=rails) and chart Job pods such
+# as `deploy-search` (tootctl search deploy), which only carry the Job controller
+# label, not the chart labels. Cilium allows kubelet probes (host) implicitly.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: mastodon-search
+  namespace: mastodon
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: mastodon-search
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: mastodon
+            app.kubernetes.io/instance: mastodon
+            app.kubernetes.io/part-of: rails
+        - matchLabels:
+            job-name: mastodon-deploy-search
+      toPorts:
+        - ports:
+            - port: "9200"
+              protocol: TCP
