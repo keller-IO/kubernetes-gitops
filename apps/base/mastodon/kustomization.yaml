@@ -6,7 +6,7 @@ namespace: mastodon
 helmCharts:
   - name: mastodon
     repo: https://mastodon.github.io/helm-charts
-    version: 1.2.5 # renovate: helm; appVersion 4.6.3 is intentionally overridden to the legacy 4.5.18
+    version: 1.2.5 # renovate: helm; appVersion 4.6.3 is intentionally overridden to 4.5.19 (4.5.x line)
     releaseName: mastodon
     namespace: mastodon
     valuesFile: values.yaml
