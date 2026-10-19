@@ -1,0 +1,105 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: monitoring-pg
+  namespace: monitoring-db
+spec:
+  instances: 2
+  # Wie alle CNPG-Cluster: Primary + Standby auf verschiedenen Nodes, Primary-
+  # Updates per Switchover (siehe paperless-ngx/database.yaml fuer die Herleitung).
+  affinity:
+    enablePodAntiAffinity: true
+    podAntiAffinityType: required
+    topologyKey: kubernetes.io/hostname
+  primaryUpdateMethod: switchover
+  primaryUpdateStrategy: unsupervised
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.2 # renovate: image=ghcr.io/cloudnative-pg/postgresql
+  # Noch nicht gemessen (neuer Cluster). Startwerte wie die anderen kleinen
+  # Cluster (paperless-pg ~108Mi gemessen); nach einer Woche Betrieb an
+  # `kubectl top` anpassen.
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+  storage:
+    size: 5Gi
+    storageClass: ceph-rbd # CNPG-Feld heißt storageClass (nicht storageClassName)
+  # initdb legt nur die erste DB an. gatus_public und kite kommen ueber
+  # managed.roles + Database-CRs unten, damit weitere Tools ohne Neuaufbau
+  # dazukommen koennen.
+  bootstrap:
+    initdb:
+      database: gatus
+      owner: gatus
+      secret:
+        name: monitoring-pg-gatus
+  # connectionLimit/inherit explizit: der CNPG-Webhook setzt diese Defaults,
+  # roles ist eine atomare Liste, und ArgoCDs Diff kennt die Defaults nicht —
+  # ohne sie bliebe der Cluster dauerhaft OutOfSync (19.10.2026).
+  managed:
+    roles:
+      - name: gatus_public
+        ensure: present
+        login: true
+        inherit: true
+        connectionLimit: -1
+        passwordSecret:
+          name: monitoring-pg-gatus-public
+      - name: kite
+        ensure: present
+        login: true
+        inherit: true
+        connectionLimit: -1
+        passwordSecret:
+          name: monitoring-pg-kite
+  # Backup nach Garage-S3 in den eigenen Bucket backup-monitoring-db (Key
+  # backup-monitoring-db, RW nur auf diesen Bucket, Quota 20 GiB), Pfad cnpg/.
+  # Schema siehe docs/runbooks/backup-restore.md, Abschnitt Secrets.
+  backup:
+    retentionPolicy: "30d"
+    barmanObjectStore:
+      destinationPath: s3://backup-monitoring-db/cnpg/
+      endpointURL: http://192.168.23.21:3900
+      s3Credentials:
+        accessKeyId: { name: monitoring-db-backup-s3, key: ACCESS_KEY_ID }
+        secretAccessKey: { name: monitoring-db-backup-s3, key: SECRET_ACCESS_KEY }
+        region: { name: monitoring-db-backup-s3, key: region } # Garage erzwingt Region-Match bei HeadBucket
+      wal: { compression: gzip }
+      data: { compression: gzip }
+  monitoring:
+    enablePodMonitor: true
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: monitoring-pg
+  namespace: monitoring-db
+spec:
+  schedule: "0 30 2 * * *" # 6-field (CNPG = Sekunden zuerst): taeglich 02:30, versetzt zu den uebrigen
+  backupOwnerReference: self
+  cluster:
+    name: monitoring-pg
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: monitoring-pg-gatus-public
+  namespace: monitoring-db
+spec:
+  cluster:
+    name: monitoring-pg
+  name: gatus_public
+  owner: gatus_public
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: monitoring-pg-kite
+  namespace: monitoring-db
+spec:
+  cluster:
+    name: monitoring-pg
+  name: kite
+  owner: kite

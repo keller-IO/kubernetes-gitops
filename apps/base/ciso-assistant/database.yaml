@@ -4,7 +4,20 @@ metadata:
   name: ciso-assistant-pg
   namespace: ciso-assistant
 spec:
-  instances: 1 # 3 fuer HA
+  instances: 2
+  # Zwei Instanzen (Primary + Standby), damit ein Node-Drain (Talos-Upgrade) per
+  # Switchover statt als DB-Ausfall laeuft. required: Standby landet nie auf dem
+  # Node des Primary (5 Worker, daher erfuellbar). Der SUC-Preflight erwartet
+  # fuer volle Drain-Sicherheit weiterhin 3 Instanzen.
+  affinity:
+    enablePodAntiAffinity: true
+    podAntiAffinityType: required
+    topologyKey: kubernetes.io/hostname
+  # Primary-Updates (Rolling Update nach Pod-Template-Aenderung) immer per
+  # Switchover. Default ist restart: der Primary wird dann in-place neu gestartet
+  # (19.10.2026: 1-6 min DB-Ausfall je Cluster nach der Affinity-Aenderung).
+  primaryUpdateMethod: switchover
+  primaryUpdateStrategy: unsupervised
   # Explizit gepinnt: ohne imageName waehlt der Operator seine Default-Version.
   # Die steht dann nicht in Git, Renovate sieht sie nicht, und ein
   # Operator-Bump wechselt die DB-Version ungefragt. 17.2 wie bei den

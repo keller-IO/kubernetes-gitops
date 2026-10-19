@@ -14,7 +14,7 @@ ausdruecklich nicht als Vorlage uebernommen.
 | Controller-Anti-Affinitaet selektierte die eigenen Upgrade-Jobs | Separate App-Labels; Anti-Affinitaet nur fuer Component `controller`; kein `exclusive` |
 | Nicht veroeffentlichter Image-Tag wurde durch Cache verdeckt | Manifest-Ref und Image beide SUC v0.20.2; reale Registry-Inspection bei Implementierung; CI prueft Gleichheit |
 | Naechster Drain begann vor Replica-/Storage-Recovery | Ein gemeinsamer Plan mit `concurrency: 1`, 5 Minuten Pause, zusaetzlich 60 Sekunden fortlaufend gesundes Prepare |
-| Nur ein Standby war gerade selbst im Restart; CNPG fand einmalig keinen Kandidaten | Gate verlangt >=3 Instanzen, harte Streuung, aktive PDBs, alle Replicas Ready und abgeschlossenen Switchover |
+| Nur ein Standby war gerade selbst im Restart; CNPG fand einmalig keinen Kandidaten | Gate verlangt >=2 Instanzen (bis 19.10.2026: >=3), harte Streuung, aktive PDBs, alle Replicas Ready und abgeschlossenen Switchover; der naechste Drain wartet, bis die evictete Instanz wieder Ready ist |
 | Singletons blockieren den Primary-Drain | Im Git-Stand vorhanden; Aktivierung bleibt blockiert. Erst Kapazitaet messen und HA separat ausrollen; keine PDB-Abschaltung als Abkuerzung |
 | Zwei Instanzen desselben Clusters auf einem Node verursachten Failover-Sturm | Harte Anti-Affinitaet ist Prepare-Voraussetzung, `failoverDelay: 30` ist Teil der Abnahme |
 | CNPG vertagt Reconciliation bei Primary auf cordoned Node | Recovery: Updater und laufenden Job anhalten, Zustand pruefen, dann kontrolliert uncordonen; keine blinde PVC-Loeschung |
@@ -42,6 +42,11 @@ Datenbanken vor **jedem** Node-Update HA3 brauchen: keine Instanz laeuft auf ein
 Control-Plane. HA und harte Streuung werden deshalb nur fuer Cluster geprueft,
 deren Instanz der konkrete Drain betrifft. Alle DBs muessen weiterhin global
 gesund sein. Eine schon vorhandene Wartung (wrk4 cordoned) blockiert weiter.
+
+**Korrektur 19.10.2026:** Eine Live-Simulation des Preflights ergab, dass mit
+`deleteEmptydirData: false` jeder Worker und cp2 vor dem Cordon blockieren
+(tmp, CSI-Sockets, CNPG `scratch-data`/`shm`). Die Option ist deshalb an; die
+folgende Pruefung greift nur noch, falls sie wieder abgeschaltet wird.
 
 `deleteEmptydirData: false` verhindert Datenverlust, kann aber selbst
 Standard-Pods mit `/tmp` oder CSI-Unix-Sockets nicht drainieren. Allein der

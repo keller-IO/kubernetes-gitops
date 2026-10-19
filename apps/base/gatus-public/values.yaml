@@ -19,7 +19,18 @@ ingress:
       hosts:
         - status.jit-creatives.de
 
+# GATUS_DB_PASSWORD fuer monitoring-pg (db-secret.sops.yaml).
+envFrom:
+  - secretRef:
+      name: gatus-public-db
+
 config:
+  # Ergebnisse und Uptime-Historie in Postgres (gemeinsamer Cluster monitoring-pg,
+  # ADR 0008). Eigene Rolle gatus_public, kein Zugriff auf die anderen DBs.
+  # Ohne storage ging bei jedem Pod-Neustart die oeffentliche Historie verloren.
+  storage:
+    type: postgres
+    path: postgres://gatus_public:${GATUS_DB_PASSWORD}@monitoring-pg-rw.monitoring-db.svc.cluster.local:5432/gatus_public?sslmode=require
   ui:
     title: JIT Creatives Status
     header: JIT Creatives

@@ -1,0 +1,190 @@
+# Einmal-Migration SQLite -> Postgres als ArgoCD-PreSync-Hooks (Muster aus
+# goloom #272, docs/learnings/goloom-sqlite-nach-postgres.md). Sie laufen VOR
+# dem Sync, der Kite auf db.type=postgres umstellt:
+#
+#   Wave -2  kite-pg-stop     Kite auf 0 skalieren und warten, bis der Pod weg ist
+#   Wave -1  kite-pg-migrate  SQLite read-only exportieren, in einer Transaktion importieren
+#   Sync                      Deployment mit replicas: 1 auf Postgres (monitoring-pg)
+#
+# Beide sind idempotent: existiert public._kite_sqlite_import, stoppt der erste
+# Hook die App nicht und der Import endet sofort. Scheitert der Import, rollt er
+# komplett zurueck, der Sync bricht ab und kite.db bleibt unveraendert auf der
+# PVC kite-storage — Rueckweg: Umstellungs-PR revertieren. Nach der Umstellung
+# wieder entfernen.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kite-pg-stop
+  namespace: kite
+  labels:
+    app.kubernetes.io/name: kite
+    app.kubernetes.io/component: pg-migration
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/sync-wave: "-2"
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 1
+  activeDeadlineSeconds: 600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kite
+        app.kubernetes.io/component: pg-migration
+    spec:
+      restartPolicy: Never
+      serviceAccountName: kite-pg-migrate
+      automountServiceAccountToken: true
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile: { type: RuntimeDefault }
+      initContainers:
+        - name: check
+          image: ghcr.io/cloudnative-pg/postgresql:17.2 # renovate: image=ghcr.io/cloudnative-pg/postgresql
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              set -euo pipefail
+              for i in $(seq 1 60); do pg_isready -q -d "$DATABASE_URL" && break; echo "warte auf Postgres ($i)"; sleep 5; done
+              if [ "$(psql "$DATABASE_URL" -Atc "select to_regclass('public._kite_sqlite_import') is not null")" = t ]; then
+                echo "Migration bereits erfolgt, App wird nicht gestoppt"; touch /work/skip
+              fi
+          env:
+            - { name: HOME, value: /tmp }
+            - name: DATABASE_URL
+              valueFrom: { secretKeyRef: { name: kite-db, key: DB_DSN } }
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+            limits: { memory: 128Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          volumeMounts:
+            - { name: work, mountPath: /work }
+            - { name: tmp, mountPath: /tmp }
+      containers:
+        - name: stop
+          image: curlimages/curl:8.17.0 # renovate: image=curlimages/curl
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -eu
+              if [ -e /work/skip ]; then exit 0; fi
+              SA=/var/run/secrets/kubernetes.io/serviceaccount
+              API=https://kubernetes.default.svc/apis/apps/v1/namespaces/kite/deployments/kite/scale
+              curl -sS --fail --cacert $SA/ca.crt -H "Authorization: Bearer $(cat $SA/token)" \
+                -X PATCH -H 'Content-Type: application/merge-patch+json' \
+                -d '{"spec":{"replicas":0}}' "$API" -o /dev/null
+              echo "kite auf 0 skaliert, warte auf Pod-Ende"
+              SEL='app.kubernetes.io/name%3Dkite%2Capp.kubernetes.io/instance%3Dkite'
+              # Nur nicht beendete Pods zaehlen: Pods in Phase Succeeded/Failed (z. B.
+              # nach einem Node-Ausfall stehen gebliebene) verschwinden nie von selbst
+              # und hielten die Schleife sonst bis zur Deadline fest (19.10.2026).
+              for i in $(seq 1 100); do
+                n=$(curl -sS --fail --cacert $SA/ca.crt -H "Authorization: Bearer $(cat $SA/token)" \
+                  "https://kubernetes.default.svc/api/v1/namespaces/kite/pods?labelSelector=$SEL" \
+                  | grep -o '"phase": *"[A-Za-z]*"' | grep -vcE 'Succeeded|Failed' || true)
+                [ "$n" -eq 0 ] && { echo "App gestoppt"; exit 0; }
+                sleep 3
+              done
+              echo "App-Pod nach 300 s noch vorhanden"; exit 1
+          resources:
+            requests: { cpu: 10m, memory: 16Mi }
+            limits: { memory: 64Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          volumeMounts:
+            - { name: work, mountPath: /work }
+      volumes:
+        - { name: work, emptyDir: { sizeLimit: 1Mi } }
+        - { name: tmp, emptyDir: { sizeLimit: 16Mi } }
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kite-pg-migrate
+  namespace: kite
+  labels:
+    app.kubernetes.io/name: kite
+    app.kubernetes.io/component: pg-migration
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/sync-wave: "-1"
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 900
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kite
+        app.kubernetes.io/component: pg-migration
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      # kite-storage ist RWO und wird nach der Umstellung von keinem Pod mehr
+      # gemountet. Beim ersten Lauf ist Kite gestoppt; spaetere Laeufe enden im
+      # Import-Container sofort am Marker.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile: { type: RuntimeDefault }
+      initContainers:
+        - name: export
+          image: keinos/sqlite3:3.53.4 # renovate: image=keinos/sqlite3
+          command: ["/bin/sh", "/migration/export.sh"]
+          env:
+            - { name: HOME, value: /tmp }
+            - { name: SQLITE_DB, value: /data/kite.db }
+            - { name: EXPORT_DIR, value: /migrate }
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { memory: 512Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          volumeMounts:
+            # Read-only: kite.db bleibt als Rueckfallstand unangetastet. Kite
+            # schreibt mit journal_mode=delete, ein Lesen braucht keine -shm.
+            - { name: data, mountPath: /data, readOnly: true }
+            - { name: migrate, mountPath: /migrate }
+            - { name: scripts, mountPath: /migration, readOnly: true }
+            - { name: tmp, mountPath: /tmp }
+      containers:
+        - name: import
+          image: ghcr.io/cloudnative-pg/postgresql:17.2 # renovate: image=ghcr.io/cloudnative-pg/postgresql
+          command: ["/bin/bash", "/migration/import.sh"]
+          env:
+            - { name: HOME, value: /tmp }
+            - { name: EXPORT_DIR, value: /migrate }
+            - { name: SQL_DIR, value: /migration }
+            - name: DATABASE_URL
+              valueFrom: { secretKeyRef: { name: kite-db, key: DB_DSN } }
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { memory: 512Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          volumeMounts:
+            - { name: migrate, mountPath: /migrate, readOnly: true }
+            - { name: scripts, mountPath: /migration, readOnly: true }
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: kite-storage
+            readOnly: true
+        - { name: migrate, emptyDir: { sizeLimit: 256Mi } }
+        - { name: tmp, emptyDir: { sizeLimit: 64Mi } }
+        - name: scripts
+          configMap:
+            name: kite-pg-migration

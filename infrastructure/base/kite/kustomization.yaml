@@ -10,8 +10,30 @@ helmCharts:
     namespace: kite
     valuesFile: values.yaml
 
+resources:
+  - pvc.yaml
+  # Einmal-Migration SQLite -> Postgres. Nach der Umstellung entfernen.
+  - migration/rbac.yaml
+  - migration/hooks.yaml
+
 generators:
   - ./secret-generator.yaml
+
+# Skripte lokal gegen Kite v0.16.0 getestet (SQLite mit Testdaten -> Postgres
+# 17.2, danach Login, Secret-Entschluesselung und neue Inserts geprueft).
+# Ebenfalls PreSync-Hook (Wave -3), damit die Skripte vor den Jobs existieren.
+configMapGenerator:
+  - name: kite-pg-migration
+    options:
+      annotations:
+        argocd.argoproj.io/hook: PreSync
+        argocd.argoproj.io/sync-wave: "-3"
+        argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    files:
+      - migration/export.sh
+      - migration/import.sh
+      - migration/import.sql
+      - postgres-schema.sql=migration/postgres-schema-v0.16.0.sql
 
 # startupProbe nachruesten. Das Chart (0.15.0) kennt keinen startupProbe-Schluessel in
 # values.yaml — ein Eintrag dort wird still ignoriert, geprueft per kustomize build.

@@ -1,0 +1,51 @@
+# Einmal-Migration SQLite -> Postgres: Der PreSync-Hook kite-pg-stop stoppt die
+# SQLite-App, bevor exportiert wird. Er darf nur das Deployment kite skalieren
+# und Pods im Namespace lesen. Wird nach der Umstellung wieder entfernt.
+# Selbst PreSync-Hooks (Wave -3): normale Ressourcen entstehen erst in der
+# Sync-Phase, also NACH den Hooks, die sie brauchen.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kite-pg-migrate
+  namespace: kite
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/sync-wave: "-3"
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: kite-pg-migrate
+  namespace: kite
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/sync-wave: "-3"
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+rules:
+  - apiGroups: [apps]
+    resources: [deployments, deployments/scale]
+    resourceNames: [kite]
+    verbs: [get, patch]
+  - apiGroups: [""]
+    resources: [pods]
+    verbs: [list]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kite-pg-migrate
+  namespace: kite
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/sync-wave: "-3"
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: kite-pg-migrate
+subjects:
+  - kind: ServiceAccount
+    name: kite-pg-migrate
+    namespace: kite

@@ -4,10 +4,20 @@ metadata:
   name: mastodon-pg
   namespace: mastodon
 spec:
-  # Eine Instanz wie bei allen anderen CNPG-Clustern; Absicherung ueber das
-  # kontinuierliche WAL-Archiv nach Garage. Drei Instanzen wuerden RAM und
-  # Ceph-Belegung verdreifachen — erst nach der Migration neu bewerten.
-  instances: 1
+  instances: 2
+  # Zwei Instanzen (Primary + Standby), damit ein Node-Drain (Talos-Upgrade) per
+  # Switchover statt als DB-Ausfall laeuft. required: Standby landet nie auf dem
+  # Node des Primary (5 Worker, daher erfuellbar). Der SUC-Preflight erwartet
+  # fuer volle Drain-Sicherheit weiterhin 3 Instanzen.
+  affinity:
+    enablePodAntiAffinity: true
+    podAntiAffinityType: required
+    topologyKey: kubernetes.io/hostname
+  # Primary-Updates (Rolling Update nach Pod-Template-Aenderung) immer per
+  # Switchover. Default ist restart: der Primary wird dann in-place neu gestartet
+  # (19.10.2026: 1-6 min DB-Ausfall je Cluster nach der Affinity-Aenderung).
+  primaryUpdateMethod: switchover
+  primaryUpdateStrategy: unsupervised
   # Explizit gepinnt: PG 16 wie die Bestandsinstanz (16.14), Restore per
   # logischem Dump. Kein Major-Wechsel waehrend der Migration.
   imageName: ghcr.io/cloudnative-pg/postgresql:16.14-202607270908-system-bookworm@sha256:0fd578912f7786e218b7ed223458824236c03084f38030563b274865679ecd62
