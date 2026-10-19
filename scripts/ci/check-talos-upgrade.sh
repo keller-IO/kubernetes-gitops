@@ -26,6 +26,9 @@ jq -e '
     (.spec.drain.disableEviction // false) == false and
     (.spec.drain | has("gracePeriod") | not) and
     .spec.secrets[0].ignoreUpdates == true and
+    .spec.secrets[0].name == "talosconfig" and
+    .spec.secrets[0].path == "/var/run/secrets/talos.dev" and
+    (.spec.upgrade.args | index("--talosconfig=/var/run/secrets/talos.dev/config") != null) and
     .spec.prepare.command == ["python3", "-c"] and
     .spec.prepare.args == ["$(PREFLIGHT_SCRIPT)"] and
     any(.spec.prepare.envs[]; .name == "PREFLIGHT_SCRIPT" and
@@ -42,7 +45,12 @@ jq -e '
     .spec.upgrade.image == ("ghcr.io/siderolabs/talosctl:" + $version) and
     any(.spec.upgrade.args[]; startswith("--image=factory.talos.dev/nocloud-installer/") and endswith(":" + $version)))) and
   any(.[]; .kind == "ConfigMap" and .metadata.name == "talos-upgrade-preflight" and
-    (.data["preflight.py"] | contains("wait_until_safe"))) and
+    (.data["preflight.py"] | contains("wait_until_safe")) and
+    (.data["preflight.py"] | contains("\"/var/run/secrets/talos.dev/config\""))) and
+  ([.[] | select(.apiVersion == "talos.dev/v1alpha1" and .kind == "ServiceAccount")] | length == 1) and
+  any(.[]; .apiVersion == "talos.dev/v1alpha1" and .kind == "ServiceAccount" and
+    .metadata.name == "talosconfig" and .metadata.namespace == "system-upgrade-controller" and
+    .spec.roles == ["os:admin"]) and
   any(.[]; .kind == "ConfigMap" and .metadata.name == "default-controller-env" and
     .data.SYSTEM_UPGRADE_JOB_IMAGE_PULL_POLICY == "IfNotPresent" and
     .data.SYSTEM_UPGRADE_JOB_PRIVILEGED == "false") and

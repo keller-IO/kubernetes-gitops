@@ -192,7 +192,8 @@ def main():
     target = os.environ["SYSTEM_UPGRADE_PLAN_LATEST_VERSION"]
     if not re.fullmatch(r"v\d+\.\d+\.\d+", target):
         raise ValueError("target must be a stable Talos version")
-    credential = Path("/var/run/secrets/talos.dev/talosconfig")
+    # Key `config` of the Secret Talos issues for the talos.dev ServiceAccount.
+    credential = Path("/var/run/secrets/talos.dev/config")
     if not credential.is_file() or not credential.read_bytes().strip():
         raise RuntimeError("talosconfig credential missing; refusing to drain")
     wait_until_safe(API().snapshot, target, os.environ["POD_NAMESPACE"], os.environ["NODE_NAME"])

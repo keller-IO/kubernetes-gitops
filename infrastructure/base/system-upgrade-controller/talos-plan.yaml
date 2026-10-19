@@ -25,7 +25,9 @@ spec:
       keller.io/talos-upgrade: enabled
   cordon: true
   secrets:
-    # Externally provisioned mTLS config; no plaintext or credentials in Git.
+    # Issued and rotated by Talos itself for the talos.dev ServiceAccount
+    # `talosconfig` (talos-serviceaccount.yaml); the Secret key is `config`.
+    # No plaintext or credentials in Git.
     - name: talosconfig
       path: /var/run/secrets/talos.dev
       # Credential rotation must not hash into a fresh whole-cluster upgrade.
@@ -91,7 +93,7 @@ spec:
             fieldPath: status.hostIP
     command: [/talosctl]
     args:
-      - --talosconfig=/var/run/secrets/talos.dev/talosconfig
+      - --talosconfig=/var/run/secrets/talos.dev/config
       - -e
       - $(NODE_IP)
       - -n
