@@ -56,6 +56,12 @@ denselben Cluster aktualisieren.
    Keine DB-Instanz laeuft auf Control-Planes; deren Update verlangt deshalb
    keine pauschale Worker-DB-Skalierung. Fuenf MariaDB-Singletons bleiben ein
    separates Unterbrechungsrisiko fuer Worker-Updates.
+   Stand 19.10.2026 laufen alle neun CNPG-Cluster per GitOps mit
+   `instances: 2` und `podAntiAffinityType: required` (Primary und Standby auf
+   verschiedenen Nodes), damit Worker-Drains per Switchover statt als
+   DB-Ausfall laufen. Der SUC-Preflight erwartet weiterhin die staerkere
+   HA-Stufe mit drei Instanzen; er kann daher bei einem Node mit einer
+   Instanz weiter blockieren, bis das nachgewiesen oder bewusst bewertet ist.
 3. Vor zusaetzlichen Datenbankreplicas **N-1-Kapazitaet und Ceph-Kapazitaet**
    nachweisen. HA3 fuer alle neun CNPG-Cluster braucht zusaetzlich 6656 MiB
    RAM-Requests, 2600m CPU und 268 GiB logischen PVC-Speicher. Seit der
