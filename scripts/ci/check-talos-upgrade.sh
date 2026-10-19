@@ -22,7 +22,7 @@ jq -e '
     .spec.nodeSelector.matchLabels["keller.io/talos-upgrade"] == "enabled" and
     .spec.serviceAccountName == "talos-upgrade" and
     .spec.drain.force == false and .spec.drain.ignoreDaemonSets == true and
-    .spec.drain.deleteEmptydirData == false and .spec.drain.timeout == "20m" and
+    .spec.drain.deleteEmptydirData == true and .spec.drain.timeout == "20m" and
     (.spec.drain.disableEviction // false) == false and
     (.spec.drain | has("gracePeriod") | not) and
     .spec.secrets[0].ignoreUpdates == true and

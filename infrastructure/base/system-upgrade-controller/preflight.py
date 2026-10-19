@@ -70,10 +70,13 @@ def blockers(state, target, node_name):
         affected = any(pod.get("spec", {}).get("nodeName") == node_name for pod in db_pods)
         # HA is required only where this drain evicts a DB instance. A control
         # plane without DB Pods must not require scaling unrelated worker DBs.
-        if affected and (spec.get("instances", 0) < 3 or spec.get("enablePDB", True) is not True
+        # Two instances suffice: the drain switches over to the standby, and
+        # concurrency 1 plus the global "all replicas Ready" gate keeps the next
+        # drain away until the evicted instance has rejoined.
+        if affected and (spec.get("instances", 0) < 2 or spec.get("enablePDB", True) is not True
                 or spec.get("affinity", {}).get("podAntiAffinityType") != "required"
                 or spec.get("affinity", {}).get("enablePodAntiAffinity", True) is not True):
-            errors.append(f"CNPG {name}: require >=3 instances, required spreading and PDBs")
+            errors.append(f"CNPG {name}: require >=2 instances, required spreading and PDBs")
         if (not ready(db) or status.get("readyInstances") != spec.get("instances")
                 or not status.get("currentPrimary")
                 or status.get("targetPrimary") != status.get("currentPrimary")):

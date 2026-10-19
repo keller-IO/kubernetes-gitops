@@ -294,7 +294,7 @@
       "overridePackageName": "siderolabs/talos"
     },
     {
-      "description": "Keep Plan, talosctl and installer in one patch release on the reviewed 1.13 line; advancing a minor requires a separate reviewed compatibility change.",
+      "description": "Talos OS updates are proposed by Renovate and merged only by a human; the merge starts the SUC rollout. Plan, talosctl and installer move together. Patch and minor arrive as separate PRs and one PR per minor line, because Talos must not skip a minor (the preflight also blocks it).",
       "matchFileNames": [
         "infrastructure/base/system-upgrade-controller/**"
       ],
@@ -303,25 +303,11 @@
         "ghcr.io/siderolabs/talosctl"
       ],
       "groupName": "infrastructure/talos",
-      "allowedVersions": "/^v?1\\.13\\.\\d+$/",
+      "allowedVersions": "/^v?1\\.\\d+\\.\\d+$/",
+      "separateMinorPatch": true,
+      "separateMultipleMinor": true,
       "minimumReleaseAge": "7 days",
       "automerge": false
-    },
-    {
-      "description": "Automerge Talos patches only after seven days and required CI; component defaults keep every other upgrade manual.",
-      "matchFileNames": [
-        "infrastructure/base/system-upgrade-controller/**"
-      ],
-      "matchPackageNames": [
-        "siderolabs/talos",
-        "ghcr.io/siderolabs/talosctl"
-      ],
-      "matchUpdateTypes": [
-        "patch"
-      ],
-      "platformAutomerge": false,
-      "ignoreTests": false,
-      "automerge": true
     }
   ],
   "argocd": {
