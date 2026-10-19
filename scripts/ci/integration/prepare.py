@@ -74,6 +74,11 @@ return hs
         "namespace": "gatus", "helmCharts": [gatus_chart], "generators": ["secret-generator.yaml"]})
     gatus_secret = secret("gatus-oidc", "gatus", {"OIDC_CLIENT_SECRET": "ci-only", "WATCHDOG_TOKEN": "ci-only"})
     encrypted(output / "gatus/secret.sops.yaml", gatus_secret, recipient)
+    # Production envFrom references gatus-db (Postgres in monitoring-pg). The pilot
+    # config above has no storage block, so Gatus stays in-memory and only needs
+    # the Secret to exist.
+    encrypted(output / "gatus/db-secret.sops.yaml",
+              secret("gatus-db", "gatus", {"GATUS_DB_PASSWORD": "ci-only"}), recipient)
 
     goloom = load(root / "apps/base/goloom/values.yaml")
     if goloom["database"]["type"] != "postgres":
@@ -106,7 +111,7 @@ return hs
         "apiVersion": "kustomize.config.k8s.io/v1beta1", "kind": "Kustomization",
         "namespace": "goloom", "resources": ["namespace.yaml", "service-account.yaml", "database.yaml", "pvc.yaml"],
         "generators": ["secret-generator.yaml"]})
-    for directory, files in ((output / "gatus", ["secret.sops.yaml"]),
+    for directory, files in ((output / "gatus", ["secret.sops.yaml", "db-secret.sops.yaml"]),
                              (local, ["secret.sops.yaml", "db-app.sops.yaml"])):
         write(directory / "secret-generator.yaml", {"apiVersion": "viaduct.ai/v1", "kind": "ksops",
               "metadata": {"name": "ci-secrets", "annotations": {
