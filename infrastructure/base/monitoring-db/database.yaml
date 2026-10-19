@@ -47,13 +47,33 @@ spec:
         login: true
         passwordSecret:
           name: monitoring-pg-kite
-  # KEIN Backup nach Garage-S3 (bewusste, befristete Luecke, siehe ADR 0008):
-  # Das S3-Secret laesst sich ohne SOPS-Empfaengerschluessel nicht aus einem
-  # bestehenden Namespace uebernehmen. Ein Platzhalter-Archive-Target wuerde
-  # WALs stauen, bis die Disk voll ist. Nachziehen: barmanObjectStore nach
-  # s3://backups/cnpg-monitoring/ + ScheduledBackup (wie paperless-ngx).
+  # Backup nach Garage-S3 in den eigenen Bucket backup-monitoring-db (Key
+  # backup-monitoring-db, RW nur auf diesen Bucket, Quota 20 GiB), Pfad cnpg/.
+  # Schema siehe docs/runbooks/backup-restore.md, Abschnitt Secrets.
+  backup:
+    retentionPolicy: "30d"
+    barmanObjectStore:
+      destinationPath: s3://backup-monitoring-db/cnpg/
+      endpointURL: http://192.168.23.21:3900
+      s3Credentials:
+        accessKeyId: { name: monitoring-db-backup-s3, key: ACCESS_KEY_ID }
+        secretAccessKey: { name: monitoring-db-backup-s3, key: SECRET_ACCESS_KEY }
+        region: { name: monitoring-db-backup-s3, key: region } # Garage erzwingt Region-Match bei HeadBucket
+      wal: { compression: gzip }
+      data: { compression: gzip }
   monitoring:
     enablePodMonitor: true
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: monitoring-pg
+  namespace: monitoring-db
+spec:
+  schedule: "0 30 2 * * *" # 6-field (CNPG = Sekunden zuerst): taeglich 02:30, versetzt zu den uebrigen
+  backupOwnerReference: self
+  cluster:
+    name: monitoring-pg
 ---
 apiVersion: postgresql.cnpg.io/v1
 kind: Database

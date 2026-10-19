@@ -1,6 +1,6 @@
 # ADR 0008 — Gemeinsamer CNPG-Cluster für Monitoring-Tools
 
-- **Status:** Angenommen, Backup offen
+- **Status:** Angenommen
 - **Datum:** 2026-10-19
 
 ## Kontext
@@ -49,14 +49,15 @@ Ein gemeinsamer Cluster `monitoring-pg` im Namespace `monitoring-db`
 - Ein Restore wirkt auf alle drei DBs gleichzeitig (Point-in-Time pro Cluster).
 - Ein Postgres-Major-Upgrade gilt für alle Nutzer gleichzeitig.
 
-## Offen: Backup
+## Backup
 
-Der Cluster läuft vorerst **ohne** Garage-S3-Backup. Das S3-Secret kann nur
-jemand mit einem SOPS-Empfängerschlüssel aus einem bestehenden Namespace
-übernehmen. Ein Platzhalter-Archive-Target würde WALs stauen, bis die Disk voll
-ist. Nachziehen: Secret `monitoring-backup-s3` anlegen, dann `backup.barmanObjectStore`
-(`s3://backups/cnpg-monitoring/`, 30d) und ein `ScheduledBackup` wie bei
-`paperless-ngx`.
+Nach dem Schema aus `docs/runbooks/backup-restore.md` bekommt der Cluster einen
+eigenen Garage-Bucket `backup-monitoring-db` (Quota 20 GiB) und einen eigenen
+Key `backup-monitoring-db`, der nur auf diesem Bucket lesen und schreiben darf.
+CNPG archiviert WAL kontinuierlich nach `s3://backup-monitoring-db/cnpg/`
+(Retention 30d), dazu kommt täglich um 02:30 ein Base-Backup (`ScheduledBackup`).
+Die Zugangsdaten liegen im SOPS-Secret `monitoring-db-backup-s3`. Ein Restore
+stellt alle drei Datenbanken gemeinsam wieder her (siehe Konsequenzen).
 
 ## Folgeschritt: Kite
 
