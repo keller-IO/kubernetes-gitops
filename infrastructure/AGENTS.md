@@ -4,7 +4,7 @@
 Cluster-wide platform services. Everything apps depend on.
 
 ## Ownership
-Owns `base/<component>/` dirs (argocd, cilium, ingress-nginx, cert-manager, cnpg, mariadb-operator, authentik, monitoring, storage, kubernetes-mcp, crowdsec, netbird, metrics-server). Cache (Valkey) runs as a standalone instance per app under `apps/base/*/cache.yaml` (no operator). Authentik manifests are legacy migration leftovers and are excluded from the infrastructure ApplicationSet; new OIDC work targets external Keycloak.
+Owns `base/<component>/` dirs (argocd, cilium, ingress-nginx, cert-manager, cnpg, mariadb-operator, authentik, monitoring, monitoring-db, storage, kubernetes-mcp, crowdsec, netbird, metrics-server). Cache (Valkey) runs as a standalone instance per app under `apps/base/*/cache.yaml` (no operator). Authentik manifests are legacy migration leftovers and are excluded from the infrastructure ApplicationSet; new OIDC work targets external Keycloak.
 
 ## Local Contracts
 - **Manifests**: Kustomize + Helm inflation. Namespace = dir name.
@@ -15,7 +15,7 @@ Owns `base/<component>/` dirs (argocd, cilium, ingress-nginx, cert-manager, cnpg
   deviate from baseline (see `ceph-csi`, `monitoring`, `netbird` for precedent). CI
   checks this against `scripts/ci/known-gaps/missing-namespace.txt` — a new component
   gets no free pass.
-- **Operators**: Only here; per-app CRs live under `apps/`.
+- **Operators**: Only here; per-app CRs live under `apps/`. Exception: `monitoring-db` is the shared CNPG cluster for small monitoring tools (Gatus, Gatus public, Kite), see ADR 0008.
 - **OIDC**: External Keycloak Realm `bgt` at `https://auth.savar.de/realms/bgt`; app client secrets live in app SOPS secrets.
 - **Backup**: Existing Authentik resources, if still deployed, use platform-level CNPG + Barman (Ceph S3, 30d).
 
