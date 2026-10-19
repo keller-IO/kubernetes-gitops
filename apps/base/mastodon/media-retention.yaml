@@ -48,7 +48,7 @@ spec:
             seccompProfile: { type: RuntimeDefault }
           containers:
             - name: tootctl
-              image: ghcr.io/mastodon/mastodon:v4.5.18 # an values.yaml image.tag gekoppelt; Upgrade nur manuell
+              image: ghcr.io/mastodon/mastodon:v4.5.19 # an values.yaml image.tag gekoppelt; Upgrade nur manuell
               imagePullPolicy: IfNotPresent
               command: ["bundle", "exec", "bin/tootctl"]
               args: ["media", "remove", "--days", "7", "--prune-profiles", "--concurrency", "5"]
@@ -134,7 +134,7 @@ spec:
             seccompProfile: { type: RuntimeDefault }
           containers:
             - name: tootctl
-              image: ghcr.io/mastodon/mastodon:v4.5.18 # an values.yaml image.tag gekoppelt; Upgrade nur manuell
+              image: ghcr.io/mastodon/mastodon:v4.5.19 # an values.yaml image.tag gekoppelt; Upgrade nur manuell
               imagePullPolicy: IfNotPresent
               command: ["bundle", "exec", "bin/tootctl"]
               args: ["preview_cards", "remove", "--days", "30"]
@@ -221,7 +221,7 @@ spec:
             seccompProfile: { type: RuntimeDefault }
           containers:
             - name: tootctl
-              image: ghcr.io/mastodon/mastodon:v4.5.18 # an values.yaml image.tag gekoppelt; Upgrade nur manuell
+              image: ghcr.io/mastodon/mastodon:v4.5.19 # an values.yaml image.tag gekoppelt; Upgrade nur manuell
               imagePullPolicy: IfNotPresent
               command: ["bundle", "exec", "bin/tootctl"]
               args: ["media", "remove-orphans"]
