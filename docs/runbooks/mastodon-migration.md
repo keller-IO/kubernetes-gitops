@@ -83,6 +83,8 @@ Keine mehr — beide sind entschieden:
     (8 GiB), bevorzugt nicht auf Nodes mit Mastodon web/sidekiq.
   - **`node.store.allow_mmap=false`:** Talos erlaubt kein `vm.max_map_count`-Tuning
     per Init-Container; ohne mmap entfällt die Vorgabe, kostet etwas Suchperformance.
+  - **Read-only Root-FS:** Init-Container kopiert die Default-Config in ein emptyDir
+    (ES schreibt dort `elasticsearch.keystore`); `logs` und `/tmp` ebenfalls emptyDir.
   - **Sicherheit:** `xpack.security` aus; Zugriff nur über CiliumNetworkPolicy
     (Ingress 9200 nur von Mastodon-Rails-Pods und dem `deploy-search`-Job).
   - **Backup-Ausnahme:** kein Garage-/S3-Backup; der Index ist jederzeit aus

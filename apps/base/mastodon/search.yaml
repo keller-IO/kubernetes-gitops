@@ -54,6 +54,26 @@ spec:
                   matchLabels:
                     app.kubernetes.io/name: mastodon
                     app.kubernetes.io/part-of: rails
+      initContainers:
+        # Root filesystem is read-only, but ES writes config/elasticsearch.keystore
+        # at startup: seed a writable emptyDir with the image's default config.
+        - name: copy-config
+          image: docker.elastic.co/elasticsearch/elasticsearch:8.19.23 # renovate: image=docker.elastic.co/elasticsearch/elasticsearch
+          command: ["sh", "-c", "cp -r /usr/share/elasticsearch/config/. /config/"]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: config
+              mountPath: /config
       containers:
         - name: elasticsearch
           image: docker.elastic.co/elasticsearch/elasticsearch:8.19.23 # renovate: image=docker.elastic.co/elasticsearch/elasticsearch
@@ -87,11 +107,9 @@ spec:
               memory: 3Gi
             limits:
               memory: 4Gi
-          # No readOnlyRootFilesystem: ES writes config/elasticsearch.keystore at startup
-          # (verified: read-only root fails in KeyStoreWrapper.save) plus logs/tmp;
-          # tracked as known gap in scripts/ci/known-gaps/security.json.
           securityContext:
             allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
           startupProbe:
@@ -116,6 +134,22 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /usr/share/elasticsearch/data
+            - name: config
+              mountPath: /usr/share/elasticsearch/config
+            - name: logs
+              mountPath: /usr/share/elasticsearch/logs
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: config
+          emptyDir:
+            sizeLimit: 50Mi
+        - name: logs
+          emptyDir:
+            sizeLimit: 500Mi
+        - name: tmp
+          emptyDir:
+            sizeLimit: 500Mi
   volumeClaimTemplates:
     - metadata:
         name: data
