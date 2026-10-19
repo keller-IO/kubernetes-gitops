@@ -1,0 +1,22 @@
+# Bisherige SQLite-PVC des Charts. Seit der Umstellung auf Postgres (ADR 0008)
+# rendert das Chart sie nicht mehr; ohne dieses Manifest wuerde ArgoCD sie
+# prunen (vgl. docs/learnings/argocd-prune-pvc-bei-quellenwechsel.md, Storage-
+# Class ceph-rbd mit reclaimPolicy Delete). Sie bleibt als Rueckfallstand mit
+# kite.db erhalten und wird von keinem Pod gemountet. Loeschen erst nach
+# bewusstem Verzicht auf den Rueckweg.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: kite-storage
+  namespace: kite
+  labels:
+    app.kubernetes.io/name: kite
+    app.kubernetes.io/instance: kite
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: ceph-rbd
