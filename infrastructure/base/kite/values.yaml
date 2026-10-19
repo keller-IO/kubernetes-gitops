@@ -11,16 +11,26 @@ serviceAccount:
 rbac:
   create: true
 
-# SQLite on a RWO PVC → Recreate avoids two pods locking the same volume.
+# Postgres im gemeinsamen Cluster monitoring-pg (ADR 0008), seit 19.10.2026;
+# vorher SQLite auf der PVC kite-storage (bleibt als Rueckfallstand, pvc.yaml).
+# Kein RWO-Volume mehr am Pod, daher RollingUpdate statt Recreate.
 deploymentStrategy:
-  type: Recreate
+  type: RollingUpdate
 db:
-  type: sqlite
-  sqlite:
-    persistence:
-      pvc:
-        enabled: true
-        size: 1Gi
+  type: postgres
+# Mit db.type != sqlite erwartet das Chart DB_TYPE/DB_DSN im existingSecret
+# (kite-secrets). Die DSN liegt aber im eigenen Secret kite-db, deshalb hier
+# explizit; env hat Vorrang vor envFrom.
+# Plugins: ohne PVC liegen Plugin-Dateien unter /data/plugins im Container.
+# Offizielle Plugins laedt Kite anhand der DB-Eintraege neu herunter.
+extraEnvs:
+  - name: DB_TYPE
+    value: postgres
+  - name: DB_DSN
+    valueFrom:
+      secretKeyRef:
+        name: kite-db
+        key: DB_DSN
 
 # JWT signing, data-encryption key and OAuth client secret come from the SOPS
 # secret. The chart mounts it via envFrom, so every key becomes an env var and

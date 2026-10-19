@@ -10,7 +10,7 @@ ohne `storage`-Block, also mit dem In-Memory-Store von Gatus. Beim Ausfall von
 `kellerio-wrk2` am 19.10.2026 wurden beide Pods neu gestartet, und die gesamte
 Uptime-Historie war weg. Auf der öffentlichen Seite fiel das sofort auf.
 
-Kite lag auf SQLite auf einem eigenen RWO-PVC (`Recreate`-Strategie).
+Kite lag bis 19.10.2026 auf SQLite auf einem eigenen RWO-PVC (`Recreate`-Strategie).
 
 Laut Repo-Regel (`apps/AGENTS.md`) ist PostgreSQL über CNPG die erste Wahl. Das
 übliche Muster ist ein Cluster pro App mit 2 Instanzen. Für drei kleine Tools,
@@ -25,7 +25,7 @@ Ein gemeinsamer Cluster `monitoring-pg` im Namespace `monitoring-db`
 |---|---|---|---|
 | `gatus` | `gatus` (initdb-Owner) | Gatus intern | `gatus/gatus-db` |
 | `gatus_public` | `gatus_public` (managed role) | Gatus öffentlich | `gatus-public/gatus-public-db` |
-| `kite` | `kite` (managed role) | Kite (ab der SQLite-Migration) | `kite/kite-db` |
+| `kite` | `kite` (managed role) | Kite | `kite/kite-db` |
 
 - Jede App hat ihre eigene Rolle und ist Owner nur ihrer DB. Tabellen anderer
   Rollen sind ohne GRANT nicht lesbar, und unter PG 17 gibt es kein `CREATE` auf
@@ -59,9 +59,35 @@ CNPG archiviert WAL kontinuierlich nach `s3://backup-monitoring-db/cnpg/`
 Die Zugangsdaten liegen im SOPS-Secret `monitoring-db-backup-s3`. Ein Restore
 stellt alle drei Datenbanken gemeinsam wieder her (siehe Konsequenzen).
 
-## Folgeschritt: Kite
+## Kite: SQLite → Postgres
 
-Das Secret `kite/kite-db` liegt bereits vor, Kite läuft aber noch auf SQLite. Die
-Übernahme der SQLite-Daten folgt in einem eigenen PR nach dem Muster aus
-`docs/learnings/goloom-sqlite-nach-postgres.md` (PreSync-Hooks: App auf 0,
-Export/Import mit expliziten Typ-Casts, Abgleich der Zeilenzahlen).
+Umgestellt per ArgoCD-PreSync-Hooks nach dem Goloom-Muster
+(`infrastructure/base/kite/migration/`):
+
+- Wave -3: Hook-RBAC und Skript-ConfigMap. Normale Ressourcen entstehen erst
+  nach den PreSync-Hooks, deshalb sind auch diese Teile Hooks.
+- Wave -2: Kite auf 0 skalieren.
+- Wave -1: `kite.db` **read-only** exportieren (`sqlite3 -json`) und in einer
+  Transaktion importieren. Das Schema `postgres-schema-v0.16.0.sql` ist das, was
+  Kites eigenes AutoMigrate auf Postgres 17.2 erzeugt (`pg_dump --schema-only`).
+  Beim nächsten Start ändert AutoMigrate daran nichts, das ist geprüft.
+- Spalten werden über den Namen zugeordnet und auf den Postgres-Typ gecastet
+  (0/1 → boolean). Zeilenzahl je Tabelle wird geprüft, die Sequenzen werden
+  nachgezogen, und die Marker-Tabelle `_kite_sqlite_import` verhindert einen
+  zweiten Lauf.
+- Secret-Spalten (Cluster-Kubeconfig, LDAP-Bind, OAuth-Secret, MFA, API-Keys)
+  sind AES-GCM-Text mit `KITE_ENCRYPT_KEY`. Sie werden 1:1 übernommen, weil der
+  Key gleich bleibt.
+
+Lokal getestet: Kite v0.16.0 mit Testdaten auf SQLite, dann Import, danach Kite
+auf Postgres gestartet. Logins, Rollenzuweisungen, Entschlüsselung der
+Cluster-Config und neue Inserts (Sequenzen) funktionieren.
+
+Die PVC `kite-storage` mit `kite.db` bleibt als Rückfallstand
+(`Prune=false,Delete=false`, `infrastructure/base/kite/pvc.yaml`). Rückweg:
+den Umstellungs-PR revertieren. Die Hooks werden nach erfolgreicher Umstellung
+in einem Folge-PR entfernt.
+
+Nebenwirkung: Plugin-Dateien liegen ohne PVC flüchtig im Container. Offizielle
+Plugins lädt Kite anhand der DB-Einträge neu, manuell hochgeladene müssten neu
+hochgeladen werden. Die Benutzersuche ist auf Postgres case-sensitiv (`LIKE`).
