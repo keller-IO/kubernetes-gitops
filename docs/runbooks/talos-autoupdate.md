@@ -2,33 +2,36 @@
 
 ## Stand und Freigabe
 
-Stand 18.10.2026: Die GitOps-Implementierung liegt unter
-`infrastructure/base/system-upgrade-controller/`. Das Infrastruktur-ApplicationSet
-findet sie automatisch. **Der Rollout ist noch nicht freigegeben:** kein Node
-bekommt durch diese Aenderung das Opt-in-Label `keller.io/talos-upgrade=enabled`.
-Dieses Label gehoert nach Abnahme in die deklarative Talos-Node-Konfiguration im
-Repository `keller-IO/infrastructure`, nicht in einen manuellen Patch.
+Stand 19.10.2026: Die GitOps-Implementierung liegt unter
+`infrastructure/base/system-upgrade-controller/`; das Infrastruktur-ApplicationSet
+findet sie automatisch. Die Canary auf cp3 lief am 19.10. (Plan `Complete`,
+Ziel v1.13.11). Danach wurden alle acht Nodes manuell auf Talos **v1.14.4**
+gehoben (Kubernetes unveraendert **v1.36.0**, Schematic ueberall
+`3abf06e1d81e509d779dc256f9feae6cd6d82c69337c661cbfc383a92594faf5` =
+nfs-utils + qemu-guest-agent, Plattform `nocloud`). Das Plan-Ziel ist seitdem
+v1.14.4.
 
-Die Live-Pruefung am 18.10.2026 bestaetigt acht Ready-Nodes (drei Control-Planes,
-fuenf Worker), Talos **v1.13.4** und Kubernetes **v1.36.0**. Der aktuelle
-IaC-Ref `keller/main` (`685f5d9`) beschreibt dieselben acht Nodes mit 6-GiB-CPs
-und 8-/12-GiB-Workern. Seit dem Nachmittag des 18.10. laufen wrk1 bis wrk3 und
-wrk5 mit 12 GB, wrk4 mit 8 GB (keller-IO/infrastructure#17 gleicht die tfvars an). Der lokale IaC-Branch `main` liegt dagegen 31 Commits
-zurueck und enthaelt eine andere Schematic; Abgleiche erfolgen gegen den
-aktuellen Remote-Ref. Kapazitaet, laufende Wartung und belegte Blocker stehen
-in der [Live-Abnahme](talos-live-audit-2026-10-18.md).
-Das initiale Plan-Ziel bleibt v1.13.4. Die Bootstrap-Schematic ist
-`3abf06e1d81e509d779dc256f9feae6cd6d82c69337c661cbfc383a92594faf5`, Plattform
-`nocloud`; deren tatsaechliche Erweiterungen muessen noch per Talos geprueft werden.
-Renovate aktualisiert Patch-Versionen innerhalb 1.13 nach sieben Tagen und
-erfolgreicher CI. Minor-/Major-Wechsel brauchen Review und eine Anpassung der
-erlaubten Versionslinie; keine Minor-Version ueberspringen.
+Freigegeben wird pro Node ueber das Label `keller.io/talos-upgrade=enabled` in
+der deklarativen Talos-Node-Konfiguration (`keller-IO/infrastructure`,
+`node_config_patches`), nie per manuellem Patch. Seit dem Plan-Wechsel auf
+v1.14.4 fuehrt SUC auf jedem freigegebenen Node **einmal** ein Upgrade auf die
+bereits laufende Version aus (neuer Plan-Hash, also Drain und Reboot); das ist
+zugleich die Abnahme des automatischen Ablaufs pro Node.
+
+**Update-Ablauf:** Renovate schlaegt neue Talos-Releases nach sieben Tagen als PR
+vor (Plan-Version, talosctl-Image und Installer-Tag gemeinsam). **Talos-PRs
+werden nie automatisch gemergt.** Der Merge durch einen Menschen ist der Start
+des Rollouts: ArgoCD synct den Plan, SUC arbeitet die freigegebenen Nodes
+nacheinander ab. Patch- und Minor-Updates kommen als getrennte PRs, jede
+Minor-Linie einzeln; keine Minor-Version ueberspringen (der Preflight blockiert
+einen Sprung um mehr als eine Minor-Version). Vor dem Merge eines Minor-PRs die
+Upgrade-Notes der neuen Linie lesen, den Factory-Installer mit unserer Schematic
+pruefen und die Kubernetes-Version gegen die Support-Matrix abgleichen.
 Talos-OS-Updates aktualisieren Kubernetes nicht.
 
-Das aktive Ruleset `main_protection` erzwingt inzwischen den erfolgreichen Check
-`ci-required` und einen aktuellen PR-Stand. Fuer Talos-Patches bleiben
-`platformAutomerge: false`, `ignoreTests: false` gesetzt. CI- und Integrations-
-Vertrag: [ci-safety.md](ci-safety.md).
+Das aktive Ruleset `main_protection` erzwingt den erfolgreichen Check
+`ci-required` und einen aktuellen PR-Stand. CI- und Integrations-Vertrag:
+[ci-safety.md](ci-safety.md).
 
 Das Homelab nutzt seit 15.10.2026 Omni. keller-main ist laut vorhandener IaC
 weiter OpenTofu/Talos-verwaltet. Deshalb wird hier der vorherige SUC-Ablauf mit
@@ -46,32 +49,18 @@ denselben Cluster aktualisieren.
    auf cloud62 `local-zfs` statt Ceph. Vor jeder Freigabe trotzdem pruefen, dass
    keine andere Wartung laeuft, und keinen zweiten Node parallel in Wartung nehmen. Der Drain-Client ist auf die beobachtete
    Kubernetes-Version 1.36.0 angepasst.
-2. Nur CNPG-Cluster mit einer Instanz auf dem **zu drainenden Node** brauchen
-   mindestens drei gesunde Instanzen, `affinity.podAntiAffinityType: required`,
-   aktivierte Anti-Affinity und PDBs. Es braucht zwei moegliche Standbys, damit
-   der Neustart einer Replica den naechsten Switchover nicht blockiert.
-   `failoverDelay: 30` mit den Verfuegbarkeitsanforderungen abgleichen. Global
-   muessen weiterhin alle CNPG-Replicas gesund und Switchovers abgeschlossen
-   sein. Neun Singletons sind live, der zehnte Authentik-CR ist nur Altbestand.
-   Keine DB-Instanz laeuft auf Control-Planes; deren Update verlangt deshalb
-   keine pauschale Worker-DB-Skalierung. Fuenf MariaDB-Singletons bleiben ein
-   separates Unterbrechungsrisiko fuer Worker-Updates.
-   Stand 19.10.2026 laufen alle neun CNPG-Cluster per GitOps mit
-   `instances: 2` und `podAntiAffinityType: required` (Primary und Standby auf
-   verschiedenen Nodes), damit Worker-Drains per Switchover statt als
-   DB-Ausfall laufen. Der SUC-Preflight erwartet weiterhin die staerkere
-   HA-Stufe mit drei Instanzen; er kann daher bei einem Node mit einer
-   Instanz weiter blockieren, bis das nachgewiesen oder bewusst bewertet ist.
-   Primary-Updates laufen ueber `primaryUpdateMethod: switchover` (mit
-   `primaryUpdateStrategy: unsupervised`), nicht per In-place-Restart. Bei nur
-   einer Instanz startet CNPG den Primary trotzdem direkt neu (kein Standby als
-   Ziel).
-
-   Lesson Learned (19.10.2026): Aenderungen am Pod-Template (Affinity,
-   Resources, Image) loesen ein Rolling Update aller Instanzen aus. Mit der
-   CNPG-Default-Methode `restart` wurde dabei jeder Primary in-place neu
-   gestartet und war 1-6 Minuten ausser Betrieb. Die Methode selbst ist nicht
-   Teil des Pod-Templates; sie vor solchen Aenderungen setzen.
+2. CNPG-Cluster mit einer Instanz auf dem **zu drainenden Node** brauchen
+   mindestens zwei gesunde Instanzen, `affinity.podAntiAffinityType: required`,
+   aktivierte Anti-Affinitaet und PDBs. Seit 19.10.2026 laufen alle neun
+   CNPG-Cluster per GitOps mit `instances: 2` und harter Streuung; der Drain
+   laeuft damit als Switchover statt als DB-Ausfall. Entscheidung 19.10.2026:
+   Der Preflight verlangt zwei statt drei Instanzen. Restrisiko: Waehrend die
+   evictete Instanz neu startet, gibt es keinen weiteren Failover-Kandidaten.
+   Abgefedert durch `concurrency: 1`, 60 s durchgehend gesunden Zustand und
+   "alle Replicas Ready, Switchover abgeschlossen" vor jedem weiteren Node.
+   Keine DB-Instanz laeuft auf Control-Planes. Fuenf MariaDB-Singletons bleiben
+   ein separates, vom Preflight nicht abgedecktes Unterbrechungsrisiko fuer
+   Worker-Updates.
 3. Vor zusaetzlichen Datenbankreplicas **N-1-Kapazitaet und Ceph-Kapazitaet**
    nachweisen. HA3 fuer alle neun CNPG-Cluster braucht zusaetzlich 6656 MiB
    RAM-Requests, 2600m CPU und 268 GiB logischen PVC-Speicher. Seit der
@@ -89,8 +78,12 @@ denselben Cluster aktualisieren.
    Single-Writer-Strategie, funktionierende Readiness-/Startup-Probes,
    ausreichende `terminationGracePeriodSeconds` und bei Bedarf `preStop`.
    PDB, harte Affinitaet, lokale PVs, unmanaged Pods und nicht ersetzbares
-   `emptyDir` koennen einen Drain absichtlich blockieren. Daten erst bewerten,
-   nicht `force` oder `deleteEmptydirData` pauschal einschalten.
+   `emptyDir` koennen einen Drain absichtlich blockieren. `force` bleibt aus.
+   `deleteEmptydirData` ist seit 19.10.2026 an: Die Live-Pruefung aller Nodes
+   fand nur tmp, Caches, CSI-Sockets und CNPG `scratch-data`/`shm`; zustandsbehaftet
+   sind nur der vmagent-Puffer und die vmalertmanager-Silences, die auch bei
+   jedem normalen Reschedule verloren gehen. Ohne die Option blockierte jeder
+   Worker und cp2. Daten, die einen Drain ueberleben muessen, gehoeren auf ein PVC.
 5. Backup-Erfolg und Wiederherstellbarkeit von Datenbanken/PVCs sowie einen
    aktuellen etcd-Recovery-Punkt bestaetigen. Mailman und Mastodon haben aktuell
    fehlgeschlagene Backup-CRs sowie `LastBackupSucceeded=False`; einen neueren
@@ -109,7 +102,7 @@ denselben Cluster aktualisieren.
      Client-Zertifikat der OS-CA, **6 h gueltig, 1 h vor Ablauf automatisch
      erneuert**. Kein Zertifikat in Git, im Tofu-State oder als Handarbeit; eine
      Rotation braucht keinen Eingriff.
-   - **Rolle:** `os:admin` ist zwingend. In Talos 1.13 verlangt
+   - **Rolle:** `os:admin` ist zwingend. Seit Talos 1.13 verlangt
      `MachineService/Upgrade` genau diese Rolle, `os:operator` reicht nicht.
      Begrenzt wird ueber den Namespace und darueber, dass nur die Jobs des Plans
      `talos` das Secret mounten.
@@ -133,10 +126,13 @@ denselben Cluster aktualisieren.
    `talosctl upgrade` schreibt `machine.install.image` nicht zurueck; GitOps
    ist der Upgrade-Owner, OpenTofu weiter Provisionierungs-/Config-Owner.
    Vor spaeteren `tofu apply` die Bootstrap-Version nachziehen und den Plan auf
-   konkurrierende OS-/Kubernetes-Aenderungen pruefen.
+   konkurrierende OS-/Kubernetes-Aenderungen pruefen. `talos_version` in
+   `cluster.auto.tfvars` erst nachziehen, wenn **alle** Nodes die neue Version
+   melden, nie vorab: Ein spaeteres Absenken ersetzt `talos_machine_secrets`
+   (neue Cluster-PKI). Zeigt `tofu plan` dort `must be replaced`, abbrechen.
 8. Nach Abschluss der bestehenden Wartung und Talos-Abnahme zunaechst cp1 oder
    cp3 als Canary in IaC freigeben. Dort wurden keine normalen Drain-Kandidaten
-   beobachtet. cp2 hat einen SMB-Controller mit blockierendem Socket-`emptyDir`.
+   beobachtet.
    Worker erst nach der getrennten DB-/Kapazitaets-/Storage-Abnahme aktivieren.
    Reboot, neue OS-Version,
    Scheduling, DB-Readiness, Services und echtes Volume-I/O abnehmen. Danach die
