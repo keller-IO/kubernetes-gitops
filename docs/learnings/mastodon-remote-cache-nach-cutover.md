@@ -61,6 +61,18 @@ Kommando, ohne `readOnlyRootFilesystem` und ohne `/tmp`-Volume:
 5. CronJob `mastodon-media-attachments-remove` (`media remove --days 7` ohne
    Flags, täglich 01:00, 4 h Frist) ergänzt.
 
+Zwei Fallen beim Nachladen:
+
+- **Nach `created_at` filtern, nicht nach ID.** Fremd-Anhänge bekommen ihre
+  Snowflake-ID vom Veröffentlichungsdatum des Posts, nicht vom Abrufdatum. Ein
+  alter Post, der spät ankommt oder frisch geboostet wird, hat eine alte ID,
+  erscheint aber aktuell in der Timeline. Der erste Lauf filterte nach
+  Post-ID und übersah dadurch 608 Anhänge.
+- **Nur bei Fehlern der Fremdquelle leeren.** Der RGW lieferte unter Last
+  `Net::ReadTimeout` und `Aws::S3::MultipartUploadError` (große Videos). Ein
+  Skript, das bei jedem Fehler leert, verwirft dann Anhänge, deren Quelle
+  einwandfrei war. S3-Fehler einzeln erneut versuchen, nicht leeren.
+
 ## Durchsatz
 
 Prune und Refresh schaffen etwa 400 bis 500 Datensätze pro Minute,
