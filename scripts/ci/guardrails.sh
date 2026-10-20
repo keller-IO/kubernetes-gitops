@@ -148,6 +148,12 @@ grep -qF 'ACCOUNT_ADAPTER = "no_signup_adapter.DisableSignupAdapter"' "$mailman_
 grep -qE '^[[:space:]]+return False[[:space:]]*$' "$mailman_settings" \
   || report "$mailman_settings: DisableSignupAdapter no longer rejects signup"
 
+section "Mastodon retention also removes remote attachments"
+mastodon_retention="apps/base/mastodon/media-retention.yaml"
+grep -E 'args:.*"media",[[:space:]]*"remove"' "$mastodon_retention" \
+  | grep -qvE -- '--prune-profiles|--remove-headers' \
+  || report "$mastodon_retention: no 'media remove' run without --prune-profiles/--remove-headers — with either flag tootctl skips media attachments entirely, and the remote cache grows into the RGW quota (docs/learnings/mastodon-remote-cache-nach-cutover.md)"
+
 if ((fail != 0)); then
   printf '\nGuardrail checks failed.\n' >&2
   exit 1
