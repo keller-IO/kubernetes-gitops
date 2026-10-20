@@ -15,7 +15,7 @@
     "**/charts/**",
     "infrastructure/base/authentik/**"
   ],
-  "rebaseWhen": "behind-base-branch",
+  "rebaseWhen": "conflicted",
   "minimumReleaseAge": "7 days",
   "nix": {
     "enabled": true
