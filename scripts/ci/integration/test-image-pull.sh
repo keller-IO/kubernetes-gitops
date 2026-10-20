@@ -14,13 +14,19 @@ docker() {
   if [[ "$*" == "tag $mirror registry.example/redis:1" ]]; then
     echo tagged >"$work/tagged"; return 0
   fi
+  if [[ "$*" == "version -f {{.Server.Os}}/{{.Server.Arch}}" ]]; then
+    echo linux/amd64; return 0
+  fi
+  if [[ $# == 6 && "$1 $2 $3 $4 $6" == "save --platform linux/amd64 -o registry.example/redis:1" ]]; then
+    echo archive >"$5"; return 0
+  fi
   [[ "$*" == "pull $mirror" ]] || return 1
   count="$(cat "$work/count")"
   echo "$((count + 1))" >"$work/count"
   [[ "$count" -ge "$failures" ]]
 }
 kind() {
-  [[ "$*" == 'load docker-image --name keller-ci-fixture registry.example/redis:1' ]] || return 1
+  [[ $# == 5 && "$1 $2 $3 $4" == 'load image-archive --name keller-ci-fixture' && "$(cat "$5")" == archive ]] || return 1
   echo loaded >>"$work/loads"
 }
 echo 0 >"$work/count"

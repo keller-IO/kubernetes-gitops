@@ -14,23 +14,29 @@ requires both jobs to report success: failure, cancellation, skip or absence
 fails the gate. PRs test the merge commit; merge queues trigger `merge_group` too.
 
 `.github/main-ruleset.json` is the reviewed REST payload for repository ruleset
-25293233. It selects `refs/heads/main`, requires a PR and an up-to-date successful
-`ci-required` check from the GitHub Actions app (15368), and blocks deletion and
-force pushes with no bypass actors. The payload alone does not change GitHub.
-Apply after the new check has been reported on a PR:
+25293233. It selects `refs/heads/main`, requires a PR and a successful
+`ci-required` check from the GitHub Actions app (15368), merges through the
+merge queue, and blocks deletion and force pushes with no bypass actors. The
+payload alone does not change GitHub. Apply after the new check has been
+reported on a PR:
 
 ```bash
 gh api --method PUT repos/keller-IO/kubernetes-gitops/rulesets/25293233 \
   --input .github/main-ruleset.json
+gh api --method PATCH repos/keller-IO/kubernetes-gitops -F allow_auto_merge=true
 gh api repos/keller-IO/kubernetes-gitops/rules/branches/main
 ```
 
+PR branches do not have to be up to date with `main`. The merge queue tests
+each PR on top of current `main` (plus queued PRs ahead of it) via
+`merge_group` and only then merges, so `main` stays green without manual
+rebases. Renovate rebases only on conflicts (`rebaseWhen: conflicted`).
+Renovate automerge is disabled globally (`automerge: false`); every Renovate PR
+is merged by a human.
+
 This intentionally blocks older PRs until their branch includes the new workflow.
-Required review count stays zero for otherwise eligible automated Renovate PRs.
-Existing Renovate restrictions keep stateful apps/controllers manual; CI workflow
-and GitOps control-plane dependencies also stay manual. Goloom is explicitly
-included as a stateful app. Digest/pin/patch automerge is limited to the named
-stateless leaf apps; new or unclassified apps default to manual review. Review changes to workflows, check scripts,
+Required review count stays zero; the human merge is the review gate for
+Renovate PRs. Review changes to workflows, check scripts,
 schema pins and known-gap baselines as security-sensitive code before merging.
 This is a repository review policy, not an enforced per-path approval rule.
 

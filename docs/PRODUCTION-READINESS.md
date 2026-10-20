@@ -369,6 +369,8 @@ alertmanager:
 - [ ] `endpointURL`/`endpoint` (`s3.jit.services`) auf reale RGW-URL setzen.
 - [ ] CNPG ≥1.26: `barmanObjectStore` in-tree ist deprecated → auf **barman-cloud Plugin** migrieren.
 - [ ] MariaDB **PITR**: für punktgenaues Restore `PhysicalBackup` CRD + Binlog statt logischem Dump.
+- [ ] Integrations-Pilot (`scripts/ci/integration/`) um eine MariaDB-Instanz erweitern —
+      Operator-Bumps sind bisher ungetestet ([Learning](learnings/mariadb-operator-stufenweises-upgrade.md)).
 - [ ] DR-Overlay `infrastructure/overlays/disaster-recovery/` mit `bootstrap.recovery` anlegen.
 - [ ] PVC-Daten (paperless data/media, forgejo repos, wordpress wp-content,
       Mailman-Dateien) nach dem CSI-Smoke-Test per quiesced Snapshot absichern.

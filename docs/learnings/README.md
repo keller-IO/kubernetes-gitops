@@ -25,6 +25,9 @@ Format und Kriterien: siehe AGENTS.md → „Operational Learnings".
 - [Flurfunk: DNS/TLS-Kette mit drei unabhaengigen Fehlern](flurfunk-dns-and-http01-chain.md)
   — kaputte BIND-Zonen-Stanza, negatives dnsmasq-Caching, und HTTP-01 kollidiert
   mit dem eigenen Ingress beim nginx.org-Controller (Fix: DNS-01 statt Mergeable-Ingress).
+- [mariadb-operator: stufenweises Upgrade](mariadb-operator-stufenweises-upgrade.md) —
+  Renovate schlug 0.38.1 → 26.10.1 in einem Sprung vor; upstream verbietet das
+  Überspringen bis 25.10, und der CI-Pilot testet keine MariaDB.
 - [Mastodon: Remote-Cache nach dem Cutover](mastodon-remote-cache-nach-cutover.md) —
   nicht migrierter Cache hinterlaesst DB-Verweise ohne Datei (RGW meldet 403 statt
   404); `media remove --prune-profiles` laesst Anhaenge aus; `/tmp`-emptyDir bricht

@@ -59,7 +59,7 @@ ci_helm() {
 }
 
 ci_preload_image() {
-  local image="$1" cluster="$2" mirrors="$3" mirror attempt provider="${KIND_EXPERIMENTAL_PROVIDER:-docker}"
+  local image="$1" cluster="$2" mirrors="$3" mirror attempt platform archive status save_args provider="${KIND_EXPERIMENTAL_PROVIDER:-docker}"
   ci_runtime_guard || return
   [[ "$cluster" == keller-ci-* ]] || { echo 'Refusing non-CI image load' >&2; return 1; }
   mirror="$(jq -er --arg image "$image" '.[$image] // error("No reviewed digest mirror for " + $image)' "$mirrors")" || return
@@ -69,9 +69,21 @@ ci_preload_image() {
   for attempt in 1 2 3; do
     if "$provider" pull "$mirror"; then
       "$provider" tag "$mirror" "$image" || return
+      # Docker's containerd image store exports the full multi-arch index without the
+      # foreign blobs, which `kind load docker-image` (ctr --all-platforms) rejects.
+      # Export only the daemon's own platform and load that archive instead.
+      save_args=()
+      if [[ "$provider" == docker ]]; then
+        platform="$(docker version -f '{{.Server.Os}}/{{.Server.Arch}}')" || return
+        save_args=(--platform "$platform")
+      fi
+      archive="$(mktemp -d)/image.tar" || return
+      "$provider" save "${save_args[@]}" -o "$archive" "$image" || { rm -rf "${archive%/*}"; return 1; }
       # guardrails: allow-live-mutation — load into this invocation's unique local Kind cluster only.
-      kind load docker-image --name "$cluster" "$image"
-      return
+      kind load image-archive --name "$cluster" "$archive"
+      status=$?
+      rm -rf "${archive%/*}"
+      return "$status"
     fi
     [[ "$attempt" != 3 ]] || { echo "Image pull failed after 3 attempts: $mirror" >&2; return 1; }
     sleep 5
