@@ -273,7 +273,9 @@ MariaDB (kimai-mariadb, wordpress-mariadb ×3)
 - **Prefixe:** `mariadb-kimai`, `mariadb-wordpress-1`, `-2`, `-3`. Bei WordPress
   wird der Prefix PRO Instanz im Overlay gepatcht (`apps/overlays/main/wordpress-N/`),
   sonst schreiben alle drei in denselben Ordner.
-- **Format:** `backup.<timestamp>.gzip.sql` (ein logischer Dump je Lauf).
+- **Format:** `backup.<timestamp>.sql.gz` (ein logischer Dump je Lauf; vor dem
+  Operator-Upgrade auf 26.x am 20.10.2026: `backup.<timestamp>.gzip.sql`, wird
+  weiterhin erkannt).
 - **Retention:** 30 Tage (`maxRetention: 720h`). **Zeitplan:** täglich 02:00.
 - **Config:** `apps/base/<app>/backup.yaml`. Secrets: `<app>-backup-s3` (bisher derselbe
   Garage-Key wie CNPG, Umstellung siehe Abschnitt Secrets). Endpoint OHNE Schema (`192.168.23.21:3900`), `tls.enabled: false`.
