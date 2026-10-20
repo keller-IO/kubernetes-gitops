@@ -67,7 +67,7 @@ spec:
             - { name: tmp, mountPath: /tmp }
       containers:
         - name: stop
-          image: curlimages/curl:8.17.0 # renovate: image=curlimages/curl
+          image: curlimages/curl:8.22.0 # renovate: image=curlimages/curl
           command: ["/bin/sh", "-c"]
           args:
             - |
