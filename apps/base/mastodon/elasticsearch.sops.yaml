@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: Secret
+metadata:
+    name: mastodon-elasticsearch
+    namespace: mastodon
+stringData:
+    username: ENC[AES256_GCM,data:ETTUANhPmw==,iv:2lhMwy1RZp0cG/U0paGAcfCqdQpDrYv2zxNpBIe6y80=,tag:fbrUN8mtcfUnNnMRtOEoDw==,type:str]
+    password: ENC[AES256_GCM,data:mQZURts7By7w5MA2GxeZzUlxibEhHOlPwp2JX2qAbqU=,iv:051Z7C9RHqYCGx4tdmvzxanYDQWl2t4VIkm2qBwibsI=,tag:J40icUcNf/jySenDSQrp+Q==,type:str]
+type: Opaque
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSAvMTd0M0E1am9kekhldlQ1
+            ZlNMejA5UEh0elBxek9IQnAvOFp1ZCtYQ0JVCkh3OGUydnY3Q1h1dUsxOXlwMkE5
+            cjFoQ2xNTXc5NHNVNE8zNjFnYjRSdVkKLS0tIFdXT0d1c1phS2dyc3hmUUNzaFJt
+            K05EL2h5bkJIcXZWRldYcXFWOWoxZFUK/I2B0oX6zF44qGOunU3qTyH4eCHpeFdt
+            l9dAssbi3SCR9YWx9OjrZYxhqQLKQ4V0mbpubCSEcTdMzjTFHCUWOA==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age17x04ga87qyu9lzcuja9k83z90veew9cez7jusul4y5xyr09xaejs9rq755
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBpSDdzVTJGVDErbmR2aXZx
+            MWo0amdaU01pZDdqaGJoRXltajl6UVhabVhzCk5YUzBJeENmYTIvR3BDT0g4NlQ0
+            SXVESU5ZSXVjaWgzWjhVOFRIZ2ZLaDgKLS0tIG5WN2xCZ1c4ZXJnUGtPNU1DWk56
+            L0svK0t6a1llSTViVEU2WUF2dk1EN00KnuR9933KqD49Fh1Niy/JdK/V/s2LKHrm
+            TcfmWglknl/FbJPQkKnwbNH/A/I9pxt6S5s1xCZJ9pO1IT4nVz/tSw==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1hjq0mgzc2npw9lhtwr49qqrfvkxzc2ss8qu7e06fk5n84qm7xs7qrgxfxa
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-10-19T05:40:03Z"
+    mac: ENC[AES256_GCM,data:y1JYpnWo0zJgVC3dBYPcdR2JHi7yaa+IPvtXwdl3YZAKcx4aPJmy3SGOb+7EqgvDzBbJi0CWeuXgNl6sSp0odXODFjxXsrCqcfZE7Z5Jk1NrFeYkDgjykwesQdUOYwJ4jVaVPbmpXtSomL7YcYKZJkmtGi0C/FetzVbOni8h808=,iv:5qPIg5JPK93qXEsvfk+NfKfZyamY/N5OcGWWJDKyO7s=,tag:PxJSR4STKXUAW3Y66vN9CQ==,type:str]
+    version: 3.13.3

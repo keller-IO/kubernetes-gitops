@@ -16,20 +16,20 @@ def healthy():
     return {
         "nodes": [{"metadata": {"name": "worker1", "labels": {}}, "spec": {},
                    "status": {"conditions": [{"type": "Ready", "status": "True"}],
-                              "nodeInfo": {"osImage": "Talos (v1.13.4)"}}}],
+                              "nodeInfo": {"osImage": "Talos (v1.14.4)"}}}],
         "server_version": {"major": "1", "minor": "35"},
         "clusters": [{"metadata": {"namespace": "app", "name": "db"},
-                      "spec": {"instances": 3, "affinity": {"podAntiAffinityType": "required"}},
-                      "status": {"readyInstances": 3, "currentPrimary": "db-1", "targetPrimary": "db-1",
+                      "spec": {"instances": 2, "affinity": {"podAntiAffinityType": "required"}},
+                      "status": {"readyInstances": 2, "currentPrimary": "db-1", "targetPrimary": "db-1",
                                  "conditions": [{"type": "Ready", "status": "True"}]}}],
         "workloads": [], "pods": [
             {"metadata": {"namespace": "app", "name": f"db-{n}", "labels": {"cnpg.io/cluster": "db"},
                           "ownerReferences": [{"kind": "Cluster", "controller": True}]},
              "spec": {"nodeName": f"worker{n}"},
              "status": {"phase": "Running", "conditions": [{"type": "Ready", "status": "True"}]}}
-            for n in (1, 2, 3)], "webhooks": [],
+            for n in (1, 2)], "webhooks": [],
         "system_labels": {"kubernetes.io/metadata.name": "kube-system"},
-        "plan": {"status": {"latestHash": "abc", "latestVersion": "v1.13.5"}},
+        "plan": {"status": {"latestHash": "abc", "latestVersion": "v1.14.5"}},
     }
 
 
@@ -40,7 +40,7 @@ class PreflightTest(unittest.TestCase):
         self.addCleanup(self.environment.stop)
 
     def check(self, state):
-        return preflight.blockers(state, "v1.13.5", "worker1")
+        return preflight.blockers(state, "v1.14.5", "worker1")
 
     def test_healthy_cluster_can_drain(self):
         self.assertEqual(self.check(healthy()), [])
@@ -50,16 +50,15 @@ class PreflightTest(unittest.TestCase):
             lambda s: s["nodes"][0]["spec"].update(unschedulable=True),
             lambda s: s["nodes"][0]["status"].update(conditions=[]),
             lambda s: s["clusters"][0]["spec"].update(instances=1),
-            lambda s: s["clusters"][0]["spec"].update(instances=2),
             lambda s: s["clusters"][0]["spec"].update(enablePDB=False),
             lambda s: s["clusters"][0]["spec"].update(affinity={"podAntiAffinityType": "preferred"}),
             lambda s: s["clusters"][0]["spec"]["affinity"].update(enablePodAntiAffinity=False),
             lambda s: s["pods"][1]["spec"].update(nodeName="worker1"),
-            lambda s: s["clusters"][0]["status"].update(readyInstances=2),
+            lambda s: s["clusters"][0]["status"].update(readyInstances=1),
             lambda s: s["clusters"][0]["status"].update(targetPrimary="db-2"),
-            lambda s: s["plan"]["status"].update(latestVersion="v1.13.6"),
+            lambda s: s["plan"]["status"].update(latestVersion="v1.14.6"),
             lambda s: s["nodes"][0]["status"]["nodeInfo"].update(osImage="Talos (v1.15.0)"),
-            lambda s: s["nodes"][0]["status"]["nodeInfo"].update(osImage="Talos (v1.11.9)"),
+            lambda s: s["nodes"][0]["status"]["nodeInfo"].update(osImage="Talos (v1.12.9)"),
             lambda s: s["nodes"].clear(),
             lambda s: s["server_version"].update(minor="33"),
             lambda s: s["clusters"][0]["status"]["conditions"].append({"type": "LastBackupSucceeded", "status": "False"}),
@@ -75,7 +74,7 @@ class PreflightTest(unittest.TestCase):
         node = state["nodes"][0]
         node["metadata"]["labels"]["plan.upgrade.cattle.io/talos"] = "abc"
         self.assertTrue(self.check(state))
-        node["status"]["nodeInfo"]["osImage"] = "Talos (v1.13.5)"
+        node["status"]["nodeInfo"]["osImage"] = "Talos (v1.14.5)"
         self.assertEqual(self.check(state), [])
 
     def test_control_plane_does_not_require_unrelated_database_ha(self):
@@ -85,9 +84,9 @@ class PreflightTest(unittest.TestCase):
         state["pods"] = state["pods"][:1]
         state["nodes"].append({"metadata": {"name": "cp1"}, "spec": {},
                                "status": state["nodes"][0]["status"]})
-        self.assertEqual(preflight.blockers(state, "v1.13.5", "cp1"), [])
+        self.assertEqual(preflight.blockers(state, "v1.14.5", "cp1"), [])
         state["clusters"][0]["status"]["readyInstances"] = 0
-        self.assertTrue(preflight.blockers(state, "v1.13.5", "cp1"))
+        self.assertTrue(preflight.blockers(state, "v1.14.5", "cp1"))
 
     def test_emptydir_refuses_before_cordon_only_on_target_node(self):
         state = healthy()
@@ -101,6 +100,12 @@ class PreflightTest(unittest.TestCase):
         self.assertEqual(self.check(state), [])
         pod["spec"]["nodeName"] = "worker1"
         pod["metadata"]["ownerReferences"] = [{"kind": "DaemonSet", "controller": True}]
+        self.assertEqual(self.check(state), [])
+
+    def test_emptydir_allowed_when_plan_deletes_it(self):
+        state = healthy()
+        state["plan"]["spec"] = {"drain": {"deleteEmptydirData": True}}
+        state["pods"][0]["spec"]["volumes"] = [{"name": "shm", "emptyDir": {}}]
         self.assertEqual(self.check(state), [])
 
     def test_unmanaged_pod_refuses_before_cordon(self):
@@ -164,7 +169,7 @@ class PreflightTest(unittest.TestCase):
         def sleep(seconds):
             ticks[0] += seconds
 
-        preflight.wait_until_safe(snapshot, "v1.13.5", "system-upgrade-controller", "worker1",
+        preflight.wait_until_safe(snapshot, "v1.14.5", "system-upgrade-controller", "worker1",
                                   clock=lambda: ticks[0], sleep=sleep, timeout=120, stable=60)
         self.assertEqual(ticks[0], 90)
         self.assertEqual(len(calls), 7)
@@ -179,11 +184,11 @@ class PreflightTest(unittest.TestCase):
             ticks[0] += seconds
 
         with self.assertRaisesRegex(RuntimeError, "not cordoned"):
-            preflight.wait_until_safe(forbidden, "v1.13.5", "system-upgrade-controller", "worker1",
+            preflight.wait_until_safe(forbidden, "v1.14.5", "system-upgrade-controller", "worker1",
                                       clock=lambda: ticks[0], sleep=sleep, timeout=30)
 
     def test_missing_talosconfig_refuses_before_api(self):
-        with patch.dict("os.environ", {"SYSTEM_UPGRADE_PLAN_LATEST_VERSION": "v1.13.5"}):
+        with patch.dict("os.environ", {"SYSTEM_UPGRADE_PLAN_LATEST_VERSION": "v1.14.5"}):
             with patch.object(preflight.Path, "is_file", return_value=False):
                 with self.assertRaisesRegex(RuntimeError, "credential missing"):
                     preflight.main()

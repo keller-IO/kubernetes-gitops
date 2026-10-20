@@ -7,6 +7,8 @@ resources:
 envFrom:
   - secretRef:
       name: gatus-oidc
+  - secretRef:
+      name: gatus-db # GATUS_DB_PASSWORD fuer monitoring-pg
 
 ingress:
   enabled: true
@@ -22,6 +24,12 @@ ingress:
         - status.jit.services
 
 config:
+  # Ergebnisse und Uptime-Historie in Postgres (gemeinsamer Cluster monitoring-pg,
+  # ADR 0008). Ohne storage nutzt Gatus einen In-Memory-Store: jeder Pod-Neustart
+  # loescht die gesamte Historie (zuletzt 19.10.2026 beim Ausfall von wrk2).
+  storage:
+    type: postgres
+    path: postgres://gatus:${GATUS_DB_PASSWORD}@monitoring-pg-rw.monitoring-db.svc.cluster.local:5432/gatus?sslmode=require
   # OIDC DEAKTIVIERT bis der Keycloak-Client im Realm bgt existiert und das
   # Secret passt: Gatus macht beim Start OIDC-Discovery und panict, wenn die
   # fehlschlägt. Block erst nach Client-/Secret-Abgleich wieder einsetzen.
@@ -84,9 +92,14 @@ config:
     # replicas: 0, ArgoCD meldet das korrekt als Synced/Healthy. Der Check war
     # damit dauerhaft rot, ohne dass es etwas zu tun gab. Wieder aufnehmen,
     # sobald forgejo zurueckkommt.
-    # mastodon entfernt (13.09.2026): die App wurde am 11.09. aus dem Cluster
-    # entfernt, social.jit.services existiert nicht mehr. Die oeffentliche
-    # Instanz prueft weiterhin jit.social — die laeuft und bleibt drin.
+    # mastodon: seit dem Cutover am 19.10.2026 laeuft jit.social im Cluster.
+    # social.jit.services gibt es nicht mehr, geprueft wird die oeffentliche
+    # Foederationsdomain.
+    - name: mastodon
+      group: extern
+      url: https://jit.social/health
+      interval: 60s
+      conditions: ["[STATUS] == 200"]
     - name: eurooffice
       group: intern (jit.services)
       url: https://eurooffice.jit.services/healthcheck

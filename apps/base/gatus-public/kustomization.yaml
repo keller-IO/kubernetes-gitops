@@ -11,6 +11,9 @@ helmCharts:
     namespace: gatus-public
     valuesFile: values.yaml
 
+generators:
+  - ./secret-generator.yaml
+
 # Probe-Timeouts. Das Chart rendert liveness/readiness nur mit httpGet und
 # kennt zu den Timeouts KEINE values-Option (templates/_pod.tpl) — es greifen
 # also die Kubernetes-Defaults timeoutSeconds: 1 / failureThreshold: 3.

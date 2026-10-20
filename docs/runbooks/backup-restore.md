@@ -116,6 +116,12 @@ Liegt das Backup-Secret in einer gemeinsamen `secret.sops.yaml`, stattdessen
 
 Vor dem Merge den Key mit `curl --aws-sigv4 "aws:amz:garage-potsdam:s3"` prüfen:
 PUT/GET/DELETE im eigenen Bucket → 200/204, LIST auf `backups` → **403**.
+Garage verlangt den Header `-H "x-amz-content-sha256: UNSIGNED-PAYLOAD"`, sonst
+kommt auf alles 400. `--aws-sigv4` braucht curl ≥ 7.75: cfgmgmt01 hat 7.68, also
+auf dem Garage-Host selbst gegen `http://127.0.0.1:3900` testen. Key und Secret
+per stdin übergeben, `curl` mit `2>/dev/null` laufen lassen und Optionen als
+Array/Funktion statt als ungequotete Variable bauen. Eine Fehlermeldung über eine
+„unknown option“ gibt sonst den kompletten Secret Key aus.
 
 Referenz: `ciso-assistant` (PR #198) → `s3://backup-ciso-assistant/cnpg/`.
 
@@ -130,6 +136,7 @@ Referenz: `ciso-assistant` (PR #198) → `s3://backup-ciso-assistant/cnpg/`.
 | `hass-backup` | RWO auf `hass-backups` | Home Assistant, schon ein eigener Bucket |
 | `backup-ciso-assistant` | RW auf `backup-ciso-assistant` | neues Schema |
 | `backup-goloom` (`GK4fa170…`) | RW auf `backup-goloom` (Quota 20 GiB) | neues Schema, seit 14.10.2026 |
+| `backup-monitoring-db` (`GK398386…`) | RW auf `backup-monitoring-db` (Quota 20 GiB) | CNPG `monitoring-pg` (Gatus, Gatus public, Kite), seit 19.10.2026 |
 
 Klartext eines Secrets ansehen: `sops -d apps/base/roundcube/secret.sops.yaml`.
 

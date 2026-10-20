@@ -13,6 +13,7 @@ jq -se '[.[] | select(.msg == "Extracted dependencies") | .packageFiles] | last 
   "$audit_dir/log.jsonl" >"$audit_dir/deps.json"
 
 # Every CNPG imageName must be extracted, regardless of filename or annotations.
+# Authentik is not deployed (ADR 0002) and is in Renovate's ignorePaths.
 while IFS= read -r file; do
   jq -e --arg file "$file" '
     any(.regex[]?; .packageFile == $file and
@@ -21,7 +22,7 @@ while IFS= read -r file; do
     echo "CNPG image not extracted: $file" >&2
     exit 1
   }
-done < <(git grep -l -E '^[[:space:]]*imageName:' -- apps infrastructure clusters ':!*.sops.yaml')
+done < <(git grep -l -E '^[[:space:]]*imageName:' -- apps infrastructure clusters ':!*.sops.yaml' ':!infrastructure/base/authentik')
 
 # A valid regex that extracts no Plan/installer update would silently stop OS updates.
 talos_file=infrastructure/base/system-upgrade-controller/talos-plan.yaml

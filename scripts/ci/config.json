@@ -13,5 +13,9 @@
       "podmonitors": "1f7dec723dd75a6d926dbadaabba8827577b2eca864cf59ac51ee9ccc5adc6dc",
       "servicemonitors": "f11dee209f0a9f917ca781fb921969fb3c0dc710440eb77fa44ec7368d51f957"
     }
+  },
+  "talosServiceAccountCRD": {
+    "version": "1.13.4",
+    "sha256": "24f42e7d6b8c23e94556908f79f6b06816fc11be090848e362720910b1497d7c"
   }
 }

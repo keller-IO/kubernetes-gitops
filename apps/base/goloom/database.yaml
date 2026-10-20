@@ -7,7 +7,20 @@ metadata:
   name: goloom-pg
   namespace: goloom
 spec:
-  instances: 1 # 3 fuer HA
+  instances: 2
+  # Zwei Instanzen (Primary + Standby), damit ein Node-Drain (Talos-Upgrade) per
+  # Switchover statt als DB-Ausfall laeuft. required: Standby landet nie auf dem
+  # Node des Primary (5 Worker, daher erfuellbar). Der SUC-Preflight erwartet
+  # fuer volle Drain-Sicherheit weiterhin 3 Instanzen.
+  affinity:
+    enablePodAntiAffinity: true
+    podAntiAffinityType: required
+    topologyKey: kubernetes.io/hostname
+  # Primary-Updates (Rolling Update nach Pod-Template-Aenderung) immer per
+  # Switchover. Default ist restart: der Primary wird dann in-place neu gestartet
+  # (19.10.2026: 1-6 min DB-Ausfall je Cluster nach der Affinity-Aenderung).
+  primaryUpdateMethod: switchover
+  primaryUpdateStrategy: unsupervised
   # Explizit gepinnt wie die uebrigen CNPG-Cluster: ohne imageName waehlt der
   # Operator seine Default-Version, und ein Operator-Bump wechselt sie ungefragt.
   imageName: ghcr.io/cloudnative-pg/postgresql:17.11 # renovate: image=ghcr.io/cloudnative-pg/postgresql

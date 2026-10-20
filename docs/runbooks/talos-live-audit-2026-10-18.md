@@ -80,6 +80,11 @@ enthalten, solange diese Kapazitaet und der externe Ceph-Pool nicht belegt sind.
 
 ## Datenbanken und Backups
 
+> Nachtrag 19.10.2026: Die neun CNPG-Cluster sind in Git auf `instances: 2` mit
+> `podAntiAffinityType: required` umgestellt (nach dem Merge und Sync live). Der
+> Befund unten beschreibt den Stand der Abnahme vom 18.10.2026 mit einer
+> Instanz; die SUC-Preflight-Anforderung von drei Instanzen bleibt bestehen.
+
 Neun CNPG-Cluster laufen mit jeweils einer gesunden Instanz, bevorzugter
 Anti-Affinity und `failoverDelay: 0`. Jeder Primary-PDB hat
 `minAvailable: 1`, `disruptionsAllowed: 0`: ein Worker mit einem solchen Primary

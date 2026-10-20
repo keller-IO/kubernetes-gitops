@@ -1,0 +1,39 @@
+# Ceph-RGW als Backend fuer die Medien-Auslieferung.
+#
+# Warum ueberhaupt: Mastodon erzeugt seine Medien-URLs mit S3_ALIAS_HOST, also
+# als https://jit.social/system/<pfad>. Das haelt die seit Jahren existierenden
+# /system/...-URLs gueltig — foederierte Instanzen und alte Posts verweisen
+# darauf. Der Ingress bildet /system/ auf den Bucket-Pfad /jit-social-media/ ab.
+#
+# Der Service in legacy-proxy taugt dafuer nicht: Ingress-Backends muessen im
+# selben Namespace liegen. Deshalb hier dieselben drei RGW-Daemons noch einmal.
+#
+# ⚠️ ArgoCD schliesst EndpointSlice/Endpoints per resource.exclusions (argocd-cm,
+# Standardliste) aus Sync UND Prune aus: der Service `rgw` entsteht per Sync, die
+# EndpointSlice unten NICHT. Ohne sie antwortet /system/ mit 502, waehrend die
+# App Synced/Healthy meldet (gleiche Falle wie legacy-proxy, #220). Deshalb im
+# Cutover-Fenster VOR dem Merge einmalig von Hand anwenden (Runbook, Phase 4):
+#   yq 'select(.kind == "EndpointSlice")' apps/base/mastodon/media-backend.yaml | kubectl apply -f -
+apiVersion: v1
+kind: Service
+metadata:
+  name: rgw
+  namespace: mastodon
+spec:
+  ports: [{ name: http, port: 7480, targetPort: 7480 }]
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: rgw
+  namespace: mastodon
+  labels: { kubernetes.io/service-name: rgw }
+addressType: IPv4
+ports: [{ name: http, port: 7480 }]
+endpoints:
+  - addresses: ["192.168.2.6"]
+    conditions: { ready: true }
+  - addresses: ["192.168.2.7"]
+    conditions: { ready: true }
+  - addresses: ["192.168.2.8"]
+    conditions: { ready: true }

@@ -129,6 +129,16 @@ def supplementary(config_path):
     for kind in ("podmonitors", "servicemonitors"):
         url = f"https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v{prometheus['version']}/example/prometheus-operator-crd/monitoring.coreos.com_{kind}.yaml"
         crds.append(yaml.safe_load(download(url, prometheus["sha256"][kind])))
+
+    # Talos creates serviceaccounts.talos.dev at runtime once
+    # kubernetesTalosAPIAccess is enabled; no chart renders it. Its golden test
+    # output is the generated CRD. Pinned separately from the Plan's Talos
+    # version so routine Talos patch bumps do not require a new schema hash.
+    talos = config["talosServiceAccountCRD"]
+    if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", talos["version"]):
+        raise ValueError("Talos ServiceAccount CRD schema requires an exact x.y.z version")
+    url = f"https://raw.githubusercontent.com/siderolabs/talos/v{talos['version']}/internal/app/machined/pkg/controllers/k8s/internal/k8stemplates/testdata/talos-service-account-crd.yaml"
+    crds.append(yaml.safe_load(download(url, talos["sha256"])))
     return schema, crds, registry
 
 
