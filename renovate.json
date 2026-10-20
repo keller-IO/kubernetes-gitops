@@ -16,13 +16,10 @@
     "infrastructure/base/authentik/**"
   ],
   "rebaseWhen": "conflicted",
+  "automerge": false,
   "minimumReleaseAge": "7 days",
   "nix": {
     "enabled": true
-  },
-  "lockFileMaintenance": {
-    "enabled": true,
-    "automerge": true
   },
   "kubernetes": {
     "managerFilePatterns": [
@@ -121,90 +118,18 @@
       "allowedVersions": "/^8\\.19\\.\\d+$/"
     },
     {
-      "description": "Nix flake inputs are grouped and automerged after the global soak period.",
+      "description": "Nix flake inputs are grouped after the global soak period.",
       "matchManagers": [
         "nix"
       ],
-      "groupName": "nix packages",
-      "automerge": true
-    },
-    {
-      "description": "Automerge digest, pin and patch updates only for classified stateless leaf apps after CI.",
-      "matchUpdateTypes": [
-        "digest",
-        "pin",
-        "patch"
-      ],
-      "automerge": true,
-      "matchFileNames": [
-        "apps/base/collabora/**",
-        "apps/base/gatus/**",
-        "apps/base/gatus-public/**",
-        "apps/base/icecast/**",
-        "apps/base/phpmyadmin/**",
-        "infrastructure/base/kite/**",
-        "infrastructure/base/kubernetes-mcp/**"
-      ]
-    },
-    {
-      "description": "Automerge minor updates only for stateless leaf apps.",
-      "matchFileNames": [
-        "apps/base/collabora/**",
-        "apps/base/gatus/**",
-        "apps/base/icecast/**",
-        "apps/base/phpmyadmin/**",
-        "infrastructure/base/kite/**",
-        "infrastructure/base/kubernetes-mcp/**"
-      ],
-      "matchUpdateTypes": [
-        "minor"
-      ],
-      "automerge": true
+      "groupName": "nix packages"
     },
     {
       "description": "Renovate self-updates get a shorter soak to keep the updater current.",
       "matchFileNames": [
         "apps/base/renovate/**"
       ],
-      "minimumReleaseAge": "2 days",
-      "automerge": true
-    },
-    {
-      "description": "Infrastructure controllers and stateful applications need manual review.",
-      "matchFileNames": [
-        "apps/base/forgejo/**",
-        "apps/base/kimai/**",
-        "apps/base/mailman/**",
-        "apps/base/mastodon/**",
-        "apps/base/paperless-ngx/**",
-        "apps/base/roundcube/**",
-        "apps/base/wordpress/**",
-        "infrastructure/base/argocd/**",
-        "infrastructure/base/ceph-csi/**",
-        "infrastructure/base/cert-manager/**",
-        "infrastructure/base/cilium/**",
-        "infrastructure/base/cnpg/**",
-        "infrastructure/base/ingress-nginx/**",
-        "infrastructure/base/mariadb-operator/**",
-        "infrastructure/base/monitoring/**",
-        "apps/base/ciso-assistant/**",
-        "apps/base/expense-tracker/**",
-        "apps/base/matomo/**",
-        "infrastructure/base/crowdsec/**",
-        "infrastructure/base/csi-driver-smb/**",
-        "infrastructure/base/netbird/**",
-        "infrastructure/base/snapshot-controller/**",
-        "apps/base/goloom/**"
-      ],
-      "automerge": false
-    },
-    {
-      "description": "0.x minor updates can be breaking; keep them manual.",
-      "matchUpdateTypes": [
-        "minor"
-      ],
-      "matchCurrentVersion": "/^0\\./",
-      "automerge": false
+      "minimumReleaseAge": "2 days"
     },
     {
       "matchPackageNames": [
@@ -236,8 +161,7 @@
         "ghcr.io/cloudnative-pg/postgresql"
       ],
       "matchCurrentVersion": "/^16\\./",
-      "allowedVersions": "/^16\\.\\d+(?:-|$)/",
-      "automerge": false
+      "allowedVersions": "/^16\\.\\d+(?:-|$)/"
     },
     {
       "description": "CNPG Postgres 17: patch/build updates only; major upgrades require a migration.",
@@ -245,8 +169,7 @@
         "ghcr.io/cloudnative-pg/postgresql"
       ],
       "matchCurrentVersion": "/^17\\./",
-      "allowedVersions": "/^17\\.\\d+(?:-|$)/",
-      "automerge": false
+      "allowedVersions": "/^17\\.\\d+(?:-|$)/"
     },
     {
       "description": "Kustomize release tags contain a component prefix; ignore kyaml and api releases.",
@@ -265,22 +188,6 @@
       ],
       "matchCurrentValue": "/-\\d+-system-/",
       "versioning": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)-(?<build>\\d+)-(?<compatibility>system-[a-z0-9-]+)$"
-    },
-    {
-      "description": "CI and GitOps control-plane dependencies require manual review.",
-      "matchFileNames": [
-        ".github/**",
-        "scripts/ci/**",
-        "clusters/**"
-      ],
-      "automerge": false
-    },
-    {
-      "description": "SUC runtime, preflight Python and kubectl updates require manual review.",
-      "matchFileNames": [
-        "infrastructure/base/system-upgrade-controller/**"
-      ],
-      "automerge": false
     },
     {
       "description": "Talos CLI uses release dates and versions from the same source as Plan/installer.",
@@ -306,13 +213,15 @@
       "allowedVersions": "/^v?1\\.\\d+\\.\\d+$/",
       "separateMinorPatch": true,
       "separateMultipleMinor": true,
-      "minimumReleaseAge": "7 days",
-      "automerge": false
+      "minimumReleaseAge": "7 days"
     }
   ],
   "argocd": {
     "managerFilePatterns": [
       "clusters/main/appset-apps.yaml"
     ]
+  },
+  "lockFileMaintenance": {
+    "enabled": true
   }
 }
