@@ -45,18 +45,26 @@ Dumps dürfen nicht dort abgelegt werden; Dumps direkt in den Cluster streamen.
   kein Gegenstück. Ohne Ersatz wächst der Remote-Cache im RGW unbegrenzt.
   Eigener CronJob spätestens mit dem Cutover-PR, sonst füllt er Ceph.
   **Umgesetzt (19.10.2026, Chart 1.2.5 bringt weiterhin keinen CronJob mit):**
-  `apps/base/mastodon/media-retention.yaml` mit drei CronJobs
-  (`mastodon-media-remove` täglich 03:30, `mastodon-preview-cards-remove` täglich
-  04:10, `mastodon-media-remove-orphans` sonntags 04:30, Europe/Berlin). Erster
+  `apps/base/mastodon/media-retention.yaml` mit vier CronJobs
+  (`mastodon-media-attachments-remove` täglich 01:00, `mastodon-media-remove`
+  täglich 03:30, `mastodon-preview-cards-remove` täglich 04:10,
+  `mastodon-media-remove-orphans` sonntags 04:30, Europe/Berlin). Der
+  Anhänge-Job kam erst am 20.10.2026 dazu (siehe
+  `docs/learnings/mastodon-remote-cache-nach-cutover.md`). Erster
   Lauf nach dem Cutover manuell beobachten (`kubectl create job --from=cronjob/…`),
   `remove-orphans` zuerst mit `--dry-run`.
   **Schärfer parametrisieren als auf dem Altserver:** dessen Cron läuft zwar
   (zuletzt 13.09. und 20.09.), trotzdem liegen dort 514.064 Cache-Dateien älter
   als 30 Tage. Ursache sind die Defaults — `media remove` fasst ohne
   `--prune-profiles` die Avatare und Header entfernter Profile nicht an, und
-  `preview_cards remove` löscht erst ab 180 Tagen. Empfehlung für den CronJob:
-  `media remove --days 7 --prune-profiles`, `preview_cards remove --days 30`
-  und periodisch `media remove-orphans`.
+  `preview_cards remove` löscht erst ab 180 Tagen. Empfehlung für die CronJobs:
+  `media remove --days 7` (Anhänge) **und getrennt davon**
+  `media remove --days 7 --prune-profiles` (Profilbilder),
+  `preview_cards remove --days 30` und periodisch `media remove-orphans`.
+  ⚠️ `--prune-profiles` ersetzt den Anhänge-Lauf, statt ihn zu ergänzen: mit
+  dem Flag bearbeitet tootctl nur Avatare und Header. Die ursprüngliche
+  Empfehlung hier hatte nur diesen einen Aufruf, deshalb lief vom 19. bis
+  20.10.2026 keine Anhang-Retention.
 - Migration und Upgrade werden nicht vermischt: Images sind auf **4.5.18**
   gepinnt, identisch zur Bestandsinstanz. Chart 1.0.3 bringt appVersion 4.6.3
   mit; das Upgrade folgt separat nach stabiler Betriebsphase.

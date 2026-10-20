@@ -92,9 +92,14 @@ config:
     # replicas: 0, ArgoCD meldet das korrekt als Synced/Healthy. Der Check war
     # damit dauerhaft rot, ohne dass es etwas zu tun gab. Wieder aufnehmen,
     # sobald forgejo zurueckkommt.
-    # mastodon entfernt (13.09.2026): die App wurde am 11.09. aus dem Cluster
-    # entfernt, social.jit.services existiert nicht mehr. Die oeffentliche
-    # Instanz prueft weiterhin jit.social — die laeuft und bleibt drin.
+    # mastodon: seit dem Cutover am 19.10.2026 laeuft jit.social im Cluster.
+    # social.jit.services gibt es nicht mehr, geprueft wird die oeffentliche
+    # Foederationsdomain.
+    - name: mastodon
+      group: extern
+      url: https://jit.social/health
+      interval: 60s
+      conditions: ["[STATUS] == 200"]
     - name: eurooffice
       group: intern (jit.services)
       url: https://eurooffice.jit.services/healthcheck
