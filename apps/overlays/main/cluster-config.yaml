@@ -11,7 +11,6 @@ metadata:
 data:
   domain: jit.services
   host_argocd: argocd.jit.services
-  host_authentik: auth.jit.services
   host_metrics: metrics.jit.services # vmsingle-Datasource fürs Haupt-Grafana (192.168.23.9)
   host_kimai: kimai.jit.services
   host_roundcube: webmail.jit.services

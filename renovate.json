@@ -12,7 +12,8 @@
   "ignorePaths": [
     ".forgejo/**",
     "**/*.sops.yaml",
-    "**/charts/**"
+    "**/charts/**",
+    "infrastructure/base/authentik/**"
   ],
   "rebaseWhen": "behind-base-branch",
   "minimumReleaseAge": "7 days",
@@ -179,7 +180,6 @@
         "apps/base/roundcube/**",
         "apps/base/wordpress/**",
         "infrastructure/base/argocd/**",
-        "infrastructure/base/authentik/**",
         "infrastructure/base/ceph-csi/**",
         "infrastructure/base/cert-manager/**",
         "infrastructure/base/cilium/**",
