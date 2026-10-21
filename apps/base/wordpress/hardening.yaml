@@ -14,3 +14,8 @@ data:
             Require all denied
         </FilesMatch>
     </Directory>
+  zz-cve-2026-109619.ini: |
+    ; CVE-2026-109619 (PHP-RCE, CERT-EU 2026-018, 21.10.2026): sperrt den bestaetigten
+    ; Angriffsweg ueber den Session-Upload-Progress. Nur Teilmitigation - entfernen,
+    ; sobald das Image PHP >= 8.3.36 bzw. >= 8.4.27 enthaelt.
+    session.upload_progress.enabled = 0

@@ -9,6 +9,7 @@ resources:
   - cache.yaml
   - workload.yaml
   - backup.yaml
+  - php-cve-mitigation.yaml
 
 generators:
   - ./secret-generator.yaml
