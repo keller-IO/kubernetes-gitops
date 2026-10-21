@@ -118,6 +118,14 @@
       "allowedVersions": "/^8\\.19\\.\\d+$/"
     },
     {
+      "description": "Mastodon steps through 4.6 before 4.7: the long 4.7.0 migrations only run without downtime from 4.6. Widen after the 4.6 upgrade.",
+      "matchPackageNames": [
+        "ghcr.io/mastodon/mastodon",
+        "ghcr.io/mastodon/mastodon-streaming"
+      ],
+      "allowedVersions": "/^v4\\.[56]\\.\\d+$/"
+    },
+    {
       "description": "Nix flake inputs are grouped after the global soak period.",
       "matchManagers": [
         "nix"
