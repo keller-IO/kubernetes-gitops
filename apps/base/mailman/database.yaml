@@ -38,7 +38,7 @@ spec:
   # an PG-17-Servern (\l nutzt daticulocale, in 17 umbenannt) — und der
   # pg_dump-Import kommt ebenfalls aus einer 16er.
   # renovate: datasource=docker depName=ghcr.io/cloudnative-pg/postgresql
-  imageName: ghcr.io/cloudnative-pg/postgresql:16.6
+  imageName: ghcr.io/cloudnative-pg/postgresql:16.15
   storage:
     # 30Gi: das HyperKitty-Archiv des Altsystems bringt 5,9 GB Rohdaten mit
     # (4,3 GB Mail-Bodies + 1,6 GB Anhänge als BYTEA), dazu Indizes, WAL und

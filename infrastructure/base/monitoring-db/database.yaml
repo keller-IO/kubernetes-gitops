@@ -13,7 +13,7 @@ spec:
     topologyKey: kubernetes.io/hostname
   primaryUpdateMethod: switchover
   primaryUpdateStrategy: unsupervised
-  imageName: ghcr.io/cloudnative-pg/postgresql:17.2 # renovate: image=ghcr.io/cloudnative-pg/postgresql
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.11 # renovate: image=ghcr.io/cloudnative-pg/postgresql
   # Noch nicht gemessen (neuer Cluster). Startwerte wie die anderen kleinen
   # Cluster (paperless-pg ~108Mi gemessen); nach einer Woche Betrieb an
   # `kubectl top` anpassen.

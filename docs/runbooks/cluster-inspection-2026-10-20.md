@@ -204,9 +204,16 @@ nicht rückwirkend den Prüfstand vom 20.10.
 
 ## Abnahme nach Merge und verbleibende Punkte
 
-- Nach ArgoCD-Reconciliation Live-Konfiguration und `count:up0` prüfen,
-  die Auflösung von `RecordingRulesNoData` sowie die Zustellung eines echten
-  Alerts an die freigegebene JIT-Liste belegen.
+Beim Rollout am 21.10. waren Monitoring und Kimai am Merge-Commit `Synced/Healthy`;
+Kimais neue Probe `/en/login` war bereit. Die `count:up0`-Regel lieferte 69
+Nullserien für gesunde Ziele, `RecordingRulesNoData` klang ab. Der neue
+Alertmanager-Receiver lud korrekt, doch Rspamd lehnte die erste echte Mail nach
+`DATA` als Spam ab. Eine spätere Nachricht wurde um 13:02 UTC an die JIT-Liste
+weitergegeben. Ursache und Korrektur stehen im
+[Learning](../learnings/alertmanager-mail-rspamd-rejection.md).
+
+- Nach dem Vorlagen-Rollout die Annahme einer echten Nachricht mit der neuen
+  Vorlage durch den Relay und ihre Übergabe an die JIT-Liste belegen.
 - Ursache des erhaltenen Mailman-Index-Jobfehlers untersuchen;
   der Job wurde nicht gelöscht.
 - Nach dem Kimai-Rollout Readiness und neue ProbeWarning-Events prüfen.

@@ -74,6 +74,17 @@ alertmanager:
         email_configs:
           - to: jit-list@jitmail.de
             send_resolved: true
+            headers:
+              Subject: 'KellerIO Clusteralarm {{ .Status | toUpper }}'
+            html: ""
+            text: |-
+              {{ .Status | toUpper }}: {{ .CommonLabels.alertname }}
+              {{ with .CommonLabels.namespace }}Namespace: {{ . }}{{ end }}
+              {{ with .CommonLabels.severity }}Severity: {{ . }}{{ end }}
+              {{ range .Alerts }}
+              {{ with .Annotations.summary }}Summary: {{ . }}{{ end }}
+              {{ with .Annotations.description }}Details: {{ . }}{{ end }}
+              {{ end }}
             tls_config:
               server_name: mx02.jitcreatives.de
       - name: "null"

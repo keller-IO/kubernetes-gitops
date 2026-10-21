@@ -140,10 +140,11 @@
       "minimumReleaseAge": "2 days"
     },
     {
+      "description": "Kimai publishes the Apache image as plain <version> since 2.58; apache-<version> tags stopped at 2.57.0.",
       "matchPackageNames": [
         "kimai/kimai2"
       ],
-      "versioning": "regex:^(?<compatibility>apache)-(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)$"
+      "versioning": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)$"
     },
     {
       "description": "Commit-SHA deployments are released by the application pipeline, not ordered Docker tags.",
