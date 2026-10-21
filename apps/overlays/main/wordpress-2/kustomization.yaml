@@ -42,3 +42,8 @@ patches:
       - op: replace
         path: /spec/storage/s3/prefix
         value: mariadb-wordpress-2
+  - target: { kind: Backup, name: wordpress-mariadb-pre-upgrade-11-8 }
+    patch: |
+      - op: replace
+        path: /spec/storage/s3/prefix
+        value: mariadb-wordpress-2-pre-upgrade-11-8

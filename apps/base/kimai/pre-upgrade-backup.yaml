@@ -1,0 +1,25 @@
+# Einmaliger Dump (ohne schedule) vor dem MariaDB-LTS-Sprung 11.4 -> 11.8.
+# Ein Major-Downgrade ist nicht unterstuetzt: Rollback = Restore dieses Dumps in
+# eine frische 11.4-Instanz. Eigener Prefix, damit die 30d-Retention des
+# taeglichen Backups ihn nicht entfernt. Nach Abschluss des Upgrades wieder
+# entfernen (das S3-Objekt bleibt liegen, bis es manuell geloescht wird). Siehe docs/runbooks/mariadb-lts-upgrade.md.
+apiVersion: k8s.mariadb.com/v1alpha1
+kind: Backup
+metadata:
+  name: kimai-mariadb-pre-upgrade-11-8
+  namespace: kimai
+spec:
+  mariaDbRef:
+    name: kimai-mariadb
+  maxRetention: 2160h # 90d
+  compression: gzip
+  storage:
+    s3:
+      bucket: backups
+      prefix: mariadb-kimai-pre-upgrade-11-8
+      endpoint: 192.168.23.21:3900 # Garage, ohne Schema
+      region: garage-potsdam
+      accessKeyIdSecretKeyRef: { name: kimai-backup-s3, key: ACCESS_KEY_ID }
+      secretAccessKeySecretKeyRef: { name: kimai-backup-s3, key: SECRET_ACCESS_KEY }
+      tls:
+        enabled: false # Garage spricht HTTP, kein TLS

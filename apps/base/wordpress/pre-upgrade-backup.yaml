@@ -1,0 +1,26 @@
+# Einmaliger Dump (ohne schedule) vor dem MariaDB-LTS-Sprung 11.4 -> 11.8.
+# Ein Major-Downgrade ist nicht unterstuetzt: Rollback = Restore dieses Dumps in
+# eine frische 11.4-Instanz. Eigener Prefix, damit die 30d-Retention des
+# taeglichen Backups ihn nicht entfernt. Nach Abschluss des Upgrades wieder
+# entfernen (das S3-Objekt bleibt liegen, bis es manuell geloescht wird). Siehe docs/runbooks/mariadb-lts-upgrade.md.
+apiVersion: k8s.mariadb.com/v1alpha1
+kind: Backup
+metadata:
+  name: wordpress-mariadb-pre-upgrade-11-8
+spec:
+  mariaDbRef:
+    name: wordpress-mariadb
+  maxRetention: 2160h # 90d
+  compression: gzip
+  storage:
+    s3:
+      bucket: backups
+      # WICHTIG: prefix wird PRO Instanz im Overlay gepatcht, sonst mischen sich
+      # die Dumps der drei Instanzen.
+      prefix: mariadb-wordpress-CHANGEME-pre-upgrade-11-8 # Overlay MUSS patchen
+      endpoint: 192.168.23.21:3900 # Garage, ohne Schema
+      region: garage-potsdam
+      accessKeyIdSecretKeyRef: { name: wordpress-backup-s3, key: ACCESS_KEY_ID }
+      secretAccessKeySecretKeyRef: { name: wordpress-backup-s3, key: SECRET_ACCESS_KEY }
+      tls:
+        enabled: false # Garage spricht HTTP, kein TLS
