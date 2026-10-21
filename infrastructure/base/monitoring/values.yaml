@@ -55,11 +55,27 @@ alertmanager:
   # operator's VMAlertmanagerSpec has no "name" field) to keep it well under the
   # limit even with the hash suffix.
   name: vm-k8s-stack-alertmanager
-  # TODO: wire a notification receiver (see AGENTS.md "Alertmanager → Notification needs to be done!")
   config:
+    global:
+      smtp_smarthost: "192.168.2.209:25"
+      smtp_from: postmaster@lists.jitmail.de
+      smtp_require_tls: true
     route:
-      receiver: "null"
+      receiver: jit-mailing-list
+      group_by: [alertname, namespace, service, job]
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 12h
+      routes:
+        - matchers: ['alertname=~"Watchdog|InfoInhibitor"']
+          receiver: "null"
     receivers:
+      - name: jit-mailing-list
+        email_configs:
+          - to: jit-list@jitmail.de
+            send_resolved: true
+            tls_config:
+              server_name: mx02.jitcreatives.de
       - name: "null"
   # Homelab's vmalertmanager-vm-am-0 runs cpu:10m/mem:32Mi request, mem:128Mi
   # limit; our own measured usage is lower still (~17Mi RSS) but reused the
@@ -103,3 +119,10 @@ grafana:
   enabled: false
 defaultDashboards:
   enabled: false # ohne internes Grafana nutzlos — Dashboards im Haupt-Grafana importieren
+defaultRules:
+  rules:
+    # Emit zero when all observed targets are healthy; otherwise this recording
+    # rule disappears and triggers the chart's generic RecordingRulesNoData alert.
+    "count:up0":
+      spec:
+        expr: "sum(up == bool 0) without(instance,pod,node)"
