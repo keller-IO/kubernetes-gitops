@@ -19,7 +19,7 @@ spec:
   # Explizit gepinnt: ohne dieses Feld setzt der mariadb-operator sein eigenes
   # Default-Image. Ein Operator-Bump (Renovate) wuerde damit ungefragt die
   # DB-Version wechseln — und ArgoCD meldet das Feld dauerhaft als OutOfSync.
-  image: docker-registry1.mariadb.com/library/mariadb:11.4.5 # renovate: image=docker-registry1.mariadb.com/library/mariadb
+  image: docker-registry1.mariadb.com/library/mariadb:13.0.2 # renovate: image=docker-registry1.mariadb.com/library/mariadb
   myCnf: |
     [mariadb]
     character-set-server = utf8mb4
