@@ -18,7 +18,7 @@ spec:
   # Explizit gepinnt: ohne dieses Feld setzt der mariadb-operator sein eigenes
   # Default-Image. Ein Operator-Bump (Renovate) wuerde damit ungefragt die
   # DB-Version wechseln — und ArgoCD meldet das Feld dauerhaft als OutOfSync.
-  image: docker-registry1.mariadb.com/library/mariadb:11.4.5 # renovate: image=docker-registry1.mariadb.com/library/mariadb
+  image: docker-registry1.mariadb.com/library/mariadb:13.0.2 # renovate: image=docker-registry1.mariadb.com/library/mariadb
   # Ohne resources landet der Pod in QoS-Klasse BestEffort — und wird bei
   # Node-Speicherdruck als ERSTES vom Kernel gekillt (Exit 137). Genau das ist am
   # 28.07.2026 passiert: wordpress-1 und -2 waren offline, waehrend die baugleiche
