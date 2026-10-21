@@ -300,22 +300,20 @@ https://auth.savar.de/realms/bgt
 
 **Offen:**
 - [ ] Grafana-Admin-Passwort aus SOPS-Secret statt Klartext (`adminPassword`).
-- [ ] **Alertmanager-Receiver** konfigurieren (aktuell `"null"`) — z.B. Matrix/Email/ntfy.
-      (AGENTS.md: „Alertmanager → Notification needs to be done!")
+- [x] **Alertmanager-Receiver konfiguriert:** Email an `jit-list@jitmail.de` über `192.168.2.209:25`
+      konfiguriert (`require_tls: true`, TLS-Servername
+      `mx02.jitcreatives.de`); Watchdog und InfoInhibitor bleiben absichtlich
+      auf `null`. Gerenderte Config-Prüfung mit `amtool` und SMTP-Banner/EHLO-
+      Probe aus dem Alertmanager-Pod waren erfolgreich; STARTTLS und das
+      TLS-1.3-Zertifikat wurden vom Host geprüft. Die Live-Abnahme nach Merge
+      wird im zugehörigen PR festgehalten; siehe [Inspektion](runbooks/cluster-inspection-2026-10-20.md).
+- [x] **Recording Rule `count:up0` korrigiert:** Bei vorhandenen, erfolgreichen
+      Targets entsteht eine Nullserie, bei komplett fehlenden Targets weiterhin
+      keine Serie. Die gerenderte Regel wurde geprüft.
 - [ ] Retention/Storage-Size an Clustergröße anpassen.
 - [ ] ServiceMonitor/PodMonitor-Scrape für CNPG, MariaDB, Valkey, NGINX, Cilium prüfen.
 - [ ] Alerts fuer CephFS-CSI-Mount-/Sessionfehler und das Alter des letzten
       erfolgreichen Backups einrichten; ein vorhandener Zeitplan reicht nicht.
-
-**Beispiel** — Alertmanager-Receiver (`infrastructure/base/monitoring/values.yaml`):
-```yaml
-alertmanager:
-  config:
-    route: { receiver: ntfy }
-    receivers:
-      - name: ntfy
-        webhook_configs: [{ url: https://ntfy.DEINE-DOMAIN.tld/alerts }]
-```
 
 ---
 
