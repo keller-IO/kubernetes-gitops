@@ -43,21 +43,61 @@ Die PDBs liegen deshalb in `apps/base/mastodon/pdb.yaml`.
 Bewusst nicht redundant (Entscheidung in #339, siehe auch #286 und #295).
 Mastodon unterstützt seit 4.3 Redis Sentinel (`REDIS_SENTINELS`,
 `REDIS_SENTINEL_MASTER`). Das bräuchte drei Valkey-Pods und Sentinel ohne
-Operator im Repo. Dem steht ein Ausfall von wenigen Minuten bei einem
-Node-Crash gegenüber.
+Operator im Repo. Dem steht bei einem Node-Ausfall ein Mastodon-Ausfall
+gegenüber: einige Minuten, wenn der Node zurückkommt, sonst bis zum
+manuellen Eingriff unten.
 
-- **Node-Crash:** Valkey ist weg, bis Kubernetes das RBD-Volume freigibt,
-  frühestens nach etwa 6 min (Force-Detach des Attach-Detach-Controllers),
-  dazu der Pod-Neustart. In dieser Zeit schlagen fast alle Web-Anfragen fehl,
-  weil Cache, Rack::Attack und Sidekiq an Redis hängen. Streaming verliert
-  Pub/Sub. Sidekiq-Jobs bleiben in der Queue (AOF, `appendonly yes`). Nach dem
-  Neustart heilt sich alles ohne Eingriff.
-- **Geplanter Drain:** Das Eviction ist graceful, das Volume löst sich in
+Solange Valkey fehlt, schlagen fast alle Web-Anfragen fehl, weil Cache,
+Rack::Attack und Sidekiq an Redis hängen. Streaming verliert Pub/Sub.
+Sidekiq-Jobs bleiben in der Queue (AOF, `appendonly yes`).
+
+- **Node kommt zurück** (Reboot, kurzer Netzausfall): Der Kubelet räumt den
+  alten Pod ab, der StatefulSet startet `mastodon-valkey-0` neu. Das heilt
+  sich ohne Eingriff, sobald der Node wieder `Ready` ist.
+- **Node bleibt weg** (VM hängt, Host defekt): Das heilt sich **nicht** von
+  selbst. Nach etwa 5 min (Toleration `unreachable`) markiert Kubernetes den
+  Pod zum Löschen, er bleibt aber `Terminating`, weil kein Kubelet das
+  bestätigt. Ein StatefulSet legt `mastodon-valkey-0` erst neu an, wenn der
+  alte Pod wirklich weg ist. Das schützt das RWO-Volume vor zwei Schreibern.
+  Web, Streaming und Sidekiq sind Deployments und starten dagegen sofort
+  anderswo neu.
+- **Geplanter Drain:** Die Eviction ist graceful, das Volume löst sich in
   Sekunden. Erwartet wird eine Lücke von etwa einer Minute (Detach, Attach,
   AOF laden). Wer das bewusst steuern will, verschiebt Valkey vor dem
   Wartungsfenster: Zielnode cordonen, dann `mastodon-valkey-0` löschen. Das
   braucht Schreibzugriff und gehört in ein benanntes Wartungsfenster, nicht in
   den Agenten-Alltag.
+
+### Recovery bei dauerhaft ausgefallenem Node
+
+Braucht Schreibzugriff für einen benannten Incident (siehe AGENTS.md).
+
+1. **Fencing zuerst:** In Proxmox prüfen, dass die VM des Nodes wirklich
+   **aus** ist, notfalls hart stoppen. Ein Node, der nur nicht erreichbar ist,
+   aber noch läuft, kann weiter auf das RBD-Volume schreiben. Ohne diesen
+   Nachweis nicht weitermachen.
+2. Node als außer Betrieb markieren. Kubernetes löscht dann die Pods des
+   Nodes und hängt die Volumes sofort ab, ohne auf den 6-min-Force-Detach zu
+   warten:
+
+   ```bash
+   kubectl taint nodes <node> node.kubernetes.io/out-of-service=nodeshutdown:NoExecute
+   ```
+
+3. Warten, bis `mastodon-valkey-0` auf einem anderen Node `Running` und
+   `Ready` ist. Hängt das Mapping mit `rbd image ... is still being used`,
+   ist der Watcher des alten Clients noch aktiv: `rbd status` auf dem Image
+   prüfen und nach dem Fencing den Timeout abwarten.
+4. Erst wenn der Node repariert und wieder gestartet ist, den Taint
+   entfernen:
+
+   ```bash
+   kubectl taint nodes <node> node.kubernetes.io/out-of-service=nodeshutdown:NoExecute-
+   ```
+
+`kubectl delete pod --force --grace-period=0` ist nur die schlechtere
+Variante. Sie löscht den Pod, das Volume bleibt aber bis zum Force-Detach
+angehängt. Ohne Fencing ist auch sie unsicher.
 
 ## Drain-Prüfung
 
