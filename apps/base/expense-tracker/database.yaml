@@ -22,7 +22,7 @@ spec:
   # Die steht dann nicht in Git, Renovate sieht sie nicht, und ein
   # Operator-Bump wechselt die DB-Version ungefragt. 17.2 ist exakt das, was
   # hier bereits laeuft -- der Pin aendert nichts, er schreibt es nur fest.
-  imageName: ghcr.io/cloudnative-pg/postgresql:17.2 # renovate: image=ghcr.io/cloudnative-pg/postgresql
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.11 # renovate: image=ghcr.io/cloudnative-pg/postgresql
   # Ohne resources ist der Pod BestEffort: bei Speicherdruck zuerst gekillt,
   # und der Scheduler bilanziert Nodes nur nach Requests.
   # Gemessen am 06.09.2026: 57Mi / 6m im Leerlauf.
