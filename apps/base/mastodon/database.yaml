@@ -18,9 +18,9 @@ spec:
   # (19.10.2026: 1-6 min DB-Ausfall je Cluster nach der Affinity-Aenderung).
   primaryUpdateMethod: switchover
   primaryUpdateStrategy: unsupervised
-  # Explizit gepinnt: PG 16 wie die Bestandsinstanz (16.14), Restore per
+  # Explizit gepinnt: PG 16 wie die Bestandsinstanz (damals 16.14), Restore per
   # logischem Dump. Kein Major-Wechsel waehrend der Migration.
-  imageName: ghcr.io/cloudnative-pg/postgresql:16.14-202607270908-system-bookworm@sha256:0fd578912f7786e218b7ed223458824236c03084f38030563b274865679ecd62
+  imageName: ghcr.io/cloudnative-pg/postgresql:16.15-202610190958-system-bookworm@sha256:34be1a40793eb0f1452200cb52facebdc6c4a2fb8ca040688788eda07b7529a0
   storage:
     size: 64Gi # Quell-DB 21 GB (22.09.2026); Luft fuer Restore und Migrationen
     storageClass: ceph-rbd # CNPG-Feld heißt storageClass (nicht storageClassName)
