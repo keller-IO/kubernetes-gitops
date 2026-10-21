@@ -82,7 +82,7 @@ mastodon:
                 app.kubernetes.io/name: mastodon
                 app.kubernetes.io/component: web
   sidekiq:
-    # ⚠️ Bis mastodon02 stillgelegt ist: dort darf kein Mastodon-Dienst mehr
+    # mastodon02 ist seit 21.10.2026 aus. Dort nie wieder Mastodon-Dienste
     # starten, solange diese Worker laufen (Runbook mastodon-migration.md).
     # Chart-Default ist Recreate fuer alle Worker; dann staende `default` bei
     # jedem Rollout komplett. Der Scheduler bekommt per Patch in

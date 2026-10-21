@@ -426,3 +426,5 @@ Zielinstanz dürfen niemals gleichzeitig schreibend aktiv sein.
   RGW-Bucket-Wachstum prüfen.
 - Restore-Test aus `backup-mastodon`.
 - Danach mastodon02 stilllegen; Mastodon-Upgrade auf 4.6 separat.
+  **Stand 21.10.2026:** mastodon02 ist ausgeschaltet. Web, Streaming und
+  Sidekiq laufen seitdem redundant (#339, [mastodon-betrieb.md](mastodon-betrieb.md)).
