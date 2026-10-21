@@ -9,6 +9,7 @@ Format und Kriterien: siehe AGENTS.md → „Operational Learnings".
 
 - [Agent-Guardrails](agent-command-guardrails.md) — Agenten arbeiten via GitOps/PR;
   Live-Cluster-Zugriff bleibt read-only und CI blockiert gefaehrliche Automationsmuster.
+- [Alertmanager-Mail durch Rspamd abgewiesen](alertmanager-mail-rspamd-rejection.md) — SMTP-Handshake und gueltige Konfiguration belegen keine Zustellung; langer Standardbetreff und fehlender Klartextteil loesten den Spamfilter aus.
 - [ArgoCD dauerhaft OutOfSync](argocd-dauerhaft-outofsync.md) — nicht Drift, sondern
   vom API-Server/Operator ergaenzte Default-Felder (`volumeMode`, `nodePort`, `caBundle`).
 - [Collabora-HPA skalierte auf 55 Replicas](collabora-hpa-runaway.md) — Chart-Default-HPA
