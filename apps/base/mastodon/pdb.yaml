@@ -1,0 +1,51 @@
+# Ausfallsicherheit (#339): Ein Drain darf von Web, Streaming und Sidekiq
+# `default` jeweils nur eine der zwei Repliken entfernen. Chart 1.2.5 rendert
+# trotz `pdb`-Values keine PDBs, deshalb liegen sie hier.
+#
+# Bewusst ohne PDB: der Sidekiq-Scheduler (genau 1 Replik, sie wuerde jeden
+# Drain blockieren) und Valkey (Single Pod, siehe docs/runbooks/mastodon-betrieb.md).
+#
+# AlwaysAllow: Ein nicht bereiter Pod (CrashLoop, Startup) darf trotzdem
+# evicted werden. Sonst haelt ein kaputter Pod den Drain fest, ohne dass die
+# PDB etwas schuetzt.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: mastodon-web
+  namespace: mastodon
+spec:
+  minAvailable: 1
+  unhealthyPodEvictionPolicy: AlwaysAllow
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mastodon
+      app.kubernetes.io/instance: mastodon
+      app.kubernetes.io/component: web
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: mastodon-streaming
+  namespace: mastodon
+spec:
+  minAvailable: 1
+  unhealthyPodEvictionPolicy: AlwaysAllow
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mastodon
+      app.kubernetes.io/instance: mastodon
+      app.kubernetes.io/component: streaming
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: mastodon-sidekiq-default
+  namespace: mastodon
+spec:
+  minAvailable: 1
+  unhealthyPodEvictionPolicy: AlwaysAllow
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mastodon
+      app.kubernetes.io/instance: mastodon
+      app.kubernetes.io/component: sidekiq-default
