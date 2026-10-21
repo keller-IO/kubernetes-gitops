@@ -60,10 +60,14 @@ spec:
             - { name: data, mountPath: /opt/kimai/var/data, subPath: data }
             # Plugins (z. B. ImportBundle) überleben Image-Updates auf der PVC.
             - { name: data, mountPath: /opt/kimai/var/plugins, subPath: plugins }
+            - { name: php-cve-mitigation, mountPath: /usr/local/etc/php/conf.d/zz-cve-2026-109619.ini, subPath: zz-cve-2026-109619.ini, readOnly: true }
       volumes:
         - name: data
           persistentVolumeClaim:
             claimName: kimai-data
+        - name: php-cve-mitigation
+          configMap:
+            name: kimai-php-cve-mitigation
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
