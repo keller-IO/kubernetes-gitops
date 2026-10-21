@@ -33,7 +33,7 @@ spec:
               valueFrom:
                 secretKeyRef: { name: kimai-secret, key: mariadb-password }
             - name: DATABASE_URL
-              value: "mysql://kimai:$(MARIADB_PASSWORD)@kimai-mariadb:3306/kimai?charset=utf8mb4&serverVersion=11.4.0-MariaDB"
+              value: "mysql://kimai:$(MARIADB_PASSWORD)@kimai-mariadb:3306/kimai?charset=utf8mb4&serverVersion=11.8.9-MariaDB"
             - name: APP_SECRET
               valueFrom:
                 secretKeyRef: { name: kimai-secret, key: app-secret }
