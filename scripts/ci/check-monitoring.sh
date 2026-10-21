@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Rendered contract for Talos-compatible control-plane monitoring.
+# Rendered contracts for Talos scrapes and alert email.
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -74,8 +74,26 @@ else
   fi
 fi
 
+alertmanager_config="$(jq -r '
+  .[] | select(.kind == "Secret" and .metadata.name == "vmalertmanager-vm-k8s-stack-alertmanager")
+  | .stringData["alertmanager.yaml"] // empty
+' "$work/objects.json")"
+if [[ -z "$alertmanager_config" ]] ||
+  ! printf '%s\n' "$alertmanager_config" | yq -o=json '.' | jq -e '
+    [.receivers[].email_configs[]?] as $emails
+    | ($emails | length > 0) and
+      ([$emails[] | select(
+        ((.headers.Subject // "") | length) > 100 or
+        ((.headers.Subject // "") | length) == 0 or
+        ((.text // "") | length) == 0
+      )] | length == 0)
+  ' >/dev/null; then
+  echo 'ERROR: rendered Alertmanager email needs a short subject and plain-text body' >&2
+  fail=1
+fi
+
 if ((fail != 0)); then
   exit 1
 fi
 
-echo 'Talos monitoring rendered contract passed.'
+echo 'Monitoring rendered contract passed.'
