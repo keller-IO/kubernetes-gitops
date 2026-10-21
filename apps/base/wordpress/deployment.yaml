@@ -65,6 +65,10 @@ spec:
               mountPath: /etc/apache2/conf-enabled/hardening.conf
               subPath: hardening.conf
               readOnly: true
+            - name: hardening
+              mountPath: /usr/local/etc/php/conf.d/zz-cve-2026-109619.ini
+              subPath: zz-cve-2026-109619.ini
+              readOnly: true
       volumes:
         - name: wordpress
           persistentVolumeClaim:

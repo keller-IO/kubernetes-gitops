@@ -69,6 +69,7 @@ spec:
             - { name: roundcube-custom, mountPath: /var/www/html/plugins/showpassword/init.js, subPath: init.js }
             - { name: roundcube-custom, mountPath: /var/www/html/plugins/showpassword/style.css, subPath: style.css }
             - { name: roundcube-custom, mountPath: /var/www/html/skins/jit-logo.png, subPath: jit-logo.png }
+            - { name: php-cve-mitigation, mountPath: /usr/local/etc/php/conf.d/zz-cve-2026-109619.ini, subPath: zz-cve-2026-109619.ini, readOnly: true }
           resources:
             # Gemessen am 28.07.2026: 170Mi, also oberhalb des alten 128Mi-Requests.
             # 19.08.2026: Limit 384Mi -> 768Mi. Der Ruhewert (gemessen 240Mi) lag bei
@@ -86,6 +87,9 @@ spec:
         - name: roundcube-custom
           configMap:
             name: roundcube-customizations
+        - name: php-cve-mitigation
+          configMap:
+            name: roundcube-php-cve-mitigation
 ---
 apiVersion: v1
 kind: Service
