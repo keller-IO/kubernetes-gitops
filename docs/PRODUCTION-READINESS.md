@@ -301,12 +301,17 @@ https://auth.savar.de/realms/bgt
 **Offen:**
 - [ ] Grafana-Admin-Passwort aus SOPS-Secret statt Klartext (`adminPassword`).
 - [x] **Alertmanager-Receiver konfiguriert:** Email an `jit-list@jitmail.de` über `192.168.2.209:25`
-      konfiguriert (`require_tls: true`, TLS-Servername
+      (`require_tls: true`, TLS-Servername
       `mx02.jitcreatives.de`); Watchdog und InfoInhibitor bleiben absichtlich
       auf `null`. Gerenderte Config-Prüfung mit `amtool` und SMTP-Banner/EHLO-
       Probe aus dem Alertmanager-Pod waren erfolgreich; STARTTLS und das
       TLS-1.3-Zertifikat wurden vom Host geprüft. Die Live-Abnahme nach Merge
       wird im zugehörigen PR festgehalten; siehe [Inspektion](runbooks/cluster-inspection-2026-10-20.md).
+- [ ] **Mailzustellung für unterschiedliche Alerts abnehmen.** Der Relay wies
+      am 21.10. die erste Nachricht mit dem langen Standardbetreff nach `DATA`
+      als Spam ab; eine spätere Nachricht erreichte die JIT-Liste. Ein kurzer
+      Betreff und ein Klartextteil werden im
+      [Learning](learnings/alertmanager-mail-rspamd-rejection.md) beschrieben.
 - [x] **Recording Rule `count:up0` korrigiert:** Bei vorhandenen, erfolgreichen
       Targets entsteht eine Nullserie, bei komplett fehlenden Targets weiterhin
       keine Serie. Die gerenderte Regel wurde geprüft.
