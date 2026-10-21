@@ -15,7 +15,7 @@ spec:
   # Ohne expliziten Pin waehlt der Operator seine eigene Default-Version:
   # nicht in Git sichtbar, fuer Renovate unsichtbar, und ein Operator-Bump
   # wechselt die DB-Version ungefragt (Postgres-Major-Split 28.07.2026).
-  image: docker-registry1.mariadb.com/library/mariadb:11.4.5 # renovate: image=docker-registry1.mariadb.com/library/mariadb
+  image: docker-registry1.mariadb.com/library/mariadb:13.0.2 # renovate: image=docker-registry1.mariadb.com/library/mariadb
   storage:
     size: 10Gi # Rohdaten wachsen mit den Besuchen; 90d Retention siehe docs
     storageClassName: ceph-rbd
