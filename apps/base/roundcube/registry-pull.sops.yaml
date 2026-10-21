@@ -1,0 +1,35 @@
+# Pull-Secret fuer registry.jit-creatives.de/jit/container-rebuilds
+# (GitLab-Deploy-Token kellerio-pull, nur read_registry). Angelegt 21.10.2026
+# fuer den lokalen Roundcube-Rebuild mit PHP 8.4.27 (CVE-2026-109618/-109619).
+apiVersion: v1
+kind: Secret
+metadata:
+    name: gitlab-registry
+    namespace: roundcube
+type: kubernetes.io/dockerconfigjson
+data:
+    .dockerconfigjson: ENC[AES256_GCM,data:rcoRPXVrrsdBrBqZZgPY03RwKjfk4cmFLEF2erx+X4zb1qs20H+Cy2uQc2LJmjs7ejUTuCp60EI4gc4vmapFDCEygnHVhZai7EvpToFUPTIxUR2PZ4QMuN9w88NyZ1d7kROY58KNE0sVHj9UUiYnOzrF7tD453JorWPXbLGaJIlZY75Zd96ovDaYvbX4FQ6h6OoVEAjjZv74AsZDftBcT6fVlox2TgbZH7kU8XmRbt0F4UD6W39lA40KjZdJftWM9w3yKJevJh6JRlBnCoZtbr0HJ3HqwM49gATGBCZ0MJ/gOHHZ,iv:KXxPVTejQ/9VNSfoDEgcENMPwZbQGMZlw9i/iaN9QlE=,tag:xKmDIeaQ3FsYb4Qt+7wTgQ==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSA5M1pORXlTa2xHczNIRUhX
+            VUpxN3M3eFBvd01YRFVaUW4xTEtXR0hhNGtVCi9SME1tVVpHV3BWd1A3ZFNhY244
+            WTVTNjFsQm8vRUVKOCtnNDRMYTI3L2sKLS0tIDBKbkcvSG9OakNEUXZTdDhGQUFt
+            Q2ZqN3pxb1lzZ21ET1Awdy82SzRocWMKir1Y2t3LgpsauK6Y4pdWohnhpZjGt84S
+            tBWbO9p47Y/hGxtymKB79UhPMx6uAiuDQpW03t7kK2vVJKZKzpddWQ==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age17x04ga87qyu9lzcuja9k83z90veew9cez7jusul4y5xyr09xaejs9rq755
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSB5VlByRkhVaHlhZkZtbnpx
+            WC9PYXJqa1M0Sjh3OU5HZGRHRVhxQ2RwRFJVCkF5SWF2WTViTTVxaWZTQytLT3JX
+            Tldhb3NvY3FrenZmUHdKWWFkUnJNVW8KLS0tIGp5YVlxcXpHVmk3SDE1Zm5IQUpp
+            VE1CVG9XZHVLMlpWVWlaWXFWYzZGcmcKcKiK+/Fr+Puoum4acClgKxTySW1bIstB
+            I8TJZtqZse0CHxJjCpQ/LPDjcuczejECBferYfVJSEOwJWHa8mzcDw==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1hjq0mgzc2npw9lhtwr49qqrfvkxzc2ss8qu7e06fk5n84qm7xs7qrgxfxa
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-10-21T18:28:06Z"
+    mac: ENC[AES256_GCM,data:t2iFcdVhipfb7DvhzXzPowPkYRebeDuCR0kRBvtpC7wydDsPi5ET3vHHh+Rhtm9bGi3M9UMqDsOdDMKI65thpQFWc1OJqdj/72eNoW0X6W9Y2mAE/z7oMcjDmHCrlqp00DSo/wv9qBVHAG+IiyirY7GsMbkDoN6Phs6z+LAe0oM=,iv:yLXl3lSHVMe4l648ZI7tYAjDmobtclBcqAmpAsKC0VA=,tag:3jK2bH0ZpczTJhGoPiN6gw==,type:str]
+    version: 3.13.3
