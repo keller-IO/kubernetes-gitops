@@ -181,6 +181,17 @@
       "allowedVersions": "/^17\\.\\d+(?:-|$)/"
     },
     {
+      "description": "MariaDB: patch updates within the current LTS line only. Line changes (11.4 -> 11.8 -> 12.3) need pre-upgrade backups and mariadbAutoUpgradeEnabled, and short-term lines (13.x) reach EOL within months; see docs/runbooks/mariadb-lts-upgrade.md.",
+      "matchPackageNames": [
+        "docker-registry1.mariadb.com/library/mariadb"
+      ],
+      "matchUpdateTypes": [
+        "major",
+        "minor"
+      ],
+      "enabled": false
+    },
+    {
       "description": "Kustomize release tags contain a component prefix; ignore kyaml and api releases.",
       "matchDatasources": [
         "github-releases"

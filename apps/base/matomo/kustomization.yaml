@@ -20,6 +20,7 @@ resources:
   - service.yaml
   - ingress.yaml
   - backup.yaml
+  - pre-upgrade-backup.yaml
 
 generators:
   - ./secret-generator.yaml
