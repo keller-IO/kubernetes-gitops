@@ -374,6 +374,8 @@ https://auth.savar.de/realms/bgt
 - [ ] MariaDB **PITR**: für punktgenaues Restore `PhysicalBackup` CRD + Binlog statt logischem Dump.
 - [ ] Integrations-Pilot (`scripts/ci/integration/`) um eine MariaDB-Instanz erweitern —
       Operator-Bumps sind bisher ungetestet ([Learning](learnings/mariadb-operator-stufenweises-upgrade.md)).
+- [ ] MariaDB-Server 11.4.5 → 11.8.9 → 12.3.3 (LTS) stufenweise mit Pre-Upgrade-Dumps — Stufe 11.8.9 seit 21.10.2026 live, 12.3.3 offen
+      ([Runbook](runbooks/mariadb-lts-upgrade.md)); danach `pre-upgrade-backup.yaml` entfernen.
 - [ ] DR-Overlay `infrastructure/overlays/disaster-recovery/` mit `bootstrap.recovery` anlegen.
 - [ ] PVC-Daten (paperless data/media, forgejo repos, wordpress wp-content,
       Mailman-Dateien) nach dem CSI-Smoke-Test per quiesced Snapshot absichern.

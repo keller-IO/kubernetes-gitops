@@ -75,7 +75,6 @@ config:
       conditions: ["[STATUS] == 200"]
     - name: phpmyadmin
       group: intern (jit.services)
-      enabled: false # phpmyadmin bis zum PHP-2Shell-Fix auf 0 Replicas (21.10.2026)
       url: https://dbadmin.jit.services
       interval: 60s
       conditions: ["[STATUS] == 200"]
