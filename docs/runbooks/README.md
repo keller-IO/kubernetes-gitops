@@ -18,6 +18,7 @@ Pro Vorgang eine Markdown-Datei.
 - [ciso-assistant-setup.md](ciso-assistant-setup.md) — CISO Assistant (VVT/GRC) auf `grc.jit.services`: Vor-Merge-Schritte, Keycloak-Client, Zugriffstest.
 - [sops-recipients.md](sops-recipients.md) — age-Empfänger für die Secrets ergänzen oder entfernen (inkl. `sops updatekeys` über beide Repos).
 - [mastodon-migration.md](mastodon-migration.md) — Migration von `jit.social` (mastodon02, `192.168.2.233`) nach Kubernetes.
+- [mastodon-betrieb.md](mastodon-betrieb.md) — Repliken, PDBs und Drain-Prüfung für `jit.social`; Valkey als bekannter Single Point of Failure.
 
 Weitere noch zu erstellen — siehe TODOs in
 `docs/PRODUCTION-READINESS.md` (Abschnitt 11 Backup & DR).

@@ -290,10 +290,18 @@
   {
     "target": "apps_overlays_main_mastodon.yaml",
     "id": "KSV-0014",
-    "message": "Container 'mastodon' of Deployment 'mastodon-sidekiq-all-queues' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "message": "Container 'mastodon' of Deployment 'mastodon-sidekiq-default' should set 'securityContext.readOnlyRootFilesystem' to true",
     "count": 1,
     "expires": "2027-01-18",
-    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry. Split from mastodon-sidekiq-all-queues (#339), same container and debt."
+  },
+  {
+    "target": "apps_overlays_main_mastodon.yaml",
+    "id": "KSV-0014",
+    "message": "Container 'mastodon' of Deployment 'mastodon-sidekiq-scheduler' should set 'securityContext.readOnlyRootFilesystem' to true",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry. Split from mastodon-sidekiq-all-queues (#339), same container and debt."
   },
   {
     "target": "apps_overlays_main_mastodon.yaml",
