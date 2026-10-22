@@ -8,10 +8,7 @@ metadata:
   labels:
     app.kubernetes.io/name: phpmyadmin
 spec:
-  # Voruebergehend aus (21.10.2026): phpmyadmin/phpmyadmin:5.2.3 bringt PHP 8.3.26 mit und ist
-  # gegen CVE-2026-109618/-109619 (PHP2Shell) nicht gefixt; Upstream baut das Image nicht neu.
-  # Wieder auf 1, sobald auf ein Image mit PHP >= 8.3.36 umgestellt ist (z. B. library/phpmyadmin).
-  replicas: 0
+  replicas: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: phpmyadmin
@@ -22,8 +19,10 @@ spec:
     spec:
       containers:
         - name: phpmyadmin
-          # renovate: image=phpmyadmin/phpmyadmin
-          image: phpmyadmin/phpmyadmin:5.2.3
+          # Docker Official Image (docker-library, gleiche Quelle phpmyadmin/docker), wird bei
+          # PHP-Updates neu gebaut – anders als phpmyadmin/phpmyadmin (letzter Build 10/2025, PHP 8.3.26).
+          # Digest = Build vom 21.10.2026 mit PHP 8.3.36 (CVE-2026-109618/-109619).
+          image: phpmyadmin:5.2.3-apache@sha256:527a161fa6c0192cc66180e17e5541aaea028a23a9590e86ce08ecf7daa4fbc8
           ports:
             - containerPort: 80
           env:
