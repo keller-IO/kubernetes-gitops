@@ -10,6 +10,7 @@ resources:
   - database.yaml
   - cache.yaml
   - backup.yaml
+  - pre-upgrade-backup.yaml
   - hardening.yaml
 
 generators:

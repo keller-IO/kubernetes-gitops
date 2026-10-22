@@ -19,7 +19,13 @@ spec:
   # Explizit gepinnt: ohne dieses Feld setzt der mariadb-operator sein eigenes
   # Default-Image. Ein Operator-Bump (Renovate) wuerde damit ungefragt die
   # DB-Version wechseln — und ArgoCD meldet das Feld dauerhaft als OutOfSync.
-  image: docker-registry1.mariadb.com/library/mariadb:11.4.5 # renovate: image=docker-registry1.mariadb.com/library/mariadb
+  image: docker-registry1.mariadb.com/library/mariadb:11.8.9 # renovate: image=docker-registry1.mariadb.com/library/mariadb
+  # Pflicht bei jedem Linienwechsel (11.4 -> 11.8 -> 12.3): ohne das Flag startet
+  # die neue Version, aber mariadb-upgrade migriert die Systemtabellen nicht —
+  # und healthcheck.sh/Ready bleibt trotzdem gruen. Beim Neustart ohne
+  # Versionswechsel ein No-op. Siehe docs/runbooks/mariadb-lts-upgrade.md.
+  updateStrategy:
+    mariadbAutoUpgradeEnabled: true
   myCnf: |
     [mariadb]
     character-set-server = utf8mb4

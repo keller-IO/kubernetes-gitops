@@ -301,12 +301,17 @@ https://auth.savar.de/realms/bgt
 **Offen:**
 - [ ] Grafana-Admin-Passwort aus SOPS-Secret statt Klartext (`adminPassword`).
 - [x] **Alertmanager-Receiver konfiguriert:** Email an `jit-list@jitmail.de` über `192.168.2.209:25`
-      konfiguriert (`require_tls: true`, TLS-Servername
+      (`require_tls: true`, TLS-Servername
       `mx02.jitcreatives.de`); Watchdog und InfoInhibitor bleiben absichtlich
       auf `null`. Gerenderte Config-Prüfung mit `amtool` und SMTP-Banner/EHLO-
       Probe aus dem Alertmanager-Pod waren erfolgreich; STARTTLS und das
       TLS-1.3-Zertifikat wurden vom Host geprüft. Die Live-Abnahme nach Merge
       wird im zugehörigen PR festgehalten; siehe [Inspektion](runbooks/cluster-inspection-2026-10-20.md).
+- [ ] **Mailzustellung für unterschiedliche Alerts abnehmen.** Der Relay wies
+      am 21.10. die erste Nachricht mit dem langen Standardbetreff nach `DATA`
+      als Spam ab; eine spätere Nachricht erreichte die JIT-Liste. Ein kurzer
+      Betreff und ein Klartextteil werden im
+      [Learning](learnings/alertmanager-mail-rspamd-rejection.md) beschrieben.
 - [x] **Recording Rule `count:up0` korrigiert:** Bei vorhandenen, erfolgreichen
       Targets entsteht eine Nullserie, bei komplett fehlenden Targets weiterhin
       keine Serie. Die gerenderte Regel wurde geprüft.
@@ -369,6 +374,8 @@ https://auth.savar.de/realms/bgt
 - [ ] MariaDB **PITR**: für punktgenaues Restore `PhysicalBackup` CRD + Binlog statt logischem Dump.
 - [ ] Integrations-Pilot (`scripts/ci/integration/`) um eine MariaDB-Instanz erweitern —
       Operator-Bumps sind bisher ungetestet ([Learning](learnings/mariadb-operator-stufenweises-upgrade.md)).
+- [ ] MariaDB-Server 11.4.5 → 11.8.9 → 12.3.3 (LTS) stufenweise mit Pre-Upgrade-Dumps — Stufe 11.8.9 seit 21.10.2026 live, 12.3.3 offen
+      ([Runbook](runbooks/mariadb-lts-upgrade.md)); danach `pre-upgrade-backup.yaml` entfernen.
 - [ ] DR-Overlay `infrastructure/overlays/disaster-recovery/` mit `bootstrap.recovery` anlegen.
 - [ ] PVC-Daten (paperless data/media, forgejo repos, wordpress wp-content,
       Mailman-Dateien) nach dem CSI-Smoke-Test per quiesced Snapshot absichern.
@@ -480,7 +487,7 @@ Jede App liegt unter `apps/base/<app>/` (Basis) + `apps/overlays/main/<app>/` (C
 | **forgejo** | `apps/base/forgejo/` | Admin-Secret; SSH-Service exponieren (LB/NodePort); OIDC-Provider in Forgejo anlegen; LFS→S3 optional. |
 | **renovate** | `apps/base/renovate/` | Forgejo-Token; `autodiscover` vs. feste Repo-Liste; Schedule abstimmen. |
 | **wordpress-1/2/3** | `apps/base/wordpress/` + `apps/overlays/main/wordpress-{1,2,3}/` | Pro Instanz Secret + Host (in Overlay gepatcht); „Redis Object Cache"-Plugin installieren; `mariadb.enabled:false` + externalDatabase final schalten. |
-| **mastodon** | `apps/base/mastodon/` | Chart migriert auf offizielles `mastodon/helm-charts` (0.5.1). Secret `mastodon-secret` (`secret-key-base`/VAPID/`are-*` Active-Record-Encryption-Keys) generieren; `mastodon-redis`-Passwort setzen (Valkey `requirepass`); S3 (OBC) verdrahten; SMTP; Streaming-WebSocket testen; ggf. Elasticsearch. ArgoCD: `mastodon.hooks` (dbPrepare/dbMigrate Helm-Hooks) für GitOps-Sync prüfen. |
+| **mastodon** | `apps/base/mastodon/` | `jit.social` ist seit 19.10.2026 im Cluster in Betrieb; Web, Streaming und Sidekiq `default` laufen mit je zwei Repliken und PDB, der Scheduler einzeln. Valkey bleibt ein Single Point of Failure ([Betriebsrunbook](runbooks/mastodon-betrieb.md)). Offen: Retention überwachen, Restore-Test durchführen; Elasticsearch für Volltextsuche bei Bedarf anbinden. |
 | **gatus** | `apps/base/gatus/` | `gatus-oidc`-Secret mit Keycloak-Client-Secret füllen; `issuer-url`/`redirect-url`/`client-id` auf reale Domain. Alle kanonischen Web-App-Endpunkte sind eingetragen; Paperless wird über `paperless.savar.de` geprüft und folgt dem Login-Redirect bis HTTP 200. Gewünschte Legacy- und Alias-Domains bei Bedarf als eigene Routengruppe ergänzen. Historie persistent in Postgres (`monitoring-pg`, DB `gatus`, Secret `gatus-db`; ADR 0008). |
 | **gatus-public** | `apps/base/gatus-public/` | Oeffentliche, bewusst getrennte Statusseite unter `status.jit-creatives.de`; enthaelt nur freigegebene Cloud-, Office-, Kommunikations-, Plattform-, Community- und Streaming-Dienste. SMTP wird per STARTTLS/587, IMAP per TLS/993 jeweils inklusive Zertifikatslaufzeit geprueft. Endpoint-URLs, Bedingungen und Fehlerdetails sind im UI verborgen. TLS terminiert am vorgeschalteten `.15`-Traefik; der Cluster-Ingress bleibt HTTP-only. Historie persistent in Postgres (`monitoring-pg`, DB `gatus_public`, Secret `gatus-public-db`; ADR 0008). |
 | **kite** | `infrastructure/base/kite/` | `kite-secrets` füllen (`JWT_SECRET`/`KITE_ENCRYPT_KEY` via `openssl rand -hex 32`, `OAUTH_CLIENT_SECRET` == Keycloak-Client-Secret); `issuer`/`clientId` setzen; RBAC-Rollen-Mapping für OIDC-User; PVC-StorageClass prüfen. Daten in Postgres (`monitoring-pg`, DB `kite`, Secret `kite-db`; ADR 0008), SQLite-Stand bleibt auf PVC `kite-storage`. Migrations-Hooks unter `migration/` nach erfolgreicher Umstellung entfernen. |

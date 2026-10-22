@@ -47,6 +47,18 @@ patches:
         path: /metadata/annotations
         value:
           argocd.argoproj.io/sync-wave: "-1"
+  # Sidekiq laeuft per values.yaml mit RollingUpdate, damit `default` bei
+  # Rollouts weiterarbeitet. Der Scheduler darf nie zweimal laufen: Recreate
+  # beendet den alten Pod, bevor der neue startet. Der Chart kennt die
+  # Strategie nur global fuer alle Worker.
+  - target:
+      kind: Deployment
+      name: mastodon-sidekiq-scheduler
+    patch: |-
+      - op: replace
+        path: /spec/strategy
+        value:
+          type: Recreate
 resources:
   - database.yaml
   - cache.yaml
@@ -54,6 +66,7 @@ resources:
   - media-backend.yaml
   - issuer.yaml
   - ingress.yaml
+  - pdb.yaml
   - media-retention.yaml
   - db-migrate.yaml
   - search.yaml

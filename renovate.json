@@ -140,10 +140,11 @@
       "minimumReleaseAge": "2 days"
     },
     {
+      "description": "Kimai publishes the Apache image as plain <version> since 2.58; apache-<version> tags stopped at 2.57.0.",
       "matchPackageNames": [
         "kimai/kimai2"
       ],
-      "versioning": "regex:^(?<compatibility>apache)-(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)$"
+      "versioning": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)$"
     },
     {
       "description": "Commit-SHA deployments are released by the application pipeline, not ordered Docker tags.",
@@ -178,6 +179,17 @@
       ],
       "matchCurrentVersion": "/^17\\./",
       "allowedVersions": "/^17\\.\\d+(?:-|$)/"
+    },
+    {
+      "description": "MariaDB: patch updates within the current LTS line only. Line changes (11.4 -> 11.8 -> 12.3) need pre-upgrade backups and mariadbAutoUpgradeEnabled, and short-term lines (13.x) reach EOL within months; see docs/runbooks/mariadb-lts-upgrade.md.",
+      "matchPackageNames": [
+        "docker-registry1.mariadb.com/library/mariadb"
+      ],
+      "matchUpdateTypes": [
+        "major",
+        "minor"
+      ],
+      "enabled": false
     },
     {
       "description": "Kustomize release tags contain a component prefix; ignore kyaml and api releases.",

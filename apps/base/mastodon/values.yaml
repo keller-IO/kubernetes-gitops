@@ -60,34 +60,96 @@ mastodon:
     opensslVerifyMode: none # preserve legacy behavior; harden after SMTP certificate validation
     existingSecret: mastodon-smtp
 
+  # Ausfallsicherheit (#339): Web, Streaming und der Sidekiq-Worker `default`
+  # laufen je zweimal, hart auf verschiedene Nodes gestreut, mit PDB
+  # (pdb.yaml). Ein Node-Ausfall oder Drain trifft so immer nur eine Replik.
+  # Die chart-eigenen `pdb`-Values sind wirkungslos: Chart 1.2.5 hat dafuer
+  # kein Template.
   web:
-    replicas: 1 # Cutover 19.10.2026: oeffentlicher Betrieb
+    replicas: 2
+    # Gemessen 21.10.2026 (2 Tage nach Cutover): ~1,05 GiB je Pod im Mittel,
+    # Spitze 1,1 GiB; CPU im Mittel 40m, Spitze 170m (5-min-Rate). Der
+    # bisherige Request von 512Mi lag unter dem echten Bedarf.
     resources:
-      requests: { cpu: 200m, memory: 512Mi }
+      requests: { cpu: 200m, memory: 1Gi }
       limits: { memory: 2Gi }
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - topologyKey: kubernetes.io/hostname
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: mastodon
+                app.kubernetes.io/component: web
   sidekiq:
+    # mastodon02 ist seit 21.10.2026 aus. Dort nie wieder Mastodon-Dienste
+    # starten, solange diese Worker laufen (Runbook mastodon-migration.md).
+    # Chart-Default ist Recreate fuer alle Worker; dann staende `default` bei
+    # jedem Rollout komplett. Der Scheduler bekommt per Patch in
+    # kustomization.yaml wieder Recreate, damit nie zwei parallel laufen.
+    updateStrategy:
+      type: RollingUpdate
+      rollingUpdate: { maxSurge: 1, maxUnavailable: 0 }
+    # Die Readiness-Datei legt Mastodon an, sobald Sidekiq Jobs annimmt. Ohne
+    # Probe gilt ein Pod sofort als Ready und die PDB zaehlt ihn zu frueh.
+    readinessProbe:
+      enabled: true
     workers:
-      - name: all-queues
-        # ⚠️ Niemals parallel zum Sidekiq auf mastodon02. Erst wenn dort alle
-        # Dienste gestoppt sind, darf diese Replik laufen.
+      - name: default
+        # 2 x 15 Threads statt 1 x 25: Der Durchsatz haengt an der fsync-Latenz
+        # der DB (docs/learnings/mastodon-remote-cache-nach-cutover.md), mehr
+        # Threads stauen sich nur vor COMMIT. 15 je Pod haelt die
+        # DB-Verbindungen nahe am bisherigen Stand (Spitze 57 von 100).
+        replicas: 2
+        concurrency: 15
+        queues: ["default,8", "push,6", "ingress,4", "mailers,2", "pull", "fasp"]
+        # 19.10.2026: bei 2Gi OOMKilled (Exit 137), als nach dem Poller-Fix
+        # (4.5.19) der Rueckstau an RedownloadMediaWorker anlief — ffmpeg
+        # verarbeitet Videos in mehreren Threads parallel. Gemessen bei -c 25:
+        # Spitze 1,8 GiB mit Rueckstau, ~0,85 GiB im Mittel, CPU im Mittel 35m.
+        # Das Limit bleibt fuer ffmpeg-Spitzen hoch.
+        resources:
+          requests: { cpu: 100m, memory: 1Gi }
+          limits: { memory: 4Gi }
+        affinity:
+          podAntiAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              - topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: mastodon
+                    app.kubernetes.io/component: sidekiq-default
+      - name: scheduler
+        # Genau eine Replik (der Chart bricht bei mehr ab) und keine PDB, damit
+        # sie keinen Drain blockiert. Faellt sie aus, verzoegern sich nur die
+        # geplanten Jobs, bis Kubernetes sie neu startet. Nur dieser Prozess
+        # hoert auf `scheduler` und reiht damit die Cron-Jobs ein
+        # (listened_queues_only in config/sidekiq.yml).
         replicas: 1
-        concurrency: 25
-        queues: ["default,8", "push,6", "ingress,4", "mailers,2", "pull", "scheduler", "fasp"]
-    # 19.10.2026: bei 2Gi OOMKilled (Exit 137), als nach dem Poller-Fix (4.5.19)
-    # der Rueckstau an RedownloadMediaWorker anlief — ffmpeg verarbeitet Videos
-    # in mehreren der 25 Threads parallel. Gemessen 1,8 GiB im Normalbetrieb mit
-    # Rueckstau; der Altserver hatte 6,3 GiB fuer alles bei -c 75.
-    resources:
-      requests: { cpu: 200m, memory: 1536Mi }
-      limits: { memory: 4Gi }
+        concurrency: 5
+        queues: ["scheduler"]
+        # Noch nicht getrennt gemessen; der Rails-Grundbedarf liegt bei
+        # ~0,4 GiB (Retention-Jobs). Nach einer Woche aus der Messung nachziehen.
+        resources:
+          requests: { cpu: 50m, memory: 512Mi }
+          limits: { memory: 1536Mi }
   streaming:
-    replicas: 1 # Cutover 19.10.2026: oeffentlicher Betrieb
+    replicas: 2
     image:
       repository: ghcr.io/mastodon/mastodon-streaming
       tag: v4.6.9
+    # Gemessen 21.10.2026: ~90 MiB im Mittel, Spitze 115 MiB; CPU < 10m.
     resources:
-      requests: { cpu: 100m, memory: 256Mi }
+      requests: { cpu: 50m, memory: 128Mi }
       limits: { memory: 512Mi }
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - topologyKey: kubernetes.io/hostname
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: mastodon
+                app.kubernetes.io/component: streaming
 
 postgresql:
   hostname: mastodon-pg-rw # CNPG read-write service

@@ -427,6 +427,8 @@ Zielinstanz dürfen niemals gleichzeitig schreibend aktiv sein.
 - Restore-Test aus `backup-mastodon`.
 - Danach mastodon02 stilllegen; Mastodon-Upgrade auf 4.6 separat (siehe
   „Versions-Upgrades“).
+  **Stand 21.10.2026:** mastodon02 ist ausgeschaltet. Web, Streaming und
+  Sidekiq laufen seitdem redundant (#339, [mastodon-betrieb.md](mastodon-betrieb.md)).
 
 ## Versions-Upgrades
 
@@ -447,14 +449,18 @@ Ablauf je Upgrade:
 1. Release Notes aller übersprungenen Versionen lesen (Abschnitt „Upgrade
    notes“). 4.5.19 → 4.6.9: 34 Pre-Deployment-Migrationen, keine
    Post-Deployment-Migration; Ruby/Node/FFmpeg/libvips stecken im Image.
+   4.6.1–4.6.9 verlangen für Docker nur einen Neustart (geprüft 22.10.2026;
+   `db/migrate` und `db/post_migrate` sind in v4.6.5 und v4.6.9 gleich).
 2. Backup-Stand prüfen: WAL-Archivierung von `mastodon-pg` aktuell
    (`ContinuousArchiving` = True), Zeitpunkt vor dem Merge notieren (PITR-Ziel).
    Ein zusätzliches On-demand-Backup braucht Schreibzugriff und wird von einem
    Menschen angestoßen.
 3. Für 4.7: Migrationsdauer vorher an einem Restore-Klon aus
    `backup-mastodon` messen und `activeDeadlineSeconds` der Hooks anpassen.
-4. PR mergen. ArgoCD: PreSync-Job → Rollout (Sidekiq `Recreate`, Web/Streaming
-   rollend) → PostSync-Job.
+4. PR mergen. ArgoCD: PreSync-Job → Rollout → PostSync-Job. Web, Streaming
+   und Sidekiq `default` rollen (`maxSurge: 1`); alte und neue Version laufen
+   dabei kurz parallel, was die Pre-Migrationen erlauben. Nur der
+   Sidekiq-Scheduler wechselt per `Recreate` (mastodon-betrieb.md).
 5. Prüfen: beide Hook-Jobs `Complete`, Logs ohne Fehler; Web, Streaming und
    Sidekiq laufen auf dem neuen Image; Sidekiq-Retries/Dead-Set unauffällig;
    Föderation, Push und Medien-Upload kurz testen.

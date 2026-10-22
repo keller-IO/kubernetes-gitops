@@ -21,7 +21,9 @@ spec:
       containers:
         - name: kimai
           # renovate: image=kimai/kimai2
-          image: kimai/kimai2:apache-2.57.0 # = Version des Alt-Systems (DB-Schema-Stand der Migration)
+          # Seit 2.58 heisst das Apache-Image nur noch <version> (apache-<version> ist eingestellt).
+          # Digest = Multi-Arch-Index von 2.70.1 (21.10.2026, PHP 8.3.36, fixt CVE-2026-109618/-109619).
+          image: kimai/kimai2:2.70.1@sha256:7ccc9597309b9f76ded0a3cf168b5e137167fec6c8aa6a588194dcf6ce26ec2f
           ports:
             - containerPort: 8001
           env:
@@ -31,7 +33,7 @@ spec:
               valueFrom:
                 secretKeyRef: { name: kimai-secret, key: mariadb-password }
             - name: DATABASE_URL
-              value: "mysql://kimai:$(MARIADB_PASSWORD)@kimai-mariadb:3306/kimai?charset=utf8mb4&serverVersion=11.4.0-MariaDB"
+              value: "mysql://kimai:$(MARIADB_PASSWORD)@kimai-mariadb:3306/kimai?charset=utf8mb4&serverVersion=11.8.9-MariaDB"
             - name: APP_SECRET
               valueFrom:
                 secretKeyRef: { name: kimai-secret, key: app-secret }
@@ -60,10 +62,14 @@ spec:
             - { name: data, mountPath: /opt/kimai/var/data, subPath: data }
             # Plugins (z. B. ImportBundle) überleben Image-Updates auf der PVC.
             - { name: data, mountPath: /opt/kimai/var/plugins, subPath: plugins }
+            - { name: php-cve-mitigation, mountPath: /usr/local/etc/php/conf.d/zz-cve-2026-109619.ini, subPath: zz-cve-2026-109619.ini, readOnly: true }
       volumes:
         - name: data
           persistentVolumeClaim:
             claimName: kimai-data
+        - name: php-cve-mitigation
+          configMap:
+            name: kimai-php-cve-mitigation
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
