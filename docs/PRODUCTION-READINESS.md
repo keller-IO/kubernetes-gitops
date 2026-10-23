@@ -602,15 +602,21 @@ ein Agent-DaemonSet ist deshalb bewusst nicht Teil davon.
   `keller-main.netbird-kubeapi-proxy.netbird.selfhosted`. Er impersoniert den
   NetBird-Nutzer gegenüber der API; die NetBird-Gruppennamen kommen als K8s-Groups an.
 
-**In NetBird bereits angelegt** (nicht in Git — siehe unten warum):
+**In NetBird angelegt** (Stand 18.10.2026; nicht in Git — siehe unten warum):
 
 | Objekt | Inhalt |
 |---|---|
-| Gruppe `k8s_admin` | Nutzergruppe, bestand schon |
-| Gruppe `k8s_readonly` | Nutzergruppe, bestand schon |
-| Gruppe `k8s_ops` | Nutzergruppe, vor dem Merge in NetBird anlegen |
+| Gruppe `k8s_admin` | Nutzergruppe |
+| Gruppe `k8s_readonly` | Nutzergruppe |
 | Gruppe `k8s_api_proxy` | Peer-Gruppe, nur die Proxy-Pods |
-| Policy „Kubernetes API access" | `k8s_admin` + `k8s_readonly` + `k8s_ops` → `k8s_api_proxy`, tcp/443 |
+| Policy „Kubernetes API proxy" (seit 18.10.2026) | `k8s_admin` + `k8s_readonly` → `k8s_api_proxy`, tcp/443. **Diese Policy trägt kubectl über den Proxy.** |
+| Policy „Kubernetes API access" | `k8s_admin` + `k8s_readonly` → Resource `standard` = 192.168.2.0/24, tcp/443. Zeigte ursprünglich auf `k8s_api_proxy`, seit 04.08.2026 auf die /24 — trägt kubectl über den Proxy **nicht**. |
+
+**Vorbereitet, in NetBird noch nicht angelegt:**
+
+| Objekt | Stand |
+|---|---|
+| Gruppe `k8s_ops` | RBAC dafür steht in `rbac.yaml` (siehe Rechte-Tabelle), die Gruppe existiert in NetBird aber nicht. Solange sie fehlt, kann kein Peer sie tragen, die Bindings greifen also ins Leere. Beim Anlegen zusätzlich als Quelle in die Policy „Kubernetes API proxy" aufnehmen, sonst erreicht ein reines `k8s_ops`-Mitglied den Proxy nicht. |
 
 **Warum keine `Group`-/`NBPolicy`-CRs**, obwohl es die CRDs gibt:
 - Der Group-Controller sucht **nie nach Namen** (nur `status.GroupID`, initial leer) und
@@ -627,9 +633,9 @@ ein Agent-DaemonSet ist deshalb bewusst nicht Teil davon.
 |---|---|
 | `k8s_admin` | `cluster-admin` |
 | `k8s_readonly` | `view` + `netbird-cluster-reader` |
-| `k8s_ops` | `view` + `netbird-cluster-reader` + `netbird-k8s-ops-maintainer` |
+| `k8s_ops` (Gruppe noch nicht angelegt, s. o.) | `view` + `netbird-cluster-reader` + `netbird-k8s-ops-maintainer` |
 
-NetBird kann kein „read-only" erzwingen — Policies sind L3/L4, beide Gruppen bekommen
+NetBird kann kein „read-only" erzwingen — Policies sind L3/L4, alle Nutzergruppen bekommen
 identisch tcp/443. Der Unterschied entsteht ausschließlich über RBAC in `rbac.yaml`.
 
 Die ClusterRole `netbird-clusterproxy` hat bewusst **keine** `resourceNames`-Allowlist.
@@ -670,7 +676,9 @@ ArgoCD keine SSO/OIDC-Anbindung besitzt (Folge-PR, außerhalb dieses Scopes).
 **Nach dem Merge zu tun:**
 - [ ] `kubectl` je Gruppe testen. Erwartung readonly: `get pods -A` geht, `get secret -A` 403.
       Kubeconfig zeigt auf `https://keller-main.netbird-kubeapi-proxy.netbird.selfhosted`.
-- [ ] Erwartung ops: `delete pod`, `create pods/eviction`, `patch deployment/scale` gehen;
+- [ ] **Erst sobald `k8s_ops` in NetBird angelegt und als Quelle in „Kubernetes API proxy"
+      aufgenommen ist** (vorher gibt es kein Mitglied, mit dem man testen könnte):
+      Erwartung ops: `delete pod`, `create pods/eviction`, `patch deployment/scale` gehen;
       `get secret -A`, `create serviceaccounts/token`, `create jobs`, `patch deployment`,
       `patch cronjob`, `patch application.argoproj.io`, `patch clusterrole`, `kubectl exec`,
       `kubectl attach` und `kubectl port-forward` bleiben 403.

@@ -11,9 +11,13 @@
 # den echten. Und `reconcileDelete` ruft `Groups.Delete`: ein von ArgoCD geprunter
 # CR würde die Gruppe in NetBird löschen.
 #
-# Gruppe `k8s_api_proxy` und die Zugriffs-Policy (k8s_admin + k8s_readonly ->
-# k8s_api_proxy, tcp/443) sind in NetBird bereits angelegt. Die Policy gehört auch
-# dorthin: die NBPolicy-CRD sieht passend aus, ihr Controller baut Ports und
+# Gruppe `k8s_api_proxy` und die Zugriffs-Policy sind in NetBird angelegt. Die
+# Policy, die kubectl über den Proxy trägt, heißt seit 18.10.2026
+# „Kubernetes API proxy" (k8s_admin + k8s_readonly -> k8s_api_proxy, tcp/443).
+# Die ältere „Kubernetes API access" zeigt seit 04.08.2026 auf die Halbe-Resource
+# 192.168.2.0/24 statt auf die Proxy-Peers; dadurch lief TCP/443 auf
+# keller-main.netbird-kubeapi-proxy bis 18.10. in einen Timeout, obwohl die
+# WireGuard-Handshakes frisch waren. Die Policy gehört auch dorthin: die NBPolicy-CRD sieht passend aus, ihr Controller baut Ports und
 # Ziel-Gruppen aber ausschließlich aus NBResource-Objekten — `spec.ports` allein
 # läuft fehlerfrei ins Leere. Siehe docs/PRODUCTION-READINESS.md §17.
 ---
