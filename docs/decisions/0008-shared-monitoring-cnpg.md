@@ -98,5 +98,7 @@ hochgeladen werden. Die Benutzersuche ist auf Postgres case-sensitiv (`LIKE`).
 `prometheus.radiotux.de` (Ansible-Rolle `gatus_public` in `jit/ansible`, SQLite
 auf dem Host). Die öffentliche Seite soll gerade dann etwas anzeigen, wenn
 kellerIO oder der Telekom-Anschluss ausfällt; mit der Datenbank im Cluster ging
-das nicht. Rolle und Datenbank `gatus_public` stehen deshalb auf
-`ensure: absent`. `monitoring-pg` dient weiter Gatus intern und Kite.
+das nicht. Datenbank und Rolle `gatus_public` wurden am 23.10.2026 per
+`ensure: absent` gedroppt und danach mit Database-CR und Secret entfernt; die
+Tabellenzeile oben ist Historie. `monitoring-pg` dient weiter Gatus intern und
+Kite.
