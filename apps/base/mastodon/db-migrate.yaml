@@ -1,0 +1,171 @@
+# Datenbank-Migrationen als ArgoCD-Hooks, nach dem Upgrade-Schema von Mastodon:
+#   PreSync  - Pre-Deployment-Migrationen (SKIP_POST_DEPLOYMENT_MIGRATIONS=true),
+#              solange noch die alten Pods laufen; diese Migrationen sind zur
+#              Vorversion kompatibel.
+#   Sync     - Deployments rollen auf das neue Image.
+#   PostSync - restliche (Post-Deployment-)Migrationen, wenn die App healthy ist.
+#
+# Der dbMigrate-Hook des Charts bleibt aus: er traegt nur helm.sh/hook-Annotationen
+# und hat keine Trennung in Pre/Post. Hooks laufen bei JEDEM Sync; ohne offene
+# Migrationen ist db:migrate ein No-op (Rails-Start, ca. 30 s). Schlaegt der
+# PreSync-Job fehl, bricht ArgoCD den Sync ab und die alten Pods laufen weiter.
+#
+# Image an values.yaml image.tag koppeln (wie media-retention.yaml). Env und
+# Haertung wie dort; readOnlyRootFilesystem geht, weil nichts heruntergeladen wird.
+# Vor jedem Upgrade mit Migrationen: Backup, siehe docs/runbooks/mastodon-migration.md.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mastodon-db-migrate-pre
+  namespace: mastodon
+  labels:
+    app.kubernetes.io/name: mastodon-db-migrate
+    app.kubernetes.io/component: pre-deployment
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 0 # fehlgeschlagene Migration ansehen, nicht blind wiederholen
+  activeDeadlineSeconds: 3600 # 4.6: 34 kleine Migrationen; fuer 4.7 am Restore-Klon messen
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: mastodon-db-migrate
+        app.kubernetes.io/component: pre-deployment
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 991
+        runAsGroup: 991
+        fsGroup: 991
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: db-migrate
+          image: ghcr.io/mastodon/mastodon:v4.6.9 # an values.yaml image.tag gekoppelt
+          imagePullPolicy: IfNotPresent
+          command: ["bundle", "exec", "rails", "db:migrate"]
+          envFrom:
+            - configMapRef: { name: mastodon-env }
+          env:
+            - name: SKIP_POST_DEPLOYMENT_MIGRATIONS
+              value: "true"
+            - name: SECRET_KEY_BASE
+              valueFrom: { secretKeyRef: { name: mastodon-secret, key: secret-key-base } }
+            - name: VAPID_PRIVATE_KEY
+              valueFrom: { secretKeyRef: { name: mastodon-secret, key: vapid-private-key } }
+            - name: VAPID_PUBLIC_KEY
+              valueFrom: { secretKeyRef: { name: mastodon-secret, key: vapid-public-key } }
+            - name: ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY
+              valueFrom: { secretKeyRef: { name: mastodon-secret, key: are-primary-key } }
+            - name: ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY
+              valueFrom: { secretKeyRef: { name: mastodon-secret, key: are-deterministic-key } }
+            - name: ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT
+              valueFrom: { secretKeyRef: { name: mastodon-secret, key: are-derivation-salt } }
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom: { secretKeyRef: { name: mastodon-s3, key: AWS_ACCESS_KEY_ID } }
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom: { secretKeyRef: { name: mastodon-s3, key: AWS_SECRET_ACCESS_KEY } }
+            - name: DB_PASS
+              valueFrom: { secretKeyRef: { name: mastodon-db-app, key: password } }
+            - name: DB_USER
+              valueFrom: { secretKeyRef: { name: mastodon-db-app, key: username } }
+            - name: REDIS_PASSWORD
+              valueFrom: { secretKeyRef: { name: mastodon-redis, key: password } }
+          resources:
+            requests: { cpu: 200m, memory: 512Mi }
+            limits: { memory: 1536Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+            - { name: app-tmp, mountPath: /opt/mastodon/tmp }
+            - { name: app-log, mountPath: /opt/mastodon/log }
+      volumes:
+        - name: tmp
+          emptyDir: { sizeLimit: 256Mi }
+        - name: app-tmp
+          emptyDir: { sizeLimit: 512Mi }
+        - name: app-log
+          emptyDir: { sizeLimit: 128Mi }
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mastodon-db-migrate-post
+  namespace: mastodon
+  labels:
+    app.kubernetes.io/name: mastodon-db-migrate
+    app.kubernetes.io/component: post-deployment
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 3600 # 4.7.0 hat lange Post-Migrationen: vorher am Restore-Klon messen
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: mastodon-db-migrate
+        app.kubernetes.io/component: post-deployment
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 991
+        runAsGroup: 991
+        fsGroup: 991
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: db-migrate
+          image: ghcr.io/mastodon/mastodon:v4.6.9 # an values.yaml image.tag gekoppelt
+          imagePullPolicy: IfNotPresent
+          command: ["bundle", "exec", "rails", "db:migrate"]
+          envFrom:
+            - configMapRef: { name: mastodon-env }
+          env:
+            - name: SECRET_KEY_BASE
+              valueFrom: { secretKeyRef: { name: mastodon-secret, key: secret-key-base } }
+            - name: VAPID_PRIVATE_KEY
+              valueFrom: { secretKeyRef: { name: mastodon-secret, key: vapid-private-key } }
+            - name: VAPID_PUBLIC_KEY
+              valueFrom: { secretKeyRef: { name: mastodon-secret, key: vapid-public-key } }
+            - name: ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY
+              valueFrom: { secretKeyRef: { name: mastodon-secret, key: are-primary-key } }
+            - name: ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY
+              valueFrom: { secretKeyRef: { name: mastodon-secret, key: are-deterministic-key } }
+            - name: ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT
+              valueFrom: { secretKeyRef: { name: mastodon-secret, key: are-derivation-salt } }
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom: { secretKeyRef: { name: mastodon-s3, key: AWS_ACCESS_KEY_ID } }
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom: { secretKeyRef: { name: mastodon-s3, key: AWS_SECRET_ACCESS_KEY } }
+            - name: DB_PASS
+              valueFrom: { secretKeyRef: { name: mastodon-db-app, key: password } }
+            - name: DB_USER
+              valueFrom: { secretKeyRef: { name: mastodon-db-app, key: username } }
+            - name: REDIS_PASSWORD
+              valueFrom: { secretKeyRef: { name: mastodon-redis, key: password } }
+          resources:
+            requests: { cpu: 200m, memory: 512Mi }
+            limits: { memory: 1536Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+            - { name: app-tmp, mountPath: /opt/mastodon/tmp }
+            - { name: app-log, mountPath: /opt/mastodon/log }
+      volumes:
+        - name: tmp
+          emptyDir: { sizeLimit: 256Mi }
+        - name: app-tmp
+          emptyDir: { sizeLimit: 512Mi }
+        - name: app-log
+          emptyDir: { sizeLimit: 128Mi }
