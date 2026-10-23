@@ -2,7 +2,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: monitoring-db
 # Gemeinsamer CNPG-Cluster fuer kleine Monitoring-/Betriebs-Tools (Gatus intern,
-# Gatus public, Kite). Begruendung und Grenzen: docs/decisions/0008-shared-monitoring-cnpg.md
+# Kite; Gatus public ist seit 23.10.2026 extern). Begruendung und Grenzen: docs/decisions/0008-shared-monitoring-cnpg.md
 resources:
   - namespace.yaml
   - database.yaml

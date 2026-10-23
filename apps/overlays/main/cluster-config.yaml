@@ -22,7 +22,8 @@ data:
   host_wordpress_3: site3.jit.services
   host_mastodon: jit.social # Foederationsidentitaet, bleibt bei der Migration unveraendert
   host_gatus: status.jit.services
-  host_gatus_public: status.jit-creatives.de
+  # status.jit-creatives.de laeuft seit 23.10.2026 extern auf prometheus.radiotux.de
+  # (Ansible-Rolle gatus_public in jit/ansible), nicht mehr im Cluster.
   host_kite: kite.jit.services
   host_mailman: lists.jit.services
   host_icecast: radio.jit.services
