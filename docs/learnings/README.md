@@ -29,6 +29,10 @@ Format und Kriterien: siehe AGENTS.md → „Operational Learnings".
 - [mariadb-operator: stufenweises Upgrade](mariadb-operator-stufenweises-upgrade.md) —
   Renovate schlug 0.38.1 → 26.10.1 in einem Sprung vor; upstream verbietet das
   Überspringen bis 25.10, und der CI-Pilot testet keine MariaDB.
+- [Mastodon: Migration ohne lock_timeout staut die Datenbank](mastodon-migration-lock-stau.md) —
+  ein `ALTER TABLE accounts` wartete hinter einem 14-minütigen View-Refresh des
+  Schedulers, alle `accounts`-Abfragen stauten sich dahinter; fünf Minuten Ausfall
+  beim 4.6.9-Upgrade. Hooks setzen jetzt `lock_timeout` mit Wiederholung.
 - [Mastodon: Remote-Cache nach dem Cutover](mastodon-remote-cache-nach-cutover.md) —
   nicht migrierter Cache hinterlaesst DB-Verweise ohne Datei (RGW meldet 403 statt
   404); `media remove --prune-profiles` laesst Anhaenge aus; `/tmp`-emptyDir bricht

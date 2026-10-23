@@ -154,6 +154,15 @@ grep -E 'args:.*"media",[[:space:]]*"remove"' "$mastodon_retention" \
   | grep -qvE -- '--prune-profiles|--remove-headers' \
   || report "$mastodon_retention: no 'media remove' run without --prune-profiles/--remove-headers — with either flag tootctl skips media attachments entirely, and the remote cache grows into the RGW quota (docs/learnings/mastodon-remote-cache-nach-cutover.md)"
 
+section "Rails migration jobs set a lock_timeout"
+while IFS= read -r f; do
+  migrations="$(grep -cE '^[^#]*rails db:migrate' "$f" || true)"
+  timeouts="$(grep -cE '^[^#]*lock_timeout=' "$f" || true)"
+  ((timeouts >= migrations)) && continue
+  report "$f: $migrations 'rails db:migrate' job(s) but only $timeouts lock_timeout setting(s) — without one, a migration waiting for an exclusive lock queues every query on the table behind it (Mastodon outage 2026-10-23, docs/learnings/mastodon-migration-lock-stau.md). Set PGOPTIONS='-c lock_timeout=10s' and retry on LockNotAvailable."
+done < <(grep -RlE '^[^#]*rails db:migrate' apps infrastructure \
+  --include='*.yaml' --include='*.yml' --exclude-dir=charts 2>/dev/null || true)
+
 if ((fail != 0)); then
   printf '\nGuardrail checks failed.\n' >&2
   exit 1
