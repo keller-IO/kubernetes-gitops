@@ -27,6 +27,62 @@ spec:
     metadata:
       labels: { app.kubernetes.io/name: matomo }
     spec:
+      # Das Image entpackt /usr/src/matomo nur, wenn /var/www/html noch kein
+      # matomo.php hat (/entrypoint.sh). Auf dem PVC blieb der Code daher fuer
+      # immer auf dem Stand der Erstinstallation: bis 23.10.2026 lief unter dem
+      # 5.14.0-Image weiter 5.13.0-Code. Dieser initContainer tauscht den Code
+      # bei jedem Versionswechsel aus und fuehrt die DB-Migration aus.
+      # Erhalten bleiben config/config.ini.php, tmp/, misc/user/ und Plugins,
+      # die nicht aus dem Image stammen (Marketplace). Alles andere wird
+      # geloescht, damit keine Dateien der Vorversion liegen bleiben.
+      initContainers:
+        - name: upgrade-code
+          # Muss immer dasselbe Image wie der matomo-Container sein.
+          # renovate: image=matomo
+          image: matomo:5.14.0-apache@sha256:c7abe4fa279bc5f80d1e6820b48586106408d15c8f5e774a8ebc10350868ceb4
+          command: ["/bin/sh", "-euc"]
+          args:
+            - |
+              cd /var/www/html
+              version() { sed -n "s/.*const VERSION = '\(.*\)';/\1/p" "$1/core/Version.php" 2>/dev/null || true; }
+              want=$(version /usr/src/matomo)
+              have=$(version .)
+              if [ ! -e matomo.php ]; then
+                echo "Erstinstallation, uebernimmt /entrypoint.sh"; exit 0
+              fi
+              if [ "$have" = "$want" ]; then
+                echo "Matomo $have aktuell"; exit 0
+              fi
+              echo "Matomo-Code $have -> $want"
+              find . -mindepth 1 -maxdepth 1 ! -name config ! -name tmp ! -name misc \
+                ! -name plugins ! -name lost+found -exec rm -rf {} +
+              find config -mindepth 1 -maxdepth 1 ! -name config.ini.php \
+                ! -name common.config.ini.php -exec rm -rf {} +
+              find misc -mindepth 1 -maxdepth 1 ! -name user -exec rm -rf {} +
+              for p in plugins/*; do
+                if [ -e "/usr/src/matomo/$p" ]; then rm -rf "$p"; fi
+              done
+              rm -rf tmp/cache tmp/templates_c
+              tar cf - --one-file-system -C /usr/src/matomo . | tar xf -
+              chown -R www-data:www-data .
+              su -s /bin/sh www-data -c "php console core:update --yes --no-interaction"
+              echo "Matomo $(version .) installiert"
+          # DB-Zugang liest console aus config/config.ini.php auf dem PVC.
+          volumeMounts:
+            - name: data
+              mountPath: /var/www/html
+            - name: config
+              mountPath: /var/www/html/config/common.config.ini.php
+              subPath: common.config.ini.php
+              readOnly: true
+            - name: init-tmp
+              mountPath: /tmp
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { memory: 512Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
       containers:
         - name: matomo
           # Digest = Neubau vom 21.10.2026 mit PHP 8.4.27 (CVE-2026-109618/-109619).
@@ -86,3 +142,5 @@ spec:
           persistentVolumeClaim: { claimName: matomo-data }
         - name: config
           configMap: { name: matomo-config }
+        - name: init-tmp
+          emptyDir: { sizeLimit: 64Mi }
