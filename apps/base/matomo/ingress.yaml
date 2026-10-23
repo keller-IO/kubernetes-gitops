@@ -23,16 +23,22 @@ metadata:
     # Nur interne Netze (wie ciso-assistant). *.jit.services loest zwar auf die
     # LAN-Adresse .246 auf, der Router leitet 443 aber auf denselben LB. Am
     # 22.09.2026 von extern (Hetzner) mit gesetztem Host-Header geprueft: HTTP 200.
-    # $remote_addr ist die echte Client-IP (externalTrafficPolicy: Local); XFF
-    # wird nur aus 192.168.2.0/24 geglaubt.
     #   192.168.0.0/16  LAN Halbe, Potsdam (.23), mgmt02 (.234, Tracker /stats/)
     #   10.0.0.0/8      Pod-Netz (gatus), victorianix
     #   100.64.0.0/10   NetBird
+    #
+    # Geprueft wird der TCP-Peer ($realip_remote_addr), NICHT $remote_addr.
+    # mgmt02 reicht den Tracker mit X-Forwarded-For weiter, und XFF aus
+    # 192.168.2.0/24 wird global geglaubt (set-real-ip-from). $remote_addr ist
+    # fuer Tracker-Aufrufe daher die oeffentliche Besucher-IP — mit
+    # allow/deny lief vom 22.09. bis 23.10.2026 jeder externe Besuch in 403
+    # und Matomo zaehlte nichts. Interne Tests fielen nicht auf, weil dort
+    # auch die Besucher-IP intern ist. Oeffentlich wird dadurch nichts:
+    # mgmt02 reicht nur ^/stats/(matomo\.php|matomo\.js)$ durch.
     nginx.org/server-snippets: |
-      allow 192.168.0.0/16;
-      allow 10.0.0.0/8;
-      allow 100.64.0.0/10;
-      deny all;
+      if ($realip_remote_addr !~ "^(192\.168\.|10\.|100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\.)") {
+        return 403;
+      }
 spec:
   ingressClassName: nginx
   tls:

@@ -175,6 +175,13 @@ sammeln, sonst lässt sich hinterher nicht sagen, was gewirkt hat.
 
 ## Fallstricke
 
+- **Allowlist nie mit `allow`/`deny` bauen.** Der Ingress glaubt XFF aus
+  `192.168.2.0/24` (`set-real-ip-from`), also ist `$remote_addr` bei jedem
+  Tracker-Aufruf über mgmt02 die öffentliche Besucher-IP. Mit `deny all` lief
+  vom 22.09. bis 23.10.2026 jeder externe Besuch in 403, und Matomo zählte nichts.
+  Die Allowlist prüft deshalb `$realip_remote_addr` (den TCP-Peer). **Testen
+  immer von außen**: aus dem LAN ist auch die Besucher-IP intern, und der Fehler
+  bleibt unsichtbar. Schnellcheck: `matomo_log_visit` nach Tagen gruppieren.
 - **Ping auf `192.168.2.246` schlägt immer fehl.** Cilium-LB-IPs antworten nicht
   auf ICMP. Nur Service-Ports testen, sonst sucht man an der falschen Stelle.
 - **HTTPS zum Cluster-LB nur mit passendem Zertifikat.** `curl` gegen `.246` mit
