@@ -74,9 +74,11 @@ Versuch auf denselben Lock treffen können.
   bei einem Lock-Timeout einen `INVALID`-Index hinterlassen. Der nächste
   Versuch scheitert dann mit „already exists“. Das ist kein Ausfall, aber vor
   dem erneuten Sync den Index per `DROP INDEX CONCURRENTLY` entfernen.
-- `scripts/ci/guardrails.sh` („Rails migration jobs set a lock_timeout“)
-  verlangt für jedes `rails db:migrate` außerhalb von `charts/` ein
-  `lock_timeout=` in derselben Datei.
+- `scripts/ci/check-migration-lock-timeout.sh` (aufgerufen von
+  `guardrails.sh`) verlangt für jedes `db:migrate` außerhalb von `charts/`
+  ein `lock_timeout=` in derselben Datei – auch in Array-Form wie
+  `["bundle", "exec", "rails", "db:migrate"]`. Fixtures dazu in
+  `scripts/ci/test-check-migration-lock-timeout.sh`.
 - Runbook `docs/runbooks/mastodon-migration.md`, „Versions-Upgrades“: nicht
   zwischen 06:00 und 10:00 UTC mergen, vorher lange Transaktionen prüfen und
   während der Hooks `pg_blocking_pids()` beobachten.
