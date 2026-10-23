@@ -150,16 +150,24 @@ Leere. Die Gegenstelle dazu steht in `configmap.yaml` (`proxy_client_headers`).
 Reihenfolge beachten: `disableCookies` muss **vor** `trackPageView` stehen, sonst
 wird beim ersten Aufruf noch ein Cookie gesetzt.
 
-### 5. Ziel für den Bestelltrichter anlegen
+### 5. Erfolgsziele anlegen
 
-Der eigentliche Zweck. *Ziele → Neues Ziel:*
+Die Bestellformulare zeigen Erfolg und Fehler unter derselben URL. Daher sind
+alle Ziele **manuell ausgelöst** (`matchAttribute=manually`), höchstens einmal
+pro Besuch. Die IDs sind im Django-Code hinterlegt und müssen bei einer
+Neuinstallation in dieser Reihenfolge entstehen:
 
-- Name: `Nextcloud-Bestellung abgeschickt`
-- Auslöser: Besuch einer bestimmten URL, **enthält** `/cloud/order/` und `success`
+| ID | Ziel | Auslöser im Django-Template |
+|---|---|---|
+| 1 | Nextcloud-Bestellung abgeschickt | `cloud_order_success.html`, nur im Erfolgszweig |
+| 2 | Hosting-Bestellung abgeschickt | `order_success.html`, nur im Erfolgszweig |
+| 3 | Kontaktanfrage gesendet | `contact.django.html`, nur nach bestätigtem Mailversand |
 
-Damit wird endlich messbar, wie viele Menschen `/cloud/` öffnen und wie viele
-davon bestellen. **Vor** weiteren Änderungen an der Seite zwei Wochen Baseline
-sammeln, sonst lässt sich hinterher nicht sagen, was gewirkt hat.
+Die Konfiguration liegt in Matomos Datenbank, nicht im Git-Repo. Nach einem
+Restore `Goals.getGoals` prüfen. Die Kontaktseite zeigt auch bei einem vom
+Köderfeld abgefangenen Bot eine Erfolgsmeldung; dabei wird Ziel 3 nicht gezählt.
+Seit der Tracker-Reparatur am 23.10.2026 beginnt eine neue Messbasis; die
+Messlücke davor darf nicht als Rückgang der Nachfrage interpretiert werden.
 
 ## Betrieb
 
