@@ -42,10 +42,13 @@ spec:
       # gatus-public ist am 23.10.2026 aus dem Cluster ausgezogen (jetzt extern
       # auf prometheus.radiotux.de mit SQLite). Rolle und DB werden per
       # ensure: absent entfernt; Eintrag, CR und Secret koennen raus, sobald
-      # CNPG beides gedroppt hat. Die Rolle laesst sich erst droppen, wenn die
-      # DB weg ist; CNPG wiederholt den Abgleich bis dahin selbst.
+      # CNPG beides gedroppt hat. Der erste DROP ROLE scheiterte, weil der Rolle
+      # die DB noch gehoerte, und CNPG versucht es erst bei einer Aenderung an
+      # managed.roles erneut. Der comment ist diese Aenderung
+      # (docs/learnings/cnpg-managed-role-drop-kein-retry.md).
       - name: gatus_public
         ensure: absent
+        comment: "entfernt 2026-10-23, gatus-public laeuft extern"
         login: true
         inherit: true
         connectionLimit: -1
