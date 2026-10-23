@@ -39,18 +39,6 @@ spec:
   # ohne sie bliebe der Cluster dauerhaft OutOfSync (19.10.2026).
   managed:
     roles:
-      # gatus-public ist am 23.10.2026 aus dem Cluster ausgezogen (jetzt extern
-      # auf prometheus.radiotux.de mit SQLite). Rolle und DB werden per
-      # ensure: absent entfernt; Eintrag, CR und Secret koennen raus, sobald
-      # CNPG beides gedroppt hat. Die Rolle laesst sich erst droppen, wenn die
-      # DB weg ist; CNPG wiederholt den Abgleich bis dahin selbst.
-      - name: gatus_public
-        ensure: absent
-        login: true
-        inherit: true
-        connectionLimit: -1
-        passwordSecret:
-          name: monitoring-pg-gatus-public
       - name: kite
         ensure: present
         login: true
@@ -85,20 +73,6 @@ spec:
   backupOwnerReference: self
   cluster:
     name: monitoring-pg
----
-apiVersion: postgresql.cnpg.io/v1
-kind: Database
-metadata:
-  name: monitoring-pg-gatus-public
-  namespace: monitoring-db
-spec:
-  cluster:
-    name: monitoring-pg
-  name: gatus_public
-  owner: gatus_public
-  # Siehe managed.roles oben: gatus-public ist ausgezogen, die Historie wird
-  # nicht mehr gebraucht.
-  ensure: absent
 ---
 apiVersion: postgresql.cnpg.io/v1
 kind: Database

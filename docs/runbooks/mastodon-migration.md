@@ -438,6 +438,11 @@ Migrationen von 4.7.0 laufen laut Release Notes nur von 4.6 aus ohne Downtime
 `allowedVersions` in `renovate.json` auf `v4.5.x`/`v4.6.x` begrenzt; die Regel
 erst nach dem 4.6-Upgrade auf 4.7 erweitern.
 
+**Stand 23.10.2026:** 4.6.9 läuft seit 09:03Z (#338). Backup davor:
+`mastodon-pg-pre-4-6-20261022`, PITR-Ziel 2026-10-23T08:49:37Z. Beim
+PreSync-Hook fiel die Seite fünf Minuten aus
+([Learning](../learnings/mastodon-migration-lock-stau.md)).
+
 Migrationen laufen als ArgoCD-Hooks aus `apps/base/mastodon/db-migrate.yaml`:
 `mastodon-db-migrate-pre` (PreSync, `SKIP_POST_DEPLOYMENT_MIGRATIONS=true`) vor
 dem Image-Wechsel, `mastodon-db-migrate-post` (PostSync) danach. Ihr Image ist
@@ -457,14 +462,33 @@ Ablauf je Upgrade:
    Menschen angestoßen.
 3. Für 4.7: Migrationsdauer vorher an einem Restore-Klon aus
    `backup-mastodon` messen und `activeDeadlineSeconds` der Hooks anpassen.
-4. PR mergen. ArgoCD: PreSync-Job → Rollout → PostSync-Job. Web, Streaming
+4. Zeitpunkt wählen: **nicht zwischen 06:00 und 10:00 UTC.** Dann frischt
+   der Scheduler `account_summaries` auf (zufällige Uhrzeit, auf Ceph über
+   14 min), und jede Migration auf `accounts` wartet dahinter
+   ([Learning](../learnings/mastodon-migration-lock-stau.md)). Direkt vor dem
+   Merge lange Transaktionen prüfen:
+
+   ```bash
+   kubectl -n mastodon exec mastodon-pg-1 -c postgres -- psql -XAt -c \
+     "select pid, now()-xact_start, left(query,80) from pg_stat_activity
+      where backend_type='client backend' and now()-xact_start > interval '1 minute'"
+   ```
+
+5. PR mergen. ArgoCD: PreSync-Job → Rollout → PostSync-Job. Web, Streaming
    und Sidekiq `default` rollen (`maxSurge: 1`); alte und neue Version laufen
    dabei kurz parallel, was die Pre-Migrationen erlauben. Nur der
    Sidekiq-Scheduler wechselt per `Recreate` (mastodon-betrieb.md).
-5. Prüfen: beide Hook-Jobs `Complete`, Logs ohne Fehler; Web, Streaming und
+   Während die Hooks laufen, gestaute Abfragen beobachten
+   (`select count(*) from pg_stat_activity where cardinality(pg_blocking_pids(pid)) > 0`).
+   Die Hooks setzen `lock_timeout=10s` und wiederholen bei Lock-Timeouts bis
+   zu zehnmal; ein länger laufender Blocker lässt den Job scheitern, nicht die
+   Seite.
+6. Prüfen: beide Hook-Jobs `Complete`, Logs ohne Fehler; Web, Streaming und
    Sidekiq laufen auf dem neuen Image; Sidekiq-Retries/Dead-Set unauffällig;
    Föderation, Push und Medien-Upload kurz testen.
 
 Schlägt der PreSync-Job fehl, bricht der Sync ab und die alten Pods laufen
-weiter: Logs lesen, Ursache beheben, erneut syncen. Einen Rückweg auf die
-Vorversion gibt es nach erfolgreichen Migrationen nur per PITR.
+weiter: Logs lesen, Ursache beheben, erneut syncen. Nach Lock-Timeouts einer
+`concurrently`-Migration vorher nach `INVALID`-Indizes sehen
+(`select indexrelid::regclass from pg_index where not indisvalid`). Einen
+Rückweg auf die Vorversion gibt es nach erfolgreichen Migrationen nur per PITR.
