@@ -154,6 +154,10 @@ grep -E 'args:.*"media",[[:space:]]*"remove"' "$mastodon_retention" \
   | grep -qvE -- '--prune-profiles|--remove-headers' \
   || report "$mastodon_retention: no 'media remove' run without --prune-profiles/--remove-headers — with either flag tootctl skips media attachments entirely, and the remote cache grows into the RGW quota (docs/learnings/mastodon-remote-cache-nach-cutover.md)"
 
+section "Rails migration jobs set a lock_timeout"
+./scripts/ci/check-migration-lock-timeout.sh \
+  || report "db:migrate job(s) without lock_timeout (Mastodon outage 2026-10-23, docs/learnings/mastodon-migration-lock-stau.md)"
+
 if ((fail != 0)); then
   printf '\nGuardrail checks failed.\n' >&2
   exit 1

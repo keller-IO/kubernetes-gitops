@@ -10,6 +10,13 @@
 # Migrationen ist db:migrate ein No-op (Rails-Start, ca. 30 s). Schlaegt der
 # PreSync-Job fehl, bricht ArgoCD den Sync ab und die alten Pods laufen weiter.
 #
+# lock_timeout (PGOPTIONS) und Wiederholung nur bei Lock-Timeout: Mastodon setzt
+# keinen lock_timeout. Eine Migration, die auf einen exklusiven Lock wartet,
+# staut sonst alle Abfragen auf die Tabelle hinter sich auf. Am 23.10.2026 war
+# das fuenf Minuten Ausfall, weil ein REFRESH von account_summaries lief
+# (docs/learnings/mastodon-migration-lock-stau.md). Nach 10 Versuchen bricht der
+# Job ab; vor dem PreSync-Hook laufen dann die alten Pods einfach weiter.
+#
 # Image an values.yaml image.tag koppeln (wie media-retention.yaml). Env und
 # Haertung wie dort; readOnlyRootFilesystem geht, weil nichts heruntergeladen wird.
 # Vor jedem Upgrade mit Migrationen: Backup, siehe docs/runbooks/mastodon-migration.md.
@@ -45,10 +52,23 @@ spec:
         - name: db-migrate
           image: ghcr.io/mastodon/mastodon:v4.6.9 # an values.yaml image.tag gekoppelt
           imagePullPolicy: IfNotPresent
-          command: ["bundle", "exec", "rails", "db:migrate"]
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -uo pipefail
+              for attempt in $(seq 1 10); do
+                bundle exec rails db:migrate 2>&1 | tee /tmp/migrate.log && exit 0
+                grep -qE 'LockNotAvailable|LockWaitTimeout' /tmp/migrate.log || exit 1
+                echo "lock_timeout, Versuch ${attempt}/10, neuer Versuch in 30 s"
+                sleep 30
+              done
+              exit 1
           envFrom:
             - configMapRef: { name: mastodon-env }
           env:
+            - name: PGOPTIONS
+              value: "-c lock_timeout=10s"
             - name: SKIP_POST_DEPLOYMENT_MIGRATIONS
               value: "true"
             - name: SECRET_KEY_BASE
@@ -125,10 +145,23 @@ spec:
         - name: db-migrate
           image: ghcr.io/mastodon/mastodon:v4.6.9 # an values.yaml image.tag gekoppelt
           imagePullPolicy: IfNotPresent
-          command: ["bundle", "exec", "rails", "db:migrate"]
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -uo pipefail
+              for attempt in $(seq 1 10); do
+                bundle exec rails db:migrate 2>&1 | tee /tmp/migrate.log && exit 0
+                grep -qE 'LockNotAvailable|LockWaitTimeout' /tmp/migrate.log || exit 1
+                echo "lock_timeout, Versuch ${attempt}/10, neuer Versuch in 30 s"
+                sleep 30
+              done
+              exit 1
           envFrom:
             - configMapRef: { name: mastodon-env }
           env:
+            - name: PGOPTIONS
+              value: "-c lock_timeout=10s"
             - name: SECRET_KEY_BASE
               valueFrom: { secretKeyRef: { name: mastodon-secret, key: secret-key-base } }
             - name: VAPID_PRIVATE_KEY
