@@ -100,6 +100,16 @@ config:
       url: https://jit.social/health
       interval: 60s
       conditions: ["[STATUS] == 200"]
+    # Oeffentliche Statusseite, seit 23.10.2026 extern auf prometheus.radiotux.de.
+    # Umgekehrte Ueberwachung: faellt radiotux aus, merkt es nur der Cluster.
+    - name: status.jit-creatives.de (extern)
+      group: extern
+      url: https://status.jit-creatives.de/health
+      interval: 60s
+      conditions:
+        - "[STATUS] == 200"
+        - "[BODY].status == UP"
+        - "[CERTIFICATE_EXPIRATION] > 168h"
     - name: eurooffice
       group: intern (jit.services)
       url: https://eurooffice.jit.services/healthcheck
