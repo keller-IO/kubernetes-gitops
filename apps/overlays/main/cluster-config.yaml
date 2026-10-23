@@ -26,9 +26,11 @@ data:
   host_kite: kite.jit.services
   host_mailman: lists.jit.services
   host_icecast: radio.jit.services
+  host_icecast_public: radio.jit-creatives.de # explizites CNAME halbe auf dns01
   host_phpmyadmin: dbadmin.jit.services
   host_nextcloud_yealink_phonebook: phonebook.jit.services
   host_nextcloud_dev: cloud-dev.savar.de
   host_ciso_assistant: grc.jit.services # intern, IP-Allowlist im Ingress
   host_litellm: litellm.jit.services
+  host_eurooffice_public: eurooffice.jit-creatives.de # explizites CNAME halbe auf dns01
   host_goloom: goloom.binaergewitter.de
