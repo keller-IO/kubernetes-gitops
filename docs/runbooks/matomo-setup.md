@@ -167,8 +167,11 @@ sammeln, sonst lässt sich hinterher nicht sagen, was gewirkt hat.
   bloß bei leerem Volume, deshalb tauscht der initContainer `upgrade-code` beim
   Versionswechsel den Code auf dem PVC aus und führt `console core:update`
   aus. Bis zum 23.10.2026 fehlte das, und unter dem 5.14.0-Image lief weiter
-  5.13.0-Code. Erhalten bleiben `config/config.ini.php`, `tmp/`, `misc/user/`
-  und Plugins, die nicht aus dem Image stammen. Die Marke `tmp/.gitops-migrated`
+  5.13.0-Code. In `config/`, `misc/` und `plugins/` wird nur gelöscht, was
+  auch im Image liegt, denn dort legt Matomo eigene Dateien ab (`config.ini.php`,
+  `.htaccess`, Geodatenbank `misc/DBIP-*.mmdb`, Marketplace-Plugins). Der erste
+  Lauf am 23.10.2026 hat `.htaccess` und Geodatenbank mitgelöscht.
+  `core:create-security-files` erzeugt die `.htaccess`-Dateien bei jedem Start neu. Die Marke `tmp/.gitops-migrated`
   wird erst nach erfolgreichem `core:update` geschrieben; scheitert die Migration,
   läuft sie beim nächsten Start erneut. Zum Erzwingen die Marke löschen und den
   Pod neu starten. Das Auto-Update der Oberfläche

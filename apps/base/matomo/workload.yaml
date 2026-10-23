@@ -32,9 +32,14 @@ spec:
       # immer auf dem Stand der Erstinstallation: bis 23.10.2026 lief unter dem
       # 5.14.0-Image weiter 5.13.0-Code. Dieser initContainer tauscht den Code
       # bei jedem Versionswechsel aus und fuehrt die DB-Migration aus.
-      # Erhalten bleiben config/config.ini.php, tmp/, misc/user/ und Plugins,
-      # die nicht aus dem Image stammen (Marketplace). Alles andere wird
-      # geloescht, damit keine Dateien der Vorversion liegen bleiben.
+      # Auf oberster Ebene wird alles ausser config/, tmp/, misc/ und plugins/
+      # geloescht, damit keine Dateien der Vorversion liegen bleiben. In
+      # config/, misc/ und plugins/ nur, was auch im Image liegt: dort legt
+      # Matomo zur Laufzeit eigene Dateien ab (config.ini.php, .htaccess, die
+      # DBIP-Geodatenbank misc/DBIP-*.mmdb, Marketplace-Plugins). Der erste
+      # Lauf am 23.10.2026 loeschte .htaccess und Geodatenbank mit.
+      # core:create-security-files erzeugt die .htaccess-Schutzdateien bei jedem
+      # Start neu (laut Matomo nach jedem Update noetig, braucht keine DB).
       # Code-Tausch und Migration sind getrennt: tmp/.gitops-migrated haelt die
       # Version der letzten ERFOLGREICHEN Migration. Scheitert core:update
       # (z. B. MariaDB weg), passt beim Retry zwar der Code, die Marke aber
@@ -60,10 +65,8 @@ spec:
                 echo "Matomo-Code $have -> $want"
                 find . -mindepth 1 -maxdepth 1 ! -name config ! -name tmp ! -name misc \
                   ! -name plugins ! -name lost+found -exec rm -rf {} +
-                find config -mindepth 1 -maxdepth 1 ! -name config.ini.php \
-                  ! -name common.config.ini.php -exec rm -rf {} +
-                find misc -mindepth 1 -maxdepth 1 ! -name user -exec rm -rf {} +
-                for p in plugins/*; do
+                for p in config/* config/.[!.]* misc/* plugins/*; do
+                  if [ "$p" = misc/user ]; then continue; fi
                   if [ -e "/usr/src/matomo/$p" ]; then rm -rf "$p"; fi
                 done
                 rm -rf tmp/cache tmp/templates_c
@@ -76,6 +79,8 @@ spec:
               if [ ! -e config/config.ini.php ]; then
                 echo "Installations-Assistent noch nicht durchlaufen, keine Migration"; exit 0
               fi
+              su -s /bin/sh www-data -c "php console core:create-security-files" >/dev/null
+              echo ".htaccess-Schutzdateien erzeugt"
               if [ "$(cat "$marker" 2>/dev/null || true)" = "$want" ]; then
                 echo "Matomo $want aktuell"; exit 0
               fi
