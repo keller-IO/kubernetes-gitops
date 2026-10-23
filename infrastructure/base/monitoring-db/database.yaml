@@ -26,9 +26,8 @@ spec:
   storage:
     size: 5Gi
     storageClass: ceph-rbd # CNPG-Feld heißt storageClass (nicht storageClassName)
-  # initdb legt nur die erste DB an. gatus_public und kite kommen ueber
-  # managed.roles + Database-CRs unten, damit weitere Tools ohne Neuaufbau
-  # dazukommen koennen.
+  # initdb legt nur die erste DB an. kite kommt ueber managed.roles +
+  # Database-CR unten, damit weitere Tools ohne Neuaufbau dazukommen koennen.
   bootstrap:
     initdb:
       database: gatus
@@ -40,8 +39,13 @@ spec:
   # ohne sie bliebe der Cluster dauerhaft OutOfSync (19.10.2026).
   managed:
     roles:
+      # gatus-public ist am 23.10.2026 aus dem Cluster ausgezogen (jetzt extern
+      # auf prometheus.radiotux.de mit SQLite). Rolle und DB werden per
+      # ensure: absent entfernt; Eintrag, CR und Secret koennen raus, sobald
+      # CNPG beides gedroppt hat. Die Rolle laesst sich erst droppen, wenn die
+      # DB weg ist; CNPG wiederholt den Abgleich bis dahin selbst.
       - name: gatus_public
-        ensure: present
+        ensure: absent
         login: true
         inherit: true
         connectionLimit: -1
@@ -92,6 +96,9 @@ spec:
     name: monitoring-pg
   name: gatus_public
   owner: gatus_public
+  # Siehe managed.roles oben: gatus-public ist ausgezogen, die Historie wird
+  # nicht mehr gebraucht.
+  ensure: absent
 ---
 apiVersion: postgresql.cnpg.io/v1
 kind: Database
