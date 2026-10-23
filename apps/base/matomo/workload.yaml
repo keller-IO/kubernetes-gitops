@@ -35,6 +35,11 @@ spec:
       # Erhalten bleiben config/config.ini.php, tmp/, misc/user/ und Plugins,
       # die nicht aus dem Image stammen (Marketplace). Alles andere wird
       # geloescht, damit keine Dateien der Vorversion liegen bleiben.
+      # Code-Tausch und Migration sind getrennt: tmp/.gitops-migrated haelt die
+      # Version der letzten ERFOLGREICHEN Migration. Scheitert core:update
+      # (z. B. MariaDB weg), passt beim Retry zwar der Code, die Marke aber
+      # nicht — die Migration laeuft also erneut, statt still uebersprungen
+      # zu werden.
       initContainers:
         - name: upgrade-code
           # Muss immer dasselbe Image wie der matomo-Container sein.
@@ -45,28 +50,39 @@ spec:
             - |
               cd /var/www/html
               version() { sed -n "s/.*const VERSION = '\(.*\)';/\1/p" "$1/core/Version.php" 2>/dev/null || true; }
+              marker=tmp/.gitops-migrated
               want=$(version /usr/src/matomo)
               have=$(version .)
               if [ ! -e matomo.php ]; then
                 echo "Erstinstallation, uebernimmt /entrypoint.sh"; exit 0
               fi
-              if [ "$have" = "$want" ]; then
-                echo "Matomo $have aktuell"; exit 0
+              if [ "$have" != "$want" ]; then
+                echo "Matomo-Code $have -> $want"
+                find . -mindepth 1 -maxdepth 1 ! -name config ! -name tmp ! -name misc \
+                  ! -name plugins ! -name lost+found -exec rm -rf {} +
+                find config -mindepth 1 -maxdepth 1 ! -name config.ini.php \
+                  ! -name common.config.ini.php -exec rm -rf {} +
+                find misc -mindepth 1 -maxdepth 1 ! -name user -exec rm -rf {} +
+                for p in plugins/*; do
+                  if [ -e "/usr/src/matomo/$p" ]; then rm -rf "$p"; fi
+                done
+                rm -rf tmp/cache tmp/templates_c
+                tar cf - --one-file-system -C /usr/src/matomo . | tar xf -
+                # Den read-only gemounteten ConfigMap-Eintrag auslassen: chown
+                # darauf scheitert (EROFS) und braeche das Skript ab.
+                find . -path ./config/common.config.ini.php -prune \
+                  -o -exec chown -h www-data:www-data {} +
               fi
-              echo "Matomo-Code $have -> $want"
-              find . -mindepth 1 -maxdepth 1 ! -name config ! -name tmp ! -name misc \
-                ! -name plugins ! -name lost+found -exec rm -rf {} +
-              find config -mindepth 1 -maxdepth 1 ! -name config.ini.php \
-                ! -name common.config.ini.php -exec rm -rf {} +
-              find misc -mindepth 1 -maxdepth 1 ! -name user -exec rm -rf {} +
-              for p in plugins/*; do
-                if [ -e "/usr/src/matomo/$p" ]; then rm -rf "$p"; fi
-              done
-              rm -rf tmp/cache tmp/templates_c
-              tar cf - --one-file-system -C /usr/src/matomo . | tar xf -
-              chown -R www-data:www-data .
+              if [ ! -e config/config.ini.php ]; then
+                echo "Installations-Assistent noch nicht durchlaufen, keine Migration"; exit 0
+              fi
+              if [ "$(cat "$marker" 2>/dev/null || true)" = "$want" ]; then
+                echo "Matomo $want aktuell"; exit 0
+              fi
               su -s /bin/sh www-data -c "php console core:update --yes --no-interaction"
-              echo "Matomo $(version .) installiert"
+              echo "$want" > "$marker"
+              chown www-data:www-data "$marker"
+              echo "Matomo $want installiert und migriert"
           # DB-Zugang liest console aus config/config.ini.php auf dem PVC.
           volumeMounts:
             - name: data

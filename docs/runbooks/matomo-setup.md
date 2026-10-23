@@ -168,7 +168,10 @@ sammeln, sonst lässt sich hinterher nicht sagen, was gewirkt hat.
   Versionswechsel den Code auf dem PVC aus und führt `console core:update`
   aus. Bis zum 23.10.2026 fehlte das, und unter dem 5.14.0-Image lief weiter
   5.13.0-Code. Erhalten bleiben `config/config.ini.php`, `tmp/`, `misc/user/`
-  und Plugins, die nicht aus dem Image stammen. Das Auto-Update der Oberfläche
+  und Plugins, die nicht aus dem Image stammen. Die Marke `tmp/.gitops-migrated`
+  wird erst nach erfolgreichem `core:update` geschrieben; scheitert die Migration,
+  läuft sie beim nächsten Start erneut. Zum Erzwingen die Marke löschen und den
+  Pod neu starten. Das Auto-Update der Oberfläche
   ist abgeschaltet (`enable_auto_update = 0`). Prüfen:
   `kubectl -n matomo logs deploy/matomo -c upgrade-code`.
 - **Backup:** täglich 02:30 als logischer Dump nach Garage-S3
