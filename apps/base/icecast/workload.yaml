@@ -75,10 +75,18 @@ metadata:
 spec:
   ingressClassName: nginx
   tls:
-    - hosts: [radio.jit.services] # CHANGE ME
+    # radio.jit-creatives.de: oeffentlicher Name, auch fuer die externe
+    # Statusseite. *.jit.services zeigt auch oeffentlich auf 192.168.2.246.
+    - hosts: [radio.jit.services, radio.jit-creatives.de] # CHANGE ME
       secretName: icecast-tls
   rules:
     - host: radio.jit.services # CHANGE ME
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: icecast, port: { number: 8000 } } }
+    - host: radio.jit-creatives.de
       http:
         paths:
           - path: /
