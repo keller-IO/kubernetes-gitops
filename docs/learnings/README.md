@@ -59,3 +59,6 @@ Format und Kriterien: siehe AGENTS.md → „Operational Learnings".
 - [Goloom: SQLite nach Postgres](goloom-sqlite-nach-postgres.md) — kein Upstream-Werkzeug;
   JSON-Export, typgenaue Casts (`''` -> `NULL`, JSON -> `text[]`), eine Transaktion mit
   Zeilenpruefung, Umstellung per PreSync-Hooks.
+- [CNPG: Managed Role bleibt nach `ensure: absent` hängen](cnpg-managed-role-drop-kein-retry.md)
+  — `DROP ROLE` scheiterte, solange der Rolle die DB gehörte, und CNPG wiederholt
+  den Abgleich erst bei einer Änderung an `managed.roles`. Rückbau: erst die DB, dann die Rolle.
