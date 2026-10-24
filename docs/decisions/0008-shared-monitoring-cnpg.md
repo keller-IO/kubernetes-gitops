@@ -1,6 +1,6 @@
 # ADR 0008 — Gemeinsamer CNPG-Cluster für Monitoring-Tools
 
-- **Status:** Angenommen
+- **Status:** Angenommen (Nachtrag 2026-10-23: `gatus_public` entfällt)
 - **Datum:** 2026-10-19
 
 ## Kontext
@@ -91,3 +91,14 @@ in einem Folge-PR entfernt.
 Nebenwirkung: Plugin-Dateien liegen ohne PVC flüchtig im Container. Offizielle
 Plugins lädt Kite anhand der DB-Einträge neu, manuell hochgeladene müssten neu
 hochgeladen werden. Die Benutzersuche ist auf Postgres case-sensitiv (`LIKE`).
+
+## Nachtrag 2026-10-23
+
+`status.jit-creatives.de` läuft nicht mehr im Cluster, sondern extern auf
+`prometheus.radiotux.de` (Ansible-Rolle `gatus_public` in `jit/ansible`, SQLite
+auf dem Host). Die öffentliche Seite soll gerade dann etwas anzeigen, wenn
+kellerIO oder der Telekom-Anschluss ausfällt; mit der Datenbank im Cluster ging
+das nicht. Datenbank und Rolle `gatus_public` wurden am 23.10.2026 per
+`ensure: absent` gedroppt und danach mit Database-CR und Secret entfernt; die
+Tabellenzeile oben ist Historie. `monitoring-pg` dient weiter Gatus intern und
+Kite.
