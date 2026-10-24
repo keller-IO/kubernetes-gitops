@@ -416,6 +416,9 @@ spec: { schedule: "0 0 2 * * *", cluster: { name: forgejo-pg } }
 **Offen:**
 - [ ] GitHub-Token in `apps/base/renovate/secret.sops.yaml` setzen.
 - [ ] `gitAuthor` in `apps/base/renovate/config.js` anpassen.
+- [x] Renovate-Image in `apps/base/renovate/cronjob.yaml` auf
+      `renovate/renovate:44.176.3` aktualisiert. Der CronJob bleibt wegen des
+      abgelaufenen GitHub-Tokens suspendiert (`suspend: true`).
 - [x] Renovate läuft gegen GitHub (`keller-IO/kubernetes-gitops`) und ignoriert
       `.forgejo/**`.
 - [x] `# renovate:`-Kommentare an Helm-, Docker- und Workflow-Versionen werden
