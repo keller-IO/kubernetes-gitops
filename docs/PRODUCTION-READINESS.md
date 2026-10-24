@@ -62,6 +62,11 @@ kubeProxyReplacement: true
       `appset-apps.yaml` auf echte Repo-URL setzen (aktuell `git.f4mily.net/keller.io/keller.io.git`).
 - [ ] ArgoCD wird per Terraform installiert (`infrastructure/tofu .../argocd.tf`), das den
       Bootstrap-Root-App deployt. `clusters/main/root-app.yaml` ist die manuelle Alternative.
+- [ ] Bootstrap-Reste aufraeumen und Tofu-Bootstrap angleichen (24.10.2026): Dex und
+      Notifications aus dem Erst-Bootstrap (Chart 9.5.21) laufen ungetrackt weiter.
+      Manuelles Aufraeumen sowie `dex`/`notifications.enabled = false` und
+      `argocd_chart_version` auf die GitOps-Minor in `argocd.tf`:
+      `docs/learnings/argocd-bootstrap-reste-dex-notifications.md`.
 - [ ] Intra-Infra-Reihenfolge prüfen: CNI/CRDs/Operatoren vor Apps (sync-waves grob gesetzt,
       ggf. verfeinern: cilium → cert-manager/CRDs → operatoren → monitoring → apps).
 
