@@ -38,6 +38,11 @@ data:
     ; daher eine Weiterleitungsschleife ausloesen.
     force_ssl = 0
 
+    ; Die Version bestimmt allein das Image (initContainer upgrade-code in
+    ; workload.yaml). Ein Update ueber die Oberflaeche schriebe Code auf das
+    ; PVC, den der naechste Podstart wieder auf den Image-Stand zuruecksetzt.
+    enable_auto_update = 0
+
     [Tracker]
     ; Keine Drittanbieter-Cookies. Das eigentliche cookielose Tracking
     ; erzwingt disableCookies() im Snippet — das hier ist die zweite Reihe.

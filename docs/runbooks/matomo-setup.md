@@ -150,19 +150,41 @@ Leere. Die Gegenstelle dazu steht in `configmap.yaml` (`proxy_client_headers`).
 Reihenfolge beachten: `disableCookies` muss **vor** `trackPageView` stehen, sonst
 wird beim ersten Aufruf noch ein Cookie gesetzt.
 
-### 5. Ziel für den Bestelltrichter anlegen
+### 5. Erfolgsziele anlegen
 
-Der eigentliche Zweck. *Ziele → Neues Ziel:*
+Die Bestellformulare zeigen Erfolg und Fehler unter derselben URL. Daher sind
+alle Ziele **manuell ausgelöst** (`matchAttribute=manually`), höchstens einmal
+pro Besuch. Die IDs sind im Django-Code hinterlegt und müssen bei einer
+Neuinstallation in dieser Reihenfolge entstehen:
 
-- Name: `Nextcloud-Bestellung abgeschickt`
-- Auslöser: Besuch einer bestimmten URL, **enthält** `/cloud/order/` und `success`
+| ID | Ziel | Auslöser im Django-Template |
+|---|---|---|
+| 1 | Nextcloud-Bestellung abgeschickt | `cloud_order_success.html`, nur im Erfolgszweig |
+| 2 | Hosting-Bestellung abgeschickt | `order_success.html`, nur im Erfolgszweig |
+| 3 | Kontaktanfrage gesendet | `contact.django.html`, nur nach bestätigtem Mailversand |
 
-Damit wird endlich messbar, wie viele Menschen `/cloud/` öffnen und wie viele
-davon bestellen. **Vor** weiteren Änderungen an der Seite zwei Wochen Baseline
-sammeln, sonst lässt sich hinterher nicht sagen, was gewirkt hat.
+Die Konfiguration liegt in Matomos Datenbank, nicht im Git-Repo. Nach einem
+Restore `Goals.getGoals` prüfen. Die Kontaktseite zeigt auch bei einem vom
+Köderfeld abgefangenen Bot eine Erfolgsmeldung; dabei wird Ziel 3 nicht gezählt.
+Seit der Tracker-Reparatur am 23.10.2026 beginnt eine neue Messbasis; die
+Messlücke davor darf nicht als Rückgang der Nachfrage interpretiert werden.
 
 ## Betrieb
 
+- **Updates:** nur über das Image (Renovate). Das Image entpackt seinen Code
+  bloß bei leerem Volume, deshalb tauscht der initContainer `upgrade-code` beim
+  Versionswechsel den Code auf dem PVC aus und führt `console core:update`
+  aus. Bis zum 23.10.2026 fehlte das, und unter dem 5.14.0-Image lief weiter
+  5.13.0-Code. In `config/`, `misc/` und `plugins/` wird nur gelöscht, was
+  auch im Image liegt, denn dort legt Matomo eigene Dateien ab (`config.ini.php`,
+  `.htaccess`, Geodatenbank `misc/DBIP-*.mmdb`, Marketplace-Plugins). Der erste
+  Lauf am 23.10.2026 hat `.htaccess` und Geodatenbank mitgelöscht.
+  `core:create-security-files` erzeugt die `.htaccess`-Dateien bei jedem Start neu. Die Marke `tmp/.gitops-migrated`
+  wird erst nach erfolgreichem `core:update` geschrieben; scheitert die Migration,
+  läuft sie beim nächsten Start erneut. Zum Erzwingen die Marke löschen und den
+  Pod neu starten. Das Auto-Update der Oberfläche
+  ist abgeschaltet (`enable_auto_update = 0`). Prüfen:
+  `kubectl -n matomo logs deploy/matomo -c upgrade-code`.
 - **Backup:** täglich 02:30 als logischer Dump nach Garage-S3
   (`backups/mariadb-matomo`), 30 Tage Aufbewahrung. Versetzt zu kimai (02:00).
 - **Archivierung:** läuft browser-getriggert (Matomo-Default). Für diese
@@ -175,6 +197,13 @@ sammeln, sonst lässt sich hinterher nicht sagen, was gewirkt hat.
 
 ## Fallstricke
 
+- **Allowlist nie mit `allow`/`deny` bauen.** Der Ingress glaubt XFF aus
+  `192.168.2.0/24` (`set-real-ip-from`), also ist `$remote_addr` bei jedem
+  Tracker-Aufruf über mgmt02 die öffentliche Besucher-IP. Mit `deny all` lief
+  vom 22.09. bis 23.10.2026 jeder externe Besuch in 403, und Matomo zählte nichts.
+  Die Allowlist prüft deshalb `$realip_remote_addr` (den TCP-Peer). **Testen
+  immer von außen**: aus dem LAN ist auch die Besucher-IP intern, und der Fehler
+  bleibt unsichtbar. Schnellcheck: `matomo_log_visit` nach Tagen gruppieren.
 - **Ping auf `192.168.2.246` schlägt immer fehl.** Cilium-LB-IPs antworten nicht
   auf ICMP. Nur Service-Ports testen, sonst sucht man an der falschen Stelle.
 - **HTTPS zum Cluster-LB nur mit passendem Zertifikat.** `curl` gegen `.246` mit

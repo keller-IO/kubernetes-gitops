@@ -26,9 +26,8 @@ spec:
   storage:
     size: 5Gi
     storageClass: ceph-rbd # CNPG-Feld heißt storageClass (nicht storageClassName)
-  # initdb legt nur die erste DB an. gatus_public und kite kommen ueber
-  # managed.roles + Database-CRs unten, damit weitere Tools ohne Neuaufbau
-  # dazukommen koennen.
+  # initdb legt nur die erste DB an. kite kommt ueber managed.roles +
+  # Database-CR unten, damit weitere Tools ohne Neuaufbau dazukommen koennen.
   bootstrap:
     initdb:
       database: gatus
@@ -40,13 +39,6 @@ spec:
   # ohne sie bliebe der Cluster dauerhaft OutOfSync (19.10.2026).
   managed:
     roles:
-      - name: gatus_public
-        ensure: present
-        login: true
-        inherit: true
-        connectionLimit: -1
-        passwordSecret:
-          name: monitoring-pg-gatus-public
       - name: kite
         ensure: present
         login: true
@@ -81,17 +73,6 @@ spec:
   backupOwnerReference: self
   cluster:
     name: monitoring-pg
----
-apiVersion: postgresql.cnpg.io/v1
-kind: Database
-metadata:
-  name: monitoring-pg-gatus-public
-  namespace: monitoring-db
-spec:
-  cluster:
-    name: monitoring-pg
-  name: gatus_public
-  owner: gatus_public
 ---
 apiVersion: postgresql.cnpg.io/v1
 kind: Database

@@ -18,10 +18,23 @@ spec:
   # Neue Domain, hängt NICHT hinter dem .15-Traefik → volles Cluster-TLS erlaubt
   # (Wildcard *.jit.services zeigt bereits auf die LB-IP .246).
   tls:
-    - hosts: [eurooffice.jit.services] # CHANGE ME
+    # eurooffice.jit-creatives.de: oeffentlicher Name fuer die externe
+    # Statusseite (status.jit-creatives.de auf prometheus.radiotux.de).
+    # *.jit.services zeigt auch oeffentlich auf 192.168.2.246.
+    - hosts: [eurooffice.jit.services, eurooffice.jit-creatives.de] # CHANGE ME
       secretName: eurooffice-tls
   rules:
     - host: eurooffice.jit.services # CHANGE ME
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: eurooffice
+                port:
+                  number: 80
+    - host: eurooffice.jit-creatives.de
       http:
         paths:
           - path: /
