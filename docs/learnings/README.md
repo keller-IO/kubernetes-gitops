@@ -53,6 +53,10 @@ Format und Kriterien: siehe AGENTS.md → „Operational Learnings".
 - [*.jit.services: DNS-01 macht Wildcard-Namen unauflösbar](wildcard-dns01-empty-non-terminal.md)
   — `_acme-challenge.<name>` macht `<name>` zum leeren Knoten, die Wildcard greift nicht;
   `NODATA` bleibt bis zu 3600 s im Cache. Fix: expliziter A-Record je Name.
+- [ArgoCD: Bootstrap-Reste von Dex und Notifications](argocd-bootstrap-reste-dex-notifications.md)
+  — der Tofu-Bootstrap (Chart 9.5.21) liess beide an; ohne Tracking-ID prunt
+  `infra-argocd` sie nicht, auch Helm-eigene Felder in `argocd-cmd-params-cm`
+  bleiben. Aufraeumen per Hand, Bootstrap-Values angleichen.
 - [ArgoCD prunt die PVC beim Quellenwechsel](argocd-prune-pvc-bei-quellenwechsel.md)
   — Umstellung auf eine Multi-Source-Application loeschte `goloom-data`; PVCs
   zustandsbehafteter Apps gehoeren mit `Prune=false,Delete=false` in den eigenen Base.
