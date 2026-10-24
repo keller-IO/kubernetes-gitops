@@ -55,11 +55,13 @@ braucht.
 
 1. Pruefen, dass die Objekte weiterhin nicht von ArgoCD verwaltet werden. Die
    erste Abfrage muss `none` ausgeben, die zweite fuer beide Deployments
-   `<none>`:
+   `<none>`. Gibt die erste nichts oder einen Fehler aus, ist die Pruefung
+   fehlgeschlagen und Schritt 2 entfaellt:
 
    ```sh
    kubectl -n argocd get application infra-argocd -o json \
-     | jq -r '.status.resources[] | "\(.kind)/\(.name)"' | grep -E 'dex|notif' || echo none
+     | jq -r '[.status.resources[] | select(.name | test("dex|notif")) | "\(.kind)/\(.name)"]
+              | if length == 0 then "none" else .[] end'
    kubectl -n argocd get deploy argocd-dex-server argocd-notifications-controller \
      -o custom-columns='NAME:.metadata.name,TRACKING:.metadata.annotations.argocd\.argoproj\.io/tracking-id'
    ```
@@ -113,10 +115,11 @@ braucht.
   `argocd.argoproj.io/tracking-id` suchen:
 
   ```sh
-  kubectl get deploy,ds,sts -A -o json | jq -r '.items[]
+  kubectl get deploy,ds,sts,svc,sa,role,rolebinding,clusterrole,clusterrolebinding,cm,secret \
+    -A -o json | jq -r '.items[]
     | select(.metadata.annotations["meta.helm.sh/release-name"] != null
              and .metadata.annotations["argocd.argoproj.io/tracking-id"] == null)
-    | "\(.metadata.namespace)/\(.kind)/\(.metadata.name)"'
+    | "\(.metadata.namespace // "-")/\(.kind)/\(.metadata.name)"'
   ```
 
 - Kein CI-Guardrail: Das Muster entsteht aus Bootstrap-Werten in einem anderen
