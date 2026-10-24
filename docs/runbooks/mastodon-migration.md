@@ -492,3 +492,151 @@ weiter: Logs lesen, Ursache beheben, erneut syncen. Nach Lock-Timeouts einer
 `concurrently`-Migration vorher nach `INVALID`-Indizes sehen
 (`select indexrelid::regclass from pg_index where not indisvalid`). Einen
 Rückweg auf die Vorversion gibt es nach erfolgreichen Migrationen nur per PITR.
+
+### 4.6.9 → 4.7.3: Vorbereitung
+
+Stand 24.10.2026, geprüft per `git diff v4.6.9 v4.7.3` im Mastodon-Repo und
+mit den Release Notes 4.7.0 bis 4.7.3.
+
+**Ziel ist direkt v4.7.3.** 4.7.1 behebt 4.7-Migrationen, die nach einem
+Abbruch nicht sauber neu starten (#40264). Das ist mit unseren Hook-Wiederholungen
+wichtig. Chart 1.2.5 hat schon `appVersion` v4.7.3, ein Chart-Bump ist also nicht
+nötig.
+
+- Die Abhängigkeiten sind seit 4.6.0 gleich: PostgreSQL ≥ 14 (wir: 16.15),
+  Redis ≥ 7 (wir: Valkey 9.2). Ruby 4.0.6, FFmpeg 9.0.2 und libvips 8.18.5
+  stecken im Image.
+- Es gibt keine neuen Pflicht-Variablen: `.env.production.sample`,
+  `config/database.yml` und `config/sidekiq.yml` sind unverändert. Neu und
+  optional ist `ES_QUERY_TIMEOUT`, das betrifft uns nicht, weil die Suche nicht
+  angebunden ist.
+- Cookies von Mastodon ≤ 4.2 gelten nicht mehr. Wer seit 4.3 nicht mehr da
+  war, wird abgemeldet.
+
+**Migrationen:** 19 Pre-Deployment- und 8 Post-Deployment-Migrationen. Die
+meisten sind kleine Spalten- und Index-Änderungen, `lock_timeout` und
+`concurrently` decken sie ab. Diese brauchen Aufmerksamkeit:
+
+| Migration | Phase | Was passiert | Risiko bei uns |
+|---|---|---|---|
+| `20260728145403 UpdateAccountSummariesToVersion3` | Pre | Baut `account_summaries` als neue Materialized View komplett neu. In **derselben Transaktion** werden beide Views gelöscht, umbenannt, und `global_follow_recommendations` wird neu befüllt. | Der Neubau entspricht dem täglichen Refresh, der auf Ceph über 14 min lief. Während `global_follow_recommendations` neu befüllt wird, hält die Migration `ACCESS EXCLUSIVE` auf beiden Views. Folgeempfehlungen der 4.6-Pods (`/api/v2/suggestions`, Admin) warten so lange. Ein Lock-Timeout beim `DROP` rollt alles zurück, der nächste Versuch rechnet von vorn. |
+| `20260702144128 MigrateLocalAccountKeypairs` | Post | Verschiebt die privaten Schlüssel lokaler Accounts nach `keypairs`, verschlüsselt mit `ACTIVE_RECORD_ENCRYPTION_*`, und leert `accounts.private_key`. | Danach hängen die Föderations-Signaturen an den `are-*`-Schlüsseln in `mastodon-secret` (SOPS). Ein DB-Restore ohne dieses Secret ist ab dann wertlos. |
+| `20260720100326 FixBlankAccountUri` und `20260720124731 CleanUpInvalidAccounts` | Post | Setzt leere `uri` auf `NULL` und löscht danach **Fremd**-Accounts ohne `uri` per `delete_all`. Die Fremdschlüssel der DB kaskadieren dabei. | Die Menge ist unbekannt, vorher zählen (unten). |
+| `20260720104058 AddUniqueIndexOnAccountsUri` | Post | Unique-Index auf `accounts.uri`, `concurrently`. Gibt es Duplikate, führt die Migration die Accounts Zeile für Zeile zusammen. | Mit Duplikaten wird das langsam, vorher zählen. |
+| `20260804081821 ConvertMaterializedViewsToTables` | Post | Kopiert beide Views in normale Tabellen. | **Danach gibt es den Lock-Stau aus dem 4.6-Learning nicht mehr.** 4.7 pflegt die Tabellen in Batches (`INSERT … ON CONFLICT`) statt per `REFRESH MATERIALIZED VIEW`. Zwischen Rollout und PostSync überspringt der 4.7-Scheduler den Refresh (`table_exists?` ist für eine View falsch). Das ist harmlos. |
+
+**Vorab-Abfragen** (nur lesend, auf dem Primary; `kubectl exec` macht ein
+Mensch):
+
+```bash
+kubectl -n mastodon exec mastodon-pg-1 -c postgres -- psql -XA -d mastodon_production <<'SQL'
+-- Duplikate, die AddUniqueIndexOnAccountsUri zusammenführen müsste
+select count(*) as uri_duplikate from (select uri from accounts where uri <> '' group by uri having count(*) > 1) d;
+-- Fremd-Accounts, die CleanUpInvalidAccounts löscht
+select count(*) as fremd_ohne_uri from accounts where domain is not null and coalesce(uri, '') = '';
+-- Umfang der Keypair-Migration und der Views
+select count(*) as lokale_schluessel from accounts where domain is null and private_key is not null;
+select (select count(*) from account_summaries) as summaries, (select count(*) from global_follow_recommendations) as recommendations;
+-- Muss leer sein
+select indexrelid::regclass as invalid_index from pg_index where not indisvalid;
+SQL
+```
+
+**Restore-Klon und Messung** (Schritt 3 oben; `apply` und `delete` macht ein
+Mensch mit Schreibzugriff). Der Klon stellt den letzten Stand aus
+`backup-mastodon` wieder her und testet damit zugleich das Backup. Er hat
+**kein** `backup:`. Das muss so bleiben, sonst archiviert er in den Pfad der
+Produktion. Vorher `ceph df` prüfen, ob für ein weiteres 64-GiB-RBD Platz ist.
+
+```yaml
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: mastodon-pg-klon
+  namespace: mastodon
+spec:
+  instances: 1
+  imageName: ghcr.io/cloudnative-pg/postgresql:16.15-202610190958-system-bookworm@sha256:34be1a40793eb0f1452200cb52facebdc6c4a2fb8ca040688788eda07b7529a0 # wie database.yaml
+  storage: { size: 64Gi, storageClass: ceph-rbd }
+  resources:
+    requests: { cpu: 500m, memory: 1Gi }
+    limits: { memory: 4Gi }
+  postgresql:
+    parameters: { wal_compression: "on", max_wal_size: "4GB", checkpoint_timeout: "15min" }
+  bootstrap:
+    recovery:
+      source: mastodon-pg-backup
+      database: mastodon_production
+      owner: mastodon
+      secret: { name: mastodon-db-app }
+  externalClusters:
+    - name: mastodon-pg-backup
+      barmanObjectStore:
+        destinationPath: s3://backup-mastodon/cnpg/
+        serverName: mastodon-pg-r2
+        endpointURL: http://192.168.23.21:3900
+        s3Credentials:
+          accessKeyId: { name: mastodon-backup-s3, key: ACCESS_KEY_ID }
+          secretAccessKey: { name: mastodon-backup-s3, key: SECRET_ACCESS_KEY }
+          region: { name: mastodon-backup-s3, key: region }
+        wal: { compression: gzip }
+        data: { compression: gzip }
+```
+
+Ist der Klon `Cluster in healthy state`, die Vorab-Abfragen dort wiederholen.
+Dann beide Phasen mit dem 4.7.3-Image gegen den Klon laufen lassen. Der Job
+entsteht aus dem PreSync-Hook. Er bricht ab, falls `DB_HOST` nicht auf den Klon
+zeigt (`env` überschreibt den `DB_HOST` aus `mastodon-env`):
+
+```bash
+yq 'select(.metadata.name == "mastodon-db-migrate-pre")
+  | .metadata.name = "mastodon-db-migrate-klon"
+  | del(.metadata.annotations)
+  | .spec.activeDeadlineSeconds = 21600
+  | .spec.template.spec.containers[0].image = "ghcr.io/mastodon/mastodon:v4.7.3"
+  | .spec.template.spec.containers[0].env |= (map(select(.name != "SKIP_POST_DEPLOYMENT_MIGRATIONS")) + [{"name": "DB_HOST", "value": "mastodon-pg-klon-rw"}])
+  | .spec.template.spec.containers[0].command = ["/bin/bash", "-c", "set -euo pipefail; [ \"$DB_HOST\" = mastodon-pg-klon-rw ] || exit 1; date -u; time SKIP_POST_DEPLOYMENT_MIGRATIONS=true bundle exec rails db:migrate; date -u; time bundle exec rails db:migrate; date -u"]' \
+  apps/base/mastodon/db-migrate.yaml > mastodon-db-migrate-klon.yaml
+kubectl apply -f mastodon-db-migrate-klon.yaml
+kubectl -n mastodon logs -f job/mastodon-db-migrate-klon | tee migrate-klon.log
+```
+
+Rails gibt jeden Schritt mit Dauer aus (`-> 123.4567s`). Notieren:
+
+- die Dauer von Pre- und Post-Phase,
+- in `UpdateAccountSummariesToVersion3` die Schritte ab
+  `drop_view(:global_follow_recommendations)`. So lange warten die
+  Folgeempfehlungen. Bei mehr als etwa einer Minute ein Zeitfenster mit wenig
+  Last wählen.
+
+Der Klon hat keine Last und keinen Standby, die Produktion braucht also eher
+länger. Aufräumen: `kubectl -n mastodon delete job/mastodon-db-migrate-klon
+cluster/mastodon-pg-klon` (die PVC hängt am Cluster).
+
+**Upgrade-PR**, erst nach der Messung:
+
+1. `v4.6.9` → `v4.7.3` an allen acht Stellen: `values.yaml` (2),
+   `db-migrate.yaml` (2), `media-retention.yaml` (4). Den Kommentar zur
+   `appVersion` in `kustomization.yaml` anpassen. `guardrails.sh` prüft, dass
+   alle Mastodon-Tags gleich sind.
+2. `renovate.json`: `allowedVersions` auf `/^v4\.7\.\d+$/` stellen.
+   5.0 braucht wieder einen eigenen Schritt.
+3. `activeDeadlineSeconds` beider Hooks auf etwa das Dreifache der gemessenen
+   Phase setzen, mindestens 3600. Ein Lock-Timeout am Ende von
+   `UpdateAccountSummariesToVersion3` wiederholt den teuren Neubau.
+4. Merge-Fenster wie in Schritt 4 oben, **nicht 06:00–10:00 UTC**: Bis zur
+   PostSync läuft noch der 4.6-Refresh der Views. Direkt davor zusätzlich
+   prüfen, ob gerade ein Refresh läuft:
+   `select pid, now()-query_start from pg_stat_activity where query ilike 'refresh materialized%'`.
+5. Danach prüfen:
+   - `select relkind from pg_class where relname in ('account_summaries','global_follow_recommendations')`
+     liefert zweimal `r`.
+   - `select count(*) from keypairs where local_fragment = '#main-key'`
+     entspricht der Zahl `lokale_schluessel` von vorher.
+   - Ein Follow zu und von einer fremden Instanz funktioniert, also auch die
+     Signaturen.
+   - Am nächsten Tag hat der Scheduler die Folgeempfehlungen wieder gefüllt.
+6. Nach dem Upgrade das Learning
+   [mastodon-migration-lock-stau.md](../learnings/mastodon-migration-lock-stau.md)
+   um „ab 4.7 kein `REFRESH MATERIALIZED VIEW` mehr“ ergänzen. Das Sperrfenster
+   06–10 UTC in Schritt 4 kann dann entfallen.
