@@ -154,6 +154,17 @@ grep -E 'args:.*"media",[[:space:]]*"remove"' "$mastodon_retention" \
   | grep -qvE -- '--prune-profiles|--remove-headers' \
   || report "$mastodon_retention: no 'media remove' run without --prune-profiles/--remove-headers — with either flag tootctl skips media attachments entirely, and the remote cache grows into the RGW quota (docs/learnings/mastodon-remote-cache-nach-cutover.md)"
 
+section "Mastodon images share one version"
+# values.yaml has only the two Mastodon tags (web/sidekiq and streaming).
+mastodon_versions="$(
+  {
+    grep -E '^[[:space:]]+tag:' apps/base/mastodon/values.yaml | awk '{print $2}'
+    grep -rhoE 'ghcr\.io/mastodon/mastodon(-streaming)?:[^[:space:]"'\''#]+' apps/base/mastodon | sed 's/.*://'
+  } | sort -u
+)"
+[[ "$(wc -l <<<"$mastodon_versions")" -eq 1 ]] \
+  || report "apps/base/mastodon: Mastodon images differ ($(tr '\n' ' ' <<<"$mastodon_versions")) — migration hooks and retention jobs must run the chart's version, otherwise the hooks skip the new migrations (docs/runbooks/mastodon-migration.md, Versions-Upgrades)"
+
 section "Rails migration jobs set a lock_timeout"
 ./scripts/ci/check-migration-lock-timeout.sh \
   || report "db:migrate job(s) without lock_timeout (Mastodon outage 2026-10-23, docs/learnings/mastodon-migration-lock-stau.md)"
