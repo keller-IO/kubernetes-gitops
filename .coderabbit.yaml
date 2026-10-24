@@ -1,0 +1,39 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
+language: de-DE
+tone_instructions: >-
+  Report actionable issues introduced by this PR. Explain the concrete impact
+  and cite repository evidence. Avoid style-only and speculative comments.
+
+reviews:
+  profile: chill
+  auto_approvals:
+    enabled: false
+  auto_review:
+    enabled: true
+    drafts: false
+  path_instructions:
+    - path: "apps/**"
+      instructions: |
+        For manifest and Helm changes, focus on the resources that ArgoCD will
+        actually render. Do not infer the final Kubernetes resources from values
+        alone. Check app wiring, database and backup integration, ingress, and
+        the requirements in AGENTS.md and apps/AGENTS.md.
+    - path: "infrastructure/**"
+      instructions: |
+        Check the deployment impact of changes to cluster components, especially
+        RBAC, network exposure, persistent storage, resource limits, and rollout
+        safety. Apply AGENTS.md and infrastructure/AGENTS.md.
+    - path: "clusters/**"
+      instructions: |
+        Check that ArgoCD Application registration, source paths, sync options,
+        and pruning behavior match the intended GitOps change.
+    - path: "scripts/ci/**"
+      instructions: |
+        Flag changes that weaken validation, remove coverage of rendered
+        resources, or hide new findings in known-gaps baselines. Existing gaps
+        do not justify new exceptions.
+    - path: "**/*.sops.yaml"
+      instructions: |
+        Review only readable metadata, references, and SOPS structure. Do not
+        interpret ciphertext as a configuration change or request plaintext.
