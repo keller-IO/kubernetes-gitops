@@ -28,8 +28,8 @@ sops:
             -----END AGE ENCRYPTED FILE-----
           recipient: age1hjq0mgzc2npw9lhtwr49qqrfvkxzc2ss8qu7e06fk5n84qm7xs7qrgxfxa
     encrypted_regex: ^(data|stringData)$
-    lastmodified: "2026-10-10T17:29:42Z"
-    mac: ENC[AES256_GCM,data:0wzEqCrst+QI2wFcKfonnp3QgAtNumh5Z35/2pRSEsjrE9Z0hOXhRySJgYjVWfB9J2Aw7wFysEHmBx3BX0YABhbE5QvReR0yceJBAf97pgbyIe1RMwyJYia7LoYSAgKxl9NjfE/TUvQ/BK4luGJmQ3hGdSuKoM/XnsXrdENWj+s=,iv:br/spZdwNh5ptB5OZm9qgOxu2HcnlMOs0rtc+QOWZ+A=,tag:PykicteoN2k0cASEjEGtZw==,type:str]
+    lastmodified: "2026-10-24T11:18:20Z"
+    mac: ENC[AES256_GCM,data:Hn/AQh5C3M4yu1Sn31aBUoK5jbdeESPregifQb69BzZx6enx75uTdtDBwIcU+DFcZl8ixFmE3CsablDolDaSy05dDM6crrX/9uXVW7aSxYAYIQopYgrZHTo4q2/ZPuoei8sjyei+KfWT2b7LHhV9NtKHW7yv610zr8nkSRWk2Lc=,iv:BlHZmgaoxPWWT8oSQIE7YPQfZvrHKvKm45rWw8MIcLs=,tag:wBG4XrCzwyXz85Tk/S+g6w==,type:str]
     version: 3.13.3
 ---
 apiVersion: cert-manager.io/v1
@@ -51,17 +51,6 @@ spec:
                 dnsZones:
                     - jit.services
             - dns01:
-                rfc2136:
-                    nameserver: dns01.jit-creatives.de:53
-                    tsigAlgorithm: HMACSHA256
-                    tsigKeyName: cert-manager.
-                    tsigSecretSecretRef:
-                        name: rfc2136-tsig
-                        key: secret
-              selector:
-                dnsZones:
-                    - jit-creatives.de
-            - dns01:
                 cnameStrategy: Follow
                 rfc2136:
                     nameserver: dns01.jit-creatives.de:53
@@ -72,6 +61,7 @@ spec:
                         key: secret
               selector:
                 dnsZones:
+                    - jit-creatives.de
                     - imcor.de
                     - jonaks.com
                     - naturkindergarten-moehringen.de
@@ -112,8 +102,8 @@ sops:
             -----END AGE ENCRYPTED FILE-----
           recipient: age1hjq0mgzc2npw9lhtwr49qqrfvkxzc2ss8qu7e06fk5n84qm7xs7qrgxfxa
     encrypted_regex: ^(data|stringData)$
-    lastmodified: "2026-10-10T17:29:42Z"
-    mac: ENC[AES256_GCM,data:0wzEqCrst+QI2wFcKfonnp3QgAtNumh5Z35/2pRSEsjrE9Z0hOXhRySJgYjVWfB9J2Aw7wFysEHmBx3BX0YABhbE5QvReR0yceJBAf97pgbyIe1RMwyJYia7LoYSAgKxl9NjfE/TUvQ/BK4luGJmQ3hGdSuKoM/XnsXrdENWj+s=,iv:br/spZdwNh5ptB5OZm9qgOxu2HcnlMOs0rtc+QOWZ+A=,tag:PykicteoN2k0cASEjEGtZw==,type:str]
+    lastmodified: "2026-10-24T11:18:20Z"
+    mac: ENC[AES256_GCM,data:Hn/AQh5C3M4yu1Sn31aBUoK5jbdeESPregifQb69BzZx6enx75uTdtDBwIcU+DFcZl8ixFmE3CsablDolDaSy05dDM6crrX/9uXVW7aSxYAYIQopYgrZHTo4q2/ZPuoei8sjyei+KfWT2b7LHhV9NtKHW7yv610zr8nkSRWk2Lc=,iv:BlHZmgaoxPWWT8oSQIE7YPQfZvrHKvKm45rWw8MIcLs=,tag:wBG4XrCzwyXz85Tk/S+g6w==,type:str]
     version: 3.13.3
 ---
 apiVersion: cert-manager.io/v1
@@ -135,17 +125,6 @@ spec:
                 dnsZones:
                     - jit.services
             - dns01:
-                rfc2136:
-                    nameserver: dns01.jit-creatives.de:53
-                    tsigAlgorithm: HMACSHA256
-                    tsigKeyName: cert-manager.
-                    tsigSecretSecretRef:
-                        name: rfc2136-tsig
-                        key: secret
-              selector:
-                dnsZones:
-                    - jit-creatives.de
-            - dns01:
                 cnameStrategy: Follow
                 rfc2136:
                     nameserver: dns01.jit-creatives.de:53
@@ -156,6 +135,7 @@ spec:
                         key: secret
               selector:
                 dnsZones:
+                    - jit-creatives.de
                     - imcor.de
                     - jonaks.com
                     - naturkindergarten-moehringen.de
@@ -196,6 +176,6 @@ sops:
             -----END AGE ENCRYPTED FILE-----
           recipient: age1hjq0mgzc2npw9lhtwr49qqrfvkxzc2ss8qu7e06fk5n84qm7xs7qrgxfxa
     encrypted_regex: ^(data|stringData)$
-    lastmodified: "2026-10-10T17:29:42Z"
-    mac: ENC[AES256_GCM,data:0wzEqCrst+QI2wFcKfonnp3QgAtNumh5Z35/2pRSEsjrE9Z0hOXhRySJgYjVWfB9J2Aw7wFysEHmBx3BX0YABhbE5QvReR0yceJBAf97pgbyIe1RMwyJYia7LoYSAgKxl9NjfE/TUvQ/BK4luGJmQ3hGdSuKoM/XnsXrdENWj+s=,iv:br/spZdwNh5ptB5OZm9qgOxu2HcnlMOs0rtc+QOWZ+A=,tag:PykicteoN2k0cASEjEGtZw==,type:str]
+    lastmodified: "2026-10-24T11:18:20Z"
+    mac: ENC[AES256_GCM,data:Hn/AQh5C3M4yu1Sn31aBUoK5jbdeESPregifQb69BzZx6enx75uTdtDBwIcU+DFcZl8ixFmE3CsablDolDaSy05dDM6crrX/9uXVW7aSxYAYIQopYgrZHTo4q2/ZPuoei8sjyei+KfWT2b7LHhV9NtKHW7yv610zr8nkSRWk2Lc=,iv:BlHZmgaoxPWWT8oSQIE7YPQfZvrHKvKm45rWw8MIcLs=,tag:wBG4XrCzwyXz85Tk/S+g6w==,type:str]
     version: 3.13.3
