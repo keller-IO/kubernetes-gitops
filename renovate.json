@@ -165,6 +165,16 @@
       "enabled": false
     },
     {
+      "description": "CNPG operator stays on 1.30 (chart 0.29.x): 1.31 removes native barmanObjectStore, which all Postgres clusters still use for WAL archiving and backups. Widen only after the move to the Barman Cloud Plugin.",
+      "matchDatasources": [
+        "helm"
+      ],
+      "matchPackageNames": [
+        "cloudnative-pg"
+      ],
+      "allowedVersions": "/^0\\.29\\.\\d+$/"
+    },
+    {
       "description": "CNPG Postgres 16: patch/build updates only; major upgrades require a migration.",
       "matchPackageNames": [
         "ghcr.io/cloudnative-pg/postgresql"
