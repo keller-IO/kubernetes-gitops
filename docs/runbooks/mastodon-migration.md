@@ -616,6 +616,8 @@ laufen mit 2 CPUs (`KLON_CPUS`), weil u22 auch PBS und Garage trägt.
 Stand 25.10.2026: CT 8031 `mastodon-klon` (192.168.23.31) auf u22, Debian 13,
 4 Kerne, 4 GB RAM, 100 GB auf `local-zfs`, angelegt nach dem Muster von
 `garage-s3-potsdam`. Basis-Backup `20261025T020001` in 116 s geladen, WAL in 33 s.
+Nach der Messung gelöscht (`pct destroy 8031 --purge 1`), für die nächste mit
+denselben Werten neu anlegen.
 
 Ergebnis in `/srv/mastodon-klon/logs/`. `summary.txt` enthält:
 
