@@ -46,9 +46,15 @@ rollOutCiliumPods: true
 # workers. No comparable component exists on the homelab cluster (it runs
 # flannel + kube-proxy, not Cilium), so these are anchored to our own
 # measurements, not a cross-cluster reference.
+# 14.10.2026: cilium-agent now measures 398-422Mi on every node (14-day max
+# 422Mi, VictoriaMetrics) — above the 256Mi request and at ~82 % of the 512Mi
+# limit. An OOM-killed agent stops endpoint/policy updates on its node, so the
+# limit gets real headroom and the request follows the measured value.
+# 25.10.2026: 14-day max already up to 480Mi, so 448Mi would start out under
+# the measurement again — request 512Mi.
 resources:
-  requests: { cpu: 100m, memory: 256Mi }
-  limits: { memory: 512Mi }
+  requests: { cpu: 100m, memory: 512Mi }
+  limits: { memory: 768Mi }
 envoy:
   resources:
     requests: { cpu: 50m, memory: 96Mi }
