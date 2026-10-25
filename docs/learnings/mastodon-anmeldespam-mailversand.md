@@ -47,13 +47,22 @@ select approved, confirmed_at is not null as confirmed, count(*) from users grou
 
 ## Korrektur
 
-Offen, die Entscheidung liegt bei den Admins von jit.social. Die Einstellungen
-liegen in der Datenbank (`settings`), nicht in GitOps.
+Am 25.10.2026 gegen 09:00 UTC Registrierung geschlossen, auf Entscheidung der
+Admins:
 
-- Wirksam und einfach: Registrierung schließen (Administration →
-  Servereinstellungen → Registrierungen → „Niemand kann sich registrieren“).
-  Einladungen durch Admins bleiben möglich (`min_invite_role = admin`). Das
-  Formular verschickt dann keine Mails mehr.
+```bash
+kubectl -n mastodon exec deploy/mastodon-web -c mastodon-web -- \
+  bin/tootctl settings registrations close
+```
+
+Danach steht `registrations_mode = none` in `settings`, `/auth/sign_up` leitet
+auf `/auth/sign_in` um. `/api/v2/instance` meldet es erst nach bis zu 5 min
+(`max-age=300`). Einladungen durch Admins bleiben möglich
+(`min_invite_role = admin`). Die Einstellung liegt in der Datenbank, nicht in
+GitOps. Wieder öffnen mit `tootctl settings registrations approved`.
+
+Verworfene Alternativen:
+
 - Schwächer: E-Mail-Domain-Sperren für die japanischen Mobilfunk-Domains.
   iCloud und Gmail lassen sich nicht sperren, ohne echte Nutzer zu treffen.
   IP-Sperren helfen bei 537 IPs nicht.

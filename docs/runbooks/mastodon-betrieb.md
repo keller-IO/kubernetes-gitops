@@ -134,9 +134,11 @@ muss das gegenrechnen.
 
 ## Anmeldungen
 
-Die Registrierung steht auf Freigabe (`registrations_mode = approved`). Seit dem
-22.09.2026 melden sich Bots an, um Bestätigungsmails an fremde Adressen zu
-verschicken ([Learning](../learnings/mastodon-anmeldespam-mailversand.md)).
+Die Registrierung ist seit 25.10.2026 geschlossen (`registrations_mode = none`),
+neue Konten nur per Einladung durch Admins. Vorher meldeten sich trotz
+Freigabepflicht Bots an, um Bestätigungsmails an fremde Adressen zu verschicken
+([Learning](../learnings/mastodon-anmeldespam-mailversand.md)). Wieder öffnen:
+`kubectl -n mastodon exec deploy/mastodon-web -c mastodon-web -- bin/tootctl settings registrations approved`.
 `UserCleanupScheduler` löscht unbestätigte Konten nach 7 Tagen. Die Zahl
 lokaler Accounts schwankt deshalb täglich. Lage prüfen:
 
