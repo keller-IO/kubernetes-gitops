@@ -46,9 +46,9 @@ log() {
   printf '%s %s\n' "$(date -u +%FT%TZ)" "$1"
 }
 
+# Nur pgdata wird gemountet: KLON_DIR ist 0700 root, uid 26 kommt dort nicht hinein.
 pgrun() {
-  docker run --rm --user 26 --network "$net" --env-file "$klon_dir/s3.env" \
-    -v "$klon_dir:/klon" "$pg_image" "$@"
+  docker run --rm -i --user 26 --network "$net" --env-file "$klon_dir/s3.env" "$@"
 }
 
 psql_klon() {
@@ -92,23 +92,23 @@ restore() {
 
   local backup_id="${BACKUP_ID:-}"
   if [[ -z "$backup_id" ]]; then
-    pgrun barman-cloud-backup-list --endpoint-url "$s3_endpoint" --format json \
+    pgrun "$pg_image" barman-cloud-backup-list --endpoint-url "$s3_endpoint" --format json \
       "$s3_path" "$s3_server" >"$log_dir/backups.json"
-    backup_id="$(pgrun python3 -c '
+    backup_id="$(pgrun "$pg_image" python3 -c '
 import json, sys
-b = [x for x in json.load(open(sys.argv[1]))["backups_list"] if x.get("status") == "DONE"]
-print(max(b, key=lambda x: x["backup_id"])["backup_id"])' /klon/logs/backups.json)"
+b = [x for x in json.load(sys.stdin)["backups_list"] if x.get("status") == "DONE"]
+print(max(b, key=lambda x: x["backup_id"])["backup_id"])' <"$log_dir/backups.json")"
   fi
   log "Basis-Backup $backup_id"
 
   install -d -o 26 -g 26 -m 700 "$klon_dir/pgdata"
   local t0=$SECONDS
-  pgrun barman-cloud-restore --endpoint-url "$s3_endpoint" \
-    "$s3_path" "$s3_server" "$backup_id" /klon/pgdata
+  pgrun -v "$klon_dir/pgdata:/pgdata" "$pg_image" barman-cloud-restore \
+    --endpoint-url "$s3_endpoint" "$s3_path" "$s3_server" "$backup_id" /pgdata
   log "Basis-Backup geladen in $((SECONDS - t0)) s"
 
   local image_major
-  image_major="$(pgrun postgres --version | sed -E 's/.* ([0-9]+)\..*/\1/')"
+  image_major="$(pgrun "$pg_image" postgres --version | sed -E 's/.* ([0-9]+)\..*/\1/')"
   [[ "$(cat "$klon_dir/pgdata/PG_VERSION")" == "$image_major" ]] \
     || die "Backup ist PG $(cat "$klon_dir/pgdata/PG_VERSION"), Image PG $image_major"
 
