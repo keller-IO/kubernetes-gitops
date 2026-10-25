@@ -67,9 +67,10 @@ Verworfene Alternativen:
   iCloud und Gmail lassen sich nicht sperren, ohne echte Nutzer zu treffen.
   IP-Sperren helfen bei 537 IPs nicht.
 - hCaptcha würde die Bots bremsen, bindet aber einen externen Dienst ein.
-- Die wartenden Konten muss niemand ablehnen, der Cleanup löscht unbestätigte
-  nach 7 Tagen. Die 8 bestätigten, nicht freigegebenen Konten in der
-  Moderation prüfen, darunter sind 3 mit dem Probe-Text.
+
+Die wartenden Konten muss niemand ablehnen, der Cleanup löscht unbestätigte
+nach 7 Tagen. Offen: die 8 bestätigten, nicht freigegebenen Konten in der
+Moderation prüfen, darunter sind 3 mit dem Probe-Text.
 
 ## Prävention
 
