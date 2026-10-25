@@ -139,6 +139,13 @@ neue Konten nur per Einladung von Rollen mit der Berechtigung `invite_users`. Vo
 Freigabepflicht Bots an, um Bestätigungsmails an fremde Adressen zu verschicken
 ([Learning](../learnings/mastodon-anmeldespam-mailversand.md)). Wieder öffnen:
 `kubectl -n mastodon exec deploy/mastodon-web -c mastodon-web -- bin/tootctl settings registrations approved`.
+
+Einladen dürfen Admins und die Rolle **Einladen** (nur `invite_users`, angelegt
+25.10.2026, vergeben an `madmas` und `makefu`). Wer über so eine Einladung
+kommt, braucht weiter die Freigabe durch Admins, weil die Rolle kein
+`invite_bypass_approval` hat. Ein öffentlich gewordener Link lässt so keine
+Bots durch. Weitere Accounts:
+`kubectl -n mastodon exec deploy/mastodon-web -c mastodon-web -- bin/tootctl accounts modify <name> --role Einladen`.
 `UserCleanupScheduler` löscht unbestätigte Konten nach 7 Tagen. Die Zahl
 lokaler Accounts schwankt deshalb täglich. Lage prüfen:
 
