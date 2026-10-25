@@ -90,8 +90,11 @@ Versuch auf denselben Lock treffen können.
   1.024 s (25.10.).
 - Mit 4.7.3 (#386) wandelt `ConvertMaterializedViewsToTables` beide Views in
   Tabellen um. `AccountSummary.refresh` löscht und schreibt seitdem in Batches
-  (`INSERT … ON CONFLICT`) und hält keinen Lock auf der ganzen Tabelle. Der
-  Stau von oben kann so nicht mehr entstehen. Das Sperrfenster 06:00–10:00 UTC
+  (`INSERT … ON CONFLICT`). Jeder Batch hält `ROW EXCLUSIVE` auf der Tabelle
+  und Lese-Locks auf `accounts` nur für seine Dauer. Der Stau von oben über
+  17 bis 27 min kann so nicht mehr entstehen. `FollowRecommendation.refresh`
+  schreibt dagegen in einer einzigen Anweisung und liest dabei `follows`,
+  `statuses`, `status_stats` und `users`. Das Sperrfenster 06:00–10:00 UTC
   ist aus dem Runbook entfernt.
 - `lock_timeout` und Wiederholung in den Hooks bleiben. Sie schützen auch
   gegen jeden anderen Blocker.

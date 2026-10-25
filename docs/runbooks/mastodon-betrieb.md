@@ -135,7 +135,7 @@ muss das gegenrechnen.
 ## Anmeldungen
 
 Die Registrierung ist seit 25.10.2026 geschlossen (`registrations_mode = none`),
-neue Konten nur per Einladung durch Admins. Vorher meldeten sich trotz
+neue Konten nur per Einladung von Rollen mit der Berechtigung `invite_users`. Vorher meldeten sich trotz
 Freigabepflicht Bots an, um Bestätigungsmails an fremde Adressen zu verschicken
 ([Learning](../learnings/mastodon-anmeldespam-mailversand.md)). Wieder öffnen:
 `kubectl -n mastodon exec deploy/mastodon-web -c mastodon-web -- bin/tootctl settings registrations approved`.
@@ -145,7 +145,7 @@ lokaler Accounts schwankt deshalb täglich. Lage prüfen:
 ```bash
 primary=$(kubectl -n mastodon get cluster mastodon-pg -o jsonpath='{.status.currentPrimary}')
 kubectl -n mastodon exec "$primary" -c postgres -- psql -XA -d mastodon_production -c \
-  "select confirmation_sent_at::date, count(*) from users where confirmed_at is null group by 1 order by 1 desc limit 10"
+  "select confirmation_sent_at::date, count(*) from users where confirmed_at is null and confirmation_sent_at is not null group by 1 order by 1 desc limit 10"
 ```
 
 ## Kein HPA

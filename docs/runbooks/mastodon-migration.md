@@ -469,10 +469,14 @@ Ablauf je Upgrade:
    (unten), und `activeDeadlineSeconds` der Hooks anpassen.
 4. Zeitpunkt wählen. Ein festes Sperrfenster gibt es seit 4.7 nicht mehr: Der
    tägliche `FollowRecommendationsScheduler` pflegt `account_summaries` und
-   `global_follow_recommendations` als Tabellen in Batches
-   (`INSERT … ON CONFLICT`) und sperrt nur Zeilen. Bis 4.6 lief dort ein
-   `REFRESH MATERIALIZED VIEW` über 17 bis 27 min, hinter dem jede Migration
-   auf `accounts` wartete
+   `global_follow_recommendations` als Tabellen (`INSERT … ON CONFLICT`).
+   `account_summaries` schreibt er in Batches, jeder Batch hält seine Locks
+   (`ROW EXCLUSIVE` auf die Tabelle, Zeilen-Locks, Lese-Locks auf `accounts`
+   und `statuses`) nur kurz. `global_follow_recommendations` füllt eine
+   einzelne Anweisung, die dabei `follows`, `statuses`, `status_stats` und
+   `users` liest; eine Migration mit `ALTER TABLE` auf diesen Tabellen wartet
+   so lange. Bis 4.6 lief dort ein `REFRESH MATERIALIZED VIEW` über 17 bis
+   27 min, hinter dem jede Migration auf `accounts` wartete
    ([Learning](../learnings/mastodon-migration-lock-stau.md)). Direkt vor dem
    Merge lange Transaktionen prüfen:
 

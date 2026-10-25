@@ -4,8 +4,8 @@ Stand 25.10.2026. Aufgefallen beim Upgrade auf 4.7.3 (#386).
 
 ## Symptom
 
-Nach dem Upgrade gab es 628 lokale Accounts statt 732 wie wenige Stunden vorher
-und auf dem Restore-Klon. Das sah nach Datenverlust durch eine Migration aus.
+Nach dem Upgrade gab es 628 lokale Accounts (`accounts` mit `domain is null`)
+statt 732 wie wenige Stunden vorher und auf dem Restore-Klon. Das sah nach Datenverlust durch eine Migration aus.
 Keine Migration von 4.7.3 löscht aber lokale Accounts, und jeder verbliebene
 lokale Account hatte seinen `#main-key`.
 
@@ -18,7 +18,10 @@ select approved, confirmed_at is not null as confirmed, count(*) from users grou
 -- t | t |  60
 ```
 
-- 539 Anmeldungen seit dem 22.09.2026 tragen als Begründung wörtlich
+Das sind 626 User. Die zwei übrigen lokalen Accounts haben keinen User,
+darunter der Instance Actor. Nicht freigegeben sind 566 (558 + 8).
+
+- 539 der 566 nicht freigegebenen Anmeldungen, alle seit dem 22.09.2026, tragen als Begründung wörtlich
   „Automated protocol deliverability probe“.
 - Die Adressen liegen überwiegend bei iCloud (400) und Gmail (91), dazu kommen
   japanische Mobilfunk-Domains (ezweb.ne.jp, au.com, docomo.ne.jp).
@@ -41,7 +44,8 @@ select approved, confirmed_at is not null as confirmed, count(*) from users grou
   würfelt Mastodon bei jedem Start des Scheduler-Pods neu aus (04:00–06:59
   UTC). Die Zahl lokaler Accounts schwankt deshalb jeden Tag um die Zahl der
   Spam-Anmeldungen von vor einer Woche. Am 25.10. lief der Cleanup im alten
-  Scheduler-Pod zwischen der Zählung um 05:20 und dem Rollout um 08:02.
+  Scheduler-Pod zwischen der Zählung um 05:20 und dem Tausch der Pods um
+  08:02 (Post-Migrationen fertig um 08:06, Runbook „Stand 25.10.2026“).
 - Echte Anmeldungen gibt es kaum: In 90 Tagen wurde niemand freigegeben, im
   letzten Jahr 4 Konten.
 
@@ -57,9 +61,12 @@ kubectl -n mastodon exec deploy/mastodon-web -c mastodon-web -- \
 
 Danach steht `registrations_mode = none` in `settings`, `/auth/sign_up` leitet
 auf `/auth/sign_in` um. `/api/v2/instance` meldet es erst nach bis zu 5 min
-(`max-age=300`). Einladungen durch Admins bleiben möglich
-(`min_invite_role = admin`). Die Einstellung liegt in der Datenbank, nicht in
-GitOps. Wieder öffnen mit `tootctl settings registrations approved`.
+(`max-age=300`). Eine gültige Einladung erlaubt die Anmeldung
+weiterhin. Einladen dürfen Rollen mit der Berechtigung `invite_users`, ohne
+Freigabe nur mit `invite_bypass_approval` (Administration → Rollen). Der
+Altwert `min_invite_role` in `settings` wertet Mastodon seit 4.0 nicht mehr aus;
+`MigrateSettingsToUserRoles` hat ihn damals in Rollenrechte übersetzt. Die
+Einstellung liegt in der Datenbank, nicht in GitOps. Wieder öffnen mit `tootctl settings registrations approved`.
 
 Verworfene Alternativen:
 
@@ -78,6 +85,6 @@ Moderation prüfen, darunter sind 3 mit dem Probe-Text.
   ihren Schlüsseln **zum selben Zeitpunkt**, nicht mit einer Zählung von
   früher (Runbook `mastodon-migration.md`, Upgrade-PR, Schritt 5).
 - Unbestätigte Anmeldungen im Blick behalten:
-  `select confirmation_sent_at::date, count(*) from users where confirmed_at is null group by 1 order by 1 desc limit 10`.
+  `select confirmation_sent_at::date, count(*) from users where confirmed_at is null and confirmation_sent_at is not null group by 1 order by 1 desc limit 10`.
   Ein CI-Guardrail passt nicht, weil die Einstellung live in der Datenbank
   liegt.
