@@ -37,6 +37,10 @@ Format und Kriterien: siehe AGENTS.md → „Operational Learnings".
   `mastodon-pg-klon` lud am 24.10.2026 25 GB aus Garage über die IPsec-Strecke auf WAN2,
   zeitgleich fielen alle Dienste auf WAN2 aus. Messungen laufen jetzt auf einem LXC
   neben Garage; `guardrails.sh` verlangt für Restores aus Garage eine Freigabe.
+- [Mastodon: Spam-Anmeldungen nutzen jit.social als Mailversender](mastodon-anmeldespam-mailversand.md) —
+  Bots melden sich trotz Freigabepflicht an, weil die Bestätigungsmail sofort rausgeht;
+  der `UserCleanupScheduler` löscht sie nach 7 Tagen, die Zahl lokaler Accounts schwankt
+  deshalb täglich (sah beim 4.7.3-Upgrade wie Datenverlust aus).
 - [Mastodon: Remote-Cache nach dem Cutover](mastodon-remote-cache-nach-cutover.md) —
   nicht migrierter Cache hinterlaesst DB-Verweise ohne Datei (RGW meldet 403 statt
   404); `media remove --prune-profiles` laesst Anhaenge aus; `/tmp`-emptyDir bricht

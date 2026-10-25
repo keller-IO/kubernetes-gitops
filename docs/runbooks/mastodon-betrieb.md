@@ -132,6 +132,20 @@ Datenbankverbindungen: Web 2 × 10 (2 Puma-Worker × 5 Threads), Sidekiq
 `max_connections` steht auf dem Default 100. Wer Threads oder Repliken erhöht,
 muss das gegenrechnen.
 
+## Anmeldungen
+
+Die Registrierung steht auf Freigabe (`registrations_mode = approved`). Seit dem
+22.09.2026 melden sich Bots an, um Bestätigungsmails an fremde Adressen zu
+verschicken ([Learning](../learnings/mastodon-anmeldespam-mailversand.md)).
+`UserCleanupScheduler` löscht unbestätigte Konten nach 7 Tagen. Die Zahl
+lokaler Accounts schwankt deshalb täglich. Lage prüfen:
+
+```bash
+primary=$(kubectl -n mastodon get cluster mastodon-pg -o jsonpath='{.status.currentPrimary}')
+kubectl -n mastodon exec "$primary" -c postgres -- psql -XA -d mastodon_production -c \
+  "select confirmation_sent_at::date, count(*) from users where confirmed_at is null group by 1 order by 1 desc limit 10"
+```
+
 ## Kein HPA
 
 Die Replikenzahl ist fest (Projektregel: kein HPA ohne Allowlist, kein
