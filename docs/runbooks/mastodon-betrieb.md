@@ -146,6 +146,7 @@ kommt, braucht weiter die Freigabe durch Admins, weil die Rolle kein
 `invite_bypass_approval` hat. Ein öffentlich gewordener Link lässt so keine
 Bots durch. Weitere Accounts:
 `kubectl -n mastodon exec deploy/mastodon-web -c mastodon-web -- bin/tootctl accounts modify <name> --role Einladen`.
+
 `UserCleanupScheduler` löscht unbestätigte Konten nach 7 Tagen. Die Zahl
 lokaler Accounts schwankt deshalb täglich. Lage prüfen:
 
