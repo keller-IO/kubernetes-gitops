@@ -468,12 +468,13 @@ Ablauf je Upgrade:
    Migration auf `accounts` wartet dahinter
    ([Learning](../learnings/mastodon-migration-lock-stau.md)). Die Uhrzeit
    würfelt Mastodon beim Start des Scheduler-Pods aus, danach bleibt sie
-   gleich. Ist der Refresh des Tages im Log schon `done`, ist auch ein Merge
-   innerhalb des Fensters sicher:
+   gleich. Steht im Log für den **heutigen** UTC-Tag schon `done`, ist auch ein
+   Merge innerhalb des Fensters sicher. Fehlt die heutige `done`-Zeile, im
+   Fenster nicht mergen:
 
    ```bash
-   kubectl -n mastodon logs deploy/mastodon-sidekiq-scheduler --since=24h \
-     | grep 'FollowRecommendationsScheduler'
+   kubectl -n mastodon logs deploy/mastodon-sidekiq-scheduler \
+     --since-time="$(date -u +%Y-%m-%dT00:00:00Z)" | grep 'FollowRecommendationsScheduler'
    ```
 
    Direkt vor dem Merge lange Transaktionen prüfen:
