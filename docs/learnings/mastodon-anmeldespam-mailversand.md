@@ -47,7 +47,7 @@ select approved, confirmed_at is not null as confirmed, count(*) from users grou
 
 ## Korrektur
 
-Am 25.10.2026 gegen 09:00 UTC Registrierung geschlossen, auf Entscheidung der
+Am 25.10.2026 gegen 08:20 UTC Registrierung geschlossen, auf Entscheidung der
 Admins:
 
 ```bash
