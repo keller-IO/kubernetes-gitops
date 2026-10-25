@@ -169,8 +169,10 @@ section "Mastodon images share one version"
 # values.yaml has only the two Mastodon tags (web/sidekiq and streaming).
 mastodon_versions="$(
   {
-    grep -E '^[[:space:]]+tag:' apps/base/mastodon/values.yaml | awk '{print $2}'
-    grep -rhoE 'ghcr\.io/mastodon/mastodon(-streaming)?:[^[:space:]"'\''#]+' apps/base/mastodon | sed 's/.*://'
+    grep -E '^[[:space:]]+tag:' apps/base/mastodon/values.yaml | awk '{print $2}' | tr -d '"'\'
+    # Only active image: fields, not references in comments.
+    grep -rhE '^[[:space:]]*(-[[:space:]]+)?image:[[:space:]]*["'\'']?ghcr\.io/mastodon/mastodon(-streaming)?:' apps/base/mastodon \
+      | grep -oE 'ghcr\.io/mastodon/mastodon(-streaming)?:[^[:space:]"'\''#]+' | sed 's/.*://'
   } | sort -u
 )"
 [[ "$(wc -l <<<"$mastodon_versions")" -eq 1 ]] \

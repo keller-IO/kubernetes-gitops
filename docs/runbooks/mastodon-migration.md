@@ -470,7 +470,8 @@ Ablauf je Upgrade:
    Merge lange Transaktionen prüfen:
 
    ```bash
-   kubectl -n mastodon exec mastodon-pg-1 -c postgres -- psql -XAt -c \
+   primary=$(kubectl -n mastodon get cluster mastodon-pg -o jsonpath='{.status.currentPrimary}')
+   kubectl -n mastodon exec "$primary" -c postgres -- psql -XAt -c \
      "select pid, now()-xact_start, left(query,80) from pg_stat_activity
       where backend_type='client backend' and now()-xact_start > interval '1 minute'"
    ```
@@ -526,11 +527,13 @@ meisten sind kleine Spalten- und Index-Änderungen, `lock_timeout` und
 | `20260720104058 AddUniqueIndexOnAccountsUri` | Post | Unique-Index auf `accounts.uri`, `concurrently`. Gibt es Duplikate, führt die Migration die Accounts Zeile für Zeile zusammen. | Mit Duplikaten wird das langsam, vorher zählen. |
 | `20260804081821 ConvertMaterializedViewsToTables` | Post | Kopiert beide Views in normale Tabellen. | **Danach gibt es den Lock-Stau aus dem 4.6-Learning nicht mehr.** 4.7 pflegt die Tabellen in Batches (`INSERT … ON CONFLICT`) statt per `REFRESH MATERIALIZED VIEW`. Zwischen Rollout und PostSync überspringt der 4.7-Scheduler den Refresh (`table_exists?` ist für eine View falsch). Das ist harmlos. |
 
-**Vorab-Abfragen** (nur lesend, auf dem Primary; `kubectl exec` macht ein
-Mensch):
+**Vorab-Abfragen** (nur lesend, auf dem aktuellen Primary; `kubectl exec` macht
+ein Mensch). `-i` reicht das SQL an `psql` weiter, ohne `-i` läuft nichts:
 
 ```bash
-kubectl -n mastodon exec mastodon-pg-1 -c postgres -- psql -XA -d mastodon_production <<'SQL'
+primary=$(kubectl -n mastodon get cluster mastodon-pg -o jsonpath='{.status.currentPrimary}')
+kubectl -n mastodon exec -i "$primary" -c postgres -- \
+  psql -XA -v ON_ERROR_STOP=1 -d mastodon_production <<'SQL'
 -- Duplikate, die AddUniqueIndexOnAccountsUri zusammenführen müsste
 select count(*) as uri_duplikate from (select uri from accounts where uri <> '' group by uri having count(*) > 1) d;
 -- Fremd-Accounts, die CleanUpInvalidAccounts löscht
@@ -576,6 +579,7 @@ Die Secrets gehen direkt per SSH auf den Host und landen nicht lokal auf der
 Platte:
 
 ```bash
+set -o pipefail
 klon=root@<klon-host>
 ssh "$klon" 'install -d -m 700 /srv/mastodon-klon'
 scp scripts/ops/mastodon-klon-messung.sh "$klon":/srv/mastodon-klon/
@@ -594,7 +598,9 @@ sops -d apps/base/mastodon/backup-s3.sops.yaml \
 } | ssh "$klon" 'umask 077; cat > /srv/mastodon-klon/mastodon.env'
 ```
 
-Die echten `are-*`-Schlüssel sind nötig: `MigrateLocalAccountKeypairs`
+Ein Fehler in `sops`, `yq` oder `kubectl` kann trotzdem eine unvollständige
+Datei hinterlassen. Das Skript prüft deshalb vor dem Start, ob alle nötigen
+Schlüssel gesetzt sind. Die echten `are-*`-Schlüssel sind nötig: `MigrateLocalAccountKeypairs`
 verschlüsselt damit, und vorhandene verschlüsselte Spalten lassen sich nur mit
 ihnen lesen.
 
@@ -683,7 +689,7 @@ Danach den Host löschen.
 4. Merge-Fenster wie in Schritt 4 oben, **nicht 06:00–10:00 UTC**: Bis zur
    PostSync läuft noch der 4.6-Refresh der Views. Direkt davor zusätzlich
    prüfen, ob gerade ein Refresh läuft:
-   `select pid, now()-query_start from pg_stat_activity where query ilike 'refresh materialized%'`.
+   `select pid, now()-query_start from pg_stat_activity where state = 'active' and query ilike 'refresh materialized%'`.
 5. Danach prüfen:
    - `select relkind from pg_class where relname in ('account_summaries','global_follow_recommendations')`
      liefert zweimal `r`.

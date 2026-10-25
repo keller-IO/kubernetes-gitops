@@ -82,6 +82,16 @@ preflight() {
   [[ -s "$klon_dir/s3.env" && -s "$klon_dir/mastodon.env" ]] \
     || die "$klon_dir/s3.env und mastodon.env fehlen (Runbook)"
   chmod 600 "$klon_dir/s3.env" "$klon_dir/mastodon.env"
+  # Eine abgebrochene Uebertragung (sops/yq/kubectl) hinterlaesst sonst eine
+  # halbe Datei, und measure scheitert erst nach dem langen Restore.
+  local key
+  for key in AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_DEFAULT_REGION; do
+    grep -qE "^${key}=.+" "$klon_dir/s3.env" || die "$key fehlt in s3.env"
+  done
+  for key in LOCAL_DOMAIN SECRET_KEY_BASE ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY \
+    ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT; do
+    grep -qE "^${key}=.+" "$klon_dir/mastodon.env" || die "$key fehlt in mastodon.env"
+  done
   mkdir -p "$log_dir"
   ensure_network
 }
