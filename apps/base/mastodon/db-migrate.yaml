@@ -33,7 +33,7 @@ metadata:
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 spec:
   backoffLimit: 0 # fehlgeschlagene Migration ansehen, nicht blind wiederholen
-  activeDeadlineSeconds: 3600 # 4.6: 34 kleine Migrationen; fuer 4.7 am Restore-Klon messen
+  activeDeadlineSeconds: 5400 # 4.7.3 am Restore-Klon 25.10.2026: 283 s, Produktion 18-28 min (Runbook)
   template:
     metadata:
       labels:
@@ -50,7 +50,7 @@ spec:
         seccompProfile: { type: RuntimeDefault }
       containers:
         - name: db-migrate
-          image: ghcr.io/mastodon/mastodon:v4.6.9 # an values.yaml image.tag gekoppelt
+          image: ghcr.io/mastodon/mastodon:v4.7.3 # an values.yaml image.tag gekoppelt
           imagePullPolicy: IfNotPresent
           command:
             - /bin/bash
@@ -126,7 +126,7 @@ metadata:
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 spec:
   backoffLimit: 0
-  activeDeadlineSeconds: 3600 # 4.7.0 hat lange Post-Migrationen: vorher am Restore-Klon messen
+  activeDeadlineSeconds: 3600 # 4.7.3 am Restore-Klon 25.10.2026: 20 s, Produktion ~2 min (Runbook)
   template:
     metadata:
       labels:
@@ -143,7 +143,7 @@ spec:
         seccompProfile: { type: RuntimeDefault }
       containers:
         - name: db-migrate
-          image: ghcr.io/mastodon/mastodon:v4.6.9 # an values.yaml image.tag gekoppelt
+          image: ghcr.io/mastodon/mastodon:v4.7.3 # an values.yaml image.tag gekoppelt
           imagePullPolicy: IfNotPresent
           command:
             - /bin/bash

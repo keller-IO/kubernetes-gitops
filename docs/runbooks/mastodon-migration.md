@@ -464,10 +464,20 @@ Ablauf je Upgrade:
    `backup-mastodon` messen, auf einem Host in Potsdam, nicht im Cluster
    (unten), und `activeDeadlineSeconds` der Hooks anpassen.
 4. Zeitpunkt wählen: **nicht zwischen 06:00 und 10:00 UTC.** Dann frischt
-   der Scheduler `account_summaries` auf (zufällige Uhrzeit, auf Ceph über
-   14 min), und jede Migration auf `accounts` wartet dahinter
-   ([Learning](../learnings/mastodon-migration-lock-stau.md)). Direkt vor dem
-   Merge lange Transaktionen prüfen:
+   der Scheduler `account_summaries` auf (auf Ceph 17 bis 27 min), und jede
+   Migration auf `accounts` wartet dahinter
+   ([Learning](../learnings/mastodon-migration-lock-stau.md)). Die Uhrzeit
+   würfelt Mastodon beim Start des Scheduler-Pods aus, danach bleibt sie
+   gleich. Steht im Log für den **heutigen** UTC-Tag schon `done`, ist auch ein
+   Merge innerhalb des Fensters sicher. Fehlt die heutige `done`-Zeile, im
+   Fenster nicht mergen:
+
+   ```bash
+   kubectl -n mastodon logs deploy/mastodon-sidekiq-scheduler \
+     --since-time="$(date -u +%Y-%m-%dT00:00:00Z)" | grep 'FollowRecommendationsScheduler'
+   ```
+
+   Direkt vor dem Merge lange Transaktionen prüfen:
 
    ```bash
    primary=$(kubectl -n mastodon get cluster mastodon-pg -o jsonpath='{.status.currentPrimary}')
@@ -570,7 +580,8 @@ nutzt dasselbe CNPG-Image wie `mastodon-pg`, holt Basis-Backup und WAL mit
 `barman-cloud-restore`/`barman-cloud-wal-restore` und schaltet die Archivierung
 ab (`archive_mode=off`). Der Backup-Pfad der Produktion wird also nur gelesen.
 Danach laufen die Vorab-Abfragen von oben, ein `REFRESH` von
-`account_summaries` als Hardware-Vergleich (Produktion: etwa 14 min) und beide
+`account_summaries` als Hardware-Vergleich (Produktion: Laufzeit des
+`FollowRecommendationsScheduler` im Scheduler-Log) und beide
 Phasen mit dem neuen Image, als `mastodon` mit `lock_timeout=10s` und 1,5 GiB
 Speicherlimit wie im Hook. S3 ist dabei aus, Sidekiq läuft nicht.
 
@@ -643,14 +654,21 @@ Klon. Der Klon hat keine Last und keinen Standby. Die Zeiten deshalb mit dem
 Postgres auf 2 CPUs begrenzt). Alle 19 Pre- und 8 Post-Migrationen liefen ohne
 Fehler und ohne Lock-Timeout.
 
-| | Klon | Produktion, geschätzt (Faktor 3,1) |
-|---|---|---|
-| `REFRESH account_summaries` | 268 s | etwa 840 s (gemessen am 23.10.) |
-| Pre-Phase gesamt | 283 s | etwa 15 min |
-| davon `UpdateAccountSummariesToVersion3` | 277 s, fast alles im Neubau der View | etwa 14 min |
-| Sperre auf den Views (ab `rename_index` bis Commit) | 3,5 s, davon 3,4 s `create_view(:global_follow_recommendations)` | etwa 11 s |
-| Post-Phase gesamt | 20 s | etwa 1 min |
-| davon `ConvertMaterializedViewsToTables` | 10,6 s | etwa 33 s |
+Zum Vergleich dient die Laufzeit des täglichen `FollowRecommendationsScheduler`
+in der Produktion (Log von `mastodon-sidekiq-scheduler`, `elapsed=`): 1.613 s am
+24.10. und 1.024 s am 25.10., beide Male bei `HEALTH_ERR` mit langsamen OSDs. Der
+Job macht etwas mehr als den `REFRESH`, der Faktor ist also eine obere Grenze:
+etwa 3,8 (25.10.) bis 6 (24.10.). Die 14 min vom 23.10. waren nur der Stand beim
+Abbruch und taugen nicht als Vergleich.
+
+| | Klon | Produktion, Faktor 3,8 | Produktion, Faktor 6 |
+|---|---|---|---|
+| `REFRESH account_summaries` | 268 s | – | – |
+| Pre-Phase gesamt | 283 s | etwa 18 min | etwa 28 min |
+| davon `UpdateAccountSummariesToVersion3` | 277 s, fast alles im Neubau der View | etwa 18 min | etwa 28 min |
+| Sperre auf den Views (ab `rename_index` bis Commit) | 3,5 s, davon 3,4 s `create_view(:global_follow_recommendations)` | etwa 13 s | etwa 21 s |
+| Post-Phase gesamt | 20 s | etwa 1,5 min | etwa 2 min |
+| davon `ConvertMaterializedViewsToTables` | 10,6 s | etwa 40 s | etwa 1 min |
 
 Danach: Beide Views sind Tabellen (`relkind = r`). `keypairs` mit `#main-key`
 enthält 732 Einträge, gleich den lokalen Schlüsseln vorher, und
@@ -661,12 +679,13 @@ Empfehlungen.
 
 Folgen für den Upgrade-PR:
 
-- `activeDeadlineSeconds` bleibt bei 3600 für beide Hooks. Das Dreifache der
-  geschätzten Pre-Phase sind etwa 45 min, die Untergrenze von 3600 gilt also.
-- Die Folgeempfehlungen warten etwa 11 s. Ein eigenes Zeitfenster mit wenig
-  Last ist nicht nötig, das Fenster 06–10 UTC aber weiter meiden.
-- Die Pre-Phase dauert etwa 15 min. Der PreSync-Hook hält den Sync so lange an,
-  die 4.6-Pods laufen in der Zeit weiter.
+- `activeDeadlineSeconds` des PreSync-Hooks auf 5400: das Dreifache von 28 min
+  wären 84 min. Der PostSync-Hook bleibt bei 3600.
+- Die Folgeempfehlungen warten 13 bis 21 s. Ein eigenes Zeitfenster mit wenig
+  Last ist nicht nötig. Nicht mergen, solange der tägliche Refresh läuft, siehe
+  Schritt 4 unten.
+- Die Pre-Phase dauert 18 bis 28 min. Der PreSync-Hook hält den Sync so lange
+  an, die 4.6-Pods laufen in der Zeit weiter.
 
 Aufräumen mit `/srv/mastodon-klon/mastodon-klon-messung.sh cleanup`. Der Befehl
 löscht Container, Daten und die Env-Dateien mit den Secrets, die Logs bleiben.
@@ -681,13 +700,14 @@ Danach den Host löschen.
 2. `renovate.json`: `allowedVersions` auf `/^v4\.7\.\d+$/` stellen.
    5.0 braucht wieder einen eigenen Schritt.
 3. `activeDeadlineSeconds` beider Hooks auf etwa das Dreifache der gemessenen
-   Phase setzen, mindestens 3600. Nach der Messung vom 25.10. bleibt es bei
-   3600, nur die Kommentare anpassen. Ein Lock-Timeout am Ende von
-   `UpdateAccountSummariesToVersion3` wiederholt den teuren Neubau. 3600 s
-   reichen für etwa drei Versuche, danach bricht der Sync ab und die 4.6-Pods
-   laufen weiter.
-4. Merge-Fenster wie in Schritt 4 oben, **nicht 06:00–10:00 UTC**: Bis zur
-   PostSync läuft noch der 4.6-Refresh der Views. Direkt davor zusätzlich
+   Phase setzen, mindestens 3600. Nach der Messung vom 25.10.: PreSync 5400,
+   PostSync 3600. Ein Lock-Timeout am Ende von
+   `UpdateAccountSummariesToVersion3` wiederholt den teuren Neubau. 5400 s
+   reichen für zwei bis drei Versuche, danach bricht der Sync ab und die
+   4.6-Pods laufen weiter.
+4. Merge-Fenster wie in Schritt 4 oben, **nicht 06:00–10:00 UTC**, außer der
+   Refresh des Tages ist schon durch: Bis zur PostSync läuft noch der
+   4.6-Refresh der Views. Direkt davor zusätzlich
    prüfen, ob gerade ein Refresh läuft:
    `select pid, now()-query_start from pg_stat_activity where state = 'active' and query ilike 'refresh materialized%'`.
 5. Danach prüfen:
