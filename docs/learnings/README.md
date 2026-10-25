@@ -33,6 +33,10 @@ Format und Kriterien: siehe AGENTS.md → „Operational Learnings".
   ein `ALTER TABLE accounts` wartete hinter einem 14-minütigen View-Refresh des
   Schedulers, alle `accounts`-Abfragen stauten sich dahinter; fünf Minuten Ausfall
   beim 4.6.9-Upgrade. Hooks setzen jetzt `lock_timeout` mit Wiederholung.
+- [Restore-Klon im Cluster zieht das Backup über VPN und WAN2](restore-klon-ueber-vpn.md) —
+  `mastodon-pg-klon` lud am 24.10.2026 25 GB aus Garage über die IPsec-Strecke auf WAN2,
+  zeitgleich fielen alle Dienste auf WAN2 aus. Messungen laufen jetzt auf einem LXC
+  neben Garage; `guardrails.sh` verlangt für Restores aus Garage eine Freigabe.
 - [Mastodon: Remote-Cache nach dem Cutover](mastodon-remote-cache-nach-cutover.md) —
   nicht migrierter Cache hinterlaesst DB-Verweise ohne Datei (RGW meldet 403 statt
   404); `media remove --prune-profiles` laesst Anhaenge aus; `/tmp`-emptyDir bricht

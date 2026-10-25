@@ -133,6 +133,11 @@ alle `**/ingress.yaml` & Chart-`values.yaml` (`hosts:`), `apps/overlays/main/clu
       und Abnahmemessungen stehen in `docs/runbooks/docker15-retirement.md`.
       `192.168.23.20` bleibt ein gestoppter DR-Edge fuer ein moegliches Routing
       ueber Potsdam.
+- [ ] WAN2 (185.89.37.138, InternetNord) ist seit 24.10.2026 05:43 UTC von aussen
+      nicht erreichbar. `halbe`, `mail` und jit.social zeigen seitdem auf die
+      Telekom (87.191.135.42). Offen: WAN2 an der UDM pruefen, die IPsec-Strecke
+      Halbe↔Potsdam (`vti66`) auf die Telekom legen, entscheiden, welche Namen
+      wohin gehoeren ([Learning](learnings/restore-klon-ueber-vpn.md)).
 
 **Beispiel** — Cilium LB-IPAM-Pool:
 ```yaml
@@ -382,6 +387,9 @@ https://auth.savar.de/realms/bgt
 - [ ] MariaDB-Server 11.4.5 → 11.8.9 → 12.3.3 (LTS) stufenweise mit Pre-Upgrade-Dumps — Stufe 11.8.9 seit 21.10.2026 live, 12.3.3 offen
       ([Runbook](runbooks/mariadb-lts-upgrade.md)); danach `pre-upgrade-backup.yaml` entfernen.
 - [ ] DR-Overlay `infrastructure/overlays/disaster-recovery/` mit `bootstrap.recovery` anlegen.
+      Ein Restore aus Garage läuft ungedrosselt über das VPN nach Potsdam: Leitung
+      einplanen und `# guardrails: allow-garage-restore` setzen
+      ([Learning](learnings/restore-klon-ueber-vpn.md)).
 - [ ] PVC-Daten (paperless data/media, forgejo repos, wordpress wp-content,
       Mailman-Dateien) nach dem CSI-Smoke-Test per quiesced Snapshot absichern.
       Fuer die SMB-Scanner-Inbox und Ceph-Ausfaelle zusaetzlich eine
