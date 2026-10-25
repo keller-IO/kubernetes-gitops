@@ -212,11 +212,11 @@ select (select count(*) from account_summaries) as summaries, (select count(*) f
 select indexrelid::regclass as invalid_index from pg_index where not indisvalid;
 SQL
 
-  # Hardware-Vergleich: derselbe Refresh lief in der Produktion auf Ceph ueber
-  # 14 min (docs/learnings/mastodon-migration-lock-stau.md).
+  # Hardware-Vergleich mit der Produktion: dort laeuft der Refresh taeglich im
+  # FollowRecommendationsScheduler, Laufzeit als elapsed= im Scheduler-Log.
   local t0=$SECONDS
   if psql_klon -c 'refresh materialized view concurrently account_summaries' >/dev/null; then
-    printf 'refresh account_summaries (Produktion ~840 s): %d s\n' "$((SECONDS - t0))" \
+    printf 'refresh account_summaries (mit elapsed= im Scheduler-Log vergleichen): %d s\n' "$((SECONDS - t0))" \
       | tee -a "$log_dir/summary.txt"
   else
     log "REFRESH fehlgeschlagen, ohne Vergleichswert weiter"
