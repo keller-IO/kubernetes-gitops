@@ -27,6 +27,9 @@ mastodon_image="${MASTODON_IMAGE:-ghcr.io/mastodon/mastodon:v4.7.3}"
 # zum Backup passen (wird geprueft).
 pg_image="${PG_IMAGE:-ghcr.io/cloudnative-pg/postgresql:16.15-202610190958-system-bookworm@sha256:34be1a40793eb0f1452200cb52facebdc6c4a2fb8ca040688788eda07b7529a0}"
 valkey_image="${VALKEY_IMAGE:-valkey/valkey:9.2-alpine}"
+# u22 hat 4 Kerne und traegt PBS und Garage; ungebremst stieg die Last beim
+# Entpacken auf 16 (docs/learnings/restore-klon-ueber-vpn.md).
+klon_cpus="${KLON_CPUS:-2}"
 # Wie externalClusters/backup in apps/base/mastodon/database.yaml
 s3_endpoint="http://192.168.23.21:3900"
 s3_path="s3://backup-mastodon/cnpg/"
@@ -48,7 +51,8 @@ log() {
 
 # Nur pgdata wird gemountet: KLON_DIR ist 0700 root, uid 26 kommt dort nicht hinein.
 pgrun() {
-  docker run --rm -i --user 26 --network "$net" --env-file "$klon_dir/s3.env" "$@"
+  docker run --rm -i --user 26 --cpus "$klon_cpus" --network "$net" \
+    --env-file "$klon_dir/s3.env" "$@"
 }
 
 psql_klon() {
@@ -150,7 +154,7 @@ EOF
   chown -R 26:26 "$klon_dir/pgdata"
 
   docker run -d --name "$pg_ctr" --network "$net" --network-alias pg \
-    --user 26 --env-file "$klon_dir/s3.env" --memory 4g --shm-size 1g \
+    --user 26 --env-file "$klon_dir/s3.env" --cpus "$klon_cpus" --memory 3g --shm-size 1g \
     -v "$klon_dir/pgdata:/pgdata" "$pg_image" postgres -D /pgdata >/dev/null
 
   t0=$SECONDS

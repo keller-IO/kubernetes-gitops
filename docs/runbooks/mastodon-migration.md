@@ -552,11 +552,14 @@ zugleich das Backup.
 > `mastodon-pg-klon` Basis-Backup (24,7 GB) und WAL über VPN und WAN2 nach
 > Halbe. Damit fielen ab 05:43 UTC alle Dienste auf 185.89.37.138 aus, und Ceph
 > meldete langsame Operationen. Erst die Umstellung von `halbe`, `mail` und
-> jit.social auf die Telekom brachte sie zurück.
+> jit.social auf die Telekom brachte sie zurück
+> ([Learning](../learnings/restore-klon-ueber-vpn.md)).
 
-Host: VM oder LXC (mit `nesting=1`) auf dem Proxmox-Host von
-`garage-s3-potsdam`, im Netz 192.168.23.0/24, mit Docker. Größe 4 vCPU, 8 GB
-RAM, 100 GB Platte, möglichst nicht auf `md0`, auf dem Garage liegt.
+Host: VM oder LXC (mit `nesting=1,keyctl=1`) auf u22 (192.168.23.5), dem
+Proxmox-Host von `garage-s3-potsdam`, im Netz 192.168.23.0/24, mit Docker.
+Größe 4 Kerne, 4 GB RAM (mehr hat u22 nicht frei), 100 GB auf `local-zfs`,
+nicht auf `data`/`md0` (Garage) oder `vmimages` (Ceph). Potsdam geht über die
+eigene Leitung ins Internet, die Image-Pulls belasten Halbe nicht.
 `cfgmgmt01` ist zu klein (3 GB RAM, 35 GB frei).
 
 Das Skript [`scripts/ops/mastodon-klon-messung.sh`](../../scripts/ops/mastodon-klon-messung.sh)
@@ -607,7 +610,12 @@ Das Skript nimmt das neueste vollständige Basis-Backup, ein anderes wählt man 
 `BACKUP_ID=<id>`. Das planmäßige Backup läuft sonntags um 02:00 UTC
 (`backup.yaml`), kurz danach ist am wenigsten WAL einzuspielen. Stimmt
 `PG_IMAGE` nicht mehr mit `database.yaml` überein, das Image von dort mitgeben.
-`restore` und `measure` lassen sich auch einzeln starten.
+`restore` und `measure` lassen sich auch einzeln starten. Die Postgres-Container
+laufen mit 2 CPUs (`KLON_CPUS`), weil u22 auch PBS und Garage trägt.
+
+Stand 25.10.2026: CT 8031 `mastodon-klon` (192.168.23.31) auf u22, Debian 13,
+4 Kerne, 4 GB RAM, 100 GB auf `local-zfs`, angelegt nach dem Muster von
+`garage-s3-potsdam`. Basis-Backup `20261025T020001` in 116 s geladen, WAL in 33 s.
 
 Ergebnis in `/srv/mastodon-klon/logs/`. `summary.txt` enthält:
 

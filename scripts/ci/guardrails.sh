@@ -112,6 +112,17 @@ while IFS= read -r f; do
   report "$f: MariaDB CR has no spec.image — the mariadb-operator picks its own default version, invisible to Git and Renovate. Pin it, or add '$f' to $image_allowlist."
 done < <(find_operator_crs 'k8s\.mariadb\.com/v1alpha1' 'MariaDB')
 
+section "No CNPG restore from Garage without an explicit plan"
+# Garage (192.168.23.21) steht in Potsdam: ein Restore laedt Basis-Backup und
+# WAL ungedrosselt ueber das VPN und schreibt sie auf Ceph.
+while IFS= read -r f; do
+  [[ -n "$f" ]] || continue
+  grep -qE '^[[:space:]]+recovery:' "$f" || continue
+  grep -qF '192.168.23.21' "$f" || continue
+  grep -qF 'guardrails: allow-garage-restore' "$f" && continue
+  report "$f: CNPG bootstrap.recovery reads the backup from Garage in Potsdam over the VPN (restore clone outage 2026-10-24, docs/learnings/restore-klon-ueber-vpn.md). Measure or test on the clone host instead (scripts/ops/mastodon-klon-messung.sh); a real restore needs a '# guardrails: allow-garage-restore' comment and a plan for the uplink."
+done < <(find_operator_crs 'postgresql\.cnpg\.io/v1' 'Cluster')
+
 section "Every component declares its own namespace"
 ns_allowlist="scripts/ci/known-gaps/missing-namespace.txt"
 for d in apps/base/*/ infrastructure/base/*/; do
