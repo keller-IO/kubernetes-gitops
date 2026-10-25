@@ -631,6 +631,35 @@ Ergebnis in `/srv/mastodon-klon/logs/`. `summary.txt` enthält:
 Klon. Der Klon hat keine Last und keinen Standby. Die Zeiten deshalb mit dem
 `REFRESH`-Faktor umrechnen, die Produktion braucht eher länger.
 
+**Ergebnis 25.10.2026** (v4.6.9 → v4.7.3, Basis-Backup `20261025T020001`,
+Postgres auf 2 CPUs begrenzt). Alle 19 Pre- und 8 Post-Migrationen liefen ohne
+Fehler und ohne Lock-Timeout.
+
+| | Klon | Produktion, geschätzt (Faktor 3,1) |
+|---|---|---|
+| `REFRESH account_summaries` | 268 s | etwa 840 s (gemessen am 23.10.) |
+| Pre-Phase gesamt | 283 s | etwa 15 min |
+| davon `UpdateAccountSummariesToVersion3` | 277 s, fast alles im Neubau der View | etwa 14 min |
+| Sperre auf den Views (ab `rename_index` bis Commit) | 3,5 s, davon 3,4 s `create_view(:global_follow_recommendations)` | etwa 11 s |
+| Post-Phase gesamt | 20 s | etwa 1 min |
+| davon `ConvertMaterializedViewsToTables` | 10,6 s | etwa 33 s |
+
+Danach: Beide Views sind Tabellen (`relkind = r`). `keypairs` mit `#main-key`
+enthält 732 Einträge, gleich den lokalen Schlüsseln vorher, und
+`accounts.private_key` ist überall leer. Ungültige Indizes gibt es keine.
+`CleanUpInvalidAccounts` löschte den einen Fremd-Account ohne `uri`
+(`Longuich@meow.social`). Die Tabellen enthalten 125.249 Summaries und 1.554
+Empfehlungen.
+
+Folgen für den Upgrade-PR:
+
+- `activeDeadlineSeconds` bleibt bei 3600 für beide Hooks. Das Dreifache der
+  geschätzten Pre-Phase sind etwa 45 min, die Untergrenze von 3600 gilt also.
+- Die Folgeempfehlungen warten etwa 11 s. Ein eigenes Zeitfenster mit wenig
+  Last ist nicht nötig, das Fenster 06–10 UTC aber weiter meiden.
+- Die Pre-Phase dauert etwa 15 min. Der PreSync-Hook hält den Sync so lange an,
+  die 4.6-Pods laufen in der Zeit weiter.
+
 Aufräumen mit `/srv/mastodon-klon/mastodon-klon-messung.sh cleanup`. Der Befehl
 löscht Container, Daten und die Env-Dateien mit den Secrets, die Logs bleiben.
 Danach den Host löschen.
@@ -644,8 +673,11 @@ Danach den Host löschen.
 2. `renovate.json`: `allowedVersions` auf `/^v4\.7\.\d+$/` stellen.
    5.0 braucht wieder einen eigenen Schritt.
 3. `activeDeadlineSeconds` beider Hooks auf etwa das Dreifache der gemessenen
-   Phase setzen, mindestens 3600. Ein Lock-Timeout am Ende von
-   `UpdateAccountSummariesToVersion3` wiederholt den teuren Neubau.
+   Phase setzen, mindestens 3600. Nach der Messung vom 25.10. bleibt es bei
+   3600, nur die Kommentare anpassen. Ein Lock-Timeout am Ende von
+   `UpdateAccountSummariesToVersion3` wiederholt den teuren Neubau. 3600 s
+   reichen für etwa drei Versuche, danach bricht der Sync ab und die 4.6-Pods
+   laufen weiter.
 4. Merge-Fenster wie in Schritt 4 oben, **nicht 06:00–10:00 UTC**: Bis zur
    PostSync läuft noch der 4.6-Refresh der Views. Direkt davor zusätzlich
    prüfen, ob gerade ein Refresh läuft:
