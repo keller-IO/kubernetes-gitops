@@ -461,7 +461,8 @@ Ablauf je Upgrade:
    Ein zusätzliches On-demand-Backup braucht Schreibzugriff und wird von einem
    Menschen angestoßen.
 3. Für 4.7: Migrationsdauer vorher an einem Restore-Klon aus
-   `backup-mastodon` messen und `activeDeadlineSeconds` der Hooks anpassen.
+   `backup-mastodon` messen, auf einem Host in Potsdam, nicht im Cluster
+   (unten), und `activeDeadlineSeconds` der Hooks anpassen.
 4. Zeitpunkt wählen: **nicht zwischen 06:00 und 10:00 UTC.** Dann frischt
    der Scheduler `account_summaries` auf (zufällige Uhrzeit, auf Ceph über
    14 min), und jede Migration auf `accounts` wartet dahinter
@@ -542,76 +543,89 @@ select indexrelid::regclass as invalid_index from pg_index where not indisvalid;
 SQL
 ```
 
-**Restore-Klon und Messung** (Schritt 3 oben; `apply` und `delete` macht ein
-Mensch mit Schreibzugriff). Der Klon stellt den letzten Stand aus
-`backup-mastodon` wieder her und testet damit zugleich das Backup. Er hat
-**kein** `backup:`. Das muss so bleiben, sonst archiviert er in den Pfad der
-Produktion. Vorher `ceph df` prüfen, ob für ein weiteres 64-GiB-RBD Platz ist.
+**Restore-Klon und Messung** (Schritt 3 oben). Der Klon läuft **nicht im
+Cluster**, sondern auf einem Wegwerf-Host in Potsdam im LAN von Garage. Er
+stellt das letzte Backup aus `backup-mastodon` wieder her und testet damit
+zugleich das Backup.
 
-```yaml
-apiVersion: postgresql.cnpg.io/v1
-kind: Cluster
-metadata:
-  name: mastodon-pg-klon
-  namespace: mastodon
-spec:
-  instances: 1
-  imageName: ghcr.io/cloudnative-pg/postgresql:16.15-202610190958-system-bookworm@sha256:34be1a40793eb0f1452200cb52facebdc6c4a2fb8ca040688788eda07b7529a0 # wie database.yaml
-  storage: { size: 64Gi, storageClass: ceph-rbd }
-  resources:
-    requests: { cpu: 500m, memory: 1Gi }
-    limits: { memory: 4Gi }
-  postgresql:
-    parameters: { wal_compression: "on", max_wal_size: "4GB", checkpoint_timeout: "15min" }
-  bootstrap:
-    recovery:
-      source: mastodon-pg-backup
-      database: mastodon_production
-      owner: mastodon
-      secret: { name: mastodon-db-app }
-  externalClusters:
-    - name: mastodon-pg-backup
-      barmanObjectStore:
-        destinationPath: s3://backup-mastodon/cnpg/
-        serverName: mastodon-pg-r2
-        endpointURL: http://192.168.23.21:3900
-        s3Credentials:
-          accessKeyId: { name: mastodon-backup-s3, key: ACCESS_KEY_ID }
-          secretAccessKey: { name: mastodon-backup-s3, key: SECRET_ACCESS_KEY }
-          region: { name: mastodon-backup-s3, key: region }
-        wal: { compression: gzip }
-        data: { compression: gzip }
-```
+> Kein Klon per CNPG-`bootstrap.recovery` im Cluster. Am 24.10.2026 zog
+> `mastodon-pg-klon` Basis-Backup (24,7 GB) und WAL über VPN und WAN2 nach
+> Halbe. Damit fielen ab 05:43 UTC alle Dienste auf 185.89.37.138 aus, und Ceph
+> meldete langsame Operationen. Erst die Umstellung von `halbe`, `mail` und
+> jit.social auf die Telekom brachte sie zurück.
 
-Ist der Klon `Cluster in healthy state`, die Vorab-Abfragen dort wiederholen.
-Dann beide Phasen mit dem 4.7.3-Image gegen den Klon laufen lassen. Der Job
-entsteht aus dem PreSync-Hook. Er bricht ab, falls `DB_HOST` nicht auf den Klon
-zeigt (`env` überschreibt den `DB_HOST` aus `mastodon-env`):
+Host: VM oder LXC (mit `nesting=1`) auf dem Proxmox-Host von
+`garage-s3-potsdam`, im Netz 192.168.23.0/24, mit Docker. Größe 4 vCPU, 8 GB
+RAM, 100 GB Platte, möglichst nicht auf `md0`, auf dem Garage liegt.
+`cfgmgmt01` ist zu klein (3 GB RAM, 35 GB frei).
+
+Das Skript [`scripts/ops/mastodon-klon-messung.sh`](../../scripts/ops/mastodon-klon-messung.sh)
+nutzt dasselbe CNPG-Image wie `mastodon-pg`, holt Basis-Backup und WAL mit
+`barman-cloud-restore`/`barman-cloud-wal-restore` und schaltet die Archivierung
+ab (`archive_mode=off`). Der Backup-Pfad der Produktion wird also nur gelesen.
+Danach laufen die Vorab-Abfragen von oben, ein `REFRESH` von
+`account_summaries` als Hardware-Vergleich (Produktion: etwa 14 min) und beide
+Phasen mit dem neuen Image, als `mastodon` mit `lock_timeout=10s` und 1,5 GiB
+Speicherlimit wie im Hook. S3 ist dabei aus, Sidekiq läuft nicht.
+
+Vorbereiten vom Arbeitsplatz aus, im Repo-Root (lesendes `kubectl`, SOPS-Key).
+Die Secrets gehen direkt per SSH auf den Host und landen nicht lokal auf der
+Platte:
 
 ```bash
-yq 'select(.metadata.name == "mastodon-db-migrate-pre")
-  | .metadata.name = "mastodon-db-migrate-klon"
-  | del(.metadata.annotations)
-  | .spec.activeDeadlineSeconds = 21600
-  | .spec.template.spec.containers[0].image = "ghcr.io/mastodon/mastodon:v4.7.3"
-  | .spec.template.spec.containers[0].env |= (map(select(.name != "SKIP_POST_DEPLOYMENT_MIGRATIONS")) + [{"name": "DB_HOST", "value": "mastodon-pg-klon-rw"}])
-  | .spec.template.spec.containers[0].command = ["/bin/bash", "-c", "set -euo pipefail; [ \"$DB_HOST\" = mastodon-pg-klon-rw ] || exit 1; date -u; time SKIP_POST_DEPLOYMENT_MIGRATIONS=true bundle exec rails db:migrate; date -u; time bundle exec rails db:migrate; date -u"]' \
-  apps/base/mastodon/db-migrate.yaml > mastodon-db-migrate-klon.yaml
-kubectl apply -f mastodon-db-migrate-klon.yaml
-kubectl -n mastodon logs -f job/mastodon-db-migrate-klon | tee migrate-klon.log
+klon=root@<klon-host>
+ssh "$klon" 'install -d -m 700 /srv/mastodon-klon'
+scp scripts/ops/mastodon-klon-messung.sh "$klon":/srv/mastodon-klon/
+sops -d apps/base/mastodon/backup-s3.sops.yaml \
+  | yq '.stringData | ("AWS_ACCESS_KEY_ID=" + .ACCESS_KEY_ID, "AWS_SECRET_ACCESS_KEY=" + .SECRET_ACCESS_KEY, "AWS_DEFAULT_REGION=" + .region)' \
+  | ssh "$klon" 'umask 077; cat > /srv/mastodon-klon/s3.env'
+{
+  kubectl -n mastodon get cm mastodon-env -o json | jq -r '.data | to_entries[] | "\(.key)=\(.value)"'
+  sops -d apps/base/mastodon/secret.sops.yaml | yq 'select(.metadata.name == "mastodon-secret") | .stringData
+    | ("SECRET_KEY_BASE=" + .["secret-key-base"],
+      "VAPID_PRIVATE_KEY=" + .["vapid-private-key"],
+      "VAPID_PUBLIC_KEY=" + .["vapid-public-key"],
+      "ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY=" + .["are-primary-key"],
+      "ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY=" + .["are-deterministic-key"],
+      "ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT=" + .["are-derivation-salt"])'
+} | ssh "$klon" 'umask 077; cat > /srv/mastodon-klon/mastodon.env'
 ```
 
-Rails gibt jeden Schritt mit Dauer aus (`-> 123.4567s`). Notieren:
+Die echten `are-*`-Schlüssel sind nötig: `MigrateLocalAccountKeypairs`
+verschlüsselt damit, und vorhandene verschlüsselte Spalten lassen sich nur mit
+ihnen lesen.
+
+Ausführen auf dem Host in `tmux`, die Restore-Phase dauert je nach WAL-Menge
+Stunden:
+
+```bash
+ssh -t "$klon" tmux new -s klon \
+  'MASTODON_IMAGE=ghcr.io/mastodon/mastodon:v4.7.3 /srv/mastodon-klon/mastodon-klon-messung.sh all'
+```
+
+Das Skript nimmt das neueste vollständige Basis-Backup, ein anderes wählt man mit
+`BACKUP_ID=<id>`. Das planmäßige Backup läuft sonntags um 02:00 UTC
+(`backup.yaml`), kurz danach ist am wenigsten WAL einzuspielen. Stimmt
+`PG_IMAGE` nicht mehr mit `database.yaml` überein, das Image von dort mitgeben.
+`restore` und `measure` lassen sich auch einzeln starten.
+
+Ergebnis in `/srv/mastodon-klon/logs/`. `summary.txt` enthält:
 
 - die Dauer von Pre- und Post-Phase,
-- in `UpdateAccountSummariesToVersion3` die Schritte ab
-  `drop_view(:global_follow_recommendations)`. So lange warten die
-  Folgeempfehlungen. Bei mehr als etwa einer Minute ein Zeitfenster mit wenig
-  Last wählen.
+- die Dauer des `REFRESH` im Vergleich zur Produktion. Daraus ergibt sich, um
+  welchen Faktor der Host schneller oder langsamer ist als Ceph,
+- die zehn langsamsten Migrationen,
+- die Schritte von `UpdateAccountSummariesToVersion3`. Ab
+  `drop_view(:global_follow_recommendations)` warten die Folgeempfehlungen. Bei
+  mehr als etwa einer Minute ein Zeitfenster mit wenig Last wählen.
 
-Der Klon hat keine Last und keinen Standby, die Produktion braucht also eher
-länger. Aufräumen: `kubectl -n mastodon delete job/mastodon-db-migrate-klon
-cluster/mastodon-pg-klon` (die PVC hängt am Cluster).
+`vorab.txt` und `danach.txt` enthalten die Abfragen von oben, angewendet auf den
+Klon. Der Klon hat keine Last und keinen Standby. Die Zeiten deshalb mit dem
+`REFRESH`-Faktor umrechnen, die Produktion braucht eher länger.
+
+Aufräumen mit `/srv/mastodon-klon/mastodon-klon-messung.sh cleanup`. Der Befehl
+löscht Container, Daten und die Env-Dateien mit den Secrets, die Logs bleiben.
+Danach den Host löschen.
 
 **Upgrade-PR**, erst nach der Messung:
 
