@@ -143,8 +143,10 @@ Freigabepflicht Bots an, um Bestätigungsmails an fremde Adressen zu verschicken
 Einladen dürfen Admins und die Rolle **Einladen** (nur `invite_users`, angelegt
 25.10.2026, vergeben an `madmas` und `makefu`). Wer über so eine Einladung
 kommt, braucht weiter die Freigabe durch Admins, weil die Rolle kein
-`invite_bypass_approval` hat. Ein öffentlich gewordener Link lässt so keine
-Bots durch. Weitere Accounts:
+`invite_bypass_approval` hat. Ein öffentlich gewordener Link schaltet so keine
+Bots frei, die Bestätigungsmail geht aber auch hier sofort raus. Einladungen
+deshalb mit begrenzter Nutzung und Ablaufzeit erstellen und einen geleakten
+Link unter Einladungen deaktivieren. Weitere Accounts:
 `kubectl -n mastodon exec deploy/mastodon-web -c mastodon-web -- bin/tootctl accounts modify <name> --role Einladen`.
 
 `UserCleanupScheduler` löscht unbestätigte Konten nach 7 Tagen. Die Zahl
