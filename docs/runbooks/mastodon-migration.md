@@ -461,7 +461,8 @@ Ablauf je Upgrade:
    Ein zusätzliches On-demand-Backup braucht Schreibzugriff und wird von einem
    Menschen angestoßen.
 3. Für 4.7: Migrationsdauer vorher an einem Restore-Klon aus
-   `backup-mastodon` messen und `activeDeadlineSeconds` der Hooks anpassen.
+   `backup-mastodon` messen, auf einem Host in Potsdam, nicht im Cluster
+   (unten), und `activeDeadlineSeconds` der Hooks anpassen.
 4. Zeitpunkt wählen: **nicht zwischen 06:00 und 10:00 UTC.** Dann frischt
    der Scheduler `account_summaries` auf (zufällige Uhrzeit, auf Ceph über
    14 min), und jede Migration auf `accounts` wartet dahinter
@@ -469,7 +470,8 @@ Ablauf je Upgrade:
    Merge lange Transaktionen prüfen:
 
    ```bash
-   kubectl -n mastodon exec mastodon-pg-1 -c postgres -- psql -XAt -c \
+   primary=$(kubectl -n mastodon get cluster mastodon-pg -o jsonpath='{.status.currentPrimary}')
+   kubectl -n mastodon exec "$primary" -c postgres -- psql -XAt -c \
      "select pid, now()-xact_start, left(query,80) from pg_stat_activity
       where backend_type='client backend' and now()-xact_start > interval '1 minute'"
    ```
@@ -492,3 +494,211 @@ weiter: Logs lesen, Ursache beheben, erneut syncen. Nach Lock-Timeouts einer
 `concurrently`-Migration vorher nach `INVALID`-Indizes sehen
 (`select indexrelid::regclass from pg_index where not indisvalid`). Einen
 Rückweg auf die Vorversion gibt es nach erfolgreichen Migrationen nur per PITR.
+
+### 4.6.9 → 4.7.3: Vorbereitung
+
+Stand 24.10.2026, geprüft per `git diff v4.6.9 v4.7.3` im Mastodon-Repo und
+mit den Release Notes 4.7.0 bis 4.7.3.
+
+**Ziel ist direkt v4.7.3.** 4.7.1 behebt 4.7-Migrationen, die nach einem
+Abbruch nicht sauber neu starten (#40264). Das ist mit unseren Hook-Wiederholungen
+wichtig. Chart 1.2.5 hat schon `appVersion` v4.7.3, ein Chart-Bump ist also nicht
+nötig.
+
+- Die Abhängigkeiten sind seit 4.6.0 gleich: PostgreSQL ≥ 14 (wir: 16.15),
+  Redis ≥ 7 (wir: Valkey 9.2). Ruby 4.0.6, FFmpeg 9.0.2 und libvips 8.18.5
+  stecken im Image.
+- Es gibt keine neuen Pflicht-Variablen: `.env.production.sample`,
+  `config/database.yml` und `config/sidekiq.yml` sind unverändert. Neu und
+  optional ist `ES_QUERY_TIMEOUT`, das betrifft uns nicht, weil die Suche nicht
+  angebunden ist.
+- Cookies von Mastodon ≤ 4.2 gelten nicht mehr. Wer seit 4.3 nicht mehr da
+  war, wird abgemeldet.
+
+**Migrationen:** 19 Pre-Deployment- und 8 Post-Deployment-Migrationen. Die
+meisten sind kleine Spalten- und Index-Änderungen, `lock_timeout` und
+`concurrently` decken sie ab. Diese brauchen Aufmerksamkeit:
+
+| Migration | Phase | Was passiert | Risiko bei uns |
+|---|---|---|---|
+| `20260728145403 UpdateAccountSummariesToVersion3` | Pre | Baut `account_summaries` als neue Materialized View komplett neu. In **derselben Transaktion** werden beide Views gelöscht, umbenannt, und `global_follow_recommendations` wird neu befüllt. | Der Neubau entspricht dem täglichen Refresh, der auf Ceph über 14 min lief. Während `global_follow_recommendations` neu befüllt wird, hält die Migration `ACCESS EXCLUSIVE` auf beiden Views. Folgeempfehlungen der 4.6-Pods (`/api/v2/suggestions`, Admin) warten so lange. Ein Lock-Timeout beim `DROP` rollt alles zurück, der nächste Versuch rechnet von vorn. |
+| `20260702144128 MigrateLocalAccountKeypairs` | Post | Verschiebt die privaten Schlüssel lokaler Accounts nach `keypairs`, verschlüsselt mit `ACTIVE_RECORD_ENCRYPTION_*`, und leert `accounts.private_key`. | Danach hängen die Föderations-Signaturen an den `are-*`-Schlüsseln in `mastodon-secret` (SOPS). Ein DB-Restore ohne dieses Secret ist ab dann wertlos. |
+| `20260720100326 FixBlankAccountUri` und `20260720124731 CleanUpInvalidAccounts` | Post | Setzt leere `uri` auf `NULL` und löscht danach **Fremd**-Accounts ohne `uri` per `delete_all`. Die Fremdschlüssel der DB kaskadieren dabei. | Die Menge ist unbekannt, vorher zählen (unten). |
+| `20260720104058 AddUniqueIndexOnAccountsUri` | Post | Unique-Index auf `accounts.uri`, `concurrently`. Gibt es Duplikate, führt die Migration die Accounts Zeile für Zeile zusammen. | Mit Duplikaten wird das langsam, vorher zählen. |
+| `20260804081821 ConvertMaterializedViewsToTables` | Post | Kopiert beide Views in normale Tabellen. | **Danach gibt es den Lock-Stau aus dem 4.6-Learning nicht mehr.** 4.7 pflegt die Tabellen in Batches (`INSERT … ON CONFLICT`) statt per `REFRESH MATERIALIZED VIEW`. Zwischen Rollout und PostSync überspringt der 4.7-Scheduler den Refresh (`table_exists?` ist für eine View falsch). Das ist harmlos. |
+
+**Vorab-Abfragen** (nur lesend, auf dem aktuellen Primary; `kubectl exec` macht
+ein Mensch). `-i` reicht das SQL an `psql` weiter, ohne `-i` läuft nichts:
+
+```bash
+primary=$(kubectl -n mastodon get cluster mastodon-pg -o jsonpath='{.status.currentPrimary}')
+kubectl -n mastodon exec -i "$primary" -c postgres -- \
+  psql -XA -v ON_ERROR_STOP=1 -d mastodon_production <<'SQL'
+-- Duplikate, die AddUniqueIndexOnAccountsUri zusammenführen müsste
+select count(*) as uri_duplikate from (select uri from accounts where uri <> '' group by uri having count(*) > 1) d;
+-- Fremd-Accounts, die CleanUpInvalidAccounts löscht
+select count(*) as fremd_ohne_uri from accounts where domain is not null and coalesce(uri, '') = '';
+-- Umfang der Keypair-Migration und der Views
+select count(*) as lokale_schluessel from accounts where domain is null and private_key is not null;
+select (select count(*) from account_summaries) as summaries, (select count(*) from global_follow_recommendations) as recommendations;
+-- Muss leer sein
+select indexrelid::regclass as invalid_index from pg_index where not indisvalid;
+SQL
+```
+
+**Restore-Klon und Messung** (Schritt 3 oben). Der Klon läuft **nicht im
+Cluster**, sondern auf einem Wegwerf-Host in Potsdam im LAN von Garage. Er
+stellt das letzte Backup aus `backup-mastodon` wieder her und testet damit
+zugleich das Backup.
+
+> Kein Klon per CNPG-`bootstrap.recovery` im Cluster. Am 24.10.2026 zog
+> `mastodon-pg-klon` Basis-Backup (24,7 GB) und WAL über VPN und WAN2 nach
+> Halbe. Damit fielen ab 05:43 UTC alle Dienste auf 185.89.37.138 aus, und Ceph
+> meldete langsame Operationen. Erst die Umstellung von `halbe`, `mail` und
+> jit.social auf die Telekom brachte sie zurück
+> ([Learning](../learnings/restore-klon-ueber-vpn.md)).
+
+Host: VM oder LXC (mit `nesting=1,keyctl=1`) auf u22 (192.168.23.5), dem
+Proxmox-Host von `garage-s3-potsdam`, im Netz 192.168.23.0/24, mit Docker.
+Größe 4 Kerne, 4 GB RAM (mehr hat u22 nicht frei), 100 GB auf `local-zfs`,
+nicht auf `data`/`md0` (Garage) oder `vmimages` (Ceph). Potsdam geht über die
+eigene Leitung ins Internet, die Image-Pulls belasten Halbe nicht.
+`cfgmgmt01` ist zu klein (3 GB RAM, 35 GB frei).
+
+Das Skript [`scripts/ops/mastodon-klon-messung.sh`](../../scripts/ops/mastodon-klon-messung.sh)
+nutzt dasselbe CNPG-Image wie `mastodon-pg`, holt Basis-Backup und WAL mit
+`barman-cloud-restore`/`barman-cloud-wal-restore` und schaltet die Archivierung
+ab (`archive_mode=off`). Der Backup-Pfad der Produktion wird also nur gelesen.
+Danach laufen die Vorab-Abfragen von oben, ein `REFRESH` von
+`account_summaries` als Hardware-Vergleich (Produktion: etwa 14 min) und beide
+Phasen mit dem neuen Image, als `mastodon` mit `lock_timeout=10s` und 1,5 GiB
+Speicherlimit wie im Hook. S3 ist dabei aus, Sidekiq läuft nicht.
+
+Vorbereiten vom Arbeitsplatz aus, im Repo-Root (lesendes `kubectl`, SOPS-Key).
+Die Secrets gehen direkt per SSH auf den Host und landen nicht lokal auf der
+Platte:
+
+```bash
+set -o pipefail
+klon=root@<klon-host>
+ssh "$klon" 'install -d -m 700 /srv/mastodon-klon'
+scp scripts/ops/mastodon-klon-messung.sh "$klon":/srv/mastodon-klon/
+sops -d apps/base/mastodon/backup-s3.sops.yaml \
+  | yq '.stringData | ("AWS_ACCESS_KEY_ID=" + .ACCESS_KEY_ID, "AWS_SECRET_ACCESS_KEY=" + .SECRET_ACCESS_KEY, "AWS_DEFAULT_REGION=" + .region)' \
+  | ssh "$klon" 'umask 077; cat > /srv/mastodon-klon/s3.env'
+{
+  kubectl -n mastodon get cm mastodon-env -o json | jq -r '.data | to_entries[] | "\(.key)=\(.value)"'
+  sops -d apps/base/mastodon/secret.sops.yaml | yq 'select(.metadata.name == "mastodon-secret") | .stringData
+    | ("SECRET_KEY_BASE=" + .["secret-key-base"],
+      "VAPID_PRIVATE_KEY=" + .["vapid-private-key"],
+      "VAPID_PUBLIC_KEY=" + .["vapid-public-key"],
+      "ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY=" + .["are-primary-key"],
+      "ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY=" + .["are-deterministic-key"],
+      "ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT=" + .["are-derivation-salt"])'
+} | ssh "$klon" 'umask 077; cat > /srv/mastodon-klon/mastodon.env'
+```
+
+Ein Fehler in `sops`, `yq` oder `kubectl` kann trotzdem eine unvollständige
+Datei hinterlassen. Das Skript prüft deshalb vor dem Start, ob alle nötigen
+Schlüssel gesetzt sind. Die echten `are-*`-Schlüssel sind nötig: `MigrateLocalAccountKeypairs`
+verschlüsselt damit, und vorhandene verschlüsselte Spalten lassen sich nur mit
+ihnen lesen.
+
+Ausführen auf dem Host in `tmux`, die Restore-Phase dauert je nach WAL-Menge
+Stunden:
+
+```bash
+ssh -t "$klon" tmux new -s klon \
+  'MASTODON_IMAGE=ghcr.io/mastodon/mastodon:v4.7.3 /srv/mastodon-klon/mastodon-klon-messung.sh all'
+```
+
+Das Skript nimmt das neueste vollständige Basis-Backup, ein anderes wählt man mit
+`BACKUP_ID=<id>`. Das planmäßige Backup läuft sonntags um 02:00 UTC
+(`backup.yaml`), kurz danach ist am wenigsten WAL einzuspielen. Stimmt
+`PG_IMAGE` nicht mehr mit `database.yaml` überein, das Image von dort mitgeben.
+`restore` und `measure` lassen sich auch einzeln starten. Die Postgres-Container
+laufen mit 2 CPUs (`KLON_CPUS`), weil u22 auch PBS und Garage trägt.
+
+Stand 25.10.2026: CT 8031 `mastodon-klon` (192.168.23.31) auf u22, Debian 13,
+4 Kerne, 4 GB RAM, 100 GB auf `local-zfs`, angelegt nach dem Muster von
+`garage-s3-potsdam`. Basis-Backup `20261025T020001` in 116 s geladen, WAL in 33 s.
+Nach der Messung gelöscht (`pct destroy 8031 --purge 1`), für die nächste mit
+denselben Werten neu anlegen.
+
+Ergebnis in `/srv/mastodon-klon/logs/`. `summary.txt` enthält:
+
+- die Dauer von Pre- und Post-Phase,
+- die Dauer des `REFRESH` im Vergleich zur Produktion. Daraus ergibt sich, um
+  welchen Faktor der Host schneller oder langsamer ist als Ceph,
+- die zehn langsamsten Migrationen,
+- die Schritte von `UpdateAccountSummariesToVersion3`. Ab
+  `drop_view(:global_follow_recommendations)` warten die Folgeempfehlungen. Bei
+  mehr als etwa einer Minute ein Zeitfenster mit wenig Last wählen.
+
+`vorab.txt` und `danach.txt` enthalten die Abfragen von oben, angewendet auf den
+Klon. Der Klon hat keine Last und keinen Standby. Die Zeiten deshalb mit dem
+`REFRESH`-Faktor umrechnen, die Produktion braucht eher länger.
+
+**Ergebnis 25.10.2026** (v4.6.9 → v4.7.3, Basis-Backup `20261025T020001`,
+Postgres auf 2 CPUs begrenzt). Alle 19 Pre- und 8 Post-Migrationen liefen ohne
+Fehler und ohne Lock-Timeout.
+
+| | Klon | Produktion, geschätzt (Faktor 3,1) |
+|---|---|---|
+| `REFRESH account_summaries` | 268 s | etwa 840 s (gemessen am 23.10.) |
+| Pre-Phase gesamt | 283 s | etwa 15 min |
+| davon `UpdateAccountSummariesToVersion3` | 277 s, fast alles im Neubau der View | etwa 14 min |
+| Sperre auf den Views (ab `rename_index` bis Commit) | 3,5 s, davon 3,4 s `create_view(:global_follow_recommendations)` | etwa 11 s |
+| Post-Phase gesamt | 20 s | etwa 1 min |
+| davon `ConvertMaterializedViewsToTables` | 10,6 s | etwa 33 s |
+
+Danach: Beide Views sind Tabellen (`relkind = r`). `keypairs` mit `#main-key`
+enthält 732 Einträge, gleich den lokalen Schlüsseln vorher, und
+`accounts.private_key` ist überall leer. Ungültige Indizes gibt es keine.
+`CleanUpInvalidAccounts` löschte den einen Fremd-Account ohne `uri`
+(`Longuich@meow.social`). Die Tabellen enthalten 125.249 Summaries und 1.554
+Empfehlungen.
+
+Folgen für den Upgrade-PR:
+
+- `activeDeadlineSeconds` bleibt bei 3600 für beide Hooks. Das Dreifache der
+  geschätzten Pre-Phase sind etwa 45 min, die Untergrenze von 3600 gilt also.
+- Die Folgeempfehlungen warten etwa 11 s. Ein eigenes Zeitfenster mit wenig
+  Last ist nicht nötig, das Fenster 06–10 UTC aber weiter meiden.
+- Die Pre-Phase dauert etwa 15 min. Der PreSync-Hook hält den Sync so lange an,
+  die 4.6-Pods laufen in der Zeit weiter.
+
+Aufräumen mit `/srv/mastodon-klon/mastodon-klon-messung.sh cleanup`. Der Befehl
+löscht Container, Daten und die Env-Dateien mit den Secrets, die Logs bleiben.
+Danach den Host löschen.
+
+**Upgrade-PR**, erst nach der Messung:
+
+1. `v4.6.9` → `v4.7.3` an allen acht Stellen: `values.yaml` (2),
+   `db-migrate.yaml` (2), `media-retention.yaml` (4). Den Kommentar zur
+   `appVersion` in `kustomization.yaml` anpassen. `guardrails.sh` prüft, dass
+   alle Mastodon-Tags gleich sind.
+2. `renovate.json`: `allowedVersions` auf `/^v4\.7\.\d+$/` stellen.
+   5.0 braucht wieder einen eigenen Schritt.
+3. `activeDeadlineSeconds` beider Hooks auf etwa das Dreifache der gemessenen
+   Phase setzen, mindestens 3600. Nach der Messung vom 25.10. bleibt es bei
+   3600, nur die Kommentare anpassen. Ein Lock-Timeout am Ende von
+   `UpdateAccountSummariesToVersion3` wiederholt den teuren Neubau. 3600 s
+   reichen für etwa drei Versuche, danach bricht der Sync ab und die 4.6-Pods
+   laufen weiter.
+4. Merge-Fenster wie in Schritt 4 oben, **nicht 06:00–10:00 UTC**: Bis zur
+   PostSync läuft noch der 4.6-Refresh der Views. Direkt davor zusätzlich
+   prüfen, ob gerade ein Refresh läuft:
+   `select pid, now()-query_start from pg_stat_activity where state = 'active' and query ilike 'refresh materialized%'`.
+5. Danach prüfen:
+   - `select relkind from pg_class where relname in ('account_summaries','global_follow_recommendations')`
+     liefert zweimal `r`.
+   - `select count(*) from keypairs where local_fragment = '#main-key'`
+     entspricht der Zahl `lokale_schluessel` von vorher.
+   - Ein Follow zu und von einer fremden Instanz funktioniert, also auch die
+     Signaturen.
+   - Am nächsten Tag hat der Scheduler die Folgeempfehlungen wieder gefüllt.
+6. Nach dem Upgrade das Learning
+   [mastodon-migration-lock-stau.md](../learnings/mastodon-migration-lock-stau.md)
+   um „ab 4.7 kein `REFRESH MATERIALIZED VIEW` mehr“ ergänzen. Das Sperrfenster
+   06–10 UTC in Schritt 4 kann dann entfallen.
