@@ -132,6 +132,34 @@ Datenbankverbindungen: Web 2 × 10 (2 Puma-Worker × 5 Threads), Sidekiq
 `max_connections` steht auf dem Default 100. Wer Threads oder Repliken erhöht,
 muss das gegenrechnen.
 
+## Anmeldungen
+
+Die Registrierung ist seit 25.10.2026 geschlossen (`registrations_mode = none`),
+neue Konten nur per Einladung von Rollen mit der Berechtigung `invite_users`. Vorher meldeten sich trotz
+Freigabepflicht Bots an, um Bestätigungsmails an fremde Adressen zu verschicken
+([Learning](../learnings/mastodon-anmeldespam-mailversand.md)). Wieder öffnen:
+`kubectl -n mastodon exec deploy/mastodon-web -c mastodon-web -- bin/tootctl settings registrations approved`.
+
+Einladen dürfen Admins und die Rolle **Einladen** (nur `invite_users`, angelegt
+25.10.2026, vergeben an `madmas` und `makefu`). Wer über eine Einladung der
+Rolle **Einladen** kommt, braucht weiter die Freigabe durch Admins, weil die
+Rolle kein `invite_bypass_approval` hat. Admin-Einladungen sind anders: Rollen
+mit `administrator` haben alle Rechte, ihre Eingeladenen sind sofort
+freigeschaltet. Bei jeder Einladung geht die Bestätigungsmail sofort raus, auch
+über einen öffentlich gewordenen Link. Einladungen deshalb mit begrenzter
+Nutzung und Ablaufzeit erstellen und einen geleakten Link unter Einladungen
+deaktivieren. Weitere Accounts:
+`kubectl -n mastodon exec deploy/mastodon-web -c mastodon-web -- bin/tootctl accounts modify <name> --role Einladen`.
+
+`UserCleanupScheduler` löscht unbestätigte Konten nach 7 Tagen. Die Zahl
+lokaler Accounts schwankt deshalb täglich. Lage prüfen:
+
+```bash
+primary=$(kubectl -n mastodon get cluster mastodon-pg -o jsonpath='{.status.currentPrimary}')
+kubectl -n mastodon exec "$primary" -c postgres -- psql -XA -d mastodon_production -c \
+  "select confirmation_sent_at::date, count(*) from users where confirmed_at is null and confirmation_sent_at is not null group by 1 order by 1 desc limit 10"
+```
+
 ## Kein HPA
 
 Die Replikenzahl ist fest (Projektregel: kein HPA ohne Allowlist, kein

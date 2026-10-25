@@ -79,6 +79,22 @@ Versuch auf denselben Lock treffen können.
   ein `lock_timeout=` in derselben Datei – auch in Array-Form wie
   `["bundle", "exec", "rails", "db:migrate"]`. Fixtures dazu in
   `scripts/ci/test-check-migration-lock-timeout.sh`.
-- Runbook `docs/runbooks/mastodon-migration.md`, „Versions-Upgrades“: nicht
-  zwischen 06:00 und 10:00 UTC mergen, vorher lange Transaktionen prüfen und
-  während der Hooks `pg_blocking_pids()` beobachten.
+- Runbook `docs/runbooks/mastodon-migration.md`, „Versions-Upgrades“: vorher
+  lange Transaktionen prüfen und während der Hooks `pg_blocking_pids()`
+  beobachten.
+
+## Nachtrag 25.10.2026: ab 4.7 kein `REFRESH` mehr
+
+- Die „14 min“ oben waren das Alter des Refreshs beim Abbruch, nicht seine
+  Laufzeit. Vollständig dauerte er laut Scheduler-Log 1.613 s (24.10.) und
+  1.024 s (25.10.).
+- Mit 4.7.3 (#386) wandelt `ConvertMaterializedViewsToTables` beide Views in
+  Tabellen um. `AccountSummary.refresh` löscht und schreibt seitdem in Batches
+  (`INSERT … ON CONFLICT`). Jeder Batch hält `ROW EXCLUSIVE` auf der Tabelle
+  und Lese-Locks auf `accounts` nur für seine Dauer. Der Stau von oben über
+  17 bis 27 min kann so nicht mehr entstehen. `FollowRecommendation.refresh`
+  schreibt dagegen in einer einzigen Anweisung und liest dabei `follows`,
+  `statuses`, `status_stats` und `users`. Das Sperrfenster 06:00–10:00 UTC
+  ist aus dem Runbook entfernt.
+- `lock_timeout` und Wiederholung in den Hooks bleiben. Sie schützen auch
+  gegen jeden anderen Blocker.

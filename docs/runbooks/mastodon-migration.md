@@ -435,8 +435,12 @@ Zielinstanz dürfen niemals gleichzeitig schreibend aktiv sein.
 Entscheidung 21.10.2026: 4.5 → **4.6** → 4.7, nicht direkt auf 4.7. Die langen
 Migrationen von 4.7.0 laufen laut Release Notes nur von 4.6 aus ohne Downtime
 (Pre-Migrationen, Pods tauschen, Post-Migrationen). Renovate ist per
-`allowedVersions` in `renovate.json` auf `v4.5.x`/`v4.6.x` begrenzt; die Regel
-erst nach dem 4.6-Upgrade auf 4.7 erweitern.
+`allowedVersions` in `renovate.json` auf `v4.7.x` begrenzt. Eine neue
+Minor-Version vorher am Restore-Klon messen (unten).
+
+**Stand 25.10.2026:** 4.7.3 läuft seit 08:06Z (#386), ohne Ausfall und ohne
+Lock-Timeout. PITR-Ziel davor: 2026-10-25T07:37:57Z. Messwerte unter
+„4.6.9 → 4.7.3“.
 
 **Stand 23.10.2026:** 4.6.9 läuft seit 09:03Z (#338). Backup davor:
 `mastodon-pg-pre-4-6-20261022`, PITR-Ziel 2026-10-23T08:49:37Z. Beim
@@ -463,21 +467,18 @@ Ablauf je Upgrade:
 3. Für 4.7: Migrationsdauer vorher an einem Restore-Klon aus
    `backup-mastodon` messen, auf einem Host in Potsdam, nicht im Cluster
    (unten), und `activeDeadlineSeconds` der Hooks anpassen.
-4. Zeitpunkt wählen: **nicht zwischen 06:00 und 10:00 UTC.** Dann frischt
-   der Scheduler `account_summaries` auf (auf Ceph 17 bis 27 min), und jede
-   Migration auf `accounts` wartet dahinter
-   ([Learning](../learnings/mastodon-migration-lock-stau.md)). Die Uhrzeit
-   würfelt Mastodon beim Start des Scheduler-Pods aus, danach bleibt sie
-   gleich. Steht im Log für den **heutigen** UTC-Tag schon `done`, ist auch ein
-   Merge innerhalb des Fensters sicher. Fehlt die heutige `done`-Zeile, im
-   Fenster nicht mergen:
-
-   ```bash
-   kubectl -n mastodon logs deploy/mastodon-sidekiq-scheduler \
-     --since-time="$(date -u +%Y-%m-%dT00:00:00Z)" | grep 'FollowRecommendationsScheduler'
-   ```
-
-   Direkt vor dem Merge lange Transaktionen prüfen:
+4. Zeitpunkt wählen. Ein festes Sperrfenster gibt es seit 4.7 nicht mehr: Der
+   tägliche `FollowRecommendationsScheduler` pflegt `account_summaries` und
+   `global_follow_recommendations` als Tabellen (`INSERT … ON CONFLICT`).
+   `account_summaries` schreibt er in Batches, jeder Batch hält seine Locks
+   (`ROW EXCLUSIVE` auf die Tabelle, Zeilen-Locks, Lese-Locks auf `accounts`
+   und `statuses`) nur kurz. `global_follow_recommendations` füllt eine
+   einzelne Anweisung, die dabei `follows`, `statuses`, `status_stats` und
+   `users` liest; eine Migration mit `ALTER TABLE` auf diesen Tabellen wartet
+   so lange. Bis 4.6 lief dort ein `REFRESH MATERIALIZED VIEW` über 17 bis
+   27 min, hinter dem jede Migration auf `accounts` wartete
+   ([Learning](../learnings/mastodon-migration-lock-stau.md)). Direkt vor dem
+   Merge lange Transaktionen prüfen:
 
    ```bash
    primary=$(kubectl -n mastodon get cluster mastodon-pg -o jsonpath='{.status.currentPrimary}')
@@ -677,6 +678,30 @@ enthält 732 Einträge, gleich den lokalen Schlüsseln vorher, und
 (`Longuich@meow.social`). Die Tabellen enthalten 125.249 Summaries und 1.554
 Empfehlungen.
 
+**In der Produktion** (25.10.2026, #386, Ceph mit langsamen OSDs):
+
+| | Klon | Produktion | Faktor |
+|---|---|---|---|
+| Pre-Phase gesamt | 283 s | 965 s (07:45:51–08:01:56Z) | 3,4 |
+| davon Neubau `account_summaries` | 274 s | 889 s | 3,2 |
+| Sperre auf den Views | 3,5 s | etwa 31 s | 9 |
+| davon `create_view(:global_follow_recommendations)` | 3,4 s | 30,5 s | 9 |
+| Post-Phase gesamt | 20 s | 132 s (08:03:46–08:05:58Z) | 6,6 |
+| davon `ConvertMaterializedViewsToTables` | 10,6 s | 115,6 s | 11 |
+
+Die Schätzung über die Scheduler-Laufzeit lag für die Neubauten gut, für die
+Schritte mit vielen Joins und Schreibvorgängen (Empfehlungen, Kopie in
+Tabellen) zu niedrig. Für die nächste Messung bei solchen Schritten mit
+Faktor 10 rechnen. Gestaute Abfragen gab es während der 31 s Sperre keine.
+
+Nach dem Upgrade fehlten in der Produktion 104 lokale Accounts gegenüber dem
+Klon. Das kam nicht von den Migrationen, sondern vom `UserCleanupScheduler`,
+der unbestätigte Anmeldungen nach 7 Tagen löscht und im alten Scheduler-Pod
+zwischen Zählung und Rollout lief
+([Learning](../learnings/mastodon-anmeldespam-mailversand.md)). Vorher/Nachher
+deshalb mit der Zahl lokaler Accounts **zum Zeitpunkt der Prüfung**
+vergleichen, nicht mit einer Zählung von früher.
+
 Folgen für den Upgrade-PR:
 
 - `activeDeadlineSeconds` des PreSync-Hooks auf 5400: das Dreifache von 28 min
@@ -705,20 +730,23 @@ Danach den Host löschen.
    `UpdateAccountSummariesToVersion3` wiederholt den teuren Neubau. 5400 s
    reichen für zwei bis drei Versuche, danach bricht der Sync ab und die
    4.6-Pods laufen weiter.
-4. Merge-Fenster wie in Schritt 4 oben, **nicht 06:00–10:00 UTC**, außer der
-   Refresh des Tages ist schon durch: Bis zur PostSync läuft noch der
-   4.6-Refresh der Views. Direkt davor zusätzlich
-   prüfen, ob gerade ein Refresh läuft:
+4. Nur für das Upgrade von 4.6 aus (erledigt): nicht während des täglichen
+   4.6-Refreshs mergen. Der Scheduler-Pod würfelt die Uhrzeit beim Start aus
+   und behält sie; zählte nur eine `done`-Zeile von heute
+   (`kubectl -n mastodon logs deploy/mastodon-sidekiq-scheduler
+   --since-time="$(date -u +%Y-%m-%dT00:00:00Z)" | grep FollowRecommendationsScheduler`).
+   Direkt davor zusätzlich prüfen, ob gerade ein Refresh läuft:
    `select pid, now()-query_start from pg_stat_activity where state = 'active' and query ilike 'refresh materialized%'`.
 5. Danach prüfen:
    - `select relkind from pg_class where relname in ('account_summaries','global_follow_recommendations')`
      liefert zweimal `r`.
    - `select count(*) from keypairs where local_fragment = '#main-key'`
-     entspricht der Zahl `lokale_schluessel` von vorher.
+     entspricht `select count(*) from accounts where domain is null`, beide
+     zum selben Zeitpunkt gezählt. Am 25.10.: 628 und 628.
    - Ein Follow zu und von einer fremden Instanz funktioniert, also auch die
      Signaturen.
    - Am nächsten Tag hat der Scheduler die Folgeempfehlungen wieder gefüllt.
-6. Nach dem Upgrade das Learning
+6. Erledigt am 25.10.2026: Learning
    [mastodon-migration-lock-stau.md](../learnings/mastodon-migration-lock-stau.md)
-   um „ab 4.7 kein `REFRESH MATERIALIZED VIEW` mehr“ ergänzen. Das Sperrfenster
-   06–10 UTC in Schritt 4 kann dann entfallen.
+   um „ab 4.7 kein `REFRESH MATERIALIZED VIEW` mehr“ ergänzt, das Sperrfenster
+   06–10 UTC in Schritt 4 entfernt.
