@@ -137,7 +137,7 @@ spec:
         seccompProfile: { type: RuntimeDefault }
       initContainers:
         - name: export
-          image: keinos/sqlite3:3.53.4 # renovate: image=keinos/sqlite3
+          image: keinos/sqlite3:3.54.1 # renovate: image=keinos/sqlite3
           command: ["/bin/sh", "/migration/export.sh"]
           env:
             - { name: HOME, value: /tmp }

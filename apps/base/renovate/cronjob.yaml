@@ -19,7 +19,7 @@ spec:
           containers:
             - name: renovate
               # renovate: image=renovate/renovate
-              image: renovate/renovate:44.176.3
+              image: renovate/renovate:44.181.1
               args: ["--schedule="] # ignore in-repo schedule when run by cron
               env:
                 - name: RENOVATE_CONFIG_FILE
