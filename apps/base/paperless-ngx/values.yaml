@@ -61,14 +61,25 @@ persistence:
     storageClass: ceph-rbd # CHANGE ME
     accessMode: ReadWriteOnce
     size: 2Gi
+  # PAPERLESS_SCRATCH_DIR (Default /tmp/paperless): Web-Uploads liegen hier, bis
+  # Celery sie konsumiert. Im Container-Overlay gingen sie beim OOM-Kill am
+  # 26.10.2026 mit verloren; ein emptyDir uebersteht Container-Neustarts, nicht
+  # aber einen Pod-Wechsel — Rollouts deshalb nur mit leerer Warteschlange.
+  scratch:
+    enabled: true
+    type: emptyDir
+    mountPath: /tmp/paperless
+    sizeLimit: 10Gi
 resources:
   # Gemessen am 28.07.2026: 574Mi, knapp oberhalb des alten 512Mi-Requests.
-  requests: { cpu: 200m, memory: 640Mi }
+  requests: { cpu: 200m, memory: 1Gi }
   # 1Gi war zu knapp: OOMKilled am 28.07.2026 um 13:35 kurz nach einem Rollout,
   # waehrend der Dauerverbrauch am 29.07. bei nur 529Mi lag. Der Ausschlag kommt
   # also vom Start (Index-/Migrations-Arbeit), nicht vom Normalbetrieb — gleiche
   # Klasse wie mailman-web, siehe apps/base/mailman/workload.yaml.
-  limits: { memory: 1536Mi }
+  # 1536Mi reichte nicht: OOMKilled am 26.10.2026 18:18 waehrend eines Massen-
+  # Uploads (~170 PDFs, OCR mit 4 Seiten parallel); Pod stand davor bei 1,1Gi.
+  limits: { memory: 3Gi }
 # bjw-s common-library: ingress is a named map (main), not a flat block.
 ingress:
   main:
