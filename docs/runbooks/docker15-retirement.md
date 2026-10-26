@@ -1449,9 +1449,11 @@ enden bei 200. 36 Apps gruen, 36 Zertifikate Ready, nginx 7/7 mit **0 Neustarts*
    entfernen — die Hosts wandern zurueck in `jitcloud` bzw. `roundcube-jitmail`.
    **Stand 26.10.2026:** Der Termin wurde verpasst, `stream.horads.de` lief am 24.10. mit
    abgelaufenem Zertifikat. #389 stellt `stream.horads.de` (`horads-tls`) und
-   `mail.steinba.ch` (`roundcube-steinbach-tls`) auf HTTP-01 mit `edit-in-place` um und
-   nimmt den Challenge-Pfad in `clusters/main/appset-apps.yaml` von der Drift-Erkennung
-   aus. Ohne diese Ausnahme spielt selfHeal die atomare `spec.rules`-Liste zurueck.
+   `mail.steinba.ch` (`roundcube-steinbach-tls`) auf HTTP-01 mit `edit-in-place` um
+   (beide ausgestellt am 26.10., gueltig bis 24.01.2027). #390 nimmt den Challenge-Pfad
+   in `clusters/main/appset-apps.yaml` von der Drift-Erkennung aus
+   (Regressionstest `scripts/ci/test-acme-ignore.sh`). Ohne diese Ausnahme spielt
+   selfHeal die atomare `spec.rules`-Liste zurueck.
    `mail.steinba.ch` behaelt einen eigenen Ingress: im Sammelzertifikat von
    `roundcube-jitmail` (DNS-01) wuerde eine scheiternde HTTP-01-Challenge alle Namen
    mitreissen. **Offen:** `jitcloud-preload` (`cloud.steinba.ch`,

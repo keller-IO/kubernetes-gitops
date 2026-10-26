@@ -51,6 +51,7 @@ secrets-check:
 # Check repo safety invariants before CI or PR review.
 guardrails:
     bash scripts/ci/test-check-migration-lock-timeout.sh
+    bash scripts/ci/test-acme-ignore.sh
     ./scripts/ci/guardrails.sh
 
 # Validate Renovate configuration and extract dependencies locally without writes.
