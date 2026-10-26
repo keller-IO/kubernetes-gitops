@@ -71,6 +71,21 @@ spec:
             - ".spec.volumeClaimTemplates[]?.apiVersion"
             - ".spec.volumeClaimTemplates[]?.kind"
             - ".spec.volumeClaimTemplates[]?.status"
+        # HTTP-01 mit acme.cert-manager.io/http01-edit-in-place (goloom, mastodon,
+        # legacy-proxy/horads, roundcube-jitmail-preload): cert-manager haengt fuer
+        # die Dauer der Challenge einen Pfad /.well-known/acme-challenge/<token> an
+        # den Ingress. Ohne Ignore steht die App OutOfSync, selfHeal spielt die
+        # (atomare) rules-Liste aus Git zurueck, und LE bekommt die Anfrage beim
+        # Backend statt beim Solver. Nur genau diese Pfade, sonst bliebe echte
+        # Drift an den Ingress-Regeln unsichtbar.
+        # Bewusst ohne RespectIgnoreDifferences: das gaelte fuer die ganze App-Flotte
+        # und wuerde z. B. die MariaDB-volumeClaimTemplate-Pointer unten beim Sync
+        # still einfrieren. Faellt ein Sync aus anderem Grund in das Challenge-
+        # Fenster (~1 min), entfernt er den Pfad; cert-manager versucht es erneut.
+        - group: networking.k8s.io
+          kind: Ingress
+          jqPathExpressions:
+            - '.spec.rules[]?.http.paths[]? | select((.path // "") | startswith("/.well-known/acme-challenge/"))'
         # Felder, die der mariadb-operator in die CR zurueckschreibt, plus einige
         # reine CRD-Schema-Defaults, die der API-Server setzt.
         #
