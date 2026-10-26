@@ -1447,6 +1447,17 @@ enden bei 200. 36 Apps gruen, 36 Zertifikate Ready, nginx 7/7 mit **0 Neustarts*
 1. **Die vier Namen auf cert-manager umstellen** (mit `edit-in-place`, eigenes Fenster,
    vor dem 24.10.). Danach Preload-Secrets, Generatoren und die beiden Preload-Ingresses
    entfernen — die Hosts wandern zurueck in `jitcloud` bzw. `roundcube-jitmail`.
+   **Stand 26.10.2026:** Der Termin wurde verpasst, `stream.horads.de` lief am 24.10. mit
+   abgelaufenem Zertifikat. #389 stellt `stream.horads.de` (`horads-tls`) und
+   `mail.steinba.ch` (`roundcube-steinbach-tls`) auf HTTP-01 mit `edit-in-place` um
+   (beide ausgestellt am 26.10., gueltig bis 24.01.2027). #390 nimmt den Challenge-Pfad
+   in `clusters/main/appset-apps.yaml` von der Drift-Erkennung aus
+   (Regressionstest `scripts/ci/test-acme-ignore.sh`). Ohne diese Ausnahme spielt
+   selfHeal die atomare `spec.rules`-Liste zurueck.
+   `mail.steinba.ch` behaelt einen eigenen Ingress: im Sammelzertifikat von
+   `roundcube-jitmail` (DNS-01) wuerde eine scheiternde HTTP-01-Challenge alle Namen
+   mitreissen. **Offen:** `jitcloud-preload` (`cloud.steinba.ch`,
+   `cloud.naturkindergarten-moehringen.de`), Ablauf **30.11.2026**.
 2. **steinba.ch-Mailzertifikat** auf den cfgmgmt01-Cron umbauen, `.15`-Cron abschalten.
    Ablauf 04.12.2026, ab jetzt kann `.15` nicht mehr erneuern.
 3. **`.15` beobachten und abschalten** (Phasen 7 und 8).

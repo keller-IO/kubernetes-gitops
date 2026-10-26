@@ -93,9 +93,12 @@ metadata:
     # edit-in-place ist Pflicht, sonst verwirft nginx-inc den Solver-Ingress fuer
     # denselben Host ("All hosts are taken by other resources").
     acme.cert-manager.io/http01-edit-in-place: "true"
-    # ⚠️ "false", bis roundcube-steinbach-tls zum ersten Mal ausgestellt ist
-    # (ohne Secret lehnt nginx-inc den TLS-Handshake ab). Danach "true".
-    nginx.org/ssl-redirect: "false"
+    # roundcube-steinbach-tls steht seit #389, daher "true" (wie roundcube-jitmail):
+    # Erneuerungen gehen trotz Redirect, weil LE ihm auf https folgt und das
+    # Secret dann existiert.
+    # ⚠️ Bei einer Neuausstellung ohne Secret vorher auf "false" stellen — sonst
+    # lehnt nginx-inc den TLS-Handshake ab und die Challenge scheitert dauerhaft.
+    nginx.org/ssl-redirect: "true"
     nginx.org/redirect-to-https: "false"
     nginx.org/client-max-body-size: "25m"
 spec:
