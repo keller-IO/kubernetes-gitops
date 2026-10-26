@@ -175,6 +175,17 @@
       "allowedVersions": "/^0\\.29\\.\\d+$/"
     },
     {
+      "description": "ceph-csi charts stay on 3.17.x: v3.18 images require x86-64-v3, but the node VMs do not expose x86-64-v3 (glibc fatal, pods crash; VM CPU type not yet checked). Widen only after the VM CPU type exposes x86-64-v3 (e.g. host or x86-64-v3) on all nodes.",
+      "matchDatasources": [
+        "helm"
+      ],
+      "matchPackageNames": [
+        "ceph-csi-rbd",
+        "ceph-csi-cephfs"
+      ],
+      "allowedVersions": "/^3\\.17\\.\\d+$/"
+    },
+    {
       "description": "CNPG Postgres 16: patch/build updates only; major upgrades require a migration.",
       "matchPackageNames": [
         "ghcr.io/cloudnative-pg/postgresql"

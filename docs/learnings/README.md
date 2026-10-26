@@ -12,6 +12,9 @@ Format und Kriterien: siehe AGENTS.md → „Operational Learnings".
 - [Alertmanager-Mail durch Rspamd abgewiesen](alertmanager-mail-rspamd-rejection.md) — SMTP-Handshake und gueltige Konfiguration belegen keine Zustellung; langer Standardbetreff und fehlender Klartextteil loesten den Spamfilter aus.
 - [ArgoCD dauerhaft OutOfSync](argocd-dauerhaft-outofsync.md) — nicht Drift, sondern
   vom API-Server/Operator ergaenzte Default-Felder (`volumeMode`, `nodePort`, `caBundle`).
+- [ceph-csi 3.18 crasht auf x86-64-v2-VMs](ceph-csi-x86-64-v3.md) — Images ab v3.18
+  verlangen x86-64-v3, die Node-VMs bieten das nicht; Nodeplugin-Crash blockierte das
+  RBD-Volume, Goloom fiel mit Multi-Attach aus. Charts auf 3.17.x gehalten.
 - [Collabora-HPA skalierte auf 55 Replicas](collabora-hpa-runaway.md) — Chart-Default-HPA
   ignorierte replicaCount und legte am 28.07.2026 ArgoCD, cert-manager und ceph-csi lahm.
 - [Cloud-dev Proxy-Cutover](cloud-dev-proxy-cutover.md) — Single-File-Bind-Mounts

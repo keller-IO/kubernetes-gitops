@@ -8,17 +8,22 @@ namespace: ceph-csi
 # Bewusst getrennt statt client.kubernetes zu erweitern: `ceph auth caps`
 # ERSETZT die Rechte einer Identitaet -- ein Fehler dort haette alle
 # RBD-Volumes getroffen. Getrennt heisst ausserdem: einzeln widerrufbar.
+# Chart bleibt auf 3.17.x: die cephcsi-Images ab v3.18 verlangen x86-64-v3,
+# die virtuelle CPU der Nodes bietet das nicht -> "Fatal glibc error: CPU
+# does not support x86-64-v3", Pods crashen. Erst anheben, wenn die VM-CPU
+# x86-64-v3 (z. B. `host`) bietet; Renovate-Hold in renovate.json mitziehen.
+# Siehe docs/learnings/ceph-csi-x86-64-v3.md.
 helmCharts:
   - name: ceph-csi-rbd
     repo: https://ceph.github.io/csi-charts
-    version: 3.18.1 # renovate: helm
+    version: 3.17.0 # renovate: helm
     releaseName: ceph-csi-rbd
     namespace: ceph-csi
     valuesFile: values-rbd.yaml
     includeCRDs: true
   - name: ceph-csi-cephfs
     repo: https://ceph.github.io/csi-charts
-    version: 3.18.1 # renovate: helm
+    version: 3.17.0 # renovate: helm
     releaseName: ceph-csi-cephfs
     namespace: ceph-csi
     valuesFile: values-cephfs.yaml
