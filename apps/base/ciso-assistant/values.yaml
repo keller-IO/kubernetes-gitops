@@ -63,8 +63,10 @@ backend:
         secretKeyRef: { name: ciso-assistant-s3, key: AWS_SECRET_ACCESS_KEY }
   # Startwerte ohne Messung (neue App); nach der ersten Betriebswoche per
   # `kubectl top` nachziehen. Gunicorn laeuft mit 3 Workern.
+  # 14.10.2026 nachgezogen: Speicher-Maximum 748Mi (14 Tage) passt zu 768Mi.
+  # CPU p95 0m, max 509m — Request 200m -> 50m, Spitzen bursten ohne Limit.
   resources:
-    requests: { cpu: 200m, memory: 768Mi }
+    requests: { cpu: 50m, memory: 768Mi }
     limits: { memory: 1536Mi }
   huey:
     # Huey erzeugt Exporte/Reports und braucht denselben Storage wie das Backend.

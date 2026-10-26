@@ -86,8 +86,13 @@ spec:
             # zuletzt nach 5,3 h Laufzeit. Die Nodes hatten dabei reichlich Luft
             # (wrk1: 32 % Speicher), es war also das cgroup-Limit, nicht der Node.
             # Faustregel hier: Limit ~3x Ruhewert, nicht ~1,5x.
+            # 13.10.2026 10:32 UTC erneut OOMKilled (Exit 137) nach 6 Tagen Laufzeit,
+            # Ruhewert 240-350Mi. Die Spitze liegt zwischen zwei Scrapes und ist in
+            # den Metriken nicht sichtbar; Limit 768Mi -> 1Gi (~4x Ruhewert).
+            # Bis 25.10.2026 drei weitere OOMKills mit 768Mi, auch mit dem
+            # PHP-8.4.27-Rebuild; 14-Tage-Maximum der Metriken nur 396Mi.
             requests: { cpu: 50m, memory: 192Mi }
-            limits: { memory: 768Mi }
+            limits: { memory: 1Gi }
       volumes:
         - name: roundcube-config
           configMap:

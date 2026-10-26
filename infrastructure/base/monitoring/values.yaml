@@ -41,9 +41,11 @@ vmsingle:
     # component on homelab (it runs VMCluster: vmstorage/vminsert/vmselect,
     # not VMSingle) so this is anchored to our own measurement with headroom
     # for growth, not the homelab vmstorage numbers.
+    # 14.10.2026: grown as predicted — 1.1-1.2Gi at rest, 14-day max 1890Mi,
+    # i.e. 92 % of the old 2Gi limit (peaks come from wide range queries).
     resources:
-      requests: { cpu: 100m, memory: 1Gi }
-      limits: { memory: 2Gi }
+      requests: { cpu: 100m, memory: 1536Mi }
+      limits: { memory: 3Gi }
 alertmanager:
   enabled: true
   # Default fullname (releaseName-chartName, since "vm-k8s-stack" doesn't contain
