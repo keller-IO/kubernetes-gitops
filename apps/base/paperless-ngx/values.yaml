@@ -79,6 +79,7 @@ ingress:
       nginx.org/ssl-redirect: "true"
       nginx.org/redirect-to-https: "true"
       nginx.org/client-max-body-size: "100m"
+      nginx.org/websocket-services: paperless-paperless-ngx # Upload-Fortschritt via /ws/status/; MUSS dem Service-Namen entsprechen
     hosts:
       - host: paperless.jit.services # CHANGE ME
         paths:
