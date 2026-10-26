@@ -1,0 +1,48 @@
+# Zertifikat fuer die beiden jitcloud-Aliase aus jitcloud-preload
+# (cloud.steinba.ch, cloud.naturkindergarten-moehringen.de). Ablösung des
+# vorgeladenen Traefik-Zertifikats (preload-jitcloud.sops.yaml, Ablauf 30.11.2026).
+#
+# Zweistufig, damit kein Moment ohne gueltiges Zertifikat entsteht:
+#   1. (dieser Stand) cert-manager stellt in das NEUE Secret jitcloud-extra-tls aus,
+#      der Ingress liefert weiter jitcloud-preload-tls aus.
+#   2. Wenn das Certificate Ready ist: Ingress auf jitcloud-extra-tls umstellen,
+#      Preload-Secret und Generator loeschen.
+#
+# Warum ein eigener Issuer statt letsencrypt-prod:
+# - naturkindergarten-moehringen.de steht im ClusterIssuer im DNS-01-Follow-Solver,
+#   der beim Provider (IONOS) fehlende _acme-challenge-CNAME laesst ihn scheitern.
+#   Entscheidung 12.09.2026: HTTP-01 (docs/runbooks/docker15-retirement.md).
+# - http01.ingress.name traegt den Challenge-Pfad direkt in jitcloud-preload ein
+#   (wie edit-in-place). Ein eigener Solver-Ingress wuerde von nginx-inc als
+#   Host-Duplikat verworfen. Den Pfad nimmt clusters/main/appset-apps.yaml von der
+#   Drift-Erkennung aus (#390).
+# - Ein explizites Certificate statt ingress-shim: nur so kann das Secret
+#   ausgestellt werden, bevor der Ingress darauf zeigt.
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: legacy-proxy-http01
+  namespace: legacy-proxy
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    privateKeySecretRef:
+      name: legacy-proxy-http01-account
+    solvers:
+      - http01:
+          ingress:
+            name: jitcloud-preload
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: jitcloud-extra
+  namespace: legacy-proxy
+spec:
+  secretName: jitcloud-extra-tls
+  dnsNames:
+    - cloud.steinba.ch
+    - cloud.naturkindergarten-moehringen.de
+  issuerRef:
+    name: legacy-proxy-http01
+    kind: Issuer

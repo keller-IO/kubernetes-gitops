@@ -8,6 +8,7 @@ resources:
   - namespace.yaml
   - external-backends.yaml
   - ingress.yaml
+  - jitcloud-extra-certificate.yaml
 
 # Vorgeladenes Zertifikat fuer jitcloud-preload (cloud.steinba.ch,
 # cloud.naturkindergarten-moehringen.de), siehe preload-jitcloud.sops.yaml.
