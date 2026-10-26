@@ -37,7 +37,7 @@ spec:
       # templatePatch selects these sources only for app-goloom.
       sources:
         - repoURL: https://github.com/Goloom-App/goloom
-          targetRevision: v0.3.2
+          targetRevision: v0.3.3
           path: deploy/helm/goloom
           helm:
             releaseName: goloom
