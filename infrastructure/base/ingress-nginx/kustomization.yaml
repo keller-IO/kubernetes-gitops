@@ -5,7 +5,7 @@ namespace: ingress-nginx
 helmCharts:
   - name: nginx-ingress
     repo: https://helm.nginx.com/stable
-    version: 2.6.4 # renovate: helm
+    version: 2.8.0 # renovate: helm
     releaseName: nginx-ingress
     namespace: ingress-nginx
     valuesFile: values.yaml
