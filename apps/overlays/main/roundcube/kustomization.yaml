@@ -5,6 +5,3 @@ resources:
   - ../../../base/roundcube
   - jitmail-ingress.yaml
 
-# ⚠️ TEMPORAER bis nach dem docker15-Cutover, siehe preload-cert.sops.yaml.
-generators:
-  - ./secret-generator.yaml
