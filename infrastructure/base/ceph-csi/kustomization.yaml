@@ -11,14 +11,14 @@ namespace: ceph-csi
 helmCharts:
   - name: ceph-csi-rbd
     repo: https://ceph.github.io/csi-charts
-    version: 3.17.0 # renovate: helm
+    version: 3.18.1 # renovate: helm
     releaseName: ceph-csi-rbd
     namespace: ceph-csi
     valuesFile: values-rbd.yaml
     includeCRDs: true
   - name: ceph-csi-cephfs
     repo: https://ceph.github.io/csi-charts
-    version: 3.17.0 # renovate: helm
+    version: 3.18.1 # renovate: helm
     releaseName: ceph-csi-cephfs
     namespace: ceph-csi
     valuesFile: values-cephfs.yaml
