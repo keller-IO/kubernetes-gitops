@@ -1,11 +1,10 @@
 # Reverse-Proxy-Routen nach dem docker15-Cutover. Seit dem 13.09.2026 gehen die
 # WAN-Ports 80/443 direkt auf den Cluster-LB; TLS terminiert im Cluster.
 #
-# Bewusst noch OHNE Issuer: stream.horads.de verwendet bis zur separaten
-# HTTP-01-Migration das vorgeladene Zertifikat. Ebenso fehlt
-# cloud.naturkindergarten-moehringen.de im jitcloud-Zertifikat, solange der
+# cloud.naturkindergarten-moehringen.de fehlt im jitcloud-Zertifikat, solange der
 # _acme-challenge-CNAME beim Provider fehlt — ein scheiternder Name reisst sonst
-# die gesamte Anforderung mit.
+# die gesamte Anforderung mit. Bis dahin traegt jitcloud-preload das vorgeladene
+# Zertifikat (gueltig bis 30.11.2026).
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -77,10 +76,15 @@ metadata:
   name: horads
   namespace: legacy-proxy
   annotations:
-    # ⚠️ ssl-redirect bleibt "false", bis die HTTP-01-Zertifikate dieses Ingress
-    # stehen. Mit "true" beantwortet nginx die ACME-Challenge auf
-    # /.well-known/acme-challenge/ mit einem 301 auf https — die Ausstellung
-    # scheitert dann dauerhaft. Siehe Runbook, "Cutover-Reihenfolge und Rollback".
+    # horads.de liegt im http01-Solver des ClusterIssuers (DNS bei BelWue/HdM).
+    # edit-in-place ist Pflicht: ohne legt cert-manager einen zweiten Ingress fuer
+    # denselben Host an, nginx-inc verwirft ihn ("All hosts are taken by other
+    # resources") und die Challenge landet als 404 beim Icecast.
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    acme.cert-manager.io/http01-edit-in-place: "true"
+    # ⚠️ ssl-redirect bleibt "false", bis horads-tls zum ersten Mal ausgestellt
+    # ist. Ohne Secret lehnt nginx-inc den TLS-Handshake ab, und ein 301 auf https
+    # liesse die Erstausstellung dauerhaft scheitern. Danach auf "true" wie goloom.
     nginx.org/ssl-redirect: "false"
     nginx.org/redirect-to-https: "false"
     # Icecast-Stream: Buffering aus + lange Timeouts (Dauer-Verbindung). Als
@@ -91,14 +95,12 @@ metadata:
     nginx.org/proxy-send-timeout: "3600s"
 spec:
   ingressClassName: nginx
-  # ⚠️ TEMPORAER: vorgeladenes Zertifikat aus dem frueheren Traefik-ACME-Store.
-  # Fuer die ausstehende Migration zunaechst die cert-manager-Annotation mit
-  # deaktiviertem Redirect ergaenzen; nach erfolgreicher Ausstellung das
-  # Preload-Secret entfernen und den Redirect aktivieren.
+  # Neuer Secret-Name statt horads-preload-tls: in das ksops-Secret aus Git
+  # wuerde cert-manager schreiben und selfHeal es wieder zuruecksetzen.
   tls:
     - hosts:
         - stream.horads.de
-      secretName: horads-preload-tls
+      secretName: horads-tls
   rules:
     - host: stream.horads.de
       http:
