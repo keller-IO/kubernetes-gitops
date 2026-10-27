@@ -15,5 +15,10 @@ resources:
   - watchdog.yaml
   - offsite-backup.yaml
 
+configMapGenerator:
+  - name: paperless-offsite-backup-code
+    files:
+      - check_export.py
+
 generators:
   - ./secret-generator.yaml

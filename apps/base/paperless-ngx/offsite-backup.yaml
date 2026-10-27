@@ -78,8 +78,11 @@ spec:
                 - |
                   set -eu
                   mkdir -p /usr/src/paperless/export/nightly
-                  exec python3 manage.py document_exporter /usr/src/paperless/export/nightly \
+                  python3 manage.py document_exporter /usr/src/paperless/export/nightly \
                     --compare-checksums --delete --no-progress-bar
+                  # Kein Dokument oder fehlende Originale: Init-Container scheitert,
+                  # rclone startet nicht, export/current bleibt unveraendert.
+                  python3 /scripts/check_export.py /usr/src/paperless/export/nightly
               env:
                 - { name: HOME, value: /tmp }
                 - { name: PAPERLESS_DBENGINE, value: postgresql }
@@ -110,6 +113,7 @@ spec:
                 - { name: scratch, mountPath: /usr/src/paperless/data, subPath: data }
                 - { name: scratch, mountPath: /usr/src/paperless/consume, subPath: consume }
                 - { name: scratch, mountPath: /tmp, subPath: tmp }
+                - { name: code, mountPath: /scripts, readOnly: true }
           containers:
             - name: rclone
               image: rclone/rclone:1.75.2 # renovate: image=rclone/rclone
@@ -125,7 +129,8 @@ spec:
                   }
                   trap 'rc=$?; [ "$rc" -eq 0 ] && push true || push false' EXIT
                   # Ein leerer oder abgebrochener Export darf das Offsite-Abbild
-                  # nicht leeren.
+                  # nicht leeren; die Dokumentpruefung macht check_export.py im
+                  # Init-Container.
                   test -s /export/nightly/manifest.json
                   STAMP=$(date -u +%Y-%m-%dT%H%M%SZ)
                   # --max-delete: geloeschte Dokumente sind selten; ein Massen-
@@ -176,3 +181,6 @@ spec:
                 claimName: paperless-paperless-ngx-export
             - name: scratch
               emptyDir: { sizeLimit: 1Gi }
+            - name: code
+              configMap:
+                name: paperless-offsite-backup-code

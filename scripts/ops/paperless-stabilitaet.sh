@@ -8,7 +8,8 @@
 # Cgroup-Werte (memory.peak, memory.events) gelten nur seit dem letzten
 # Container-Start.
 #
-# Gate bestanden, wenn innerhalb von TAGE Tagen
+# Gate bestanden, wenn kube-state-metrics mindestens 99 % der TAGE Tage
+# abdeckt, celery.log* bis zum Beginn zurueckreicht und innerhalb von TAGE Tagen
 #   - kein "Timed out waiting for UP message" in celery.log*,
 #   - kein OOMKill und kein Container-Restart des laufenden Pods,
 #   - kein oom_kill in memory.events.
@@ -49,6 +50,15 @@ else:
     sys.exit("VictoriaMetrics: leeres Ergebnis, keine Messdaten")' ${2+"$2"}
 }
 sel='namespace="paperless-ngx",container="paperless-paperless-ngx"'
+# Ohne lueckenlose kube-state-metrics-Daten belegen 0 Restarts nichts: Anteil
+# erfolgreicher Scrapes am Pruefzeitraum (verkuerzte Historie oder Luecken).
+ksm='up{job="kube-state-metrics"}'
+abdeckung=$(vm "sum(sum_over_time(${ksm}[${tage}d]) * scrape_interval(${ksm}[${tage}d])) / (${tage} * 86400) * 100") || exit 2
+echo "  kube-state-metrics-Abdeckung ${tage} Tage: ${abdeckung} %"
+if [ "$abdeckung" -lt 99 ]; then
+  echo "kube-state-metrics deckt nur ${abdeckung} % des Pruefzeitraums ab (< 99 %)" >&2
+  exit 2
+fi
 restarts=$(vm "sum(increase(kube_pod_container_status_restarts_total{${sel}}[${tage}d]))") || exit 2
 # last_terminated_reason bleibt gesetzt, solange der Pod lebt; zaehlen nur
 # Abbrueche, deren Zeitpunkt im Pruefzeitraum liegt.
