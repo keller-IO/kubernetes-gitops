@@ -66,4 +66,13 @@ expect 2 "keine Celery-Logs" FAKE_AELTESTE=
 expect 2 "Restart-Abfrage ohne Messdaten" FAKE_RESTARTS=
 expect 2 "kube-state-metrics-Abdeckung 98 %" FAKE_COVERAGE=98
 
+# Die PromQL-Semantik prueft der Fake nicht; gegen VM verifiziert (Luecke
+# 07.10.2026 14:45-15:30 UTC: 278/288 Buckets). Hier nur gegen Rueckfall auf
+# das selbstausgleichende scrape_interval().
+if grep -v '^[[:space:]]*#' "$script" | grep -q 'scrape_interval('; then
+  echo "FAIL Abdeckung nutzt scrape_interval() statt fester Buckets"; fails=$((fails + 1))
+else
+  echo "ok   Abdeckung ueber feste 5-Minuten-Buckets"
+fi
+
 [ "$fails" -eq 0 ] || { echo "$fails Fall/Faelle fehlgeschlagen"; exit 1; }

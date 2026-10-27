@@ -59,9 +59,11 @@ else:
 }
 sel='namespace="paperless-ngx",container="paperless-paperless-ngx"'
 # Ohne lueckenlose kube-state-metrics-Daten belegen 0 Restarts nichts: Anteil
-# erfolgreicher Scrapes am Pruefzeitraum (verkuerzte Historie oder Luecken).
+# der 5-Minuten-Buckets im Pruefzeitraum mit mindestens einem erfolgreichen
+# Scrape. Feste Buckets statt scrape_interval(): Das gemessene Intervall waechst
+# mit fehlenden Samples und wuerde Luecken ausgleichen.
 ksm='up{job="kube-state-metrics"}'
-abdeckung=$(vm "floor(sum(sum_over_time(${ksm}[${tage}d]) * scrape_interval(${ksm}[${tage}d])) / (${tage} * 86400) * 100)") || exit 2
+abdeckung=$(vm "floor(count_over_time((max(max_over_time(${ksm}[5m])) == 1)[${tage}d:5m]) / (${tage} * 86400 / 300) * 100)") || exit 2
 echo "  kube-state-metrics-Abdeckung ${tage} Tage: ${abdeckung} %"
 if [ "$abdeckung" -lt 99 ]; then
   echo "kube-state-metrics deckt nur ${abdeckung} % des Pruefzeitraums ab (< 99 %)" >&2
