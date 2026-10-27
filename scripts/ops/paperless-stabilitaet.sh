@@ -21,8 +21,11 @@ set -euo pipefail
 tage="${1:-7}"
 ns=paperless-ngx
 logdir=/usr/src/paperless/data/log
-seit=$(date -u -d "-${tage} days" +%Y-%m-%d)
-seit_ts=$(date -u -d "-${tage} days" +%Y-%m-%dT%H:%M:%SZ)
+# Fensterbeginn einmal berechnen, damit Log- und Zeitstempelpruefung auch ueber
+# UTC-Mitternacht denselben Zeitraum nutzen.
+beginn=$(( $(date -u +%s) - tage * 86400 ))
+seit=$(date -u -d "@${beginn}" +%Y-%m-%d)
+seit_ts=$(date -u -d "@${beginn}" +%Y-%m-%dT%H:%M:%SZ)
 fehler=0
 
 pod=$(kubectl -n "$ns" get pod -l app.kubernetes.io/name=paperless-ngx,app.kubernetes.io/instance=paperless \
