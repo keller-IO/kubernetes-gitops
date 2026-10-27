@@ -133,7 +133,9 @@ spec:
                   rclone sync /export/nightly garage:backup-paperless/export/current \
                     --backup-dir "garage:backup-paperless/export/archive/${STAMP}" \
                     --max-delete 150 --checksum --stats-one-line --stats 0 -v
-                  rclone delete garage:backup-paperless/export/archive --min-age 30d --rmdirs -v
+                  # --use-server-modtime: Archivkopien tragen die mtime des Originals;
+                  # das Alter zaehlt ab dem Verschieben ins Archiv (LastModified).
+                  rclone delete garage:backup-paperless/export/archive --min-age 30d --use-server-modtime --rmdirs -v
                   rclone size garage:backup-paperless
               env:
                 - { name: HOME, value: /tmp }

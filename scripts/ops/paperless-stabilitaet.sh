@@ -32,15 +32,29 @@ kubectl -n "$ns" get pod "$pod" -o jsonpath='{range .status.containerStatuses[*]
 
 # Restarts und OOMKills auch ersetzter Pods: aus VictoriaMetrics (kube-state-
 # metrics), per GET ueber den API-Server-Proxy.
+# vm QUERY [LEER]: LEER ist der Wert bei leerem Ergebnis. Ohne LEER ist ein
+# leeres Ergebnis eine Messluecke und die Abfrage scheitert.
 vm() {
   local q
   q=$(python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1]))' "$1")
   kubectl get --raw "/api/v1/namespaces/monitoring/services/vmsingle-vm-k8s-stack-victoria-metrics-k8s-stack:8428/proxy/api/v1/query?query=${q}" \
-    | python3 -c 'import json, sys; r = json.load(sys.stdin)["data"]["result"]; print(round(float(r[0]["value"][1])) if r else 0)'
+    | python3 -c '
+import json, sys
+r = json.load(sys.stdin)["data"]["result"]
+if r:
+    print(round(float(r[0]["value"][1])))
+elif len(sys.argv) > 1:
+    print(sys.argv[1])
+else:
+    sys.exit("VictoriaMetrics: leeres Ergebnis, keine Messdaten")' ${2+"$2"}
 }
 sel='namespace="paperless-ngx",container="paperless-paperless-ngx"'
 restarts=$(vm "sum(increase(kube_pod_container_status_restarts_total{${sel}}[${tage}d]))") || exit 2
-ooms=$(vm "count(max_over_time(kube_pod_container_status_last_terminated_reason{${sel},reason=\"OOMKilled\"}[${tage}d]) > 0)") || exit 2
+# last_terminated_reason bleibt gesetzt, solange der Pod lebt; zaehlen nur
+# Abbrueche, deren Zeitpunkt im Pruefzeitraum liegt.
+ooms=$(vm "count(max_over_time(kube_pod_container_status_last_terminated_reason{${sel},reason=\"OOMKilled\"}[${tage}d]) > 0
+  and on(namespace, pod, container)
+  max_over_time(kube_pod_container_status_last_terminated_timestamp{${sel}}[${tage}d]) > (time() - ${tage} * 86400))" 0) || exit 2
 peak=$(vm "max(max_over_time(container_memory_working_set_bytes{${sel}}[${tage}d])) / 1048576") || exit 2
 echo "  VictoriaMetrics ${tage} Tage: Restarts ${restarts}, Pods mit OOMKill ${ooms}, Working-Set-Spitze ${peak} MiB"
 if [ "$restarts" -gt 0 ] || [ "$ooms" -gt 0 ]; then
@@ -51,7 +65,7 @@ fi
 # Timeouts je Tag; nur Tage ab $seit zaehlen fuer das Gate.
 echo "Celery 'Timed out waiting for UP message' je Tag (gesamte Log-Historie):"
 timeouts=$(kubectl -n "$ns" exec "$pod" -c paperless-paperless-ngx -- \
-  sh -c "cd $logdir && grep -ah 'Timed out waiting for UP message' celery.log* || true" \
+  sh -c "cd $logdir && { grep -ah 'Timed out waiting for UP message' celery.log*; [ \$? -le 1 ]; }" \
   | cut -c2-11 | sort | uniq -c) || exit 2
 if [ -n "$timeouts" ]; then
   printf '%s\n' "$timeouts" | sed 's/^/  /'
@@ -66,6 +80,8 @@ fi
 aelteste=$(kubectl -n "$ns" exec "$pod" -c paperless-paperless-ngx -- \
   sh -c "ls -tr $logdir/celery.log* | head -1 | xargs head -c 30" | cut -c2-11) || exit 2
 echo "  aelteste Log-Zeile: $aelteste"
+# Fehlende oder unlesbare Logs ergeben kein Datum: kein Nachweis.
+[[ "$aelteste" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || { echo "kein Datum in $logdir/celery.log*" >&2; exit 2; }
 if [[ "$aelteste" > "$seit" ]]; then
   echo "NICHT OK: Log-Historie reicht nicht bis $seit zurueck"
   fehler=1
