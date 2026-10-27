@@ -3,3 +3,11 @@ kind: Kustomization
 namespace: mastodon
 resources:
   - ../../../base/mastodon
+patches:
+  - target:
+      kind: Deployment
+      name: mastodon-web
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/readinessProbe/timeoutSeconds
+        value: 5
