@@ -64,7 +64,8 @@ persistence:
   # PAPERLESS_SCRATCH_DIR (Default /tmp/paperless): Web-Uploads liegen hier, bis
   # Celery sie konsumiert. Im Container-Overlay gingen sie beim OOM-Kill am
   # 26.10.2026 mit verloren; ein emptyDir uebersteht Container-Neustarts, nicht
-  # aber einen Pod-Wechsel — Rollouts deshalb nur mit leerer Warteschlange.
+  # aber einen Pod-Wechsel — Rollouts deshalb nur ohne laufende Consume-Tasks
+  # und mit leerer Warteschlange.
   scratch:
     enabled: true
     type: emptyDir
