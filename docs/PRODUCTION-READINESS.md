@@ -425,8 +425,19 @@ spec: { schedule: "0 0 2 * * *", cluster: { name: forgejo-pg } }
 - [ ] GitHub-Token in `apps/base/renovate/secret.sops.yaml` setzen.
 - [ ] `gitAuthor` in `apps/base/renovate/config.js` anpassen.
 - [x] Renovate-Image in `apps/base/renovate/cronjob.yaml` auf
-      `renovate/renovate:44.176.3` aktualisiert. Der CronJob bleibt wegen des
+      `renovate/renovate:44.181.5` aktualisiert. Der CronJob bleibt wegen des
       abgelaufenen GitHub-Tokens suspendiert (`suspend: true`).
+- [ ] Bump auf `44.181.5` abschließend prüfen (Stand 27.10.2026):
+      `renovate-bump` gelesen und Quelländerung geprüft; Workflow noch nicht
+      abgeschlossen. Repository-Setup (`nix develop --command just agents-setup`)
+      und Validierung (`nix develop --command just validate`) sind lokal durch
+      fehlendes `nix` blockiert; kein erfolgreicher Prüflauf belegt.
+      Auch das Rendern des Overlays `apps/overlays/main/renovate` über
+      `nix develop --command bash scripts/render.sh apps/overlays/main/renovate`
+      ist dadurch blockiert; gerenderte Manifeste wurden nicht geprüft.
+      CI-Ergebnisse für diesen Bump sowie Install-/Upgrade-Integration sind hier
+      nicht verifiziert. Vor Freigabe erfolgreiche Validierung und Prüfung der
+      gerenderten Manifeste nachweisen.
 - [x] Renovate läuft gegen GitHub (`keller-IO/kubernetes-gitops`) und ignoriert
       `.forgejo/**`.
 - [x] `# renovate:`-Kommentare an Helm-, Docker- und Workflow-Versionen werden
