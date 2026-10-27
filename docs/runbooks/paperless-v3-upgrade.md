@@ -353,8 +353,12 @@ Nach dem ersten 3.x-Start nicht nur den Image-Tag zuruecksetzen. Stattdessen:
    Konsistenzpruefung den Dienst wieder freigeben und danach gesicherte,
    unvollstaendig konsumierte Scanner-Dateien kontrolliert in die SMB-Inbox
    zuruecklegen.
-7. Das Exporter-Image in `offsite-backup.yaml` auf 2.20.15 zuruecksetzen und
-   den CronJob `paperless-offsite-backup` per GitOps wieder aktivieren
+7. `offsite-backup.yaml` auf die restaurierte Instanz umstellen, im selben
+   GitOps-Change wie die App: Exporter-Image auf 2.20.15, `PAPERLESS_DBHOST`
+   auf den neuen `-rw`-Service aus Schritt 2 und den `media`-Claim auf den
+   Restore-Claim aus Schritt 3. Sonst exportiert der Job den verlassenen
+   3.x-Stand. Erst danach den CronJob `paperless-offsite-backup` per GitOps
+   wieder aktivieren
    (`spec.suspend` entfernen). Einen Job aus dem CronJob starten (Phase 0,
    Schritt 3), auf Erfolg pruefen und den gruenen Gatus-Heartbeat
    `paperless/offsite-backup` abwarten. Ohne diesen Schritt bleibt das
@@ -369,11 +373,13 @@ logische Rekonstruktion nicht als Restore des damaligen Gesamtstands behandeln.
 ## Quellen
 
 - [Paperless-ngx 2.20.15](https://github.com/paperless-ngx/paperless-ngx/releases/tag/v2.20.15)
-- [Offizieller v3-Migrationsleitfaden](https://github.com/paperless-ngx/paperless-ngx/blob/v3.2.1/docs/migration-v3.md)
+- [Offizieller v3-Migrationsleitfaden (3.3.4)](https://github.com/paperless-ngx/paperless-ngx/blob/v3.3.4/docs/migration-v3.md)
+- [Paperless-ngx 3.3.4](https://github.com/paperless-ngx/paperless-ngx/releases/tag/v3.3.4)
 - [Paperless-ngx 3.2.1](https://github.com/paperless-ngx/paperless-ngx/releases/tag/v3.2.1)
+- [Security Advisory GHSA-c8f3-pqr2-rr24 (behoben in 3.3.2)](https://github.com/paperless-ngx/paperless-ngx/security/advisories/GHSA-c8f3-pqr2-rr24)
 - [Warnung zu 3.0.1](https://github.com/paperless-ngx/paperless-ngx/releases/tag/v3.0.1)
 - [Security Advisory GHSA-2jhj-xqrq-rmrq](https://github.com/paperless-ngx/paperless-ngx/security/advisories/GHSA-2jhj-xqrq-rmrq)
-- [Paperless Backup und Export](https://github.com/paperless-ngx/paperless-ngx/blob/v3.2.1/docs/administration.md#backup)
+- [Paperless Backup und Export (3.3.4)](https://github.com/paperless-ngx/paperless-ngx/blob/v3.3.4/docs/administration.md#backup)
 - [Celery 5.5: `worker_proc_alive_timeout`](https://docs.celeryq.dev/en/v5.5.3/userguide/configuration.html#worker-proc-alive-timeout)
 - [Helm-Chart 0.24.1](https://github.com/gabe565/charts/blob/main/charts/paperless-ngx/Chart.yaml)
 - [CNPG 1.25: Recovery Targets](https://cloudnative-pg.io/docs/1.25/recovery#recovery-targets)
