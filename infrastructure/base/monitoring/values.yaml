@@ -57,7 +57,7 @@ alertmanager:
   name: vm-k8s-stack-alertmanager
   config:
     global:
-      smtp_smarthost: "192.168.2.209:25"
+      smtp_smarthost: "192.168.23.14:25"
       smtp_from: postmaster@lists.jitmail.de
       smtp_require_tls: true
     route:
@@ -86,7 +86,7 @@ alertmanager:
               {{ with .Annotations.description }}Details: {{ . }}{{ end }}
               {{ end }}
             tls_config:
-              server_name: mx02.jitcreatives.de
+              server_name: mx03.jitcreatives.de
       - name: "null"
   # Homelab's vmalertmanager-vm-am-0 runs cpu:10m/mem:32Mi request, mem:128Mi
   # limit; our own measured usage is lower still (~17Mi RSS) but reused the

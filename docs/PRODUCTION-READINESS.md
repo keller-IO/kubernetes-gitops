@@ -310,13 +310,15 @@ https://auth.savar.de/realms/bgt
 
 **Offen:**
 - [ ] Grafana-Admin-Passwort aus SOPS-Secret statt Klartext (`adminPassword`).
-- [x] **Alertmanager-Receiver konfiguriert:** Email an `jit-list@jitmail.de` über `192.168.2.209:25`
-      (`require_tls: true`, TLS-Servername
-      `mx02.jitcreatives.de`); Watchdog und InfoInhibitor bleiben absichtlich
-      auf `null`. Gerenderte Config-Prüfung mit `amtool` und SMTP-Banner/EHLO-
-      Probe aus dem Alertmanager-Pod waren erfolgreich; STARTTLS und das
-      TLS-1.3-Zertifikat wurden vom Host geprüft. Die Live-Abnahme nach Merge
-      wird im zugehörigen PR festgehalten; siehe [Inspektion](runbooks/cluster-inspection-2026-10-20.md).
+- [x] **Alertmanager-Receiver konfiguriert:** Email an `jit-list@jitmail.de` über `192.168.23.14:25`
+      (`require_tls: true`, TLS-Servername `mx03.jitcreatives.de`); Watchdog
+      und InfoInhibitor bleiben absichtlich auf `null`. Am 27.10.2026 war der
+      bisherige Relay `mx02` (`192.168.2.209:25`) wegen des Ausfalls von
+      `pve-media` nicht erreichbar; `mx03` ist der verifizierte Fallback und
+      erlaubt SMTP-Relay von den Cluster-IPs `.81`–`.88`. TCP/25 und das
+      TLS-Zertifikat für `mx03.jitcreatives.de` wurden geprüft. Nach dem
+      ArgoCD-Rollout bleibt die tatsächliche Annahme nach SMTP `DATA` zu
+      bestätigen; siehe [Inspektion](runbooks/cluster-inspection-2026-10-20.md).
 - [ ] **Mailzustellung für unterschiedliche Alerts abnehmen.** Der Relay wies
       am 21.10. die erste Nachricht mit dem langen Standardbetreff nach `DATA`
       als Spam ab; eine spätere Nachricht erreichte die JIT-Liste. Ein kurzer
