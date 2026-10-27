@@ -23,7 +23,9 @@
 # schon der Exporter, laeuft rclone nicht und der Heartbeat schlaegt an.
 #
 # Zugang: paperless-offsite-s3 (Garage-Key backup-paperless, RW nur auf den
-# eigenen Bucket). Restore: docs/runbooks/backup-restore.md, Abschnitt Paperless.
+# eigenen Bucket). --passphrase aus paperless-offsite-export verschluesselt die
+# Geheimfelder in manifest.json (Mail-Passwoerter, OAuth-Tokens); der Restore
+# braucht dieselbe Passphrase. Restore: docs/runbooks/backup-restore.md, Abschnitt Paperless.
 apiVersion: batch/v1
 kind: CronJob
 metadata:
@@ -85,7 +87,8 @@ spec:
                   set -eu
                   mkdir -p /usr/src/paperless/export/nightly
                   python3 manage.py document_exporter /usr/src/paperless/export/nightly \
-                    --compare-checksums --delete --no-progress-bar
+                    --compare-checksums --delete --no-progress-bar \
+                    --passphrase "$EXPORT_PASSPHRASE"
                   # Kein Dokument oder fehlende Originale: Init-Container scheitert,
                   # rclone startet nicht, export/current bleibt unveraendert.
                   python3 /scripts/check_export.py /usr/src/paperless/export/nightly
@@ -101,6 +104,8 @@ spec:
                   valueFrom: { secretKeyRef: { name: paperless-secret, key: PAPERLESS_DBPASS } }
                 - name: PAPERLESS_SECRET_KEY
                   valueFrom: { secretKeyRef: { name: paperless-secret, key: PAPERLESS_SECRET_KEY } }
+                - name: EXPORT_PASSPHRASE
+                  valueFrom: { secretKeyRef: { name: paperless-offsite-export, key: EXPORT_PASSPHRASE } }
               # Erster Lauf ohne Messwert: wie der Export-Job vom 02.08.2026, nach
               # den ersten Laeufen anhand von memory.peak nachziehen.
               resources:

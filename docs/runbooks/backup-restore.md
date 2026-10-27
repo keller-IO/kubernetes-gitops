@@ -393,6 +393,10 @@ Migration SQLite -> Postgres: `docs/learnings/goloom-sqlite-nach-postgres.md`.
 | Dokumente + Metadaten | CronJob `paperless-offsite-backup` 03:15: `document_exporter` nach `export/nightly` auf der Export-PVC, dann `rclone sync` | `s3://backup-paperless/export/current/`, Archiv `export/archive/<Zeit>/` | Archiv 30 Tage |
 
 Key `backup-paperless` (RW nur auf diesen Bucket), Secret `paperless-offsite-s3`.
+Geheimfelder in `manifest.json` (Mail-Passwoerter, OAuth-Tokens) verschluesselt
+der Exporter mit der Passphrase aus `paperless-offsite-export`
+(`apps/base/paperless-ngx/offsite-export-passphrase.sops.yaml`, Schluessel
+`EXPORT_PASSPHRASE`). Ohne sie bricht `document_importer` ab.
 Der Export ist selbsttragend: Originale, Archiv-PDFs, Thumbnails und
 `manifest.json` mit allen Metadaten. Er braucht fuer den Restore keine CNPG-
 Sicherung, nur eine Paperless-Instanz **derselben Version** wie beim Export.
@@ -403,7 +407,8 @@ und das Log des letzten Jobs (`rclone size` am Ende).
 **Restore Dokumente (Totalverlust):** leere Paperless-Instanz in der Version des
 Exports mit leerer Datenbank starten (Migrationen laufen beim Start),
 `export/current/` herunterladen und
-`manage.py document_importer <verzeichnis>` ausfuehren. Benutzer, Tags,
+`manage.py document_importer <verzeichnis> --passphrase <EXPORT_PASSPHRASE>`
+ausfuehren (Passphrase per `sops -d` aus dem Repo, nicht in die Shell-History). Benutzer, Tags,
 Korrespondenten, Notizen und Custom Fields kommen aus `manifest.json`. Den
 bisherigen `PAPERLESS_SECRET_KEY` behalten. Testweise nur auf einem Wegwerf-LXC
 auf u22, nicht im Cluster (`docs/learnings/restore-klon-ueber-vpn.md`).

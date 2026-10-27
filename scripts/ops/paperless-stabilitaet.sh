@@ -22,6 +22,7 @@ tage="${1:-7}"
 ns=paperless-ngx
 logdir=/usr/src/paperless/data/log
 seit=$(date -u -d "-${tage} days" +%Y-%m-%d)
+seit_ts=$(date -u -d "-${tage} days" +%Y-%m-%dT%H:%M:%SZ)
 fehler=0
 
 pod=$(kubectl -n "$ns" get pod -l app.kubernetes.io/name=paperless-ngx,app.kubernetes.io/instance=paperless \
@@ -34,7 +35,7 @@ kubectl -n "$ns" get pod "$pod" -o jsonpath='{range .status.containerStatuses[*]
 # Laufender Pod direkt aus dem Pod-Status: letzter Abbruch im Pruefzeitraum.
 ende=$(kubectl -n "$ns" get pod "$pod" \
   -o jsonpath='{.status.containerStatuses[?(@.name=="paperless-paperless-ngx")].lastState.terminated.finishedAt}') || exit 2
-if [ -n "$ende" ] && [[ ! "${ende:0:10}" < "$seit" ]]; then
+if [ -n "$ende" ] && [[ ! "$ende" < "$seit_ts" ]]; then
   echo "NICHT OK: laufender Container zuletzt abgebrochen am $ende"
   fehler=1
 fi

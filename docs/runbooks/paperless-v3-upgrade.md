@@ -178,8 +178,9 @@ Inbetriebnahme:
 4. **Restore-Test** auf einem Wegwerf-LXC auf u22, nicht im Cluster
    (`docs/learnings/restore-klon-ueber-vpn.md`): `export/current/` mit einem
    Key mit Leserecht holen, in eine leere Paperless-2.20.15-Instanz mit eigenem
-   Postgres per `document_importer` einspielen. Dokumentzahl gegen die
-   Produktion pruefen, einige Originale per SHA-256 gegen `media/documents/originals`
+   Postgres per `document_importer --passphrase` einspielen (Passphrase aus
+   `offsite-export-passphrase.sops.yaml`). Dokumentzahl gegen die Produktion
+   pruefen, einige Originale per SHA-256 gegen `media/documents/originals`
    vergleichen, Login und Dokumentanzeige testen. Danach LXC loeschen.
 5. Erst nach bestandenem Restore-Test gilt Phase 0 als abgeschlossen.
 

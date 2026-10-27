@@ -78,6 +78,13 @@ class CronJobWiringTests(unittest.TestCase):
         self.assertLess(script.index("document_exporter"), script.index("check_export.py"))
         self.assertNotIn("exec ", script)
 
+    def test_export_encrypts_secret_fields(self):
+        (exporter,) = self.pod["initContainers"]
+        self.assertIn('--passphrase "$EXPORT_PASSPHRASE"', exporter["args"][0])
+        env = {e["name"]: e for e in exporter["env"]}
+        ref = env["EXPORT_PASSPHRASE"]["valueFrom"]["secretKeyRef"]
+        self.assertEqual((ref["name"], ref["key"]), ("paperless-offsite-export", "EXPORT_PASSPHRASE"))
+
     def test_sync_only_in_regular_container(self):
         for container in self.pod["initContainers"]:
             self.assertNotIn("rclone sync", " ".join(container.get("command", []) + container.get("args", [])))
