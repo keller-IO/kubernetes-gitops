@@ -31,6 +31,14 @@ pod=$(kubectl -n "$ns" get pod -l app.kubernetes.io/name=paperless-ngx,app.kuber
 echo "Pod $pod, Pruefzeitraum ab $seit (${tage} Tage)"
 kubectl -n "$ns" get pod "$pod" -o jsonpath='{range .status.containerStatuses[*]}{"  Start "}{.state.running.startedAt}{", Restarts "}{.restartCount}{", letzter Abbruch "}{.lastState.terminated.reason}{" "}{.lastState.terminated.finishedAt}{"\n"}{end}'
 
+# Laufender Pod direkt aus dem Pod-Status: letzter Abbruch im Pruefzeitraum.
+ende=$(kubectl -n "$ns" get pod "$pod" \
+  -o jsonpath='{.status.containerStatuses[?(@.name=="paperless-paperless-ngx")].lastState.terminated.finishedAt}') || exit 2
+if [ -n "$ende" ] && [[ ! "${ende:0:10}" < "$seit" ]]; then
+  echo "NICHT OK: laufender Container zuletzt abgebrochen am $ende"
+  fehler=1
+fi
+
 # Restarts und OOMKills auch ersetzter Pods: aus VictoriaMetrics (kube-state-
 # metrics), per GET ueber den API-Server-Proxy.
 # vm QUERY [LEER]: LEER ist der Wert bei leerem Ergebnis. Ohne LEER ist ein
@@ -53,21 +61,26 @@ sel='namespace="paperless-ngx",container="paperless-paperless-ngx"'
 # Ohne lueckenlose kube-state-metrics-Daten belegen 0 Restarts nichts: Anteil
 # erfolgreicher Scrapes am Pruefzeitraum (verkuerzte Historie oder Luecken).
 ksm='up{job="kube-state-metrics"}'
-abdeckung=$(vm "sum(sum_over_time(${ksm}[${tage}d]) * scrape_interval(${ksm}[${tage}d])) / (${tage} * 86400) * 100") || exit 2
+abdeckung=$(vm "floor(sum(sum_over_time(${ksm}[${tage}d]) * scrape_interval(${ksm}[${tage}d])) / (${tage} * 86400) * 100)") || exit 2
 echo "  kube-state-metrics-Abdeckung ${tage} Tage: ${abdeckung} %"
 if [ "$abdeckung" -lt 99 ]; then
   echo "kube-state-metrics deckt nur ${abdeckung} % des Pruefzeitraums ab (< 99 %)" >&2
   exit 2
 fi
 restarts=$(vm "sum(increase(kube_pod_container_status_restarts_total{${sel}}[${tage}d]))") || exit 2
+# Unabhaengig davon, wie increase() eine neue Serie behandelt (z. B. Restart vor
+# dem ersten Scrape, Zaehler beginnt bei 1): jeder Abbruch mit Zeitpunkt im
+# Pruefzeitraum zaehlt.
+fenster="> (time() - ${tage} * 86400)"
+abbrueche=$(vm "count(max_over_time(kube_pod_container_status_last_terminated_timestamp{${sel}}[${tage}d]) ${fenster})" 0) || exit 2
 # last_terminated_reason bleibt gesetzt, solange der Pod lebt; zaehlen nur
 # Abbrueche, deren Zeitpunkt im Pruefzeitraum liegt.
 ooms=$(vm "count(max_over_time(kube_pod_container_status_last_terminated_reason{${sel},reason=\"OOMKilled\"}[${tage}d]) > 0
   and on(namespace, pod, container)
-  max_over_time(kube_pod_container_status_last_terminated_timestamp{${sel}}[${tage}d]) > (time() - ${tage} * 86400))" 0) || exit 2
+  max_over_time(kube_pod_container_status_last_terminated_timestamp{${sel}}[${tage}d]) ${fenster})" 0) || exit 2
 peak=$(vm "max(max_over_time(container_memory_working_set_bytes{${sel}}[${tage}d])) / 1048576") || exit 2
-echo "  VictoriaMetrics ${tage} Tage: Restarts ${restarts}, Pods mit OOMKill ${ooms}, Working-Set-Spitze ${peak} MiB"
-if [ "$restarts" -gt 0 ] || [ "$ooms" -gt 0 ]; then
+echo "  VictoriaMetrics ${tage} Tage: Restarts ${restarts}, Container mit Abbruch ${abbrueche}, davon OOMKill ${ooms}, Working-Set-Spitze ${peak} MiB"
+if [ "$restarts" -gt 0 ] || [ "$abbrueche" -gt 0 ] || [ "$ooms" -gt 0 ]; then
   echo "NICHT OK: Container-Restarts oder OOMKills im Pruefzeitraum"
   fehler=1
 fi

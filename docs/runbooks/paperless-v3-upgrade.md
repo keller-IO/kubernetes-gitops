@@ -165,6 +165,14 @@ Inbetriebnahme:
 3. Ersten Lauf nicht bis 03:15 abwarten: Job aus dem CronJob starten
    (mutierend, durch den Menschen):
    `kubectl -n paperless-ngx create job --from=cronjob/paperless-offsite-backup paperless-offsite-backup-erstlauf`.
+   `concurrencyPolicy: Forbid` gilt nur fuer geplante Jobs. Zwei Laeufe
+   gleichzeitig schreiben beide `export/nightly`, und der Sync des einen
+   laedt dann einen halb geschriebenen Export hoch. Vor jedem manuellen Lauf
+   deshalb: Kein Job darf aktiv sein
+   (`kubectl -n paperless-ngx get jobs -l app.kubernetes.io/component=backup`),
+   und der Lauf muss vor dem naechsten 03:15 sicher fertig sein
+   (`activeDeadlineSeconds` 1 h). Sonst den CronJob vorher per GitOps
+   suspendieren (`spec.suspend: true`).
    Laufzeit, `memory.peak` des Exporters, Objektzahl und Groesse im Bucket
    notieren; die Exporter-Ressourcen danach anhand der Messung festlegen.
 4. **Restore-Test** auf einem Wegwerf-LXC auf u22, nicht im Cluster
@@ -218,8 +226,10 @@ Metadaten aendern. Ein leerer Queue-Stand allein ist keine Schreibsperre.
 2. Noch nicht verarbeitete Dateien aus `//192.168.2.75/scanner` separat sichern.
    Die SMB-Inbox ist kein Ceph-PVC und wird von `VolumeSnapshot`s nicht erfasst.
 3. Unter laufendem `2.20.15`, aber innerhalb der erzwungenen Schreibsperre,
-   einen vollstaendigen Paperless-Export erzeugen: Job aus dem CronJob
-   `paperless-offsite-backup` starten (Phase 0), danach
+   einen vollstaendigen Paperless-Export erzeugen: den CronJob
+   `paperless-offsite-backup` per GitOps suspendieren, warten, bis kein Job
+   mehr aktiv ist, dann einen Job aus dem CronJob starten (Phase 0, Schritt 3),
+   danach
    `export/current/` in Garage serverseitig nach `export/pre-3x-<Datum>/` kopieren.
    Dieser Prefix faellt nicht unter die 30-Tage-Bereinigung. Zusaetzlich ein
    Tarball ausserhalb von Garage ablegen und Inhalt sowie SHA-256 pruefen.
