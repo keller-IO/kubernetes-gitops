@@ -55,6 +55,7 @@ spec:
             httpGet: { path: /wp-login.php, port: 80 }
             initialDelaySeconds: 10
             periodSeconds: 10
+            timeoutSeconds: 5
           livenessProbe:
             tcpSocket: { port: 80 }
             initialDelaySeconds: 30

@@ -492,6 +492,8 @@ wird von der regulaeren roundcube-Instanz bedient, die ohnehin auf mail05 zeigt.
 ## 15. Pro-App-TODOs
 
 Jede App liegt unter `apps/base/<app>/` (Basis) + `apps/overlays/main/<app>/` (Cluster-Patch).
+Readiness-Probes für Kimai, EuroOffice, WordPress und Mastodon Web haben nach wiederholten
+1-s-Timeouts einen expliziten 5-s-Timeout.
 
 | App | Pfad (Basis) | Offene App-spezifische Schritte |
 |-----|--------------|----------------------------------|

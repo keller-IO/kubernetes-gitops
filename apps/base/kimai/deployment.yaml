@@ -55,6 +55,7 @@ spec:
                 - { name: Host, value: localhost }
             initialDelaySeconds: 15
             periodSeconds: 10
+            timeoutSeconds: 5
           resources:
             requests: { cpu: 100m, memory: 256Mi }
             limits: { memory: 512Mi }
