@@ -164,7 +164,11 @@ Inbetriebnahme:
 2. PR mergen; ArgoCD erweitert die Export-PVC online auf 5 Gi.
 3. Ersten Lauf nicht bis 03:15 abwarten: Job aus dem CronJob starten
    (mutierend, durch den Menschen):
-   `kubectl -n paperless-ngx create job --from=cronjob/paperless-offsite-backup paperless-offsite-backup-erstlauf`.
+   `job=paperless-offsite-backup-manuell-$(date +%Y%m%d%H%M)`,
+   `kubectl -n paperless-ngx create job --from=cronjob/paperless-offsite-backup "$job"`,
+   dann `kubectl -n paperless-ngx wait --for=condition=complete "job/$job" --timeout=70m`.
+   Der Zeitstempel im Namen verhindert `AlreadyExists` bei spaeteren Laeufen;
+   erst nach `complete` dieses Jobs mit `export/current/` weiterarbeiten.
    `concurrencyPolicy: Forbid` gilt nur fuer geplante Jobs. Zwei Laeufe
    gleichzeitig schreiben beide `export/nightly`, und der Sync des einen
    laedt dann einen halb geschriebenen Export hoch. Vor jedem manuellen Lauf
