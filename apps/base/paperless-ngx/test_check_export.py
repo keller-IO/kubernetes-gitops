@@ -68,8 +68,8 @@ class CronJobWiringTests(unittest.TestCase):
     startet der Sync-Container nicht und export/current bleibt unveraendert."""
 
     def setUp(self):
-        cronjob = yaml.safe_load((HERE / "offsite-backup.yaml").read_text(encoding="utf-8"))
-        self.pod = cronjob["spec"]["jobTemplate"]["spec"]["template"]["spec"]
+        self.cronjob = yaml.safe_load((HERE / "offsite-backup.yaml").read_text(encoding="utf-8"))
+        self.pod = self.cronjob["spec"]["jobTemplate"]["spec"]["template"]["spec"]
 
     def test_check_runs_in_init_container_after_exporter(self):
         (exporter,) = self.pod["initContainers"]
@@ -90,6 +90,21 @@ class CronJobWiringTests(unittest.TestCase):
         self.assertIn("check_export.py", generated["paperless-offsite-backup-code"])
         volumes = {v["name"]: v for v in self.pod["volumes"]}
         self.assertEqual(volumes["code"]["configMap"]["name"], "paperless-offsite-backup-code")
+
+    def test_job_carries_backup_labels(self):
+        # Das Runbook sucht aktive Laeufe mit get jobs -l ...component=backup.
+        labels = self.cronjob["spec"]["jobTemplate"]["metadata"]["labels"]
+        self.assertEqual(labels.get("app.kubernetes.io/component"), "backup")
+        self.assertNotIn("app.kubernetes.io/instance", labels)
+
+    def test_emptydir_mounts_have_no_subpath(self):
+        # subPath-Verzeichnisse legt kubelet als root an; die Container laufen als 1000.
+        emptydirs = {v["name"] for v in self.pod["volumes"] if "emptyDir" in v}
+        self.assertTrue(emptydirs)
+        for container in self.pod["initContainers"] + self.pod["containers"]:
+            for mount in container["volumeMounts"]:
+                if mount["name"] in emptydirs:
+                    self.assertNotIn("subPath", mount, f"{container['name']}: {mount['mountPath']}")
 
 
 if __name__ == "__main__":

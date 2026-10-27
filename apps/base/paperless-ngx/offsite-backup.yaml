@@ -41,6 +41,12 @@ spec:
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
   jobTemplate:
+    # Labels auch am Job, damit `get jobs -l app.kubernetes.io/component=backup`
+    # geplante und per `create job --from` gestartete Jobs findet.
+    metadata:
+      labels:
+        app.kubernetes.io/name: paperless-ngx
+        app.kubernetes.io/component: backup
     spec:
       backoffLimit: 2
       activeDeadlineSeconds: 3600
@@ -110,9 +116,12 @@ spec:
                 # schreibbar fuer media.lock; data und consume bleiben leer.
                 - { name: media, mountPath: /usr/src/paperless/media }
                 - { name: export, mountPath: /usr/src/paperless/export }
-                - { name: scratch, mountPath: /usr/src/paperless/data, subPath: data }
-                - { name: scratch, mountPath: /usr/src/paperless/consume, subPath: consume }
-                - { name: scratch, mountPath: /tmp, subPath: tmp }
+                # Eigene emptyDirs statt subPath: kubelet legt subPath-Verzeichnisse
+                # als root mit 0755 an, UID 1000 koennte dort nicht schreiben. Die
+                # Wurzel eines emptyDir ist 0777.
+                - { name: data, mountPath: /usr/src/paperless/data }
+                - { name: consume, mountPath: /usr/src/paperless/consume }
+                - { name: tmp, mountPath: /tmp }
                 - { name: code, mountPath: /scripts, readOnly: true }
           containers:
             - name: rclone
@@ -171,7 +180,7 @@ spec:
                 capabilities: { drop: ["ALL"] }
               volumeMounts:
                 - { name: export, mountPath: /export, readOnly: true }
-                - { name: scratch, mountPath: /tmp, subPath: tmp }
+                - { name: tmp, mountPath: /tmp }
           volumes:
             - name: media
               persistentVolumeClaim:
@@ -179,7 +188,11 @@ spec:
             - name: export
               persistentVolumeClaim:
                 claimName: paperless-paperless-ngx-export
-            - name: scratch
+            - name: data
+              emptyDir: { sizeLimit: 64Mi }
+            - name: consume
+              emptyDir: { sizeLimit: 64Mi }
+            - name: tmp
               emptyDir: { sizeLimit: 1Gi }
             - name: code
               configMap:
