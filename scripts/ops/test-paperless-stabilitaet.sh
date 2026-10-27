@@ -27,7 +27,7 @@ case "$args" in
   *'lastState.terminated.finishedAt}'*) printf '%s' "${FAKE_ENDE-}" ;;
   *"get pod"*) echo "  Start 2026-10-27T05:46:21Z, Restarts 0" ;;
   *"Timed out"*) printf '%s' "${FAKE_TIMEOUTS-}" ;;
-  *"ls -tr"*) printf '%s' "${FAKE_AELTESTE-[2026-09-04 00:00:01,000] [INFO]}" ;;
+  *"ls -tr"*) printf '%s' "${FAKE_AELTESTE-[2000-01-01 00:00:01,000] [INFO]}" ;;
   *"-- awk"*) echo "${FAKE_OOMKILL-0}" ;;
   *"exec"*) echo "  memory.peak 2000 MiB" ;;
   *) echo "unerwarteter Aufruf: $args" >&2; exit 1 ;;
@@ -52,10 +52,15 @@ expect 0 "sauberer Zeitraum"
 expect 1 "Restart vor erstem Scrape: increase 0, Abbruch im Fenster" FAKE_RESTARTS=0 FAKE_ABBRUECHE=1
 expect 1 "Restart laut increase" FAKE_RESTARTS=2 FAKE_ABBRUECHE=1
 expect 1 "OOMKill im Fenster" FAKE_ABBRUECHE=1 FAKE_OOMS=1
-expect 1 "laufender Container im Fenster abgebrochen" FAKE_ENDE=2026-12-31T00:00:00Z
-expect 0 "laufender Container vor dem Fenster abgebrochen" FAKE_ENDE=2020-01-01T00:00:00Z
-expect 1 "Celery-Timeout im Fenster" FAKE_TIMEOUTS="[2099-01-01 00:00:00,000] Timed out waiting for UP message"$'\n'
-expect 1 "Log-Historie zu kurz" FAKE_AELTESTE="[2099-01-01 00:00:00,000]"
+# Zeitpunkte relativ zur Testausfuehrung, Pruefzeitraum 7 Tage
+gestern=$(date -u -d '-1 day' +%Y-%m-%d)
+vor_30_tagen=$(date -u -d '-30 days' +%Y-%m-%d)
+expect 1 "laufender Container im Fenster abgebrochen" FAKE_ENDE="${gestern}T00:00:00Z"
+expect 0 "laufender Container vor dem Fenster abgebrochen" FAKE_ENDE="${vor_30_tagen}T00:00:00Z"
+expect 1 "Celery-Timeout im Fenster" FAKE_TIMEOUTS="[${gestern} 00:00:00,000] Timed out waiting for UP message"$'\n'
+expect 0 "Celery-Timeout vor dem Fenster" FAKE_TIMEOUTS="[${vor_30_tagen} 00:00:00,000] Timed out waiting for UP message"$'\n' \
+  FAKE_AELTESTE="[$(date -u -d '-40 days' +%Y-%m-%d) 00:00:00,000]"
+expect 1 "Log-Historie zu kurz" FAKE_AELTESTE="[${gestern} 00:00:00,000]"
 expect 1 "oom_kill in memory.events" FAKE_OOMKILL=1
 expect 2 "keine Celery-Logs" FAKE_AELTESTE=
 expect 2 "Restart-Abfrage ohne Messdaten" FAKE_RESTARTS=

@@ -317,6 +317,12 @@ Beim ersten 3.x-Sync:
    werden migriert, Env-Werte haben jedoch Vorrang.
 7. Erwartete Datenwirkung bestaetigen: Die bestehende Task-Historie wird bei der
    Migration geloescht; der Dokumentbestand darf sich nicht aendern.
+8. Nach bestandener Abnahme den in Phase 2 suspendierten CronJob
+   `paperless-offsite-backup` per GitOps wieder aktivieren (`spec.suspend`
+   entfernen); der Exporter laeuft dann mit dem 3.x-Image aus Phase 3. Einen
+   Job aus dem CronJob starten (Phase 0, Schritt 3), auf Erfolg pruefen und den
+   gruenen Gatus-Heartbeat `paperless/offsite-backup` abwarten.
+   `export/pre-3x-<Datum>/` bleibt als Rueckweg zu 2.20.15 erhalten.
 
 ## Rollback
 
@@ -347,6 +353,12 @@ Nach dem ersten 3.x-Start nicht nur den Image-Tag zuruecksetzen. Stattdessen:
    Konsistenzpruefung den Dienst wieder freigeben und danach gesicherte,
    unvollstaendig konsumierte Scanner-Dateien kontrolliert in die SMB-Inbox
    zuruecklegen.
+7. Das Exporter-Image in `offsite-backup.yaml` auf 2.20.15 zuruecksetzen und
+   den CronJob `paperless-offsite-backup` per GitOps wieder aktivieren
+   (`spec.suspend` entfernen). Einen Job aus dem CronJob starten (Phase 0,
+   Schritt 3), auf Erfolg pruefen und den gruenen Gatus-Heartbeat
+   `paperless/offsite-backup` abwarten. Ohne diesen Schritt bleibt das
+   taegliche Offsite-Backup dauerhaft aus.
 
 Ein punktgenauer Rollback des Phase-1-Upgrades auf 2.20.6 ist nicht mehr
 moeglich, weil das zugehoerige Barman-Backup abgelaufen ist. Im Notfall den
