@@ -34,6 +34,8 @@ test:
     PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s apps/base/nextcloud-yealink-phonebook -p 'test_*.py'
     PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=apps/base/litellm python3 -m unittest apps/base/litellm/test_request_policy.py
     PYTHONDONTWRITEBYTECODE=1 python3 -m unittest apps/base/litellm/test_network_probe.py
+    PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s apps/base/paperless-ngx -p 'test_*.py'
+    bash scripts/ops/test-paperless-stabilitaet.sh
 
 # Encrypt a single secret in place.
 encrypt FILE:

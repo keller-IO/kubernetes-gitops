@@ -137,6 +137,7 @@ Referenz: `ciso-assistant` (PR #198) → `s3://backup-ciso-assistant/cnpg/`.
 | `backup-ciso-assistant` | RW auf `backup-ciso-assistant` | neues Schema |
 | `backup-goloom` (`GK4fa170…`) | RW auf `backup-goloom` (Quota 20 GiB) | neues Schema, seit 14.10.2026 |
 | `backup-monitoring-db` (`GK398386…`) | RW auf `backup-monitoring-db` (Quota 20 GiB) | CNPG `monitoring-pg` (Gatus, Gatus public, Kite), seit 19.10.2026 |
+| `backup-paperless` (`GK3800ac…`) | RW auf `backup-paperless` (Quota 20 GiB) | CronJob `paperless-offsite-backup` (Dokument-Export), seit 27.10.2026; CNPG `paperless-pg` noch auf `backups` |
 
 Klartext eines Secrets ansehen: `sops -d apps/base/roundcube/secret.sops.yaml`.
 
@@ -383,6 +384,40 @@ muessen alle Konten neu verbunden werden.
 Restore-Tests: SQLite-Stand 14.10.2026 (lokal, `/healthz` 200). Fuer `goloom-pg` steht
 ein eigener Recovery-Test noch aus (erstes Basis-Backup 18.10.2026 `completed`).
 Migration SQLite -> Postgres: `docs/learnings/goloom-sqlite-nach-postgres.md`.
+
+## Paperless (Postgres + Dokument-Export)
+
+| Was | Wie | Ziel | Aufbewahrung |
+|---|---|---|---|
+| Datenbank | CNPG `paperless-pg`, WAL-Archiv + `ScheduledBackup` 02:00 | `s3://backups/cnpg-paperless/` (Key `cnpg-backups`) | 90 Tage bis zur 3.x-Abnahme, danach 30 |
+| Dokumente + Metadaten | CronJob `paperless-offsite-backup` 03:15: `document_exporter` nach `export/nightly` auf der Export-PVC, dann `rclone sync` | `s3://backup-paperless/export/current/`, Archiv `export/archive/<Zeit>/` | Archiv 30 Tage |
+
+Key `backup-paperless` (RW nur auf diesen Bucket), Secret `paperless-offsite-s3`.
+Geheimfelder in `manifest.json` (Mail-Passwoerter, OAuth-Tokens) verschluesselt
+der Exporter mit der Passphrase aus `paperless-offsite-export`
+(`apps/base/paperless-ngx/offsite-export-passphrase.sops.yaml`, Schluessel
+`EXPORT_PASSPHRASE`). Ohne sie bricht `document_importer` ab.
+Der Export ist selbsttragend: Originale, Archiv-PDFs, Thumbnails und
+`manifest.json` mit allen Metadaten. Er braucht fuer den Restore keine CNPG-
+Sicherung, nur eine Paperless-Instanz **derselben Version** wie beim Export.
+
+Pruefen: Gatus `paperless/offsite-backup` (Push nach jedem Lauf, Heartbeat 26 h)
+und das Log des letzten Jobs (`rclone size` am Ende).
+
+**Restore Dokumente (Totalverlust):** leere Paperless-Instanz in der Version des
+Exports mit leerer Datenbank starten (Migrationen laufen beim Start),
+`export/current/` herunterladen und
+`manage.py document_importer <verzeichnis> --passphrase <EXPORT_PASSPHRASE>`
+ausfuehren (Passphrase per `sops -d` aus dem Repo, nicht in die Shell-History). Benutzer, Tags,
+Korrespondenten, Notizen und Custom Fields kommen aus `manifest.json`. Den
+bisherigen `PAPERLESS_SECRET_KEY` behalten. Testweise nur auf einem Wegwerf-LXC
+auf u22, nicht im Cluster (`docs/learnings/restore-klon-ueber-vpn.md`).
+
+**Restore einzelner Dateien:** Originale liegen unter `export/current/` mit
+ihrem Dateinamen; geloeschte oder ueberschriebene Staende 30 Tage unter
+`export/archive/<Zeit>/`.
+
+Ablauf und Abnahme: `docs/runbooks/paperless-v3-upgrade.md`, Phase 0.
 
 ---
 
