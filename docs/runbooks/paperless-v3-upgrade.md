@@ -1,15 +1,19 @@
 # Paperless-ngx: Upgrade von 2.20.15 auf 3.x
 
-Stand: 23.09.2026. Dieses Runbook trennt den verpflichtenden 2.x-Zwischenstand
+Stand: 27.10.2026. Dieses Runbook trennt den verpflichtenden 2.x-Zwischenstand
 bewusst vom Major-Upgrade. ArgoCD darf beide Schritte nicht in einem Sync
 ueberspringen.
 
 ## Zielversionen
 
 - Letztes stabiles 2.x-Release: `2.20.15` vom 27.04.2026.
-- Aktuelles stabiles 3.x-Release: `3.2.1` vom 20.09.2026. Der direkte Sprung von
-  der nachweislich gelaufenen 2.20.15 auf 3.2.1 ist unterstuetzt; 3.0.x und 3.1.x
-  muessen nicht einzeln ausgerollt werden.
+- Aktuelles stabiles 3.x-Release: `3.3.4` vom 22.10.2026. Der direkte Sprung von
+  der nachweislich gelaufenen 2.20.15 auf die aktuelle 3.x ist unterstuetzt;
+  Zwischenversionen muessen nicht einzeln ausgerollt werden. 3.3.0 bis 3.3.4
+  nennen keine Breaking Changes; vor dem PR `docs/migration-v3.md` im Ziel-Tag
+  trotzdem erneut lesen.
+- Versionen vor `3.3.2` nicht einsetzen: 3.3.2 schliesst GHSA-c8f3-pqr2-rr24
+  (Informationsabfluss bei KI-Klassifizierung besitzerloser Dokumente).
 - `3.0.1` nicht einsetzen: dessen Datenbankmigration verhindert den Start;
   `3.0.2` enthaelt die Korrektur.
 - Versionen bis einschliesslich `3.1.1` nicht einsetzen: `3.1.2` schliesst die
@@ -24,10 +28,11 @@ ueberspringen.
 
 | Phase | Status | Naechster Schritt |
 |---|---|---|
+| 0: Offsite-Backup der Dokumente | Vorbereitet (27.10.), Bucket und Key angelegt und geprueft | PR mergen, ersten Lauf und Restore-Test auf u22 abnehmen |
 | 1: 2.20.15 | Abgeschlossen | Export und PVC-Snapshots vom 02.08. behalten; das damalige CNPG-Backup ist abgelaufen |
-| Stabilisierung | Blockiert | Wiederholte Celery-Child-Start-Timeouts auf 2.20.15 erklaeren und beseitigen |
-| 2: 3.x-Recovery-Punkt | Teilweise vorbereitet | CNPG-Retention ist auf 90 Tage gesetzt; erst nach stabiler 2.20.15 einen neuen quieszierten Export, CNPG-Backup und Snapshots erzeugen |
-| 3: 3.x-Change | Offen | Separater PR auf die dann aktuelle gepruefte 3.x-Patchversion, derzeit 3.2.1 |
+| Stabilisierung | Laeuft, fruehestens 03.11. bestanden | `scripts/ops/paperless-stabilitaet.sh` muss fuer sieben Tage bestehen |
+| 2: 3.x-Recovery-Punkt | Teilweise vorbereitet | CNPG-Retention ist auf 90 Tage gesetzt; erst nach Phase 0 und Gate einen neuen quieszierten Export, CNPG-Backup und Snapshots erzeugen |
+| 3: 3.x-Change | Offen | Separater PR auf die dann aktuelle gepruefte 3.x-Patchversion, derzeit 3.3.4 |
 | Abnahme | Offen | Migration, Tantivy-Aufbau, OIDC, OCR, Suche, Mail und SMB-Consume pruefen |
 
 ## Gepruefter Ist-Stand
@@ -52,6 +57,20 @@ geprueft:
 | Export-Platz | 1,9 GiB frei; Media-PVC derzeit nur 42 MiB belegt |
 | Ressourcen | Messpunkt vom 23.09.2026: 890 MiB von 1536 MiB Container-Limit; Cgroup meldet 229 `memory.max`-Ereignisse, aber keine `oom_kill`-Ereignisse |
 | Offener Fehler | 40 Celery-Child-Prozesse meldeten in den letzten sieben Tagen nicht rechtzeitig `WORKER_UP` und wurden danach als per `SIGKILL` beendet protokolliert; der Hauptprozess lief weiter |
+
+### Nachtrag 27.10.2026
+
+Der Bestand ist seit September stark gewachsen; mehrere Annahmen oben gelten
+nicht mehr:
+
+| Bereich | Ergebnis |
+|---|---|
+| Bestand | 398 Dokumente (erstes 01.02.2026), 6 Benutzer, 2 Workflows; DB 24 MB |
+| Media-PVC | 688 MiB belegt: Originale 325 MiB, Archiv 353 MiB, Thumbnails 11 MiB |
+| Offsite | **Bis Phase 0 keine Offsite-Kopie der Dokumentdateien.** Garage erhaelt nur das CNPG-Backup (Metadaten); die Snapshots vom 02.08. liegen im selben Ceph-Pool und enthalten die neuen Dokumente nicht |
+| Ressourcen | Limit 3 Gi seit 26.10.; vorher vier OOMKills am 26.10. (bis 21:00) mit 1536 Mi waehrend eines Massen-Uploads. Working-Set-Spitze laut VictoriaMetrics 2270 MiB; `memory.peak` der Cgroup erreicht 3072 MiB inkl. Seitencache, ohne `max`- oder `oom`-Ereignisse |
+| Celery-Timeouts | Aus `celery.log*` auf der data-PVC (Historie ab 04.09.): 116 zwischen 21. und 25.09., einer am 16.10., seitdem keiner |
+| Export-PVC | 2 Gi reichen nur knapp fuer einen Export; in Phase 0 auf 5 Gi erweitert |
 
 ### Historische Phase-1-Artefakte vom 02.08.2026
 
@@ -116,35 +135,76 @@ von 2.20.6.
 - Interaktiven Keycloak-Login, Dokumentanzeige und Suche vor dem 3.x-Preflight
   noch einmal mit einem Benutzerkonto bestaetigen.
 
+## Phase 0: Offsite-Backup der Dokumente
+
+Unabhaengig vom Upgrade und vor allem anderen: Die Dokumente sind nicht
+wiederbeschaffbar und lagen bis hierhin nur auf dem Cluster-Ceph.
+
+CronJob `paperless-offsite-backup` (`apps/base/paperless-ngx/offsite-backup.yaml`),
+taeglich 03:15:
+
+1. Init-Container `exporter`: `manage.py document_exporter` mit
+   `--compare-checksums --delete` inkrementell nach `export/nightly` auf der
+   Export-PVC. Laeuft als UID 1000 ohne s6, mit leeren `data`/`consume`
+   (lokal mit 2.20.15 und podman getestet). Haelt dabei `media.lock`.
+2. Container `rclone`: bricht ab, wenn `manifest.json` fehlt oder leer ist;
+   sonst `rclone sync` nach `s3://backup-paperless/export/current/`, geaenderte
+   und geloeschte Dateien nach `export/archive/<Zeit>/` (30 Tage),
+   `--max-delete 150` gegen Massen-Loeschungen.
+3. Ergebnis per Push an Gatus `paperless/offsite-backup` (Heartbeat 26 h). Faellt
+   schon der Exporter aus, bleibt der Push aus und der Heartbeat schlaegt an.
+
+Inbetriebnahme:
+
+1. Bucket und Key `backup-paperless` (Quota 20 GiB) nach
+   `docs/runbooks/backup-restore.md` anlegen, per curl pruefen und das SOPS-Secret
+   `apps/base/paperless-ngx/offsite-backup-s3.sops.yaml` (`paperless-offsite-s3`)
+   erzeugen. Der spaetere Umzug des CNPG-Backups in denselben Bucket (`cnpg/`)
+   kann diesen Key wiederverwenden.
+2. PR mergen; ArgoCD erweitert die Export-PVC online auf 5 Gi.
+3. Ersten Lauf nicht bis 03:15 abwarten: Job aus dem CronJob starten
+   (mutierend, durch den Menschen):
+   `kubectl -n paperless-ngx create job --from=cronjob/paperless-offsite-backup paperless-offsite-backup-erstlauf`.
+   Laufzeit, `memory.peak` des Exporters, Objektzahl und Groesse im Bucket
+   notieren; die Exporter-Ressourcen danach anhand der Messung festlegen.
+4. **Restore-Test** auf einem Wegwerf-LXC auf u22, nicht im Cluster
+   (`docs/learnings/restore-klon-ueber-vpn.md`): `export/current/` mit einem
+   Key mit Leserecht holen, in eine leere Paperless-2.20.15-Instanz mit eigenem
+   Postgres per `document_importer` einspielen. Dokumentzahl gegen die
+   Produktion pruefen, einige Originale per SHA-256 gegen `media/documents/originals`
+   vergleichen, Login und Dokumentanzeige testen. Danach LXC loeschen.
+5. Erst nach bestandenem Restore-Test gilt Phase 0 als abgeschlossen.
+
 ## Stabilitaets-Gate vor 3.x
 
-Das Major-Upgrade bleibt blockiert, bis die Celery-Worker auf 2.20.15 stabil
-sind. In den Logs vom 21. bis 23.09.2026 meldeten sich 40 neu gestartete
-Child-Prozesse nicht innerhalb von Celerys standardmaessigem
-`worker_proc_alive_timeout` von vier Sekunden mit `WORKER_UP`. Im selben
-Fehlerablauf wurden sie als per `SIGKILL` beendet protokolliert; Ursache und
-Signalgeber sind noch zu belegen. Der Container wurde nicht neu gestartet.
-`memory.events` zeigt keine Cgroup-OOM-Kills, aber 229 `max`-Ereignisse am
-1536-MiB-Limit.
+Der erste 3.x-Start mit Migration und Tantivy-Neuaufbau darf nicht auf eine
+instabile Instanz treffen. Pruefung read-only:
 
-1. Die `Timed out waiting for UP message`-Zeitpunkte mit CPU-Throttling,
-   Node-Speicherdruck, Kernel-/Talos-Logs, Cgroup-`memory.current`/`memory.peak`/
-   `memory.events`, I/O-Wartezeit und den jeweils gestarteten Paperless-Tasks
-   korrelieren.
-2. Spitzenverbrauch und Child-Startzeit waehrend Mailabruf, Workflow-Checks,
-   Classifier-Training und OCR messen. Requests/Limits nicht schaetzen, sondern
-   aus diesen Messungen ableiten.
-3. Paperless verwendet ohne `PAPERLESS_TASK_WORKERS` bereits den Default von
-   einem Worker. Eine niedrigere Task-Parallelitaet deshalb nicht als Loesung
-   voraussetzen; zuerst die tatsaechliche Worker-/Thread-Konfiguration im
-   gerenderten Deployment und im Startlog erfassen.
-4. Die belegte Ursache in einem separaten Stabilitaets-PR beheben, etwa durch ein
-   gemessenes Ressourcenbudget. Ein laengerer Start-Timeout allein kaschiert
-   Ressourcen- oder I/O-Stalls und ist kein Stabilitaetsnachweis.
-5. Danach mindestens sieben Tage ohne `Timed out waiting for UP message`
-   beobachten. Erst dann Phase 2 starten. Der erste 3.x-Start mit Migration und
-   Tantivy-Neuaufbau darf nicht auf eine bereits instabile Worker-Situation
-   aufsetzen.
+```bash
+KUBECONFIG=~/ansible/infrastructure/tofu/talos-cluster/envs/kellerIO/kubeconfig \
+  scripts/ops/paperless-stabilitaet.sh 7
+```
+
+Das Skript wertet die rotierten `celery.log*` auf der data-PVC aus (sie
+ueberleben Pod-Wechsel), fragt Restarts, OOMKills und die Working-Set-Spitze der
+letzten Tage aus VictoriaMetrics ab und zeigt die Cgroup-Werte seit dem
+Container-Start. Bestanden heisst: sieben Tage kein `Timed out waiting for UP
+message`, kein Restart, kein OOMKill.
+
+Befund 27.10.2026:
+
+- Die Celery-Timeouts haeuften sich vom 21. bis 25.09. (116) und traten danach nur
+  noch einmal auf (16.10., 07:40, waehrend des Mailabrufs). Am 23.09. lag der Pod
+  mit 1536 Mi Limit dauerhaft an der Speichergrenze (229 `memory.max`-Ereignisse);
+  das passt zu Speicherdruck als Ursache, ist aber nicht bewiesen.
+- Die OOMKills vom 26.10. sind mit dem 3-Gi-Limit behoben; der neue Pod laeuft
+  seit 27.10. 06:46 ohne Restart und ohne `max`-Ereignisse.
+- Das Gate kann daher fruehestens am **03.11.2026** bestehen. Bis dahin taeglich
+  das Skript laufen lassen; ein neuer Timeout oder Restart setzt die Frist neu.
+
+Weiterhin gilt: Ein laengerer Start-Timeout allein kaschiert Ressourcen- oder
+I/O-Stalls und ist kein Stabilitaetsnachweis. Requests/Limits aus Messungen
+ableiten, nicht schaetzen.
 
 ## Phase 2: Backup- und Preflight-Gate
 
@@ -158,9 +218,13 @@ Metadaten aendern. Ein leerer Queue-Stand allein ist keine Schreibsperre.
 2. Noch nicht verarbeitete Dateien aus `//192.168.2.75/scanner` separat sichern.
    Die SMB-Inbox ist kein Ceph-PVC und wird von `VolumeSnapshot`s nicht erfasst.
 3. Unter laufendem `2.20.15`, aber innerhalb der erzwungenen Schreibsperre,
-   einen vollstaendigen Paperless-Export erzeugen, aus dem Cluster-Ceph kopieren
-   und Inhalt sowie SHA-256 pruefen. Exporte sind versionsgebunden; dieser Export
-   ist der logische Rueckweg zu 2.20.15.
+   einen vollstaendigen Paperless-Export erzeugen: Job aus dem CronJob
+   `paperless-offsite-backup` starten (Phase 0), danach
+   `export/current/` in Garage serverseitig nach `export/pre-3x-<Datum>/` kopieren.
+   Dieser Prefix faellt nicht unter die 30-Tage-Bereinigung. Zusaetzlich ein
+   Tarball ausserhalb von Garage ablegen und Inhalt sowie SHA-256 pruefen.
+   Exporte sind versionsgebunden; dieser Export ist der logische Rueckweg zu
+   2.20.15.
 4. Den schreibenden Paperless-Pod ueber einen separaten GitOps-Schritt stoppen
    und auf sein Verschwinden sowie das Loesen seiner `VolumeAttachment`s warten.
    Postgres bleibt fuer sein natives Backup aktiv.
@@ -183,8 +247,9 @@ Metadaten aendern. Ein leerer Queue-Stand allein ist keine Schreibsperre.
    Scanner-Inbox-Sicherung. Bestaetigen, dass das WAL mit dem Restore-Punkt im
    geschuetzten Ziel archiviert wurde. Kubernetes-Name und Barman-ID sind nicht
    austauschbar.
-8. Das Rollback-Ziel **vor dem Upgrade echt testen**: einen temporaeren CNPG-
-   Cluster mit genau dieser Barman-ID und `targetName` restaurieren und
+8. Das Rollback-Ziel **vor dem Upgrade echt testen**: auf einem Wegwerf-LXC
+   auf u22 (nicht im Cluster, siehe `docs/learnings/restore-klon-ueber-vpn.md`)
+   Postgres aus genau dieser Barman-ID mit `targetName` restaurieren und
    Dokument-/Benutzerzahlen pruefen. Aus beiden Snapshots Wegwerf-PVCs erzeugen,
    mounten und exemplarische Dateien lesen; Schreib-/Loeschproben nur auf den
    Restore-PVCs ausfuehren. Namen, Ergebnis und Logs als Abnahmeevidenz
@@ -201,7 +266,9 @@ ist kein gueltiger Rollback.
 In einem neuen PR nach bestandenem Stabilitaets- und Backup-Gate:
 
 1. `image.tag` auf die dann aktuelle, gepruefte 3.x-Patchversion setzen. Stand
-   23.09.2026 ist das `3.2.1`; vor dem PR Releases erneut pruefen.
+   27.10.2026 ist das `3.3.4`; vor dem PR Releases erneut pruefen. Das Image des
+   Watchdogs (`watchdog.yaml`) und des Exporters (`offsite-backup.yaml`) im selben
+   PR mitziehen; der Exporter muss zur Datenbank-Version passen.
 2. Wegen der SMB-Inbox `PAPERLESS_CONSUMER_POLLING` zwingend in
    `PAPERLESS_CONSUMER_POLLING_INTERVAL` umbenennen und den Wert `"10"`
    beibehalten. Der alte Name wird von 3.x nicht mehr ausgewertet.
@@ -217,8 +284,8 @@ In einem neuen PR nach bestandenem Stabilitaets- und Backup-Gate:
    Whoosh-Index automatisch als Tantivy-Index neu aufgebaut. Nach der Abnahme
    anhand der gemessenen Startzeit wieder enger setzen.
 7. Den unter dem Stabilitaets-Gate ermittelten Ressourcen-/Worker-Wert
-   beibehalten; insbesondere das heutige 1536-MiB-Limit nicht ungeprueft fuer
-   Migration und Index-Neuaufbau voraussetzen.
+   beibehalten; insbesondere das 3-Gi-Limit nicht ungeprueft fuer Migration und
+   Index-Neuaufbau voraussetzen.
 8. Manifest rendern und kontrollieren: genau eine App-Replica, `Recreate`, kein
    HPA, unveraenderte Storage-Mounts und alle Env-Werte am richtigen Namen.
 9. `nix develop -c just validate` ausfuehren und den Change separat mergen.

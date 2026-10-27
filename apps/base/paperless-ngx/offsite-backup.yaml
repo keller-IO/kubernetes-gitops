@@ -1,0 +1,176 @@
+# Offsite-Backup der Paperless-Dokumente: document_exporter -> Garage Potsdam,
+# Bucket backup-paperless.
+#
+#   export/current/              Spiegel des taeglichen Exports (rclone sync)
+#   export/archive/<Zeit>/       von sync geloeschte/ueberschriebene Dateien, 30 Tage
+#
+# Warum der Exporter und nicht nur ein Spiegel der media-PVC: Der Export enthaelt
+# Originale, Archiv-PDFs, Thumbnails UND manifest.json mit allen Metadaten
+# (Tags, Korrespondenten, Notizen, Custom Fields, Benutzer). Er laesst sich mit
+# document_importer in eine leere Instanz derselben Version einspielen, ohne CNPG.
+# Die Datenbank sichert zusaetzlich CNPG (database.yaml, PITR).
+#
+# Der Export liegt inkrementell unter export/nightly auf der Export-PVC:
+# --compare-checksums kopiert nur geaenderte Dateien, --delete entfernt Dateien
+# geloeschter Dokumente. Der Exporter haelt waehrenddessen MEDIA_LOCK, der
+# Consumer wartet so lange.
+#
+# media und export sind RWO und im App-Pod gemountet: der Job muss auf dessen
+# Node laufen (podAffinity). Die Labels hier duerfen den Selector von
+# Deployment/Service nicht treffen, deshalb fehlt app.kubernetes.io/instance.
+#
+# Ueberwachung: Push an Gatus (paperless/offsite-backup, Heartbeat 26 h). Scheitert
+# schon der Exporter, laeuft rclone nicht und der Heartbeat schlaegt an.
+#
+# Zugang: paperless-offsite-s3 (Garage-Key backup-paperless, RW nur auf den
+# eigenen Bucket). Restore: docs/runbooks/backup-restore.md, Abschnitt Paperless.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: paperless-offsite-backup
+  namespace: paperless-ngx
+  labels:
+    app.kubernetes.io/name: paperless-ngx
+    app.kubernetes.io/component: backup
+spec:
+  # Nach dem CNPG-Base-Backup (02:00), vor dem Scanner-Betrieb am Morgen.
+  schedule: "15 3 * * *"
+  timeZone: Europe/Berlin
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 3600
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: paperless-ngx
+            app.kubernetes.io/component: backup
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          affinity:
+            podAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - topologyKey: kubernetes.io/hostname
+                  labelSelector:
+                    matchLabels:
+                      app.kubernetes.io/name: paperless-ngx
+                      app.kubernetes.io/instance: paperless
+          # UID/GID 1000 = Benutzer paperless im Image, Eigentuemer von media und
+          # export. Damit braucht der Exporter weder root noch s6-setuidgid.
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            seccompProfile: { type: RuntimeDefault }
+          initContainers:
+            # manage.py direkt, nicht der s6-Wrapper document_exporter:
+            # docs/learnings/paperless-cli-without-s6.md
+            - name: exporter
+              image: ghcr.io/paperless-ngx/paperless-ngx:2.20.15
+              workingDir: /usr/src/paperless/src
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -eu
+                  mkdir -p /usr/src/paperless/export/nightly
+                  exec python3 manage.py document_exporter /usr/src/paperless/export/nightly \
+                    --compare-checksums --delete --no-progress-bar
+              env:
+                - { name: HOME, value: /tmp }
+                - { name: PAPERLESS_DBENGINE, value: postgresql }
+                - { name: PAPERLESS_DBHOST, value: paperless-pg-rw }
+                - { name: PAPERLESS_DBNAME, value: paperless }
+                - { name: PAPERLESS_DBUSER, value: paperless }
+                - { name: PAPERLESS_REDIS, value: "redis://paperless-valkey:6379" }
+                - { name: PAPERLESS_TIME_ZONE, value: Europe/Berlin }
+                - name: PAPERLESS_DBPASS
+                  valueFrom: { secretKeyRef: { name: paperless-secret, key: PAPERLESS_DBPASS } }
+                - name: PAPERLESS_SECRET_KEY
+                  valueFrom: { secretKeyRef: { name: paperless-secret, key: PAPERLESS_SECRET_KEY } }
+              # Erster Lauf ohne Messwert: wie der Export-Job vom 02.08.2026, nach
+              # den ersten Laeufen anhand von memory.peak nachziehen.
+              resources:
+                requests: { cpu: 200m, memory: 512Mi }
+                limits: { memory: 1536Mi }
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: { drop: ["ALL"] }
+              volumeMounts:
+                # Der Django-Pfadcheck verlangt beschreibbare data-, media- und
+                # consume-Verzeichnisse. media braucht der Exporter ohnehin
+                # schreibbar fuer media.lock; data und consume bleiben leer.
+                - { name: media, mountPath: /usr/src/paperless/media }
+                - { name: export, mountPath: /usr/src/paperless/export }
+                - { name: scratch, mountPath: /usr/src/paperless/data, subPath: data }
+                - { name: scratch, mountPath: /usr/src/paperless/consume, subPath: consume }
+                - { name: scratch, mountPath: /tmp, subPath: tmp }
+          containers:
+            - name: rclone
+              image: rclone/rclone:1.75.2 # renovate: image=rclone/rclone
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -eu
+                  push() {
+                    wget -q -O /dev/null --post-data= \
+                      --header "Authorization: Bearer ${WATCHDOG_TOKEN}" \
+                      "${GATUS_URL}/api/v1/endpoints/paperless_offsite-backup/external?success=$1" \
+                      || echo "Gatus-Push fehlgeschlagen"
+                  }
+                  trap 'rc=$?; [ "$rc" -eq 0 ] && push true || push false' EXIT
+                  # Ein leerer oder abgebrochener Export darf das Offsite-Abbild
+                  # nicht leeren.
+                  test -s /export/nightly/manifest.json
+                  STAMP=$(date -u +%Y-%m-%dT%H%M%SZ)
+                  # --max-delete: geloeschte Dokumente sind selten; ein Massen-
+                  # Loeschen ist eher ein Fehler und soll anhalten statt spiegeln.
+                  rclone sync /export/nightly garage:backup-paperless/export/current \
+                    --backup-dir "garage:backup-paperless/export/archive/${STAMP}" \
+                    --max-delete 150 --checksum --stats-one-line --stats 0 -v
+                  rclone delete garage:backup-paperless/export/archive --min-age 30d --rmdirs -v
+                  rclone size garage:backup-paperless
+              env:
+                - { name: HOME, value: /tmp }
+                - { name: GATUS_URL, value: "http://gatus.gatus.svc.cluster.local" }
+                - name: WATCHDOG_TOKEN
+                  valueFrom: { secretKeyRef: { name: paperless-watchdog, key: WATCHDOG_TOKEN } }
+                - { name: RCLONE_CONFIG, value: /tmp/rclone.conf } # existiert nicht (harmloser NOTICE); Remote kommt aus RCLONE_CONFIG_*
+                - { name: RCLONE_CACHE_DIR, value: /tmp/cache }
+                - { name: RCLONE_CONFIG_GARAGE_TYPE, value: s3 }
+                - { name: RCLONE_CONFIG_GARAGE_PROVIDER, value: Other }
+                - { name: RCLONE_CONFIG_GARAGE_ENDPOINT, value: "http://192.168.23.21:3900" }
+                - { name: RCLONE_CONFIG_GARAGE_FORCE_PATH_STYLE, value: "true" }
+                # Der Key darf keine Buckets anlegen; ohne no_check_bucket scheitert
+                # rclone vor jedem Upload an CreateBucket (403).
+                - { name: RCLONE_CONFIG_GARAGE_NO_CHECK_BUCKET, value: "true" }
+                - name: RCLONE_CONFIG_GARAGE_REGION
+                  valueFrom: { secretKeyRef: { name: paperless-offsite-s3, key: region } }
+                - name: RCLONE_CONFIG_GARAGE_ACCESS_KEY_ID
+                  valueFrom: { secretKeyRef: { name: paperless-offsite-s3, key: ACCESS_KEY_ID } }
+                - name: RCLONE_CONFIG_GARAGE_SECRET_ACCESS_KEY
+                  valueFrom: { secretKeyRef: { name: paperless-offsite-s3, key: SECRET_ACCESS_KEY } }
+              resources:
+                requests: { cpu: 50m, memory: 64Mi }
+                limits: { memory: 512Mi }
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: { drop: ["ALL"] }
+              volumeMounts:
+                - { name: export, mountPath: /export, readOnly: true }
+                - { name: scratch, mountPath: /tmp, subPath: tmp }
+          volumes:
+            - name: media
+              persistentVolumeClaim:
+                claimName: paperless-paperless-ngx-media
+            - name: export
+              persistentVolumeClaim:
+                claimName: paperless-paperless-ngx-export
+            - name: scratch
+              emptyDir: { sizeLimit: 1Gi }

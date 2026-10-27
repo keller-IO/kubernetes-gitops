@@ -42,8 +42,9 @@ config:
   #     scopes: [openid, profile, email]
   ui:
     title: Homelab Status
-  # Push-Checks: Gatus kann diese Zustände nicht selbst abfragen, sie werden vom
-  # CronJob paperless-watchdog (apps/base/paperless-ngx/watchdog.yaml) gemeldet.
+  # Push-Checks: Gatus kann diese Zustände nicht selbst abfragen, sie werden von
+  # den CronJobs paperless-watchdog (apps/base/paperless-ngx/watchdog.yaml) und
+  # paperless-offsite-backup (offsite-backup.yaml) gemeldet.
   # Meldet sich ein Check länger als heartbeat-interval nicht, wertet Gatus das
   # als Ausfall — damit fällt auch ein toter CronJob auf.
   external-endpoints:
@@ -57,6 +58,13 @@ config:
       token: ${WATCHDOG_TOKEN}
       heartbeat:
         interval: 45m
+    # Taeglich 03:15 vom CronJob paperless-offsite-backup; 26 h lassen einen
+    # verspaeteten Lauf zu, ein ausgefallener Tag faellt auf.
+    - name: offsite-backup
+      group: paperless
+      token: ${WATCHDOG_TOKEN}
+      heartbeat:
+        interval: 26h
   endpoints:
     - name: argocd
       group: intern (jit.services)
