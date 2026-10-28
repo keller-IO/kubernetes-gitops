@@ -17,6 +17,13 @@ env:
   PAPERLESS_OCR_MODE: skip
   PAPERLESS_OCR_CLEAN: clean
   PAPERLESS_OCR_ROTATE_PAGES: "true"
+  # Pillow bricht erst beim DOPPELTEN Wert ab, also Seiten > 60 MP (A1 bei 300 dpi
+  # ~70 MP, A2 ~35 MP). Ohne Grenze gilt ocrmypdfs 250 MP: ein 57x129-cm-Plan ohne
+  # Text (Force-OCR, 103 MP) brauchte lokal 2,3 GiB und killte den Pod am
+  # 26.10. und 28.10.2026 trotz 3Gi. Mit Grenze scheitert nur das Dokument.
+  PAPERLESS_OCR_MAX_IMAGE_PIXELS: "30000000"
+  # Empfehlung von Paperless selbst bei "Ghostscript PDF/A rendering failed".
+  PAPERLESS_OCR_USER_ARGS: '{"continue_on_soft_render_error": true}'
   # OIDC via django-allauth. Provider JSON lives in paperless-secret and must
   # match the Keycloak client in Realm bgt before login is enabled.
   PAPERLESS_APPS: allauth.socialaccount.providers.openid_connect
