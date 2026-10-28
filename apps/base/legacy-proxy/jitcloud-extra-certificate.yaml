@@ -1,12 +1,8 @@
 # Zertifikat fuer die beiden jitcloud-Aliase aus jitcloud-preload
-# (cloud.steinba.ch, cloud.naturkindergarten-moehringen.de). Ablösung des
-# vorgeladenen Traefik-Zertifikats (preload-jitcloud.sops.yaml, Ablauf 30.11.2026).
-#
-# Zweistufig, damit kein Moment ohne gueltiges Zertifikat entsteht:
-#   1. (dieser Stand) cert-manager stellt in das NEUE Secret jitcloud-extra-tls aus,
-#      der Ingress liefert weiter jitcloud-preload-tls aus.
-#   2. Wenn das Certificate Ready ist: Ingress auf jitcloud-extra-tls umstellen,
-#      Preload-Secret und Generator loeschen.
+# (cloud.steinba.ch, cloud.naturkindergarten-moehringen.de). Hat das vorgeladene
+# Traefik-Zertifikat abgeloest, zweistufig ohne Luecke: #391 stellte in das neue
+# Secret jitcloud-extra-tls aus, waehrend der Ingress noch das Preload-Secret
+# auslieferte; der Folge-PR stellte den Ingress um.
 #
 # Warum ein eigener Issuer statt letsencrypt-prod:
 # - naturkindergarten-moehringen.de steht im ClusterIssuer im DNS-01-Follow-Solver,
