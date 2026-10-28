@@ -1456,8 +1456,13 @@ enden bei 200. 36 Apps gruen, 36 Zertifikate Ready, nginx 7/7 mit **0 Neustarts*
    selfHeal die atomare `spec.rules`-Liste zurueck.
    `mail.steinba.ch` behaelt einen eigenen Ingress: im Sammelzertifikat von
    `roundcube-jitmail` (DNS-01) wuerde eine scheiternde HTTP-01-Challenge alle Namen
-   mitreissen. **Offen:** `jitcloud-preload` (`cloud.steinba.ch`,
-   `cloud.naturkindergarten-moehringen.de`), Ablauf **30.11.2026**.
+   mitreissen. **`jitcloud-preload`** (`cloud.steinba.ch`,
+   `cloud.naturkindergarten-moehringen.de`) zweistufig ohne Luecke: #391 stellte per
+   eigenem Issuer `legacy-proxy-http01` (`http01.ingress.name: jitcloud-preload`) in das
+   neue Secret `jitcloud-extra-tls` aus, der Folge-PR stellte den Ingress am 28.10. um
+   und entfernte das letzte Preload-Secret samt Generator. **Damit ist Punkt 1 erledigt.**
+   Uebrig: `naturkindergarten-moehringen.de` steht im ClusterIssuer noch im
+   DNS-01-Follow-Selector (wirkungslos, nur noch Aufraeumen per sops).
 2. **steinba.ch-Mailzertifikat** auf den cfgmgmt01-Cron umbauen, `.15`-Cron abschalten.
    Ablauf 04.12.2026, ab jetzt kann `.15` nicht mehr erneuern.
 3. **`.15` beobachten und abschalten** (Phasen 7 und 8).

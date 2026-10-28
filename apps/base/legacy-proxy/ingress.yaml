@@ -1,10 +1,9 @@
 # Reverse-Proxy-Routen nach dem docker15-Cutover. Seit dem 13.09.2026 gehen die
 # WAN-Ports 80/443 direkt auf den Cluster-LB; TLS terminiert im Cluster.
 #
-# cloud.naturkindergarten-moehringen.de fehlt im jitcloud-Zertifikat, solange der
-# _acme-challenge-CNAME beim Provider fehlt — ein scheiternder Name reisst sonst
-# die gesamte Anforderung mit. Bis dahin traegt jitcloud-preload das vorgeladene
-# Zertifikat (gueltig bis 30.11.2026).
+# cloud.steinba.ch und cloud.naturkindergarten-moehringen.de stehen nicht im
+# jitcloud-Zertifikat (DNS-01), sondern in jitcloud-preload mit eigenem
+# HTTP-01-Zertifikat, siehe jitcloud-extra-certificate.yaml.
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -361,22 +360,23 @@ spec:
             pathType: Prefix
             backend: { service: { name: cloud-dev-talk-hpb, port: { number: 80 } } }
 ---
-# ⚠️ TEMPORAER auch nach dem docker15-Cutover. Abloesung laeuft: siehe
-# jitcloud-extra-certificate.yaml (Issuer legacy-proxy-http01 traegt den
-# HTTP-01-Challenge-Pfad in DIESEN Ingress ein — Name nicht aendern).
-# Diese beiden Namen gehoeren inhaltlich zum jitcloud-Ingress, brauchen aber ein
-# eigenes Objekt: jitcloud traegt die cert-manager-Annotation, und sobald sie
-# dort in einem tls-Block stuenden, wuerde cert-manager fuer sie sofort
-# Challenges starten. Die noch offenen Voraussetzungen stehen im Runbook.
-# Danach beide Hosts zurueck in den jitcloud-Ingress (rules UND tls) verschieben
-# und dieses Objekt samt Secret und Generator-Eintrag loeschen.
+# Diese beiden Namen gehoeren inhaltlich zum jitcloud-Ingress, haben aber ein
+# eigenes Objekt und Zertifikat: jitcloud laeuft ueber DNS-01, diese beiden ueber
+# HTTP-01 (naturkindergarten-moehringen.de hat keinen _acme-challenge-CNAME). So
+# reisst eine scheiternde Challenge das Sammelzertifikat nicht mit.
+# ⚠️ Name nicht aendern: der Issuer legacy-proxy-http01 traegt den Challenge-Pfad
+# per http01.ingress.name in DIESEN Ingress ein (jitcloud-extra-certificate.yaml).
+# "-preload" ist historisch (PR #170, vorgeladenes Traefik-Zertifikat bis 30.11.2026).
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: jitcloud-preload
   namespace: legacy-proxy
   annotations:
-    nginx.org/ssl-redirect: "false"
+    # jitcloud-extra-tls steht seit #391, daher "true" wie jitcloud: Erneuerungen
+    # gehen trotz Redirect, weil LE ihm auf https folgt und das Secret existiert.
+    # ⚠️ Bei einer Neuausstellung ohne Secret vorher auf "false" stellen.
+    nginx.org/ssl-redirect: "true"
     nginx.org/redirect-to-https: "false"
     nginx.org/ssl-services: "jitcloud"
     nginx.org/client-max-body-size: "0"
@@ -388,7 +388,7 @@ spec:
     - hosts:
         - cloud.steinba.ch
         - cloud.naturkindergarten-moehringen.de
-      secretName: jitcloud-preload-tls
+      secretName: jitcloud-extra-tls
   rules:
     - host: cloud.steinba.ch
       http:
