@@ -1,14 +1,18 @@
-# Wie der Cronjob auf dem Altsystem (alle 15 Minuten). Ausgesetzt bis zum Umzug,
-# sonst liefe der Job doppelt; beim Umzug hier an- und auf dem Altsystem abschalten.
+# Wie der Cronjob auf dem Altsystem (alle 15 Minuten). Seit dem Umzug aktiv;
+# auf dem Altsystem ist er abgeschaltet (sonst liefe er doppelt).
 apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: hetzner-import
   namespace: jitmgmt
 spec:
-  suspend: true
+  suspend: false
   schedule: "*/15 * * * *"
   concurrencyPolicy: Forbid
+  # Kein Nachholen verpasster Zeitpunkte (etwa beim Aufheben von suspend):
+  # nur ein Zeitpunkt, der hoechstens 5 Minuten zurueckliegt, startet noch;
+  # kuerzer als das 15-Minuten-Intervall.
+  startingDeadlineSeconds: 300
   successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 3
   jobTemplate:

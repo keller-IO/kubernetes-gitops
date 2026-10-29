@@ -18,20 +18,14 @@ metadata:
 spec:
   ingressClassName: nginx
   tls:
+    # www.jit-creatives.de und www.jitcreatives.de liefert seit dem Umzug
+    # apps/overlays/main/jitmgmt aus (Ingress jitmgmt-public).
     - hosts:
-        - www.jit-creatives.de
         - mgmt02.jit-creatives.de
-        - www.jitcreatives.de
         - ftp.jit-creatives.de
       secretName: mgmt02-tls
   rules:
-    - host: www.jit-creatives.de
-      http:
-        paths: [{ path: /, pathType: Prefix, backend: { service: { name: mgmt02, port: { number: 80 } } } }]
     - host: mgmt02.jit-creatives.de
-      http:
-        paths: [{ path: /, pathType: Prefix, backend: { service: { name: mgmt02, port: { number: 80 } } } }]
-    - host: www.jitcreatives.de
       http:
         paths: [{ path: /, pathType: Prefix, backend: { service: { name: mgmt02, port: { number: 80 } } } }]
     - host: ftp.jit-creatives.de
