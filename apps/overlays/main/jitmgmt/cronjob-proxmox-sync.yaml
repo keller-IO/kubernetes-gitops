@@ -37,8 +37,8 @@ spec:
                 - configMapRef: { name: jitmgmt-config }
                 - secretRef: { name: jitmgmt-secrets }
               resources:
-                requests: { cpu: 50m, memory: 128Mi }
-                limits: { memory: 384Mi }
+                requests: { cpu: 10m, memory: 96Mi }
+                limits: { memory: 256Mi }
               volumeMounts:
                 - { name: tmp, mountPath: /tmp }
               securityContext:
