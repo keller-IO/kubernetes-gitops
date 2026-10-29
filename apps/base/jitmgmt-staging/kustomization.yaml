@@ -3,11 +3,15 @@ kind: Kustomization
 namespace: jitmgmt-staging
 resources:
   - namespace.yaml
-  - configmap.yaml
   - deployment.yaml
   - service.yaml
+  - ingress.yaml
   - cronjob-rechnungslauf.yaml
+
+configMapGenerator:
+  - name: jitmgmt-config
+    envs: [config.env]
 
 generators:
   - ./secret-generator.yaml
-# Kein Ingress. Zugriff: kubectl -n jitmgmt-staging port-forward svc/jitmgmt 8000:80
+# Erreichbar unter https://jitmgmt-staging.jit.services, nur aus internen Netzen.
