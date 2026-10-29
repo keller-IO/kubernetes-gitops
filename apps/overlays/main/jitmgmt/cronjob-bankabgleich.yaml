@@ -33,7 +33,7 @@ spec:
             - name: gitlab-registry
           containers:
             - name: bankabgleich
-              image: registry.jit-creatives.de/jit/jitmgmt:9527a3ad
+              image: registry.jit-creatives.de/jit/jitmgmt:f44d2966
               command: ["python", "manage.py", "fetch_fints_transactions", "--match", "--confirm-exact"]
               envFrom:
                 - configMapRef: { name: jitmgmt-config }
@@ -42,7 +42,7 @@ spec:
               env:
                 - { name: BANKING_ENABLED, value: "1" }
                 - { name: BANKING_PROVIDER, value: fints }
-                - { name: FINTS_TAN_MECHANISM, value: "921" }
+                - { name: FINTS_TAN_MECHANISM, value: "923" }
                 - { name: FINTS_STATE_DIR, value: /var/lib/fints }
               resources:
                 requests: { cpu: 20m, memory: 128Mi }
