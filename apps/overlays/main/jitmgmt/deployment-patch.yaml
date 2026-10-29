@@ -11,7 +11,7 @@ spec:
     spec:
       initContainers:
         - name: prepare-secrets
-          image: registry.jit-creatives.de/jit/jitmgmt:2436aeb6
+          image: registry.jit-creatives.de/jit/jitmgmt:3e1b10ba
           command:
             - sh
             - -ec
