@@ -28,7 +28,7 @@ spec:
       initContainers:
         # Die Migrationen seit dem Altsystem sind reine Zustands-Migrationen ohne SQL.
         - name: migrate
-          image: registry.jit-creatives.de/jit/jitmgmt:1834a731 # renovate: gitlab-tags
+          image: registry.jit-creatives.de/jit/jitmgmt:2fbd5d4d # renovate: gitlab-tags
           command: ["python", "manage.py", "migrate", "--noinput"]
           resources:
             requests: { cpu: 50m, memory: 128Mi }
@@ -44,7 +44,7 @@ spec:
             capabilities: { drop: ["ALL"] }
       containers:
         - name: app
-          image: registry.jit-creatives.de/jit/jitmgmt:1834a731 # renovate: gitlab-tags
+          image: registry.jit-creatives.de/jit/jitmgmt:2fbd5d4d # renovate: gitlab-tags
           envFrom:
             - configMapRef: { name: jitmgmt-config }
             - secretRef: { name: jitmgmt-secrets }
