@@ -1,0 +1,45 @@
+# Rechnungslauf (generate_due_invoices). Ausgesetzt und nur mit
+# --dry-run: listet, was faellig waere, erzeugt nichts und verschickt nichts.
+# Manuell: kubectl -n jitmgmt-staging create job --from=cronjob/rechnungslauf probe-1
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: rechnungslauf
+  namespace: jitmgmt-staging
+spec:
+  suspend: true
+  # TIME_ZONE ist UTC (wie im Altsystem): 06:00 UTC = 07:00/08:00 Berlin
+  schedule: "0 6 * * *"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      template:
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            seccompProfile: { type: RuntimeDefault }
+          imagePullSecrets:
+            - name: gitlab-registry
+          containers:
+            - name: rechnungslauf
+              image: registry.jit-creatives.de/jit/jitmgmt:1834a731 # renovate: gitlab-tags
+              command: ["python", "manage.py", "generate_due_invoices", "--dry-run"]
+              resources:
+                requests: { cpu: 50m, memory: 128Mi }
+                limits: { memory: 768Mi }
+              envFrom:
+                - configMapRef: { name: jitmgmt-config }
+                - secretRef: { name: jitmgmt-secrets }
+              volumeMounts:
+                - { name: tmp, mountPath: /tmp }
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: { drop: ["ALL"] }
+          volumes:
+            - name: tmp
+              emptyDir: { sizeLimit: 256Mi }
