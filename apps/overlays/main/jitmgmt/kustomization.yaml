@@ -10,6 +10,7 @@ resources:
   - cronjob-hetzner-import.yaml
   - cronjob-rechnungslauf.yaml
   - cronjob-bankabgleich.yaml
+  - cronjob-mahnlauf.yaml
   - pvc-fints.yaml
 
 patches:
@@ -17,7 +18,7 @@ patches:
 
 images:
   - name: registry.jit-creatives.de/jit/jitmgmt
-    newTag: f44d2966
+    newTag: 41bd55c6
 
 configMapGenerator:
   - name: jitmgmt-config
