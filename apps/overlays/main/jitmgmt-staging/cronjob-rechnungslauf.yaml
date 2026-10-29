@@ -11,6 +11,9 @@ spec:
   # TIME_ZONE ist UTC (wie im Altsystem): 06:00 UTC = 07:00/08:00 Berlin
   schedule: "0 6 * * *"
   concurrencyPolicy: Forbid
+  # Beim Aufheben von suspend nichts nachholen; nur ein hoechstens eine Stunde
+  # zurueckliegender Zeitpunkt startet noch.
+  startingDeadlineSeconds: 3600
   jobTemplate:
     spec:
       backoffLimit: 0

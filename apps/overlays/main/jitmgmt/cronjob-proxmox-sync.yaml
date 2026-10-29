@@ -9,6 +9,10 @@ spec:
   suspend: false
   schedule: "*/15 * * * *"
   concurrencyPolicy: Forbid
+  # Kein Nachholen verpasster Zeitpunkte (etwa beim Aufheben von suspend):
+  # nur ein Zeitpunkt, der hoechstens 5 Minuten zurueckliegt, startet noch;
+  # kuerzer als das 15-Minuten-Intervall.
+  startingDeadlineSeconds: 300
   successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 3
   jobTemplate:
