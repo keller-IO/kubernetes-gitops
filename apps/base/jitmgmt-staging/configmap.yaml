@@ -1,6 +1,6 @@
 # Nicht-Geheimes fuer Staging; Zugangsdaten und Endpunkte in secret.sops.yaml.
-# Alle Integrationen nach aussen sind aus, Mails gehen nur an support@
-# (MAIL_REDIRECT_TO), sobald MAIL_ENABLED gesetzt ist.
+# Alle Integrationen nach aussen sind aus; jede Mail geht nur an support@
+# (MAIL_REDIRECT_TO), nie an die eigentlichen Empfaenger.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -18,7 +18,7 @@ data:
   INVOICE_S3_BUCKET: "invoices-staging"
   INVOICE_S3_REGION: "us-east-1"
 
-  MAIL_ENABLED: "0"
+  MAIL_ENABLED: "1"
   MAIL_REDIRECT_TO: "support@jitcreatives.de"
   MAIL_REDIRECT_LABEL: "STAGING"
   EMAIL_PORT: "587"
