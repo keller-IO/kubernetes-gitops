@@ -10,6 +10,7 @@ resources:
   - cronjob-hetzner-import.yaml
   - cronjob-rechnungslauf.yaml
   - cronjob-bankabgleich.yaml
+  - cronjob-mahnlauf.yaml
   - pvc-fints.yaml
 
 patches:
