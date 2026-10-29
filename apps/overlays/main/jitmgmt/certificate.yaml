@@ -1,0 +1,15 @@
+# Zertifikat fuer die oeffentlichen Hosts vorab (DNS-01), damit der Umzug ohne
+# Zertifikatsluecke geht. Wird erst mit dem Umzugs-PR im Ingress verwendet.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: jitmgmt-www
+  namespace: jitmgmt
+spec:
+  secretName: jitmgmt-www-tls
+  issuerRef:
+    kind: ClusterIssuer
+    name: letsencrypt-prod
+  dnsNames:
+    - www.jit-creatives.de
+    - www.jitcreatives.de
