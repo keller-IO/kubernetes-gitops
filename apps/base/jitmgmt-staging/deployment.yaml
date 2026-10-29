@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jitmgmt
+  namespace: jitmgmt-staging
+  labels:
+    app.kubernetes.io/name: jitmgmt
+spec:
+  # Zustandslos: Daten in der Datenbank, Rechnungen im Bucket (S3).
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: jitmgmt
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: jitmgmt
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      imagePullSecrets:
+        - name: gitlab-registry
+      initContainers:
+        # Die Migrationen seit dem Altsystem sind reine Zustands-Migrationen ohne SQL.
+        - name: migrate
+          image: registry.jit-creatives.de/jit/jitmgmt:1834a731 # renovate: gitlab-tags
+          command: ["python", "manage.py", "migrate", "--noinput"]
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { memory: 384Mi }
+          envFrom:
+            - configMapRef: { name: jitmgmt-config }
+            - secretRef: { name: jitmgmt-secrets }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+          securityContext: &container-security
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+      containers:
+        - name: app
+          image: registry.jit-creatives.de/jit/jitmgmt:1834a731 # renovate: gitlab-tags
+          envFrom:
+            - configMapRef: { name: jitmgmt-config }
+            - secretRef: { name: jitmgmt-secrets }
+          ports:
+            - name: http
+              containerPort: 8000
+          # Kubelet fragt mit der Pod-IP als Host an; ALLOWED_HOSTS lehnte das mit 400 ab.
+          readinessProbe:
+            httpGet: { path: /readyz, port: http, httpHeaders: [{ name: Host, value: localhost }] }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /healthz, port: http, httpHeaders: [{ name: Host, value: localhost }] }
+            initialDelaySeconds: 20
+            periodSeconds: 30
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            # pdflatex braucht beim Rendern kurzzeitig deutlich mehr als gunicorn im Leerlauf.
+            limits: { memory: 768Mi }
+          securityContext: *container-security
+      volumes:
+        # pdflatex-Arbeitsverzeichnisse, TeX-Cache (HOME=/tmp), gunicorn-Heartbeat
+        - name: tmp
+          emptyDir: { sizeLimit: 256Mi }
