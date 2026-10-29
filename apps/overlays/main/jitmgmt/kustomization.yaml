@@ -4,6 +4,7 @@ namespace: jitmgmt
 resources:
   - ../../../base/jitmgmt
   - ingress.yaml
+  - ingress-public.yaml
   - certificate.yaml
   - cronjob-proxmox-sync.yaml
   - cronjob-hetzner-import.yaml
@@ -21,4 +22,5 @@ configMapGenerator:
 
 generators:
   - ./secret-generator.yaml
-# Produktion. Vor dem Umzug nur intern unter https://jitmgmt.jit.services.
+# Produktion: www.jit-creatives.de, www.jitcreatives.de (oeffentlich) und
+# jitmgmt.jit.services (nur intern).

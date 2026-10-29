@@ -1,0 +1,39 @@
+# Oeffentliche Hosts (vorher legacy-proxy, Ingress mgmt02). Zertifikat aus
+# certificate.yaml -- bewusst ohne cert-manager-Annotation, sonst legte der
+# ingress-shim ein zweites Certificate fuer dasselbe Secret an.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: jitmgmt-public
+  namespace: jitmgmt
+  annotations:
+    nginx.org/ssl-redirect: "true"
+    nginx.org/redirect-to-https: "true"
+    nginx.org/client-max-body-size: "10m"
+    nginx.org/proxy-read-timeout: "120s"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: [www.jit-creatives.de, www.jitcreatives.de]
+      secretName: jitmgmt-www-tls
+  rules:
+    - host: www.jit-creatives.de
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: jitmgmt
+                port:
+                  name: http
+    - host: www.jitcreatives.de
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: jitmgmt
+                port:
+                  name: http

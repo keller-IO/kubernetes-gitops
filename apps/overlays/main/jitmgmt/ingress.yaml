@@ -1,6 +1,5 @@
-# Vor dem Umzug nur intern (Abnahme gegen Produktionsdaten). Die oeffentlichen
-# Hosts kommen mit dem Umzugs-PR dazu; ihr Zertifikat stellt certificate.yaml
-# vorab aus.
+# Interner Zugang (Admin, Abnahme). Die oeffentlichen Hosts stehen in
+# ingress-public.yaml.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:

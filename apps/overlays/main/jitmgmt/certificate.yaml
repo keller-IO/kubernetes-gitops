@@ -1,5 +1,4 @@
-# Zertifikat fuer die oeffentlichen Hosts vorab (DNS-01), damit der Umzug ohne
-# Zertifikatsluecke geht. Wird erst mit dem Umzugs-PR im Ingress verwendet.
+# Zertifikat fuer die oeffentlichen Hosts (DNS-01), genutzt von ingress-public.yaml.
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
