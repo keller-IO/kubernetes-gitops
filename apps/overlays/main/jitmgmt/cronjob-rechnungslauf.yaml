@@ -1,0 +1,52 @@
+# Rechnungslauf: erzeugt und verschickt faellige Folgerechnungen. Schaut jeden
+# Tag 60 Tage zurueck -- abgerechnete Rechnungen werden nicht erneut faellig,
+# ein ausgefallener Tag wird nachgeholt, eine gescheiterte Zustellung beim
+# naechsten Lauf mit demselben Nachfolger wiederholt.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: rechnungslauf
+  namespace: jitmgmt
+spec:
+  schedule: "5 8 * * *"
+  timeZone: Europe/Berlin
+  concurrencyPolicy: Forbid
+  # Beim Anlegen oder nach einer Pause nicht nachholen; das erledigt das
+  # 60-Tage-Fenster des naechsten Laufs.
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      # Kein Neuversuch am selben Tag: der naechste Lauf holt nach, ohne doppelt zu senden.
+      backoffLimit: 0
+      activeDeadlineSeconds: 1800
+      template:
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            seccompProfile: { type: RuntimeDefault }
+          imagePullSecrets:
+            - name: gitlab-registry
+          containers:
+            - name: rechnungslauf
+              image: registry.jit-creatives.de/jit/jitmgmt:862af62a
+              command: ["python", "manage.py", "generate_due_invoices", "--catch-up-days", "60"]
+              envFrom:
+                - configMapRef: { name: jitmgmt-config }
+                - secretRef: { name: jitmgmt-secrets }
+              resources:
+                requests: { cpu: 20m, memory: 128Mi }
+                limits: { memory: 384Mi }
+              volumeMounts:
+                - { name: tmp, mountPath: /tmp }
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: { drop: ["ALL"] }
+          volumes:
+            - name: tmp
+              emptyDir: { sizeLimit: 256Mi }
