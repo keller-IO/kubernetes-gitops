@@ -1,0 +1,61 @@
+# Bankabgleich: holt die Kontoumsaetze per FinTS, speichert sie und markiert
+# exakt passende Zahlungen (Rechnungsnummer + Bruttobetrag) als bezahlt.
+# Verlangt die Bank eine neue Freigabe (etwa alle 90 Tage), wartet der Job
+# fuenf Minuten auf die Bestaetigung in der pushTAN-App.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: bankabgleich
+  namespace: jitmgmt
+spec:
+  schedule: "0 7 * * *"
+  timeZone: Europe/Berlin
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      # Kein Neuversuch: jeder Versuch kann eine Freigabe anstossen, eine
+      # falsche PIN zaehlt bei der Bank als Fehlversuch.
+      backoffLimit: 0
+      activeDeadlineSeconds: 900
+      template:
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            fsGroup: 10001
+            seccompProfile: { type: RuntimeDefault }
+          imagePullSecrets:
+            - name: gitlab-registry
+          containers:
+            - name: bankabgleich
+              image: registry.jit-creatives.de/jit/jitmgmt:9527a3ad
+              command: ["python", "manage.py", "fetch_fints_transactions", "--match", "--confirm-exact"]
+              envFrom:
+                - configMapRef: { name: jitmgmt-config }
+                - secretRef: { name: jitmgmt-secrets }
+                - secretRef: { name: jitmgmt-fints }
+              env:
+                - { name: BANKING_ENABLED, value: "1" }
+                - { name: BANKING_PROVIDER, value: fints }
+                - { name: FINTS_TAN_MECHANISM, value: "921" }
+                - { name: FINTS_STATE_DIR, value: /var/lib/fints }
+              resources:
+                requests: { cpu: 20m, memory: 128Mi }
+                limits: { memory: 384Mi }
+              volumeMounts:
+                - { name: tmp, mountPath: /tmp }
+                - { name: fints, mountPath: /var/lib/fints }
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: { drop: ["ALL"] }
+          volumes:
+            - name: tmp
+              emptyDir: { sizeLimit: 256Mi }
+            - name: fints
+              persistentVolumeClaim: { claimName: jitmgmt-fints }

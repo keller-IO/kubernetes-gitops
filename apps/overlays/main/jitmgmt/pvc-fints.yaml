@@ -1,0 +1,16 @@
+# FinTS-Sitzung des Bankabgleichs (Bankparameter, System-ID). Geht sie
+# verloren, verlangt die Bank beim naechsten Abruf eine neue Freigabe.
+# Prune/Delete aus, damit ein Sync sie nie entfernt.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: jitmgmt-fints
+  namespace: jitmgmt
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: ceph-rbd
+  resources:
+    requests:
+      storage: 1Gi
