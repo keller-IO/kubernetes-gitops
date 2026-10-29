@@ -1,4 +1,4 @@
-# Produktion: zwei Repliken; SSH-Schluessel und GPG-Keyring aus dem Secret mit
+# Produktion: SSH-Schluessel und GPG-Keyring aus dem Secret mit
 # den Rechten bereitstellen, die ssh und gpg verlangen (Secret-Volumes sind fuer
 # ssh zu offen und fuer gpg nicht beschreibbar).
 apiVersion: apps/v1
@@ -6,7 +6,6 @@ kind: Deployment
 metadata:
   name: jitmgmt
 spec:
-  replicas: 2
   template:
     spec:
       initContainers:
