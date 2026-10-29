@@ -50,5 +50,31 @@
       }
     },
     "reason": "Existing external GitLab application: manifests and delivery belong to its own repo. Freeze the complete spec until this CI can render the external source without production credentials."
+  },
+  {
+    "name": "app-jitmgmt-staging",
+    "spec": {
+      "project": "apps",
+      "source": {
+        "repoURL": "https://gitlab.jit-creatives.de/jit/jitmgmt.git",
+        "targetRevision": "port/newdesign-prod",
+        "path": "k8s/staging"
+      },
+      "destination": {
+        "server": "https://kubernetes.default.svc",
+        "namespace": "jitmgmt-staging"
+      },
+      "syncPolicy": {
+        "automated": {
+          "prune": true,
+          "selfHeal": true
+        },
+        "syncOptions": [
+          "CreateNamespace=true",
+          "ServerSideApply=true"
+        ]
+      }
+    },
+    "reason": "New external GitLab application, added deliberately on the same terms as app-tonu: manifests and delivery belong to its own repo. Freeze the complete spec until this CI can render the external source without production credentials."
   }
 ]
