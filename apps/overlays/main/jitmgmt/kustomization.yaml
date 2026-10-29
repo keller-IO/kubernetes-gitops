@@ -9,13 +9,15 @@ resources:
   - cronjob-proxmox-sync.yaml
   - cronjob-hetzner-import.yaml
   - cronjob-rechnungslauf.yaml
+  - cronjob-bankabgleich.yaml
+  - pvc-fints.yaml
 
 patches:
   - path: deployment-patch.yaml
 
 images:
   - name: registry.jit-creatives.de/jit/jitmgmt
-    newTag: 862af62a
+    newTag: 9527a3ad
 
 configMapGenerator:
   - name: jitmgmt-config
