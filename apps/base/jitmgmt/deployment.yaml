@@ -2,11 +2,11 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: jitmgmt
-  namespace: jitmgmt-staging
   labels:
     app.kubernetes.io/name: jitmgmt
 spec:
   # Zustandslos: Daten in der Datenbank, Rechnungen im Bucket (S3).
+  # Gemeinsame Basis fuer jitmgmt-staging und jitmgmt (Produktion).
   replicas: 1
   selector:
     matchLabels:

@@ -1,0 +1,38 @@
+# Produktion: zwei Repliken; SSH-Schluessel und GPG-Keyring aus dem Secret mit
+# den Rechten bereitstellen, die ssh und gpg verlangen (Secret-Volumes sind fuer
+# ssh zu offen und fuer gpg nicht beschreibbar).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jitmgmt
+spec:
+  replicas: 2
+  template:
+    spec:
+      initContainers:
+        - name: prepare-secrets
+          image: registry.jit-creatives.de/jit/jitmgmt:2436aeb6
+          command:
+            - sh
+            - -ec
+            - |
+              install -d -m 700 /tmp/secrets /tmp/gnupg
+              install -m 600 /files/jitix_remote_ed25519 /tmp/secrets/jitix_remote_ed25519
+              install -m 644 /files/jitix_known_hosts /tmp/secrets/jitix_known_hosts
+              tar -xzf /files/hetzner_robot_gnupg.tar.gz -C /tmp/gnupg
+              chmod -R go-rwx /tmp/gnupg
+          resources:
+            requests: { cpu: 10m, memory: 16Mi }
+            limits: { memory: 64Mi }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+            - { name: files, mountPath: /files, readOnly: true }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+      volumes:
+        - name: files
+          secret:
+            secretName: jitmgmt-files
+            defaultMode: 0440

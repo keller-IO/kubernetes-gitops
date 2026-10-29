@@ -1,0 +1,46 @@
+# Wie der Cronjob auf dem Altsystem (alle 15 Minuten). Ausgesetzt bis zum Umzug,
+# sonst liefe der Job doppelt; beim Umzug hier an- und auf dem Altsystem abschalten.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: proxmox-sync
+  namespace: jitmgmt
+spec:
+  suspend: true
+  schedule: "*/15 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 600
+      template:
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            seccompProfile: { type: RuntimeDefault }
+          imagePullSecrets:
+            - name: gitlab-registry
+          containers:
+            - name: proxmox-sync
+              image: registry.jit-creatives.de/jit/jitmgmt:2436aeb6
+              command: ["sh", "-c", "python manage.py sync_proxmox_vms --verbosity 0"]
+              envFrom:
+                - configMapRef: { name: jitmgmt-config }
+                - secretRef: { name: jitmgmt-secrets }
+              resources:
+                requests: { cpu: 50m, memory: 128Mi }
+                limits: { memory: 384Mi }
+              volumeMounts:
+                - { name: tmp, mountPath: /tmp }
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: { drop: ["ALL"] }
+          volumes:
+            - name: tmp
+              emptyDir: { sizeLimit: 64Mi }
