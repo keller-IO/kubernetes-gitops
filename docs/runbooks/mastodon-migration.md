@@ -442,6 +442,12 @@ Minor-Version vorher am Restore-Klon messen (unten).
 Lock-Timeout. PITR-Ziel davor: 2026-10-25T07:37:57Z. Messwerte unter
 „4.6.9 → 4.7.3“.
 
+**Update 29.10.2026:** 4.7.4 behebt unter anderem die unzureichende Prüfung
+von ActivityPub-Identifikatoren (GHSA-288h-6j8h-6x5j). Laut Release Notes
+braucht das Docker-Upgrade von 4.7.3 nur einen Neustart der Prozesse; die
+externen Abhängigkeiten bleiben gleich. Vor dem Merge Backup/WAL-Stand prüfen,
+danach Hooks, Rollout und Föderation gemäß Ablauf unten kontrollieren.
+
 **Stand 23.10.2026:** 4.6.9 läuft seit 09:03Z (#338). Backup davor:
 `mastodon-pg-pre-4-6-20261022`, PITR-Ziel 2026-10-23T08:49:37Z. Beim
 PreSync-Hook fiel die Seite fünf Minuten aus

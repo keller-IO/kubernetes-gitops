@@ -50,7 +50,7 @@ spec:
         seccompProfile: { type: RuntimeDefault }
       containers:
         - name: db-migrate
-          image: ghcr.io/mastodon/mastodon:v4.7.3 # an values.yaml image.tag gekoppelt
+          image: ghcr.io/mastodon/mastodon:v4.7.4 # an values.yaml image.tag gekoppelt
           imagePullPolicy: IfNotPresent
           command:
             - /bin/bash
@@ -143,7 +143,7 @@ spec:
         seccompProfile: { type: RuntimeDefault }
       containers:
         - name: db-migrate
-          image: ghcr.io/mastodon/mastodon:v4.7.3 # an values.yaml image.tag gekoppelt
+          image: ghcr.io/mastodon/mastodon:v4.7.4 # an values.yaml image.tag gekoppelt
           imagePullPolicy: IfNotPresent
           command:
             - /bin/bash
