@@ -1,0 +1,30 @@
+# Zweitdomain: leitet dauerhaft auf den Haupthost um (eine kanonische Adresse
+# statt doppelter Inhalte). Zertifikat wie ingress-public.yaml aus
+# certificate.yaml. Die Weiterleitung uebernimmt das Snippet fuer HTTP und
+# HTTPS in einem Schritt, deshalb ohne ssl-redirect.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: jitmgmt-redirect
+  namespace: jitmgmt
+  annotations:
+    nginx.org/ssl-redirect: "false"
+    nginx.org/redirect-to-https: "false"
+    nginx.org/server-snippets: |
+      return 301 https://www.jit-creatives.de$request_uri;
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: [www.jitcreatives.de]
+      secretName: jitmgmt-www-tls
+  rules:
+    - host: www.jitcreatives.de
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: jitmgmt
+                port:
+                  name: http

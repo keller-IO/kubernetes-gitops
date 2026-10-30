@@ -14,20 +14,10 @@ metadata:
 spec:
   ingressClassName: nginx
   tls:
-    - hosts: [www.jit-creatives.de, www.jitcreatives.de]
+    - hosts: [www.jit-creatives.de]
       secretName: jitmgmt-www-tls
   rules:
     - host: www.jit-creatives.de
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: jitmgmt
-                port:
-                  name: http
-    - host: www.jitcreatives.de
       http:
         paths:
           - path: /

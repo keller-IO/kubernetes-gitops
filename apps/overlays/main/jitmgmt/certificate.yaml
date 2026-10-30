@@ -1,4 +1,5 @@
-# Zertifikat fuer die oeffentlichen Hosts (DNS-01), genutzt von ingress-public.yaml.
+# Zertifikat fuer die oeffentlichen Hosts (DNS-01), genutzt von ingress-public.yaml
+# und ingress-redirect.yaml.
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
