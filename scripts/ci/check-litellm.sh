@@ -167,7 +167,7 @@ assert_manifest_eq "$ingress.metadata.annotations[\"nginx.org/limit-req-rate\"]"
 assert_manifest_eq "$ingress.metadata.annotations[\"nginx.org/limit-req-burst\"]" 10 'Ingress burst must be ten'
 assert_manifest_eq "$ingress.metadata.annotations[\"nginx.org/limit-req-no-delay\"]" true 'Ingress burst must not delay requests'
 assert_manifest_eq "$ingress.metadata.annotations[\"nginx.org/limit-req-key\"]" '${realip_remote_addr}' 'Ingress rate key must use the trusted real peer'
-expected_location_snippets='if ($realip_remote_addr != 192.168.2.37) {
+expected_location_snippets='if ($realip_remote_addr !~ ^(192\.168\.2\.37|192\.168\.23\.37)$) {
   return 403;
 }
 set $litellm_route_allowed 0;
