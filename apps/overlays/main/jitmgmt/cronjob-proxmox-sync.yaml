@@ -31,7 +31,7 @@ spec:
             - name: gitlab-registry
           containers:
             - name: proxmox-sync
-              image: registry.jit-creatives.de/jit/jitmgmt:b4f3d956
+              image: registry.jit-creatives.de/jit/jitmgmt:e29d79c1
               command: ["sh", "-c", "python manage.py sync_proxmox_vms --verbosity 0"]
               envFrom:
                 - configMapRef: { name: jitmgmt-config }
