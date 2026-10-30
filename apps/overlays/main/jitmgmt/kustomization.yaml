@@ -5,6 +5,7 @@ resources:
   - ../../../base/jitmgmt
   - ingress.yaml
   - ingress-public.yaml
+  - ingress-redirect.yaml
   - certificate.yaml
   - cronjob-proxmox-sync.yaml
   - cronjob-hetzner-import.yaml
