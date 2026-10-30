@@ -5,6 +5,11 @@ resources:
   - ../../../base/jitmgmt
   - ingress.yaml
   - cronjob-rechnungslauf.yaml
+  - webhook-forwarder.yaml
+
+images:
+  - name: registry.jit-creatives.de/jit/jitmgmt
+    newTag: d2a30aa8
 
 configMapGenerator:
   - name: jitmgmt-config

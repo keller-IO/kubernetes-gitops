@@ -1,0 +1,57 @@
+# Leitet Webhook-Ereignisse des Zahlungsanbieters (Testmodus) an Staging weiter.
+# Staging ist von aussen nicht erreichbar; die CLI baut nur eine ausgehende
+# Verbindung auf und stellt die Ereignisse intern zu. Das Signing-Secret, das
+# `stripe listen --print-secret` fuer diesen Schluessel ausgibt, gehoert als
+# STRIPE_WEBHOOK_SECRET ins Secret.
+#
+# `stripe listen` nennt das Signing-Secret in seiner Ready-Meldung; die Shell
+# maskiert es zeilenweise, bevor es ins Pod-Log gelangt (sed puffert in der
+# Pipe und wuerde Zeilen verzoegern). pipefail reicht den Exitcode der CLI durch.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webhook-forwarder
+  namespace: jitmgmt-staging
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: webhook-forwarder }
+  template:
+    metadata:
+      labels: { app: webhook-forwarder }
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile: { type: RuntimeDefault }
+      # sh als PID 1 reicht SIGTERM nicht weiter; nicht 30 s aufs Beenden warten.
+      terminationGracePeriodSeconds: 5
+      containers:
+        - name: stripe-cli
+          image: stripe/stripe-cli:v1.54.0
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -o pipefail
+              /bin/stripe listen \
+                --forward-to http://jitmgmt/stripe/webhook/ \
+                --events checkout.session.completed,checkout.session.async_payment_succeeded,checkout.session.async_payment_failed,checkout.session.expired \
+                2>&1 | while IFS= read -r line; do echo "${line//whsec_*/whsec_***}"; done
+          env:
+            - { name: HOME, value: /tmp }
+            - name: STRIPE_API_KEY
+              valueFrom:
+                secretKeyRef: { name: jitmgmt-secrets, key: STRIPE_CLI_API_KEY }
+          resources:
+            requests: { cpu: 5m, memory: 32Mi }
+            limits: { memory: 128Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: tmp
+          emptyDir: {}
