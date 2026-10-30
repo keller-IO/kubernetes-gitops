@@ -31,7 +31,7 @@ spec:
             - name: gitlab-registry
           containers:
             - name: hetzner-import
-              image: registry.jit-creatives.de/jit/jitmgmt:70c51b23
+              image: registry.jit-creatives.de/jit/jitmgmt:0ff96cfa
               command: ["sh", "-c", "python manage.py import_hetzner_robot_replies --limit 50 --verbosity 0"]
               envFrom:
                 - configMapRef: { name: jitmgmt-config }
