@@ -34,7 +34,7 @@ spec:
             - name: gitlab-registry
           containers:
             - name: mahnlauf
-              image: registry.jit-creatives.de/jit/jitmgmt:11b9fc3f
+              image: registry.jit-creatives.de/jit/jitmgmt:d2a30aa8
               command: ["python", "manage.py", "send_payment_reminders"]
               envFrom:
                 - configMapRef: { name: jitmgmt-config }
