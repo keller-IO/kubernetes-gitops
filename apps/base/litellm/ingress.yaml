@@ -12,7 +12,7 @@ metadata:
     nginx.org/limit-req-no-delay: "true"
     nginx.org/limit-req-key: '${realip_remote_addr}'
     nginx.org/location-snippets: |
-      if ($realip_remote_addr != 192.168.2.37) {
+      if ($realip_remote_addr !~ ^(192\.168\.2\.37|192\.168\.23\.37)$) {
         return 403;
       }
       set $litellm_route_allowed 0;
