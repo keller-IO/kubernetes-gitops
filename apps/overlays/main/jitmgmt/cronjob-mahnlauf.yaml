@@ -1,5 +1,6 @@
-# Mahnlauf: Zahlungserinnerung 18 Tage und Mahnung mit Gebuehr 30 Tage nach
-# Zustellung fuer unbezahlte Rechnungen, je Stufe hoechstens einmal. Laeuft nach
+# Mahnlauf: Zahlungserinnerung 18 Tage und Mahnung 32 Tage nach
+# Zustellung fuer unbezahlte Rechnungen (Gebuehr nur fuer Gewerbekunden), je
+# Stufe hoechstens einmal. Laeuft nach
 # dem Bankabgleich, damit gestern eingegangene Zahlungen schon zugeordnet sind.
 # Faellig ist alles bis zum Stichtag: ein ausgefallener Tag wird beim naechsten
 # Lauf mit erledigt.
@@ -33,7 +34,7 @@ spec:
             - name: gitlab-registry
           containers:
             - name: mahnlauf
-              image: registry.jit-creatives.de/jit/jitmgmt:9465dd54
+              image: registry.jit-creatives.de/jit/jitmgmt:0ff96cfa
               command: ["python", "manage.py", "send_payment_reminders"]
               envFrom:
                 - configMapRef: { name: jitmgmt-config }
