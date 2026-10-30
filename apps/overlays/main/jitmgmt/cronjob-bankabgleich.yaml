@@ -33,7 +33,7 @@ spec:
             - name: gitlab-registry
           containers:
             - name: bankabgleich
-              image: registry.jit-creatives.de/jit/jitmgmt:88a7c8c6
+              image: registry.jit-creatives.de/jit/jitmgmt:b4f3d956
               command: ["python", "manage.py", "fetch_fints_transactions", "--match", "--confirm-exact"]
               envFrom:
                 - configMapRef: { name: jitmgmt-config }
