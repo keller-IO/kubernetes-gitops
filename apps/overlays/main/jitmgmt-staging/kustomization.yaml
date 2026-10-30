@@ -5,6 +5,7 @@ resources:
   - ../../../base/jitmgmt
   - ingress.yaml
   - cronjob-rechnungslauf.yaml
+  - webhook-forwarder.yaml
 
 configMapGenerator:
   - name: jitmgmt-config
