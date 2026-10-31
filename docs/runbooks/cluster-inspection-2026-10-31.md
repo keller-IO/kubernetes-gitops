@@ -38,15 +38,22 @@ Maximales Working Set über 7 Tage (`container_memory_working_set_bytes`, keller
 VictoriaMetrics): gekillte Pods 225–255Mi, gesunde Pods 76–162Mi, aktueller
 Normalbetrieb 55–195Mi. Wahrscheinliche Ursache sind Speicherspitzen bei
 Config-Reloads (alte nginx-Worker laufen neben den neuen weiter) bei rund 57 Hosts
-und 49 Zertifikaten; der Normalbetrieb passt in den 128Mi-Request.
+und 49 Zertifikaten. Der Normalbetrieb liegt teils über dem 128Mi-Request (bis
+~195Mi); Pods über dem Request sind bei Memory-Druck frühere Eviction-Kandidaten.
 
 Änderung: `controller.resources.limits.memory` 256Mi → 512Mi in
-`infrastructure/base/ingress-nginx/values.yaml`. Der Request bleibt bei 128Mi,
-weil `kellerio-wrk3` bei 96 % Memory-Requests steht. Rollout: Das DaemonSet
-(RollingUpdate, `maxUnavailable=1`, `maxSurge=0`) startet die acht Controller
-nacheinander neu. Mit `externalTrafficPolicy: Local` verliert ein Node kurz seinen
-Verkehrsanteil, solange sein Pod neu startet. Nach dem Rollout prüfen, ob weitere
-OOMKills ausbleiben.
+`infrastructure/base/ingress-nginx/values.yaml`. Der Request bleibt vorerst bei
+128Mi, weil `kellerio-wrk3` bei 96 % Memory-Requests steht; er ist mit der
+Kapazitätsplanung neu zu bewerten.
+
+Rollout: Mit `externalTrafficPolicy: Local` und Cilium-L2-Announcement läuft aller
+Traffic für `.246` über die Announcer-Node. Deshalb setzt der PR die DaemonSet-
+Strategie auf `RollingUpdate` mit `maxSurge=1`, `maxUnavailable=0` und
+`minReadySeconds=10`: Der neue Pod startet auf derselben Node, der alte wird erst
+nach Ready entfernt, die Announcer-Node hat nie null lokale Endpoints. Kosten: ein
+zusätzlicher 128Mi-Request je Node während des Rollouts (wrk3 ~11,2 von ~11,5 GiB
+allocatable); passt ein Surge-Pod nicht, stoppt der Rollout, ohne Traffic zu
+verlieren. Nach dem Rollout prüfen, ob weitere OOMKills ausbleiben.
 
 ## Kapazität
 
