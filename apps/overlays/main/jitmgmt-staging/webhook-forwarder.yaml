@@ -36,7 +36,7 @@ spec:
               set -o pipefail
               /bin/stripe listen \
                 --forward-to http://jitmgmt/stripe/webhook/ \
-                --events checkout.session.completed,checkout.session.async_payment_succeeded,checkout.session.async_payment_failed,checkout.session.expired \
+                --events checkout.session.completed,checkout.session.async_payment_succeeded,checkout.session.async_payment_failed,checkout.session.expired,payout.paid,payout.failed \
                 2>&1 | while IFS= read -r line; do echo "${line//whsec_*/whsec_***}"; done
           env:
             - { name: HOME, value: /tmp }
