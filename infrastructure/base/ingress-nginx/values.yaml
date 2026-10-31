@@ -7,6 +7,22 @@ controller:
   # externalTrafficPolicy spaeter auf Local zu ziehen und die echte Client-IP zu
   # erhalten. replicaCount entfaellt, es ist bei kind: daemonset wirkungslos.
   kind: daemonset
+  # Update-Strategie (31.10.2026): Mit externalTrafficPolicy Local und Cilium-L2-
+  # Announcement laeuft ALLER Traffic fuer .246 ueber die eine Announcer-Node. Mit
+  # maxUnavailable=1/maxSurge=0 wuerde deren Pod vor dem Ersatz beendet ⇒ kompletter
+  # Ingress-Ausfall im Neustartfenster. Mit Surge startet der neue Pod auf derselben
+  # Node und der alte wird erst nach dessen Ready entfernt (+10 s minReadySeconds,
+  # damit Cilium den lokalen Endpoint uebernimmt); die Announcer-Node hat nie null
+  # lokale Endpoints. Gilt auch fuer alle kuenftigen Renovate-Bumps. Kosten: waehrend
+  # des Rollouts ein zusaetzlicher 128Mi-Request je Node (wrk3 ~11,2 von ~11,5 GiB
+  # allocatable); passt ein Surge-Pod nicht, haengt der Rollout sicher statt Traffic
+  # zu verlieren. Kein hostPort in Nutzung, daher ist Surge moeglich.
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  minReadySeconds: 10
   # cp1-3 tragen node-role.kubernetes.io/control-plane:NoSchedule. Ohne diese
   # Toleration laeuft dort kein Pod, waehrend die L2-Policy `default-l2` (ohne
   # nodeSelector) sie trotzdem zum Announcer waehlen kann ⇒ exakt die Luecke von oben.
@@ -23,9 +39,20 @@ controller:
   # ingress-nginx-nginx-ingress-controller runs leaner at cpu:10m/mem:64Mi
   # request, mem:256Mi limit — kept our request at the existing 128Mi since
   # that's what's already relied upon and it costs no extra capacity delta).
+  # Limit 256Mi -> 512Mi (31.10.2026): 4 von 8 Controller-Pods wurden binnen 4 Tagen
+  # OOMKilled (wrk5 27.10. 14:29Z, wrk3 29.10. 14:39Z, wrk2 29.10. 15:40Z, cp3 30.10.
+  # 13:01Z); 30 Container-Restarts im Namespace ingress-nginx ueber 30 Tage. Max.
+  # Working Set ueber 7 d (container_memory_working_set_bytes, kellerIO VictoriaMetrics):
+  # gekillte Pods 225-255Mi, gesunde 76-162Mi, aktueller Normalbetrieb 55-195Mi.
+  # Vermutete Ursache: Speicherspitzen bei Config-Reloads (alte nginx-Worker leben neben
+  # den neuen weiter) bei ~57 Hosts / 49 Zertifikaten. Der Normalbetrieb liegt teils ueber
+  # dem 128Mi-Request (bis ~195Mi). Request vorerst bewusst UNVERAENDERT: kellerio-wrk3
+  # steht bei 96 % Memory-Requests, ein hoeherer DaemonSet-Request koennte den wrk3-Pod
+  # Pending lassen; mit der Kapazitaetsplanung neu bewerten. Pods ueber dem Request sind
+  # bei Memory-Druck auf der Node frueher Eviction-Kandidaten.
   resources:
     requests: { cpu: 100m, memory: 128Mi }
-    limits: { memory: 256Mi }
+    limits: { memory: 512Mi }
   service:
     type: LoadBalancer # requires Cilium LB-IPAM or MetalLB pool — see PRODUCTION-READINESS.md
     annotations:
