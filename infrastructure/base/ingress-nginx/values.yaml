@@ -23,6 +23,16 @@ controller:
       maxSurge: 1
       maxUnavailable: 0
   minReadySeconds: 10
+  # preStop-Sleep (31.10.2026): Nach dem Loeschen des alten Pods braucht Cilium einen
+  # Moment, bis der terminierende Endpoint aus dem Service-Backend faellt. Ohne Hook
+  # schliesst nginx bei SIGTERM sofort die Listener ⇒ kurze Connection-Refused. Mit
+  # 5 s Sleep bedient der Pod in dieser Zeit weiter, danach beendet nginx graceful
+  # (terminationGracePeriodSeconds bleibt beim Chart-Default 30 s). Wirkt erst fuer
+  # Pods, die mit dieser Spec erzeugt wurden. Natives sleep braucht kein Binary im Image.
+  lifecycle:
+    preStop:
+      sleep:
+        seconds: 5
   # cp1-3 tragen node-role.kubernetes.io/control-plane:NoSchedule. Ohne diese
   # Toleration laeuft dort kein Pod, waehrend die L2-Policy `default-l2` (ohne
   # nodeSelector) sie trotzdem zum Announcer waehlen kann ⇒ exakt die Luecke von oben.

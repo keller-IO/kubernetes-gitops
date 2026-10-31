@@ -50,10 +50,16 @@ Rollout: Mit `externalTrafficPolicy: Local` und Cilium-L2-Announcement läuft al
 Traffic für `.246` über die Announcer-Node. Deshalb setzt der PR die DaemonSet-
 Strategie auf `RollingUpdate` mit `maxSurge=1`, `maxUnavailable=0` und
 `minReadySeconds=10`: Der neue Pod startet auf derselben Node, der alte wird erst
-nach Ready entfernt, die Announcer-Node hat nie null lokale Endpoints. Kosten: ein
-zusätzlicher 128Mi-Request je Node während des Rollouts (wrk3 ~11,2 von ~11,5 GiB
-allocatable); passt ein Surge-Pod nicht, stoppt der Rollout, ohne Traffic zu
-verlieren. Nach dem Rollout prüfen, ob weitere OOMKills ausbleiben.
+nach Ready entfernt, die Announcer-Node behält dadurch einen bereiten lokalen
+Endpoint. Ein `preStop`-Sleep von 5 s (Folge-PR) überbrückt die Umschaltung: Der
+terminierende Pod bedient weiter, bis Cilium den Endpoint entfernt hat. Ein Restrisiko
+bleibt: einzelne abgebrochene langlebige Verbindungen (z. B. WebSockets) beim
+Beenden des alten Pods. Kosten: ein zusätzlicher 128Mi-Request je Node während des
+Rollouts (wrk3 ~11,2 von ~11,5 GiB allocatable); passt ein Surge-Pod nicht, stoppt
+der Rollout. Der Rollout von #437 lief am 31.10.2026 durch: ArgoCD synchronisierte
+`aa1b33e`, alle 8 Pods wurden per Surge ersetzt, das Limit 512Mi ist aktiv, Smoke-Tests
+jit.cloud, lists.jitmail.de und paperless.savar.de waren OK. Weiter beobachten, ob
+OOMKills ausbleiben.
 
 ## Kapazität
 
