@@ -14,7 +14,8 @@
 # In RESTORE_DIR liegen vorab (Erzeugung siehe Runbook, Modus 600):
 #   s3.env             RCLONE_CONFIG_G_* fuer einen Garage-Key NUR mit Leserecht
 #   secrets.env        EXPORT_PASSPHRASE, PAPERLESS_SECRET_KEY
-#   prod-checksums.txt id|checksum|archive_checksum der Produktion (psql -At)
+#   prod-checksums.txt id|checksum|archive_checksum|im Papierkorb (t/f)|added (Epoch)
+#                      der Produktion (psql -At)
 #
 # Nutzung: paperless-restore-test.sh fetch|import|check|web|all|cleanup
 #   fetch    export/current/ nach RESTORE_DIR/export laden
@@ -113,19 +114,33 @@ from django.contrib.auth.models import User
 from documents.models import Document, Tag, Workflow
 docs = Document.objects.all()
 print("Bestand: docs", docs.count(), "users", User.objects.count(), "tags", Tag.objects.count(), "workflows", Workflow.objects.count())
-prod = {}
+# Stand des Exports: rclone uebernimmt die mtime von manifest.json aus dem Bucket.
+export_zeit = os.path.getmtime("/export/manifest.json")
+prod, papierkorb, neuer = {}, [], []
 for line in open("/prod-checksums.txt"):
-    i, c, a = line.rstrip("\n").split("|")
-    prod[int(i)] = (c, a)
-print("in Produktion, nicht im Restore (Papierkorb?):", sorted(set(prod) - set(docs.values_list("id", flat=True))))
-print("im Restore, nicht in Produktion:", sorted(set(docs.values_list("id", flat=True)) - set(prod)))
+    i, c, a, geloescht, added = line.rstrip("\n").split("|")
+    if geloescht == "t":
+        papierkorb.append(int(i))
+    elif int(added) > export_zeit:
+        neuer.append(int(i))
+    else:
+        prod[int(i)] = (c, a)
+restore_ids = set(docs.values_list("id", flat=True))
+print("Papierkorb der Produktion (nicht exportiert):", papierkorb)
+print("nach dem Export hinzugekommen (nicht geprueft):", neuer)
+fehlend = sorted(set(prod) - restore_ids)
+print("in Produktion, nicht im Restore:", fehlend)
+# Nach dem Export endgueltig geloeschte oder in den Papierkorb gelegte Dokumente.
+print("im Restore, nicht in Produktion:", sorted(restore_ids - set(prod) - set(papierkorb)))
 abw_db = abw_orig = abw_arch = 0
-for d in docs:
-    c, a = prod.get(d.id, (None, None))
+for d in docs.filter(id__in=prod):
+    c, a = prod[d.id]
     abw_db += d.checksum != c or (d.archive_checksum or "") != a
     abw_orig += hashlib.md5(d.source_path.read_bytes()).hexdigest() != c
     abw_arch += d.has_archive_version and hashlib.md5(d.archive_path.read_bytes()).hexdigest() != a
 print("abweichend: DB-Checksummen", abw_db, "Originale", abw_orig, "Archive", int(abw_arch))
+if fehlend:
+    raise SystemExit("Dokumente der Produktion fehlen im Restore")
 if abw_db or abw_orig or abw_arch:
     raise SystemExit("Checksummen weichen von der Produktion ab")
 if not User.objects.filter(username=os.environ["TEST_USER"]).exists():
