@@ -42,14 +42,18 @@ spec:
             allowPrivilegeEscalation: false
             capabilities:
               drop: ["ALL"]
+          # Default-Timeout 1 s war zu knapp: 86 Readiness-Fehler in 11 Tagen
+          # ("valkey-cli ping timed out after 1s"), Befund 31.10.2026.
           livenessProbe:
             tcpSocket:
               port: valkey
             initialDelaySeconds: 10
+            timeoutSeconds: 3
           readinessProbe:
             exec:
               command: ["valkey-cli", "ping"]
             initialDelaySeconds: 5
+            timeoutSeconds: 3
           volumeMounts:
             - name: data
               mountPath: /data
