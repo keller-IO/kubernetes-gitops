@@ -28,9 +28,9 @@ ueberspringen.
 
 | Phase | Status | Naechster Schritt |
 |---|---|---|
-| 0: Offsite-Backup der Dokumente | Vorbereitet (27.10.), Bucket und Key angelegt und geprueft | PR mergen, ersten Lauf und Restore-Test auf u22 abnehmen |
+| 0: Offsite-Backup der Dokumente | Abgeschlossen 01.11.: laeuft taeglich seit 28.10., Restore-Test bestanden | Gatus `paperless/offsite-backup` beobachten |
 | 1: 2.20.15 | Abgeschlossen | Export und PVC-Snapshots vom 02.08. behalten; das damalige CNPG-Backup ist abgelaufen |
-| Stabilisierung | Laeuft, fruehestens 03.11. bestanden | `scripts/ops/paperless-stabilitaet.sh` muss fuer sieben Tage bestehen |
+| Stabilisierung | Laeuft, fruehestens 04.11. vormittags bestanden (OOMKill 28.10.) | `scripts/ops/paperless-stabilitaet.sh` muss fuer sieben Tage bestehen |
 | 2: 3.x-Recovery-Punkt | Teilweise vorbereitet | CNPG-Retention ist auf 90 Tage gesetzt; erst nach Phase 0 und Gate einen neuen quieszierten Export, CNPG-Backup und Snapshots erzeugen |
 | 3: 3.x-Change | Offen | Separater PR auf die dann aktuelle gepruefte 3.x-Patchversion, derzeit 3.3.4 |
 | Abnahme | Offen | Migration, Tantivy-Aufbau, OIDC, OCR, Suche, Mail und SMB-Consume pruefen |
@@ -188,6 +188,33 @@ Inbetriebnahme:
    vergleichen, Login und Dokumentanzeige testen. Danach LXC loeschen.
 5. Erst nach bestandenem Restore-Test gilt Phase 0 als abgeschlossen.
 
+**Ergebnis Restore-Test 01.11.2026: bestanden.** CT 8032 `paperless-restore`
+(192.168.23.32) auf u22, Debian 13, 4 Kerne, 4 GB RAM, 30 GB `local-zfs`, Docker;
+danach mit `pct destroy 8032 --purge 1` geloescht. Download ueber einen
+temporaeren Garage-Key mit reinem Leserecht (`restore-test-paperless`, Schreiben
+ergab 403, danach geloescht).
+
+| Pruefung | Ergebnis |
+|---|---|
+| Quelle | `export/current/` vom Lauf 01.11. 03:15, 2051 Dateien, 1,2 GB, Download 65 s |
+| Import | Paperless 2.20.15, leeres Postgres 17, `document_importer --passphrase`: 3722 Objekte, 81 s inklusive Migration und Suchindex |
+| Bestand | 683 Dokumente, 7 Benutzer, 22 Tags, 2 Workflows, wie in der Produktion |
+| Fehlend | nur #646, das in der Produktion im Papierkorb liegt (siehe unten) |
+| Integritaet | MD5 aller 683 Originale und aller Archiv-PDFs gleich den Checksummen der Produktions-DB; DB-Checksummen identisch |
+| Sanity-Checker | keine Fehler; drei Dokumente ohne OCR-Text (#42, #48, #62), in der Produktion ebenso |
+| HTTP (granian) | Login-Seite 200, API ohne Login 401, mit Login 683 Dokumente, Download des neuesten Originals MD5-gleich, Thumbnail 200, Volltextsuche liefert Treffer |
+
+Der Test lief nur mit Management-Befehlen und dem Webserver, ohne Celery-Worker
+und Scheduler: Eine Restore-Instanz darf weder Mail abrufen noch Workflows
+ausfuehren. Ablauf als Skript
+(`scripts/ops/paperless-restore-test.sh`, Vorbereitung in
+`docs/runbooks/backup-restore.md`, Abschnitt Paperless), am selben Tag damit
+auf einem frischen LXC wiederholt: gleiches Ergebnis.
+
+Grenze: Dokumente im Papierkorb exportiert `document_exporter` nicht. Sie fehlen
+im Offsite-Backup, bis sie wiederhergestellt werden; endgueltig geloeschte
+Dokumente sind nur noch im 30-Tage-Archiv `export/archive/` zu finden.
+
 ## Stabilitaets-Gate vor 3.x
 
 Der erste 3.x-Start mit Migration und Tantivy-Neuaufbau darf nicht auf eine
@@ -214,6 +241,16 @@ Befund 27.10.2026:
   seit 27.10. 06:46 ohne Restart und ohne `max`-Ereignisse.
 - Das Gate kann daher fruehestens am **03.11.2026** bestehen. Bis dahin taeglich
   das Skript laufen lassen; ein neuer Timeout oder Restart setzt die Frist neu.
+
+Nachtrag 01.11.2026:
+
+- Am 28.10. zwischen 04:00 und 05:00 ein weiterer OOMKill trotz 3 Gi: ein
+  Grossformat-Plan ohne Text (103 MP, Force-OCR) brauchte allein ~2,3 GiB. Seit
+  225d414 begrenzt `PAPERLESS_OCR_MAX_IMAGE_PIXELS=30000000` die OCR; dann
+  scheitert nur dieses Dokument.
+- Der Pod laeuft seit 28.10. 15:42 ohne Restart und ohne `max`-/`oom`-Ereignisse,
+  `memory.peak` 2716 MiB von 3072 MiB. Keine neuen Celery-Timeouts seit 16.10.
+- Neuer fruehester Termin fuer das Gate: **04.11.2026 vormittags**.
 
 Weiterhin gilt: Ein laengerer Start-Timeout allein kaschiert Ressourcen- oder
 I/O-Stalls und ist kein Stabilitaetsnachweis. Requests/Limits aus Messungen
