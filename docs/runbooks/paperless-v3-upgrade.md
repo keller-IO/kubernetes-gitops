@@ -184,8 +184,10 @@ Inbetriebnahme:
    Key mit Leserecht holen, in eine leere Paperless-2.20.15-Instanz mit eigenem
    Postgres per `document_importer --passphrase` einspielen (Passphrase aus
    `offsite-export-passphrase.sops.yaml`). Dokumentzahl gegen die Produktion
-   pruefen, einige Originale per SHA-256 gegen `media/documents/originals`
-   vergleichen, Login und Dokumentanzeige testen. Danach LXC loeschen.
+   pruefen, MD5 aller Originale und Archiv-PDFs gegen die Checksummen der
+   Produktions-DB (`documents_document.checksum`/`archive_checksum`; Paperless
+   speichert MD5) vergleichen, Login und Dokumentanzeige testen. Danach LXC
+   loeschen.
 5. Erst nach bestandenem Restore-Test gilt Phase 0 als abgeschlossen.
 
 **Ergebnis Restore-Test 01.11.2026: bestanden.** CT 8032 `paperless-restore`
@@ -246,8 +248,10 @@ Nachtrag 01.11.2026:
 
 - Am 28.10. zwischen 04:00 und 05:00 ein weiterer OOMKill trotz 3 Gi: ein
   Grossformat-Plan ohne Text (103 MP, Force-OCR) brauchte allein ~2,3 GiB. Seit
-  225d414 begrenzt `PAPERLESS_OCR_MAX_IMAGE_PIXELS=30000000` die OCR; dann
-  scheitert nur dieses Dokument.
+  225d414 begrenzt `PAPERLESS_OCR_MAX_IMAGE_PIXELS=30000000` die OCR: ab 60 MP
+  pro Seite bricht OCRmyPDF ab, der Parser meldet `ParseError` (auch der
+  Force-OCR-Fallback nutzt dieselbe Grenze), und der Consume-Task fuer dieses
+  Dokument scheitert, statt den Pod zu killen.
 - Der Pod laeuft seit 28.10. 15:42 ohne Restart und ohne `max`-/`oom`-Ereignisse,
   `memory.peak` 2716 MiB von 3072 MiB. Keine neuen Celery-Timeouts seit 16.10.
 - Neuer fruehester Termin fuer das Gate: **04.11.2026 vormittags**.

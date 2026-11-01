@@ -102,7 +102,11 @@ import() {
 
 check() {
   load_secrets
-  pl document_sanity_checker --no-progress-bar 2>&1 | grep -E 'ERROR|WARNING|issue|OCR' || echo "Sanity-Checker ohne Befund"
+  local out
+  # Exit-Status des Pruefers getrennt von der Suche: ein abgebrochener Pruefer
+  # besteht den Test nicht.
+  out=$(pl document_sanity_checker --no-progress-bar 2>&1) || { printf '%s\n' "$out" >&2; echo "Sanity-Checker gescheitert" >&2; exit 1; }
+  grep -E 'ERROR|WARNING|issue|OCR' <<<"$out" || echo "Sanity-Checker ohne Befund"
   pl shell -c '
 import hashlib, os
 from django.contrib.auth.models import User
@@ -122,6 +126,8 @@ for d in docs:
     abw_orig += hashlib.md5(d.source_path.read_bytes()).hexdigest() != c
     abw_arch += d.has_archive_version and hashlib.md5(d.archive_path.read_bytes()).hexdigest() != a
 print("abweichend: DB-Checksummen", abw_db, "Originale", abw_orig, "Archive", int(abw_arch))
+if abw_db or abw_orig or abw_arch:
+    raise SystemExit("Checksummen weichen von der Produktion ab")
 if not User.objects.filter(username=os.environ["TEST_USER"]).exists():
     User.objects.create_superuser(os.environ["TEST_USER"], password=os.environ["TEST_PASS"])
 '
@@ -133,16 +139,28 @@ web() {
   docker run -d --name "$web_ctr" --network "$net" --user 1000:1000 -w /usr/src/paperless/src \
     -p 127.0.0.1:8000:8000 "${pl_env[@]}" "${pl_vols[@]}" --entrypoint granian "$paperless_image" \
     --interface asginl --host 0.0.0.0 --port 8000 paperless.asgi:application >/dev/null
-  local url=http://127.0.0.1:8000 auth="${test_user}:${test_pass}" id
+  local url=http://127.0.0.1:8000 auth="${test_user}:${test_pass}" id code md5 prod fehler=0
   for _ in $(seq 1 60); do curl -sf -o /dev/null "$url/accounts/login/" && break; sleep 1; done
-  echo "Login-Seite HTTP $(curl -s -o /dev/null -w '%{http_code}' "$url/accounts/login/")"
-  echo "API ohne Login HTTP $(curl -s -o /dev/null -w '%{http_code}' "$url/api/documents/") (401 erwartet)"
-  curl -s -u "$auth" "$url/api/documents/?page_size=1&ordering=-added" | jq -c '{count, neuestes: .results[0] | {id, title}}'
-  id=$(curl -s -u "$auth" "$url/api/documents/?page_size=1&ordering=-added" | jq .results[0].id)
-  curl -s -u "$auth" -o /tmp/restore-doc "$url/api/documents/$id/download/?original=true"
-  echo "Download #$id: md5 $(md5sum < /tmp/restore-doc | cut -c1-32), Produktion $(awk -F'|' -v i="$id" '$1==i{print $2}' prod-checksums.txt)"
-  echo "Thumbnail HTTP $(curl -s -u "$auth" -o /dev/null -w '%{http_code}' "$url/api/documents/$id/thumb/")"
-  echo "Volltextsuche 'rechnung': $(curl -s -u "$auth" "$url/api/documents/?query=rechnung&page_size=1" | jq .count) Treffer"
+  # erwarte NAME SOLL IST: Abweichung ausgeben und am Ende scheitern.
+  erwarte() {
+    echo "$1: $3 (erwartet $2)"
+    [ "$2" = "$3" ] || { echo "NICHT OK: $1" >&2; fehler=1; }
+  }
+  erwarte "Login-Seite HTTP" 200 "$(curl -s -o /dev/null -w '%{http_code}' "$url/accounts/login/")"
+  erwarte "API ohne Login HTTP" 401 "$(curl -s -o /dev/null -w '%{http_code}' "$url/api/documents/")"
+  curl -sf -u "$auth" "$url/api/documents/?page_size=1&ordering=-added" | jq -c '{count, neuestes: .results[0] | {id, title}}'
+  id=$(curl -sf -u "$auth" "$url/api/documents/?page_size=1&ordering=-added" | jq -e .results[0].id)
+  curl -sf -u "$auth" -o /tmp/restore-doc "$url/api/documents/$id/download/?original=true"
+  md5=$(md5sum < /tmp/restore-doc | cut -c1-32)
+  prod=$(awk -F'|' -v i="$id" '$1==i{print $2}' prod-checksums.txt)
+  [ -n "$prod" ] || { echo "NICHT OK: #$id fehlt in prod-checksums.txt" >&2; fehler=1; }
+  erwarte "Download #$id md5" "$prod" "$md5"
+  erwarte "Thumbnail HTTP" 200 "$(curl -s -u "$auth" -o /dev/null -w '%{http_code}' "$url/api/documents/$id/thumb/")"
+  code=$(curl -sf -u "$auth" "$url/api/documents/?query=rechnung&page_size=1" | jq .count)
+  echo "Volltextsuche 'rechnung': $code Treffer"
+  [ "$code" -gt 0 ] || { echo "NICHT OK: Volltextsuche ohne Treffer" >&2; fehler=1; }
+  [ "$fehler" -eq 0 ] || exit 1
+  echo "Restore-Test BESTANDEN"
 }
 
 cleanup() {
