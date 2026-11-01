@@ -49,6 +49,9 @@ spec:
               port: 80
             initialDelaySeconds: 180 # Erststart: interner Stack + Font-Cache-Generierung dauern
             periodSeconds: 30
+            # Default-Timeout 1 s: 31 Liveness-Fehler "context deadline exceeded"
+            # (Befund 31.10.2026); wie die Readiness-Probe 5 s.
+            timeoutSeconds: 5
           resources:
             # Gemessen am 28.07.2026: 1013Mi — praktisch exakt auf dem alten Request,
             # also ohne Reserve. Request mit Kopffreiheit statt auf Kante.

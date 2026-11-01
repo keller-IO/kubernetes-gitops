@@ -505,6 +505,9 @@ wird von der regulaeren roundcube-Instanz bedient, die ohnehin auf mail05 zeigt.
 Jede App liegt unter `apps/base/<app>/` (Basis) + `apps/overlays/main/<app>/` (Cluster-Patch).
 Readiness-Probes für Kimai, EuroOffice, WordPress und Mastodon Web haben nach wiederholten
 1-s-Timeouts einen expliziten 5-s-Timeout.
+Seit 01.11.2026 hat auch die EuroOffice-Liveness-Probe `timeoutSeconds: 5` (31 Fehler
+"context deadline exceeded"); die Paperless-Valkey-Probes (Liveness und Readiness) haben
+`timeoutSeconds: 3` (86 Readiness-Fehler in 11 Tagen mit dem 1-s-Default).
 
 | App | Pfad (Basis) | Offene App-spezifische Schritte |
 |-----|--------------|----------------------------------|
