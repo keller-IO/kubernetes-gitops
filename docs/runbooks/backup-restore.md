@@ -417,6 +417,58 @@ auf u22, nicht im Cluster (`docs/learnings/restore-klon-ueber-vpn.md`).
 ihrem Dateinamen; geloeschte oder ueberschriebene Staende 30 Tage unter
 `export/archive/<Zeit>/`.
 
+**Restore-Test** mit [`scripts/ops/paperless-restore-test.sh`](../../scripts/ops/paperless-restore-test.sh)
+auf einem Wegwerf-LXC auf u22. Zuletzt bestanden am 01.11.2026: 683 Dokumente,
+alle Checksummen gleich, Download und Suche per HTTP
+(`docs/runbooks/paperless-v3-upgrade.md`, Phase 0). Vorbereiten vom Arbeitsplatz
+im Repo-Root; die Secrets gehen per SSH direkt in den LXC:
+
+```bash
+# LXC wie beim Mastodon-Klon, auf local-zfs; Docker, rclone, jq, curl
+ssh root@192.168.23.5 'pct create 8032 local:vztmpl/debian-13-standard_13.1-2_amd64.tar.zst \
+  --hostname paperless-restore --cores 4 --memory 4096 --swap 1024 --rootfs local-zfs:30 \
+  --net0 name=eth0,bridge=vmbr0,gw=192.168.23.1,ip=192.168.23.32/24,type=veth \
+  --nameserver 192.168.23.1 --unprivileged 1 --features nesting=1,keyctl=1 --onboot 0 \
+  --ssh-public-keys /root/.ssh/authorized_keys && pct start 8032 && sleep 5 \
+  && pct exec 8032 -- bash -c "apt-get update -qq && apt-get install -y -qq docker.io rclone jq curl \
+     && install -d -m 700 /srv/restore"'
+# Temporaerer Key NUR mit Leserecht; das Skript bricht ab, wenn er schreiben darf
+ssh root@192.168.23.21 'G=$(docker ps -qf name=garage | head -1)
+  docker exec $G /garage key create restore-test-paperless
+  docker exec $G /garage bucket allow --read backup-paperless --key restore-test-paperless'
+klon=root@192.168.23.32
+ssh root@192.168.23.21 'docker exec $(docker ps -qf name=garage | head -1) \
+    /garage key info --show-secret restore-test-paperless' 2>/dev/null \
+  | awk -F': *' '/^Key ID/{id=$2} /^Secret key/{sk=$2} END{
+      print "RCLONE_CONFIG_G_TYPE=s3\nRCLONE_CONFIG_G_PROVIDER=Other\nRCLONE_CONFIG_G_ENDPOINT=http://192.168.23.21:3900"
+      print "RCLONE_CONFIG_G_FORCE_PATH_STYLE=true\nRCLONE_CONFIG_G_REGION=garage-potsdam\nRCLONE_CONFIG_G_NO_CHECK_BUCKET=true"
+      print "RCLONE_CONFIG_G_ACCESS_KEY_ID=" id "\nRCLONE_CONFIG_G_SECRET_ACCESS_KEY=" sk}' \
+  | ssh "$klon" 'umask 077; cat > /srv/restore/s3.env'
+{ sops -d apps/base/paperless-ngx/offsite-export-passphrase.sops.yaml | yq '"EXPORT_PASSPHRASE=" + .stringData.EXPORT_PASSPHRASE'
+  sops -d apps/base/paperless-ngx/secret.sops.yaml \
+    | yq 'select(.metadata.name == "paperless-secret") | "PAPERLESS_SECRET_KEY=" + .stringData.PAPERLESS_SECRET_KEY'
+} | ssh "$klon" 'umask 077; cat > /srv/restore/secrets.env'
+# Vergleichswerte der Produktion (lesend)
+pg=$(kubectl -n paperless-ngx get cluster.postgresql.cnpg.io paperless-pg -o jsonpath='{.status.currentPrimary}')
+kubectl -n paperless-ngx exec "$pg" -c postgres -- psql -U postgres -d paperless -Atc \
+  "select id, checksum, coalesce(archive_checksum,''), extract(epoch from deleted_at)::bigint,
+          extract(epoch from added)::bigint from documents_document order by id" \
+  | ssh "$klon" 'cat > /srv/restore/prod-checksums.txt'
+scp scripts/ops/paperless-restore-test.sh "$klon":/srv/restore/
+ssh "$klon" /srv/restore/paperless-restore-test.sh all
+# Aufraeumen
+ssh "$klon" /srv/restore/paperless-restore-test.sh cleanup
+ssh root@192.168.23.5 'pct stop 8032 && pct destroy 8032 --purge 1'
+ssh root@192.168.23.21 'docker exec $(docker ps -qf name=garage | head -1) \
+  /garage key delete --yes restore-test-paperless'
+```
+
+`sops`/`yq` aus `nix develop`: Deren Banner geht auf stdout, deshalb die Befehle
+nicht per `nix develop --command` in eine Pipe schreiben, sondern in der Shell
+von `nix develop` ausfuehren. Erwartet: Bestand wie in der Produktion bis auf
+Dokumente im Papierkorb (exportiert der Exporter nicht), 0 abweichende
+Checksummen, Login-Seite 200, API ohne Login 401, Download MD5-gleich.
+
 Ablauf und Abnahme: `docs/runbooks/paperless-v3-upgrade.md`, Phase 0.
 
 ---
