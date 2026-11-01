@@ -14,8 +14,8 @@
 # In RESTORE_DIR liegen vorab (Erzeugung siehe Runbook, Modus 600):
 #   s3.env             RCLONE_CONFIG_G_* fuer einen Garage-Key NUR mit Leserecht
 #   secrets.env        EXPORT_PASSPHRASE, PAPERLESS_SECRET_KEY
-#   prod-checksums.txt id|checksum|archive_checksum|im Papierkorb (t/f)|added (Epoch)
-#                      der Produktion (psql -At)
+#   prod-checksums.txt id|checksum|archive_checksum|deleted_at|added der Produktion
+#                      (psql -At, Zeiten als Epoch, deleted_at leer ausserhalb des Papierkorbs)
 #
 # Nutzung: paperless-restore-test.sh fetch|import|check|web|all|cleanup
 #   fetch    export/current/ nach RESTORE_DIR/export laden
@@ -119,14 +119,15 @@ export_zeit = os.path.getmtime("/export/manifest.json")
 prod, papierkorb, neuer = {}, [], []
 for line in open("/prod-checksums.txt"):
     i, c, a, geloescht, added = line.rstrip("\n").split("|")
-    if geloescht == "t":
+    # Erst nach dem Export in den Papierkorb gelegt: muss im Restore sein.
+    if geloescht and int(geloescht) <= export_zeit:
         papierkorb.append(int(i))
     elif int(added) > export_zeit:
         neuer.append(int(i))
     else:
         prod[int(i)] = (c, a)
 restore_ids = set(docs.values_list("id", flat=True))
-print("Papierkorb der Produktion (nicht exportiert):", papierkorb)
+print("beim Export im Papierkorb (nicht exportiert):", papierkorb)
 print("nach dem Export hinzugekommen (nicht geprueft):", neuer)
 fehlend = sorted(set(prod) - restore_ids)
 print("in Produktion, nicht im Restore:", fehlend)

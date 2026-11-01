@@ -451,7 +451,7 @@ ssh root@192.168.23.21 'docker exec $(docker ps -qf name=garage | head -1) \
 # Vergleichswerte der Produktion (lesend)
 pg=$(kubectl -n paperless-ngx get cluster.postgresql.cnpg.io paperless-pg -o jsonpath='{.status.currentPrimary}')
 kubectl -n paperless-ngx exec "$pg" -c postgres -- psql -U postgres -d paperless -Atc \
-  "select id, checksum, coalesce(archive_checksum,''), deleted_at is not null,
+  "select id, checksum, coalesce(archive_checksum,''), extract(epoch from deleted_at)::bigint,
           extract(epoch from added)::bigint from documents_document order by id" \
   | ssh "$klon" 'cat > /srv/restore/prod-checksums.txt'
 scp scripts/ops/paperless-restore-test.sh "$klon":/srv/restore/
