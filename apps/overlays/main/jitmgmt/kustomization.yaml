@@ -19,7 +19,7 @@ patches:
 
 images:
   - name: registry.jit-creatives.de/jit/jitmgmt
-    newTag: b5d8267a
+    newTag: 2d9a2867
 
 configMapGenerator:
   - name: jitmgmt-config
