@@ -82,7 +82,7 @@ updateStrategy:
 # 1 GiB Limit reichte beim ersten Start nicht (OOMKilled, CrashLoop am 02.11.2026).
 # Nach der ersten Betriebswoche anhand gemessener Werte nachziehen.
 resources:
-  requests: { cpu: 100m, memory: 1Gi }
+  requests: { cpu: 100m, memory: 512Mi }
   limits: { memory: 2Gi }
 
 worker:
