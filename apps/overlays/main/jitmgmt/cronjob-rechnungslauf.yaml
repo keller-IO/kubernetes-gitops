@@ -33,7 +33,7 @@ spec:
             - name: gitlab-registry
           containers:
             - name: rechnungslauf
-              image: registry.jit-creatives.de/jit/jitmgmt:2d9a2867
+              image: registry.jit-creatives.de/jit/jitmgmt:e36fc883
               command: ["python", "manage.py", "generate_due_invoices", "--catch-up-days", "60"]
               envFrom:
                 - configMapRef: { name: jitmgmt-config }
