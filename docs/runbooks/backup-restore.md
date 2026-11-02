@@ -496,8 +496,7 @@ Ablauf und Abnahme: `docs/runbooks/paperless-v3-upgrade.md`, Phase 0.
 ## Offsite-Sicherung der PVCs ohne eigene Datenbank-Sicherung
 
 Stand 02.11.2026: Die CronJobs, die Garage-Buckets, die Keys (Quotas wie unten) und die
-SOPS-Secrets sind angelegt und im PR eingebunden. **Abnahme folgt nach dem Merge**: Key-Pruefung
-und Restore-Test sind noch nicht erfolgt, der erste Lauf je CronJob ist ungeprueft. Scheitert
+SOPS-Secrets sind live und abgenommen (siehe „Abnahme“). Scheitert
 ein Pod mit `CreateContainerConfigError`, fehlt das Secret im Namespace oder ein referenzierter Key darin (`ACCESS_KEY_ID`, `SECRET_ACCESS_KEY`, `region`); die Ursache steht in den Pod-Events (`kubectl -n <ns> describe pod`). `KubeJobFailed` meldet es per Mail.
 Muster ist `goloom-backup`
 (rclone, `--backup-dir`, 30 Tage Archiv); zusaetzlich `ttlSecondsAfterFinished: 604800`.
@@ -590,10 +589,18 @@ Secrets liegen in Git und sind in den `secret-generator.yaml` eingebunden:
 
 Inhalt je Secret: `ACCESS_KEY_ID`, `SECRET_ACCESS_KEY`, `region`.
 
-**Abnahme folgt nach dem Merge:** Key per `curl --aws-sigv4` pruefen (Abschnitt Secrets), nach
-dem Sync je CronJob einmal einen Lauf anstossen (`kubectl create job --from=cronjob/<name> …`,
-braucht Schreibrechte), `rclone size`/`lsl` im Log und `files/last-run.txt` im Bucket pruefen (Tonu: `uploads/last-run.txt`; WordPress: `files-wordpress-1/last-run.txt` bzw. `files-wordpress-2/last-run.txt`),
-danach einen Restore-Test je App (Abschnitt Restore).
+**Abnahme 02.11.2026:**
+
+- Je CronJob ein manueller Lauf (`kubectl create job --from=cronjob/<name> …`): alle acht `Complete`.
+- Byte-Vergleich PVC gegen Garage (`rclone check <pvc> garage:<ziel> --one-way --download` mit den
+  Ausschluessen des Jobs): alle acht ohne Abweichung (wordpress-1 8626, wordpress-2 5656,
+  matomo 11763, kimai 55, mailman 15, flurfunk 9 Dateien; expense und tonu-uploads ohne Dateien).
+- Restore der juengsten Dumps aus Garage in ein leeres Volume: Tonu und Flurfunk bestehen
+  `PRAGMA integrity_check` (25 bzw. 40 Schema-Objekte).
+- Rechte: `garage bucket info` zeigt je Bucket genau den eigenen Key mit RW.
+
+Nicht geprobt: vollstaendiger Restore in eine PVC samt App-Start, die `curl --aws-sigv4`-Pruefung
+aus dem Abschnitt Secrets (LIST auf fremde Buckets).
 
 ### Pruefen
 
