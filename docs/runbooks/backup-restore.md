@@ -546,7 +546,7 @@ nicht selektieren (deren Selektor ist hier nur `app.kubernetes.io/name=<app>`).
   gibt nichts, was nur auf der PVC lebt. Die Mailman-Web-Daten (Archiv, Benutzer) stehen in
   Postgres (`mailmanweb`, CNPG).
 - **mailman-core-data:** `var/` ohne `logs` (391 MB), `locks`, `cache`, `queue` (fluechtig), `master.pid`
-  (~7 MB uebrig: lists, archives, messages, queue, data, etc, templates). Die Mailman-Listen-
+  (~7 MB uebrig: lists, archives, messages, data, etc, templates; die Queue ist nicht gesichert). Die Mailman-Listen-
   Konfiguration selbst liegt in Postgres.
 - **SQLite Tonu:** keine eigene Sicherung der App, DB laeuft im WAL-Modus. Verfahren wie die
   fruehere Goloom-Sicherung (Commit `d34a050`): initContainer `keinos/sqlite3` zieht per
@@ -592,7 +592,7 @@ Inhalt je Secret: `ACCESS_KEY_ID`, `SECRET_ACCESS_KEY`, `region`.
 
 **Abnahme folgt nach dem Merge:** Key per `curl --aws-sigv4` pruefen (Abschnitt Secrets), nach
 dem Sync je CronJob einmal einen Lauf anstossen (`kubectl create job --from=cronjob/<name> …`,
-braucht Schreibrechte), `rclone size`/`lsl` im Log und `files/last-run.txt` im Bucket pruefen (Tonu: `uploads/last-run.txt`),
+braucht Schreibrechte), `rclone size`/`lsl` im Log und `files/last-run.txt` im Bucket pruefen (Tonu: `uploads/last-run.txt`; WordPress: `files-wordpress-1/last-run.txt` bzw. `files-wordpress-2/last-run.txt`),
 danach einen Restore-Test je App (Abschnitt Restore).
 
 ### Pruefen
@@ -665,10 +665,12 @@ Dann je App im Pod (`kubectl -n <ns> exec restore -- …`):
 rclone copy garage:backup-<app>/files/current /data -v
 # wordpress-N
 rclone copy garage:backup-wordpress/files-wordpress-N/current /data -v
-# Zeitpunkt aus dem Archiv:
+# Zeitpunkt aus dem Archiv (WordPress: Prefix files-wordpress-N statt files, Bucket backup-wordpress):
 rclone lsf garage:backup-<app>/files/archive/
+rclone lsf garage:backup-wordpress/files-wordpress-N/archive/    # nur WordPress
 rclone copy   garage:backup-<app>/files/archive/<Zeit>/<verzeichnis> /data/<verzeichnis> -v   # Verzeichnis
 rclone copyto garage:backup-<app>/files/archive/<Zeit>/<datei> /data/<datei> -v               # Einzeldatei
+# WordPress analog, z. B.: rclone copyto garage:backup-wordpress/files-wordpress-N/archive/<Zeit>/<datei> /data/<datei> -v
 # flurfunk: Dateien wie oben, dann die Datenbank aus dem App-Dump
 rclone copy garage:backup-flurfunk/files/current /data -v
 rm -f /data/app.db /data/app.db-wal /data/app.db-shm

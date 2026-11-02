@@ -4,8 +4,8 @@
 #   files/archive/<Zeit>/   von sync geloeschte/ueberschriebene Dateien, 30 Tage
 #   files/last-run.txt      Heartbeat
 #
-# Gesichert wird var/ (lists, archives, messages, queue, data, etc, templates). Ausgenommen:
-# var/logs (391 MB von 398 MB, rotierend), var/locks, var/cache, master.pid (Laufzeit).
+# Gesichert wird var/ (lists, archives, messages, data, etc, templates). Ausgenommen:
+# var/logs (391 MB von 398 MB, rotierend), var/locks, var/cache, var/queue (fluechtig), master.pid (Laufzeit).
 # Die Mailman-Datenbank liegt in Postgres und wird von CNPG (mailman-pg) gesichert.
 # mailman-web-data wird bewusst NICHT gesichert: settings_local.py, no_signup_adapter.py und
 # templates schreibt der initContainer install-settings bei jedem Start aus der ConfigMap
