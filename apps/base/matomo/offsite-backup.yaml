@@ -10,10 +10,10 @@
 # als root. matomo-data ist RWO: podAffinity auf app.kubernetes.io/name=matomo.
 # Namespace-PSA: baseline, restricted-konform.
 #
-# UNVOLLSTAENDIG (Draft-PR): Das Secret matomo-files-backup-s3 und der Garage-Bucket/-Key
-# backup-matomo fehlen noch. Bis dahin scheitert der Pod mit CreateContainerConfigError
-# (KubeJobFailed). Anlegen und einbinden: docs/runbooks/backup-restore.md, Abschnitt
-# "Offsite-Sicherung der PVCs".
+# Offen nach dem Merge (Abnahme): Garage-Bucket/-Key backup-matomo pruefen, ersten Lauf anstossen,
+# Restore-Test. Das Secret matomo-files-backup-s3 liegt verschluesselt in Git und ist eingebunden
+# (secret-generator.yaml). Fehlt ein Key im Secret oder stimmt der Name nicht, scheitert der Pod
+# mit CreateContainerConfigError (KubeJobFailed); Ursache steht in den Pod-Events.
 apiVersion: batch/v1
 kind: CronJob
 metadata:
