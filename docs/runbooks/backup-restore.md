@@ -493,12 +493,13 @@ Checksummen, Login-Seite 200, API ohne Login 401, Download MD5-gleich.
 
 Ablauf und Abnahme: `docs/runbooks/paperless-v3-upgrade.md`, Phase 0.
 
-## Offsite-Sicherung der PVCs ohne eigene Datenbank-Sicherung (vorbereitet, noch nicht live)
+## Offsite-Sicherung der PVCs ohne eigene Datenbank-Sicherung
 
-Stand 02.11.2026, Draft-PR `feat(backup): Offsite-Sicherung fuer PVCs ohne Backup`.
-Die CronJobs sind in Git, aber **ohne Buckets, Keys und Secrets**: bis diese angelegt sind,
-scheitern die Pods mit `CreateContainerConfigError` (`KubeJobFailed` per Mail). Der PR darf
-erst nach Abschnitt „Noch anzulegen“ gemergt werden. Muster ist `goloom-backup`
+Stand 02.11.2026: Die CronJobs, die Garage-Buckets, die Keys (Quotas wie unten) und die
+SOPS-Secrets sind angelegt und im PR eingebunden. **Abnahme folgt nach dem Merge**: Key-Pruefung
+und Restore-Test sind noch nicht erfolgt, der erste Lauf je CronJob ist ungeprueft. Scheitert
+ein Pod mit `CreateContainerConfigError`, fehlt das Secret im Namespace (`KubeJobFailed` per Mail).
+Muster ist `goloom-backup`
 (rclone, `--backup-dir`, 30 Tage Archiv); zusaetzlich `ttlSecondsAfterFinished: 604800`.
 Alle Jobs mounten die PVC **read-only** (Ausnahme: der SQLite-Snapshot von Tonu, s. u.),
 laufen nicht als root und haben `podAffinity` auf den App-Pod, weil die PVCs RWO sind.
@@ -572,25 +573,27 @@ nicht selektieren (deren Selektor ist hier nur `app.kubernetes.io/name=<app>`).
   (Index aus Postgres neu aufbaubar) und vmsingle (30 Tage Metriken): nach Vorgabe des
   Auftraggebers ausgenommen, nicht einzeln neu bewertet.
 
-### Noch anzulegen (nicht Teil des PR)
+### Buckets, Keys und Secrets
 
-Buckets/Keys wie im Abschnitt Secrets (RW, kein `--owner`), auf `192.168.23.21`:
+Angelegt (RW auf den jeweiligen Bucket, kein `--owner`) auf `192.168.23.21`; die verschluesselten
+Secrets liegen in Git und sind in den `secret-generator.yaml` eingebunden:
 
-| Bucket | Key | Quota | Secret-Datei (verschluesselt, zu erzeugen) | Eintrag in |
-|---|---|---|---|---|
-| `backup-expense-tracker` | `backup-expense-tracker` | 20 GiB | `apps/base/expense-tracker/files-backup-s3.sops.yaml` (`expense-tracker-files-backup-s3`) | `apps/base/expense-tracker/secret-generator.yaml` |
-| `backup-mailman` | `backup-mailman` | 20 GiB | `apps/base/mailman/files-backup-s3.sops.yaml` (`mailman-files-backup-s3`) | `apps/base/mailman/secret-generator.yaml` |
-| `backup-flurfunk` | `backup-flurfunk` | 20 GiB | `apps/base/offsite-backups-external/flurfunk-backup-s3.sops.yaml` (`flurfunk-backup-s3`, `namespace: flurfunk`) | neues `apps/base/offsite-backups-external/secret-generator.yaml` + `generators:` in der Kustomization |
-| `backup-tonu` | `backup-tonu` | 5 GiB | `apps/base/offsite-backups-external/tonu-backup-s3.sops.yaml` (`tonu-backup-s3`, `namespace: tonu`) | wie oben |
-| `backup-wordpress` | `backup-wordpress` | 20 GiB | `apps/base/wordpress/files-backup-s3.sops.yaml` (`wordpress-files-backup-s3`, ohne Namespace wie `secret.sops.yaml`) | `apps/base/wordpress/secret-generator.yaml` (legt das Secret auch in wordpress-3 an, harmlos) |
-| `backup-matomo` | `backup-matomo` | 20 GiB | `apps/base/matomo/files-backup-s3.sops.yaml` (`matomo-files-backup-s3`) | `apps/base/matomo/secret-generator.yaml` |
-| `backup-kimai` | `backup-kimai` | 5 GiB | `apps/base/kimai/files-backup-s3.sops.yaml` (`kimai-files-backup-s3`) | `apps/base/kimai/secret-generator.yaml` |
+| Bucket / Key | Quota | Secret-Datei | Eingebunden in |
+|---|---|---|---|
+| `backup-expense-tracker` | 20 GiB | `apps/base/expense-tracker/files-backup-s3.sops.yaml` | `apps/base/expense-tracker/secret-generator.yaml` |
+| `backup-mailman` | 20 GiB | `apps/base/mailman/files-backup-s3.sops.yaml` | `apps/base/mailman/secret-generator.yaml` |
+| `backup-flurfunk` | 20 GiB | `apps/base/offsite-backups-external/flurfunk-backup-s3.sops.yaml` (Namespace `flurfunk`) | `apps/base/offsite-backups-external/secret-generator.yaml` |
+| `backup-tonu` | 5 GiB | `apps/base/offsite-backups-external/tonu-backup-s3.sops.yaml` (Namespace `tonu`) | wie oben |
+| `backup-wordpress` | 20 GiB | `apps/base/wordpress/files-backup-s3.sops.yaml` | `apps/base/wordpress/secret-generator.yaml` (legt das Secret auch in wordpress-3 an, harmlos) |
+| `backup-matomo` | 20 GiB | `apps/base/matomo/files-backup-s3.sops.yaml` | `apps/base/matomo/secret-generator.yaml` |
+| `backup-kimai` | 5 GiB | `apps/base/kimai/files-backup-s3.sops.yaml` | `apps/base/kimai/secret-generator.yaml` |
 
-Inhalt je Secret: `ACCESS_KEY_ID`, `SECRET_ACCESS_KEY`, `region: garage-potsdam`. Danach den Key
-per `curl --aws-sigv4` pruefen (Abschnitt Secrets), den PR aus Draft nehmen und nach dem Sync
-je CronJob einmal einen Lauf anstossen (`kubectl create job --from=cronjob/<name> …`, braucht
-Schreibrechte) und das Ergebnis pruefen: `rclone size`/`lsl` im Log, `files/last-run.txt`
-im Bucket.
+Inhalt je Secret: `ACCESS_KEY_ID`, `SECRET_ACCESS_KEY`, `region`.
+
+**Abnahme folgt nach dem Merge:** Key per `curl --aws-sigv4` pruefen (Abschnitt Secrets), nach
+dem Sync je CronJob einmal einen Lauf anstossen (`kubectl create job --from=cronjob/<name> …`,
+braucht Schreibrechte), `rclone size`/`lsl` im Log und `files/last-run.txt` im Bucket pruefen,
+danach einen Restore-Test je App (Abschnitt Restore).
 
 ### Pruefen
 

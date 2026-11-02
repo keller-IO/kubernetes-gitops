@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: Secret
+metadata:
+    name: mailman-files-backup-s3
+type: Opaque
+stringData:
+    ACCESS_KEY_ID: ENC[AES256_GCM,data:VD1JKx/0uP9PoGOH530wWxUV41eqgrtuINM=,iv:OZB0mFqKNgvO3VcG4yVVlsXspv6WfsXAgXXXEs68V4g=,tag:da3BEZNyJZTI4jYL8y7LXA==,type:str]
+    SECRET_ACCESS_KEY: ENC[AES256_GCM,data:f95HdP5rmQbDUdbdLl2v4ghPxV9kqDi6CqglyUd6MTzOUCQBzdvpXNrvwkKlXzJ4ZdgX6fRa5CYuZm00DhmTRg==,iv:/Xc4luT1gqBuF9h1bx3KhNBs1JYjc+JRUnKoTZncLSw=,tag:O9jKkhFE6ohLS+uZvsjnzw==,type:str]
+    region: ENC[AES256_GCM,data:KxHBmSU7loUdOqynEaY=,iv:17jO6N6qEW9nP3vMfoiaQKTfjpz1XWtuWHwBEPAnb4o=,tag:ciSm0rHiEFvdz6Pbdrk21A==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBPeXRjRTlwam54ejBERCtt
+            ZER2ZkNraWl1WVhWQ1lmV24vbXZlOCtMNlhnCktZY20wRERJWDc1ZjBFckwvaXZI
+            TEJjSGZiQTZYSktqdGM2VVdxQjNSRUkKLS0tIFNUWEpPVTdWK2c2R295MktsTWd2
+            RmhBRXV3bVQ2OEtiU0UxWmhKOEI0eEkKc6GinzrRFLihPBGkXeSj7SLqOxdZ/HMb
+            tMxQp9q0VgXQeVE+tvk9hk3+fdBr4yZggKQW4ftADBeey9svv2KEVw==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age17x04ga87qyu9lzcuja9k83z90veew9cez7jusul4y5xyr09xaejs9rq755
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBoV2l2QkhuNkxmRjNPZVJk
+            NzZZWUIyZllSQko3L29FczhUeG1ZSlhUbTF3CkNKSmV5MkFZa3NVbjFObEh5cHZz
+            bXRYUFJVUi9MdW93SFhPMlkyU0JOL0EKLS0tIFZjT3dlU2l1UEUwbXErUmhCTFZI
+            YUIwVVRFejlaR3E5bUVJek5oTmZnYTgKcEVLsHsrJEg8ZggJj/hWnwDx2v/CTIWA
+            GiVIT6pA3GtQMBTqT5ReGJA5xjANEFmdO3vTd4TCVTVhtB3d+QD37w==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1hjq0mgzc2npw9lhtwr49qqrfvkxzc2ss8qu7e06fk5n84qm7xs7qrgxfxa
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-11-02T12:56:31Z"
+    mac: ENC[AES256_GCM,data:GXOUc0v/VNujuNS/oxRk3bo7PFUoUVc5sd8zkCIBD7dtpTggi6xvZZR3U7aMT9u6mr4pzOfXpGv6kXfL+rtZpOk58Z3wg/TjAOjSNO9KBPKUtuJ59VPyXAkaXZ3czQi4lmNd7iAWZfjkmiPsKBSROlAC8+5jdsGQESW2eMA/E6E=,iv:jbJkPeLcCKemCKBc/PG9U0Jezn6P3v2Z/GWuBwZaz18=,tag:K9uZU6OsUctOtVvQbbsHKA==,type:str]
+    version: 3.13.3
