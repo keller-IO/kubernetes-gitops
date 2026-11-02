@@ -13,14 +13,15 @@
 #
 # Dateien gehoeren mailman:nogroup (UID 100, GID 65533, Modus 0660/0755); der Container der
 # App laeuft als root, der Backup-Pod als 100:65533. Queue-Dateien koennen waehrend des
-# Laufs wechseln (rclone meldet dann ggf. eine Aenderung), das ist verkraftbar.
+# Laufs wechseln und lassen rclone mit "source file is being updated" scheitern (set -eu, dann
+# kein Heartbeat); /var/queue wird deshalb nicht gesichert (fluechtige Zustellwarteschlange).
 # mailman-core-data ist RWO: podAffinity auf app.kubernetes.io/name=mailman-core.
 # Namespace mailman hat keine PodSecurity-Labels; der Pod ist restricted-konform.
 #
-# UNVOLLSTAENDIG (Draft-PR): Das Secret mailman-files-backup-s3 und der Garage-Bucket/-Key
-# backup-mailman fehlen noch. Bis dahin scheitert der Pod mit CreateContainerConfigError
-# (KubeJobFailed). Anlegen und einbinden: docs/runbooks/backup-restore.md, Abschnitt
-# "Offsite-Sicherung der PVCs".
+# Offen nach dem Merge (Abnahme): Garage-Bucket/-Key backup-mailman pruefen, ersten Lauf anstossen,
+# Restore-Test. Das Secret mailman-files-backup-s3 liegt verschluesselt in Git und ist eingebunden
+# (secret-generator.yaml). Fehlt ein Key im Secret oder stimmt der Name nicht, scheitert der Pod
+# mit CreateContainerConfigError (KubeJobFailed); Ursache steht in den Pod-Events.
 apiVersion: batch/v1
 kind: CronJob
 metadata:
@@ -80,6 +81,7 @@ spec:
                     --exclude "/var/logs/**" \
                     --exclude "/var/locks/**" \
                     --exclude "/var/cache/**" \
+                    --exclude "/var/queue/**" \
                     --exclude "/var/master.pid" \
                     --backup-dir "garage:backup-mailman/files/archive/${STAMP}" \
                     --checksum --stats-one-line --stats 0 -v

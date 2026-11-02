@@ -498,7 +498,7 @@ Ablauf und Abnahme: `docs/runbooks/paperless-v3-upgrade.md`, Phase 0.
 Stand 02.11.2026: Die CronJobs, die Garage-Buckets, die Keys (Quotas wie unten) und die
 SOPS-Secrets sind angelegt und im PR eingebunden. **Abnahme folgt nach dem Merge**: Key-Pruefung
 und Restore-Test sind noch nicht erfolgt, der erste Lauf je CronJob ist ungeprueft. Scheitert
-ein Pod mit `CreateContainerConfigError`, fehlt das Secret im Namespace (`KubeJobFailed` per Mail).
+ein Pod mit `CreateContainerConfigError`, fehlt das Secret im Namespace oder ein referenzierter Key darin (`ACCESS_KEY_ID`, `SECRET_ACCESS_KEY`, `region`); die Ursache steht in den Pod-Events (`kubectl -n <ns> describe pod`). `KubeJobFailed` meldet es per Mail.
 Muster ist `goloom-backup`
 (rclone, `--backup-dir`, 30 Tage Archiv); zusaetzlich `ttlSecondsAfterFinished: 604800`.
 Alle Jobs mounten die PVC **read-only** (Ausnahme: der SQLite-Snapshot von Tonu, s. u.),
@@ -545,7 +545,7 @@ nicht selektieren (deren Selektor ist hier nur `app.kubernetes.io/name=<app>`).
   (`apps/base/mailman/web-settings-configmap.yaml`) auf die PVC; sie liegen also in Git. Es
   gibt nichts, was nur auf der PVC lebt. Die Mailman-Web-Daten (Archiv, Benutzer) stehen in
   Postgres (`mailmanweb`, CNPG).
-- **mailman-core-data:** `var/` ohne `logs` (391 MB), `locks`, `cache`, `master.pid`
+- **mailman-core-data:** `var/` ohne `logs` (391 MB), `locks`, `cache`, `queue` (fluechtig), `master.pid`
   (~7 MB uebrig: lists, archives, messages, queue, data, etc, templates). Die Mailman-Listen-
   Konfiguration selbst liegt in Postgres.
 - **SQLite Tonu:** keine eigene Sicherung der App, DB laeuft im WAL-Modus. Verfahren wie die
@@ -592,7 +592,7 @@ Inhalt je Secret: `ACCESS_KEY_ID`, `SECRET_ACCESS_KEY`, `region`.
 
 **Abnahme folgt nach dem Merge:** Key per `curl --aws-sigv4` pruefen (Abschnitt Secrets), nach
 dem Sync je CronJob einmal einen Lauf anstossen (`kubectl create job --from=cronjob/<name> …`,
-braucht Schreibrechte), `rclone size`/`lsl` im Log und `files/last-run.txt` im Bucket pruefen,
+braucht Schreibrechte), `rclone size`/`lsl` im Log und `files/last-run.txt` im Bucket pruefen (Tonu: `uploads/last-run.txt`),
 danach einen Restore-Test je App (Abschnitt Restore).
 
 ### Pruefen
@@ -646,6 +646,18 @@ spec:
     - { name: tmp, emptyDir: {} }
 ```
 
+Soll die PVC danach **exakt** dem Backup entsprechen, vorher im Restore-Pod den Inhalt leeren;
+`rclone copy` loescht am Ziel nichts, sonst bleiben Dateien aus dem neueren Datenstand liegen
+(gemischter Stand). Nur bei heruntergeskalierter App und nach Pruefung des Backups, destruktiv:
+
+```bash
+find /data -mindepth 1 -maxdepth 1 ! -name lost+found -exec rm -rf {} +
+```
+
+Bei Teilwiederherstellung (Einzeldatei, Archivstand eines Verzeichnisses) nicht leeren. `rclone sync`
+ist hier bewusst nicht vorgesehen: ohne die Ausschluesse des jeweiligen CronJobs wuerde es auf der
+PVC ungesicherte Pfade loeschen.
+
 Dann je App im Pod (`kubectl -n <ns> exec restore -- …`):
 
 ```bash
@@ -653,8 +665,10 @@ Dann je App im Pod (`kubectl -n <ns> exec restore -- …`):
 rclone copy garage:backup-<app>/files/current /data -v
 # wordpress-N
 rclone copy garage:backup-wordpress/files-wordpress-N/current /data -v
-# Zeitpunkt aus dem Archiv (Datei bzw. Verzeichnis wiederherstellen):
-rclone lsf garage:backup-<app>/files/archive/ ;  rclone copy garage:backup-<app>/files/archive/<Zeit>/<pfad> /data/<pfad> -v
+# Zeitpunkt aus dem Archiv:
+rclone lsf garage:backup-<app>/files/archive/
+rclone copy   garage:backup-<app>/files/archive/<Zeit>/<verzeichnis> /data/<verzeichnis> -v   # Verzeichnis
+rclone copyto garage:backup-<app>/files/archive/<Zeit>/<datei> /data/<datei> -v               # Einzeldatei
 # flurfunk: Dateien wie oben, dann die Datenbank aus dem App-Dump
 rclone copy garage:backup-flurfunk/files/current /data -v
 rm -f /data/app.db /data/app.db-wal /data/app.db-shm
