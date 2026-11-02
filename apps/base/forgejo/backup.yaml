@@ -5,6 +5,9 @@ metadata:
   namespace: forgejo
 spec:
   schedule: "0 0 2 * * *" # 6-field (CNPG = seconds first): daily 02:00
+  # Schreibruhiger Cluster: auf einem Standby erzwingt pg_backup_stop keinen WAL-Switch,
+  # das Backup endet dann in einem noch nicht archivierten Segment (docs/learnings/cnpg-standby-backup-unarchived-wal.md).
+  target: primary
   backupOwnerReference: self
   cluster:
     name: forgejo-pg

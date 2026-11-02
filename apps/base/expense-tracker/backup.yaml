@@ -5,6 +5,9 @@ metadata:
   namespace: expense-tracker
 spec:
   schedule: "0 20 2 * * *" # 6-field (CNPG = Sekunden zuerst): taeglich 02:20, versetzt zu den uebrigen
+  # Schreibruhiger Cluster: auf einem Standby erzwingt pg_backup_stop keinen WAL-Switch,
+  # das Backup endet dann in einem noch nicht archivierten Segment (docs/learnings/cnpg-standby-backup-unarchived-wal.md).
+  target: primary
   backupOwnerReference: self
   cluster:
     name: expense-pg
