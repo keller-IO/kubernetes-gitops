@@ -79,11 +79,11 @@ persistence:
 updateStrategy:
   type: Recreate
 
-# Startwerte ohne Messung (neue App); nach der ersten Betriebswoche per
-# `kubectl top` nachziehen.
+# 1 GiB Limit reichte beim ersten Start nicht (OOMKilled, CrashLoop am 02.11.2026).
+# Nach der ersten Betriebswoche anhand gemessener Werte nachziehen.
 resources:
   requests: { cpu: 100m, memory: 512Mi }
-  limits: { memory: 1Gi }
+  limits: { memory: 2Gi }
 
 worker:
   resources:
