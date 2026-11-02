@@ -493,6 +493,183 @@ Checksummen, Login-Seite 200, API ohne Login 401, Download MD5-gleich.
 
 Ablauf und Abnahme: `docs/runbooks/paperless-v3-upgrade.md`, Phase 0.
 
+## Offsite-Sicherung der PVCs ohne eigene Datenbank-Sicherung (vorbereitet, noch nicht live)
+
+Stand 02.11.2026, Draft-PR `feat(backup): Offsite-Sicherung fuer PVCs ohne Backup`.
+Die CronJobs sind in Git, aber **ohne Buckets, Keys und Secrets**: bis diese angelegt sind,
+scheitern die Pods mit `CreateContainerConfigError` (`KubeJobFailed` per Mail). Der PR darf
+erst nach Abschnitt „Noch anzulegen“ gemergt werden. Muster ist `goloom-backup`
+(rclone, `--backup-dir`, 30 Tage Archiv); zusaetzlich `ttlSecondsAfterFinished: 604800`.
+Alle Jobs mounten die PVC **read-only** (Ausnahme: der SQLite-Snapshot von Tonu, s. u.),
+laufen nicht als root und haben `podAffinity` auf den App-Pod, weil die PVCs RWO sind.
+Die Pod-Labels tragen kein `app.kubernetes.io/instance` und einen eigenen
+`app.kubernetes.io/name`-Wert (`<app>-offsite-backup`), damit Deployment und Service sie
+nicht selektieren (deren Selektor ist hier nur `app.kubernetes.io/name=<app>`).
+
+| App / PVC | CronJob (Namespace) | Zeit (Berlin) | Secret | Bucket / Prefix | UID:GID | Mount | podAffinity `app.kubernetes.io/name` |
+|---|---|---|---|---|---|---|---|
+| expense-tracker / `expense-tracker-receipts` | `expense-tracker-offsite-backup` (expense-tracker) | 05:00 | `expense-tracker-files-backup-s3` | `backup-expense-tracker` / `files/` | 10001:10001 | `/data` | `expense-tracker` |
+| mailman / `mailman-core-data` | `mailman-offsite-backup` (mailman) | 05:10 | `mailman-files-backup-s3` | `backup-mailman` / `files/` | 100:65533 | `/data` | `mailman-core` |
+| flurfunk / `flurfunk-data` | `flurfunk-offsite-backup` (flurfunk) | 05:20 | `flurfunk-backup-s3` | `backup-flurfunk` / `files/` | 10001:10001 | `/data` | `flurfunk` |
+| tonu / `tonu-data` | `tonu-offsite-backup` (tonu) | 05:30 | `tonu-backup-s3` | `backup-tonu` / `sqlite/`, `uploads/` | 10001:10001 | `/data` | `tonu` |
+| wordpress-1 / `wordpress` | `wordpress-offsite-backup` (wordpress-1) | 05:40 | `wordpress-files-backup-s3` | `backup-wordpress` / `files-wordpress-1/` | 33:33 | `/data` | `wordpress` |
+| wordpress-2 / `wordpress` | `wordpress-offsite-backup` (wordpress-2) | 05:50 | `wordpress-files-backup-s3` | `backup-wordpress` / `files-wordpress-2/` | 33:33 | `/data` | `wordpress` |
+| matomo / `matomo-data` | `matomo-offsite-backup` (matomo) | 06:00 | `matomo-files-backup-s3` | `backup-matomo` / `files/` | 33:33 | `/data` | `matomo` |
+| kimai / `kimai-data` | `kimai-offsite-backup` (kimai) | 06:10 | `kimai-files-backup-s3` | `backup-kimai` / `files/` | 33:33 | `/data` | `kimai` |
+
+- **Zeitplan:** nach allen DB-Sicherungen (MariaDB 02:00/02:30 UTC, also 03:00/03:30 bzw.
+  04:00/04:30 Berlin; CNPG 02:50) und nach dem App-Dump von Flurfunk (ca. 02:30 UTC),
+  versetzt zu den bestehenden Offsite-Jobs (03:15–03:50).
+- **Secret-Namen:** `<app>-backup-s3` waere die Konvention. Fuer expense-tracker, mailman,
+  matomo, kimai und wordpress existiert dieser Name schon (Key `cnpg-backups` auf dem
+  gemeinsamen Bucket `backups`, genutzt von CNPG/MariaDB). Ein zweites Secret gleichen Namens
+  kollidiert, und ein Austausch des Inhalts wuerde die DB-Backups brechen, bevor ihr
+  Bucket-Umzug (Migrationsplan oben) gemacht ist. Deshalb dort `<app>-files-backup-s3`.
+  flurfunk und tonu halten die Konvention.
+- **Gleiche Bucket/Key pro App** wie spaeter fuer die DB-Umstellung vorgesehen: bei der
+  Migration kann der Key `backup-<app>` auch die DB-Secrets bedienen; dann kann der
+  Zusatz `-files` entfallen. WordPress teilt wie bei den Dumps einen Bucket und Prefixe je Instanz.
+- **Flurfunk und Tonu** liegen in externen GitLab-Repos (ADR 0004). Die Application
+  `app-flurfunk`/`app-tonu` bleibt unveraendert (sie ist in CI eingefroren); die CronJobs
+  kommen ueber `apps/overlays/main/offsite-backups-external` (ApplicationSet →
+  `app-offsite-backups-external`, Ziel-Namespace ein leerer Verwaltungs-Namespace, die
+  Ressourcen tragen ihren Namespace selbst). ArgoCD-Prune der externen Apps trifft sie nicht.
+
+### Entscheidungen
+
+- **mailman-web-data (20 GiB) wird nicht gesichert.** Gemessen: `fulltext_index` 9,9 GB
+  (neu aufbaubar), `logs` 607 MB, `diskcache` 34 MB, `static` 13 MB (collectstatic des Images).
+  `settings_local.py`, `no_signup_adapter.py` und `templates/` schreibt der initContainer
+  `install-settings` bei **jedem Podstart** aus der ConfigMap `mailman-web-settings`
+  (`apps/base/mailman/web-settings-configmap.yaml`) auf die PVC; sie liegen also in Git. Es
+  gibt nichts, was nur auf der PVC lebt. Die Mailman-Web-Daten (Archiv, Benutzer) stehen in
+  Postgres (`mailmanweb`, CNPG).
+- **mailman-core-data:** `var/` ohne `logs` (391 MB), `locks`, `cache`, `master.pid`
+  (~7 MB uebrig: lists, archives, messages, queue, data, etc, templates). Die Mailman-Listen-
+  Konfiguration selbst liegt in Postgres.
+- **SQLite Tonu:** keine eigene Sicherung der App, DB laeuft im WAL-Modus. Verfahren wie die
+  fruehere Goloom-Sicherung (Commit `d34a050`): initContainer `keinos/sqlite3` zieht per
+  `.backup` eine konsistente Kopie, `integrity_check`, gzip; Upload nach `sqlite/tonu-<Zeit>.db.gz`.
+  Der initContainer braucht die PVC schreibbar (SQLite mappt bei WAL die `-shm`-Datei), laeuft
+  aber als dieselbe UID/GID 10001 wie die App; der rclone-Container mountet read-only.
+- **SQLite Flurfunk:** die App legt unter `/data/backups` selbst taeglich um ca. 02:30 UTC
+  `app-JJJJ-MM-TT.db.gz` ab (vier aufeinanderfolgende Staende vom 30.10.–02.11. vorhanden;
+  der Stand vom 02.11. ist gueltiges gzip, `integrity_check` ok, 40 Objekte, plausible
+  Zeilenzahlen) plus `vm-current.bin`/`vm-previous.bin`/`vm-status.json` (je ~31 MB). Daher
+  werden `app.db`, `app.db-wal`, `app.db-shm` **nicht** kopiert, der Rest von `/data` (inkl.
+  `uploads`, `backups`) wird gespiegelt. Der Job scheitert absichtlich, wenn der neueste
+  App-Dump fehlt, aelter als 36 h oder kein gueltiges gzip ist: so wird ein Ausfall der
+  App-Sicherung nicht still. Wer sich nicht auf den App-Dump verlassen will, kann die
+  Tonu-Variante (`.backup` per initContainer) uebernehmen.
+- **Matomo:** ganze PVC ohne `tmp/` (Cache, Sessions mit Modus 0600). **WordPress:** ganzes Webroot
+  inkl. `wp-config.php`, ohne `wp-content/cache`, `upgrade`, `upgrade-temp-backup`.
+  **Kimai:** ganze PVC (`data/` mit Fonts, `plugins/`), 428 KB. **Expense-Tracker:** PVC ist leer;
+  der Heartbeat `last-run.txt` beweist trotzdem den Schreibzugriff.
+- **Bewusst nicht aufgenommen:** `wordpress-3/wordpress` (0 Replicas, kein Ziel-Pod fuer die
+  Affinity; die CronJobs liegen deshalb in den Overlays von wordpress-1/-2, nicht in der geteilten
+  Base), `jitmgmt/jitmgmt-fints` (Bankdaten; eigene Bewertung noetig, Inhalt wurde nicht gelesen),
+  `kite/kite-storage`, `crowdsec-*`, `eurooffice-data`, die Valkey-PVCs, `mastodon-search`
+  (Index aus Postgres neu aufbaubar) und vmsingle (30 Tage Metriken): nach Vorgabe des
+  Auftraggebers ausgenommen, nicht einzeln neu bewertet.
+
+### Noch anzulegen (nicht Teil des PR)
+
+Buckets/Keys wie im Abschnitt Secrets (RW, kein `--owner`), auf `192.168.23.21`:
+
+| Bucket | Key | Quota | Secret-Datei (verschluesselt, zu erzeugen) | Eintrag in |
+|---|---|---|---|---|
+| `backup-expense-tracker` | `backup-expense-tracker` | 20 GiB | `apps/base/expense-tracker/files-backup-s3.sops.yaml` (`expense-tracker-files-backup-s3`) | `apps/base/expense-tracker/secret-generator.yaml` |
+| `backup-mailman` | `backup-mailman` | 20 GiB | `apps/base/mailman/files-backup-s3.sops.yaml` (`mailman-files-backup-s3`) | `apps/base/mailman/secret-generator.yaml` |
+| `backup-flurfunk` | `backup-flurfunk` | 20 GiB | `apps/base/offsite-backups-external/flurfunk-backup-s3.sops.yaml` (`flurfunk-backup-s3`, `namespace: flurfunk`) | neues `apps/base/offsite-backups-external/secret-generator.yaml` + `generators:` in der Kustomization |
+| `backup-tonu` | `backup-tonu` | 5 GiB | `apps/base/offsite-backups-external/tonu-backup-s3.sops.yaml` (`tonu-backup-s3`, `namespace: tonu`) | wie oben |
+| `backup-wordpress` | `backup-wordpress` | 20 GiB | `apps/base/wordpress/files-backup-s3.sops.yaml` (`wordpress-files-backup-s3`, ohne Namespace wie `secret.sops.yaml`) | `apps/base/wordpress/secret-generator.yaml` (legt das Secret auch in wordpress-3 an, harmlos) |
+| `backup-matomo` | `backup-matomo` | 20 GiB | `apps/base/matomo/files-backup-s3.sops.yaml` (`matomo-files-backup-s3`) | `apps/base/matomo/secret-generator.yaml` |
+| `backup-kimai` | `backup-kimai` | 5 GiB | `apps/base/kimai/files-backup-s3.sops.yaml` (`kimai-files-backup-s3`) | `apps/base/kimai/secret-generator.yaml` |
+
+Inhalt je Secret: `ACCESS_KEY_ID`, `SECRET_ACCESS_KEY`, `region: garage-potsdam`. Danach den Key
+per `curl --aws-sigv4` pruefen (Abschnitt Secrets), den PR aus Draft nehmen und nach dem Sync
+je CronJob einmal einen Lauf anstossen (`kubectl create job --from=cronjob/<name> …`, braucht
+Schreibrechte) und das Ergebnis pruefen: `rclone size`/`lsl` im Log, `files/last-run.txt`
+im Bucket.
+
+### Pruefen
+
+```bash
+kubectl get cronjob -A | grep offsite-backup
+kubectl -n <ns> logs job/<job>            # letzter Lauf: 'rclone size' am Ende
+aws --endpoint-url http://192.168.23.21:3900 --region garage-potsdam \
+  s3 ls s3://backup-<app>/ --recursive | tail     # mit dem Key backup-<app>
+```
+
+### Restore
+
+Immer: App herunterskalieren (ArgoCD-Auto-Sync fuer die App vorher aussetzen, sonst setzt selfHeal
+die Replikas zurueck), Wegwerf-Pod mit der PVC schreibbar mounten, aus `current/` zurueckkopieren,
+App wieder hochfahren. Vorlage (Werte je App aus der Tabelle oben; `securityContext` wie im
+CronJob, damit die Dateien dem App-Benutzer gehoeren):
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata: { name: restore, namespace: <ns> }
+spec:
+  restartPolicy: Never
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: <uid>
+    runAsGroup: <gid>
+    seccompProfile: { type: RuntimeDefault }
+  containers:
+    - name: rclone
+      image: rclone/rclone:1.75.2
+      command: ["sleep", "3600"]
+      env:   # wie im CronJob: RCLONE_CONFIG_GARAGE_* aus dem Secret <secret>
+        - { name: HOME, value: /tmp }
+        - { name: RCLONE_CONFIG_GARAGE_TYPE, value: s3 }
+        - { name: RCLONE_CONFIG_GARAGE_PROVIDER, value: Other }
+        - { name: RCLONE_CONFIG_GARAGE_ENDPOINT, value: "http://192.168.23.21:3900" }
+        - { name: RCLONE_CONFIG_GARAGE_FORCE_PATH_STYLE, value: "true" }
+        - { name: RCLONE_CONFIG_GARAGE_NO_CHECK_BUCKET, value: "true" }
+        - { name: RCLONE_CONFIG_GARAGE_REGION, valueFrom: { secretKeyRef: { name: <secret>, key: region } } }
+        - { name: RCLONE_CONFIG_GARAGE_ACCESS_KEY_ID, valueFrom: { secretKeyRef: { name: <secret>, key: ACCESS_KEY_ID } } }
+        - { name: RCLONE_CONFIG_GARAGE_SECRET_ACCESS_KEY, valueFrom: { secretKeyRef: { name: <secret>, key: SECRET_ACCESS_KEY } } }
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities: { drop: ["ALL"] }
+      volumeMounts: [{ name: data, mountPath: /data }, { name: tmp, mountPath: /tmp }]
+  volumes:
+    - { name: data, persistentVolumeClaim: { claimName: <pvc> } }
+    - { name: tmp, emptyDir: {} }
+```
+
+Dann je App im Pod (`kubectl -n <ns> exec restore -- …`):
+
+```bash
+# expense-tracker, mailman, matomo, kimai (PVC-Wurzel = /data)
+rclone copy garage:backup-<app>/files/current /data -v
+# wordpress-N
+rclone copy garage:backup-wordpress/files-wordpress-N/current /data -v
+# Zeitpunkt aus dem Archiv (Datei bzw. Verzeichnis wiederherstellen):
+rclone lsf garage:backup-<app>/files/archive/ ;  rclone copy garage:backup-<app>/files/archive/<Zeit>/<pfad> /data/<pfad> -v
+# flurfunk: Dateien wie oben, dann die Datenbank aus dem App-Dump
+rclone copy garage:backup-flurfunk/files/current /data -v
+rm -f /data/app.db /data/app.db-wal /data/app.db-shm
+zcat /data/backups/app-<JJJJ-MM-TT>.db.gz > /data/app.db
+# tonu: Uploads und Datenbank
+rclone copy garage:backup-tonu/uploads/current /data/uploads -v
+rclone lsl garage:backup-tonu/sqlite | tail
+rclone copyto garage:backup-tonu/sqlite/tonu-<Zeit>.db.gz /tmp/tonu.db.gz
+rm -f /data/app.db /data/app.db-wal /data/app.db-shm
+zcat /tmp/tonu.db.gz > /data/app.db
+```
+
+Danach den Pod loeschen und die App wieder auf 1 skalieren. Mailman: DB und Dateien muessen
+zusammenpassen; zuerst `mailman-pg` (CNPG-Restore, Abschnitt oben), dann die Core-Dateien.
+Matomo erzeugt `tmp/` selbst neu. WordPress/Matomo/Kimai: Datenbank getrennt ueber den
+`Restore`-CRD (Abschnitt MariaDB-Restore). **Restore-Test steht aus**, sobald die Jobs laufen
+je App einmal in einem Wegwerf-Namespace durchspielen.
+
 ---
 
 ## Bekannte Grenzen / offen

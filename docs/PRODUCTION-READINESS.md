@@ -394,6 +394,15 @@ https://auth.savar.de/realms/bgt
       Mailman-Dateien) nach dem CSI-Smoke-Test per quiesced Snapshot absichern.
       Fuer die SMB-Scanner-Inbox und Ceph-Ausfaelle zusaetzlich eine
       Offsite-Strategie festlegen.
+- [ ] **Offsite-Sicherung der PVC-Dateien: vorbereitet, noch nicht live** (Draft-PR, 02.11.2026).
+      CronJobs `<app>-offsite-backup` (rclone nach Garage, 30 Tage Archiv, read-only Mount,
+      `ttlSecondsAfterFinished: 604800`) fuer expense-tracker, mailman-core, flurfunk, tonu,
+      wordpress-1/-2, matomo und kimai liegen in Git; es fehlen die Garage-Buckets/-Keys
+      (`backup-<app>`) und die SOPS-Secrets (`docs/runbooks/backup-restore.md`, Abschnitt
+      „Offsite-Sicherung der PVCs“). SQLite: Tonu per `.backup`-Snapshot, Flurfunk ueber die
+      App-Dumps mit Frischepruefung. `mailman-web-data` bewusst nicht (alles in Git oder
+      neu aufbaubar). Nicht abgedeckt: wordpress-3, jitmgmt-fints, kite-storage, crowdsec,
+      eurooffice-data, Valkey, mastodon-search, vmsingle. Restore-Test je App offen.
 - [ ] Restore-Abläufe aus `docs/runbooks/backup-restore.md` je Backend testen.
 
 **Beispiel** — CNPG continuous backup (`apps/base/paperless-ngx/database.yaml` + `backup.yaml`):

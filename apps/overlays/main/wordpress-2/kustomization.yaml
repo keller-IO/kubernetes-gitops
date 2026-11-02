@@ -9,6 +9,7 @@ namespace: wordpress-2
 # "false" bleibt.
 resources:
   - ../../../base/wordpress
+  - offsite-backup.yaml
 patches:
   - target: { kind: Ingress }
     patch: |

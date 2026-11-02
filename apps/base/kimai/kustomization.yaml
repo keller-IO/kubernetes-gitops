@@ -11,6 +11,7 @@ resources:
   - ingress.yaml
   - backup.yaml
   - pre-upgrade-backup.yaml
+  - offsite-backup.yaml
   - php-cve-mitigation.yaml
 
 generators:

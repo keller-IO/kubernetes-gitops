@@ -1,0 +1,111 @@
+# Offsite-Backup von Kimai: PVC kimai-data -> Garage Potsdam, Bucket backup-kimai.
+#
+#   files/current/          Spiegel der PVC (rclone sync)
+#   files/archive/<Zeit>/   von sync geloeschte/ueberschriebene Dateien, 30 Tage
+#   files/last-run.txt      Heartbeat
+#
+# Die PVC wird im Deployment als Subpfade data/ (var/data, derzeit nur Fonts) und plugins/
+# (var/plugins, ImportBundle) gemountet; gesichert wird die ganze PVC (428 KB). Die Datenbank
+# sichert der mariadb-operator (backup.yaml). Dateien gehoeren www-data (33:33); der
+# App-Container laeuft als root. kimai-data ist RWO: podAffinity auf app.kubernetes.io/name=kimai
+# (das Valkey-Pod traegt kimai-valkey). Namespace ohne PodSecurity-Labels; restricted-konform.
+#
+# UNVOLLSTAENDIG (Draft-PR): Das Secret kimai-files-backup-s3 und der Garage-Bucket/-Key
+# backup-kimai fehlen noch. Bis dahin scheitert der Pod mit CreateContainerConfigError
+# (KubeJobFailed). Anlegen und einbinden: docs/runbooks/backup-restore.md, Abschnitt
+# "Offsite-Sicherung der PVCs".
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: kimai-offsite-backup
+  namespace: kimai
+  labels:
+    app.kubernetes.io/name: kimai-offsite-backup
+    app.kubernetes.io/part-of: kimai
+    app.kubernetes.io/component: offsite-backup
+spec:
+  schedule: "10 6 * * *"
+  timeZone: Europe/Berlin
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 3600
+      # Abgeschlossene Jobs verschwinden nach 7 Tagen, damit ein laengst
+      # abgeloester Fehllauf KubeJobFailed nicht dauerhaft aktiv haelt.
+      ttlSecondsAfterFinished: 604800
+      template:
+        metadata:
+          # Bewusst ohne app.kubernetes.io/instance und mit eigenem name-Wert:
+          # Deployment und Service selektieren auf app.kubernetes.io/name=kimai.
+          labels:
+            app.kubernetes.io/name: kimai-offsite-backup
+            app.kubernetes.io/part-of: kimai
+            app.kubernetes.io/component: offsite-backup
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          affinity:
+            podAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - topologyKey: kubernetes.io/hostname
+                  labelSelector:
+                    matchLabels:
+                      app.kubernetes.io/name: kimai
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 33
+            runAsGroup: 33
+            seccompProfile: { type: RuntimeDefault }
+          containers:
+            - name: rclone
+              image: rclone/rclone:1.75.2 # renovate: image=rclone/rclone
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -eu
+                  STAMP=$(date -u +%Y-%m-%dT%H%M%SZ)
+                  rclone sync /data garage:backup-kimai/files/current \
+                    --exclude "/lost+found/**" \
+                    --backup-dir "garage:backup-kimai/files/archive/${STAMP}" \
+                    --checksum --stats-one-line --stats 0 -v
+                  rclone delete garage:backup-kimai/files/archive --use-server-modtime --min-age 30d --rmdirs -v
+                  date -u +%Y-%m-%dT%H:%M:%SZ > /tmp/last-run
+                  rclone copyto /tmp/last-run garage:backup-kimai/files/last-run.txt
+                  rclone size garage:backup-kimai
+              env:
+                - { name: HOME, value: /tmp }
+                - { name: RCLONE_CONFIG, value: /tmp/rclone.conf } # existiert nicht (harmloser NOTICE); Remote kommt aus RCLONE_CONFIG_*
+                - { name: RCLONE_CACHE_DIR, value: /tmp/cache }
+                - { name: RCLONE_CONFIG_GARAGE_TYPE, value: s3 }
+                - { name: RCLONE_CONFIG_GARAGE_PROVIDER, value: Other }
+                - { name: RCLONE_CONFIG_GARAGE_ENDPOINT, value: "http://192.168.23.21:3900" }
+                - { name: RCLONE_CONFIG_GARAGE_FORCE_PATH_STYLE, value: "true" }
+                # Der Key darf keine Buckets anlegen; ohne no_check_bucket scheitert
+                # rclone vor jedem Upload an CreateBucket (403).
+                - { name: RCLONE_CONFIG_GARAGE_NO_CHECK_BUCKET, value: "true" }
+                - name: RCLONE_CONFIG_GARAGE_REGION
+                  valueFrom: { secretKeyRef: { name: kimai-files-backup-s3, key: region } }
+                - name: RCLONE_CONFIG_GARAGE_ACCESS_KEY_ID
+                  valueFrom: { secretKeyRef: { name: kimai-files-backup-s3, key: ACCESS_KEY_ID } }
+                - name: RCLONE_CONFIG_GARAGE_SECRET_ACCESS_KEY
+                  valueFrom: { secretKeyRef: { name: kimai-files-backup-s3, key: SECRET_ACCESS_KEY } }
+              resources:
+                requests: { cpu: 50m, memory: 64Mi }
+                limits: { memory: 512Mi }
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: { drop: ["ALL"] }
+              volumeMounts:
+                - { name: data, mountPath: /data, readOnly: true }
+                - { name: tmp, mountPath: /tmp }
+          volumes:
+            - name: data
+              persistentVolumeClaim:
+                claimName: kimai-data
+            - name: tmp
+              emptyDir: { sizeLimit: 256Mi }

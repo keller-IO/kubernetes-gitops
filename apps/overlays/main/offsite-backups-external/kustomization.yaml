@@ -1,0 +1,5 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# Kein `namespace:`: die CronJobs liegen in flurfunk und tonu (siehe Base).
+resources:
+  - ../../../base/offsite-backups-external

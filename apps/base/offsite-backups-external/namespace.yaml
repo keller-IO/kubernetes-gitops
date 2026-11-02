@@ -1,0 +1,12 @@
+# Leerer Verwaltungs-Namespace: ArgoCD legt ihn als Ziel der Application
+# app-offsite-backups-external an (CreateNamespace=true). Die CronJobs liegen
+# in den Namespaces der Apps (flurfunk, tonu), die nicht aus diesem Repo kommen.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: offsite-backups-external
+  labels:
+    app.kubernetes.io/name: offsite-backups-external
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted
