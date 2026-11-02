@@ -10,8 +10,7 @@ namespace: netbox
 #   - Alle Secrets kommen aus SOPS. Die Chart-Secrets wuerden per lookup/rand
 #     erzeugt; ArgoCD rendert ohne Cluster-Zugriff, Passwoerter und Peppers
 #     wuerden sich also bei jedem Render aendern.
-#   - OIDC ist noch nicht aktiv: erst nach Freigabe und passendem Client im
-#     Keycloak-Realm bgt.
+#   - Login per OIDC ueber den Keycloak-Client netbox im Realm bgt, siehe values.yaml.
 helmCharts:
   - name: netbox
     repo: oci://ghcr.io/netbox-community/netbox-chart

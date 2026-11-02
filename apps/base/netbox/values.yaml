@@ -19,6 +19,29 @@ email:
   port: 25
   from: "NetBox <noreply@jit-creatives.de>"
 
+# Keycloak-Client netbox im Realm bgt (confidential, PKCE S256). Secret: oidc.sops.yaml.
+# Redirect-URI: https://netbox.jit.services/oauth/complete/oidc/
+# bgt foederiert alle Mailkonten, und NetBox legt jeden OIDC-Nutzer automatisch an.
+# Deshalb laesst der client-eigene Browser-Flow netbox-browser nur die Gruppe
+# netbox-users (Client-Rolle netbox.access) durch, alle anderen bekommen "Deny access".
+# Neue Nutzer in Keycloak in diese Gruppe aufnehmen. Rechte in NetBox vergibt danach ein
+# Admin: neue Nutzer haben zunaechst keine Berechtigungen.
+remoteAuth:
+  # Bleibt false: Der Schalter aktiviert nur die Header-Anmeldung (Remote-User),
+  # SSO laeuft allein ueber das Backend hier. Der lokale Admin-Login bleibt nutzbar.
+  enabled: false
+  backends:
+    - social_core.backends.open_id_connect.OpenIdConnectAuth
+extraConfig:
+  - values:
+      SOCIAL_AUTH_OIDC_OIDC_ENDPOINT: https://auth.savar.de/realms/bgt
+      SOCIAL_AUTH_OIDC_KEY: netbox
+      SOCIAL_AUTH_OIDC_USE_PKCE: true
+      SOCIAL_AUTH_BACKEND_ATTRS:
+        oidc: ["Keycloak", "login"]
+  - secret:
+      secretName: netbox-oidc
+
 existingSecret: netbox-config
 superuser:
   existingSecret: netbox-superuser
