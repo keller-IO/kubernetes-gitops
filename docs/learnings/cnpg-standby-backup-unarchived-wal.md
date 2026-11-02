@@ -31,9 +31,11 @@ heilt sich ohne Schreiblast nicht selbst.
 
 ## Korrektur
 
-`target: primary` auf den ScheduledBackups schreibruhiger Cluster; dort erzwingt
-`pg_backup_stop` den Switch. Schreibaktive Cluster bleiben auf `prefer-standby`,
-weil dort das nächste Segment binnen 5 min archiviert wird.
+`target: primary` auf den ScheduledBackups schreibruhiger Cluster (PR #449); dort
+sollte `pg_backup_stop` den Switch erzwingen. Schreibaktive Cluster bleiben auf
+`prefer-standby`, weil dort das nächste Segment erwartungsgemäß binnen 5 min
+archiviert wird. Beides ist Erwartung, noch kein Laufzeitnachweis: nach dem
+jeweils nächsten Backup die Prüfung unten ausführen und das Ergebnis hier eintragen.
 
 ## Prüfung
 
