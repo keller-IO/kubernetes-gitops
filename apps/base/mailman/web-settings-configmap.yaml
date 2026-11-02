@@ -140,13 +140,16 @@ data:
     # unveraendert. Details in docs/learnings/mailman-whoosh-reindex-performance.md.
     #
     # Deshalb hier die beiden guenstigen Jobs einzeln per `runjob`, und
-    # update_index bewusst NICHT. Der Volltextindex wird ausserhalb dieses Pods
-    # neu gebaut; bis dahin bleibt die Suche auf dem Stand vom 31.07.2026 --
-    # genau wie vorher, nur ohne das Frontend stuendlich mitzureissen.
+    # update_index bewusst NICHT. Die Volltextsuche ist seit 02.11.2026
+    # abgeschaltet; dieser Job darf nicht zurueckkommen, er wuerde einen
+    # Vollaufbau des leeren Index starten.
     unique-cron = 0 -1 -1 -1 -1 ./manage.py runjob hyperkitty new_lists_from_mailman
     unique-cron = 0 -1 -1 -1 -1 ./manage.py runjob hyperkitty thread_starting_email
     unique-cron = 0 0 -1 -1 -1 ./manage.py runjobs daily
-    unique-cron = 0 0 1 -1 -1 ./manage.py runjobs monthly
+    # GEAENDERT gegenueber dem Image (Original: `runjobs monthly`). Die Gruppe
+    # enthaelt update_and_clean_index, das am 01.09., 01.10. und 01.11.2026 nie
+    # sauber endete und den Pod neu starten liess. Uebrig bleibt empty_threads.
+    unique-cron = 0 0 1 -1 -1 ./manage.py runjob hyperkitty empty_threads
     unique-cron = 0 0 -1 -1 0 ./manage.py runjobs weekly
     unique-cron = 0 0 1 1 -1 ./manage.py runjobs yearly
 

@@ -700,7 +700,8 @@ Listenmail stabil verarbeitet und ein verifiziertes Backup existiert.
 10. `/accounts/signup/` muss weiterhin „Registrierung geschlossen“ zeigen und
     darf keine Passwortfelder anbieten. `ACCOUNT_ADAPTER` und
     `MAILMAN_WEB_SOCIAL_AUTH=[]` bleiben verpflichtend.
-11. Volltextindex nach dem HyperKitty-Sprung 1.3.4 → 1.3.12 neu bauen.
+11. Volltextindex: entfällt, die Suche ist seit 02.11.2026 abgeschaltet
+    (`docs/learnings/mailman-whoosh-reindex-performance.md`).
 
 Rollback ist hier nur über das Backup möglich — Django- und alembic-Migrationen
 laufen nicht rückwärts. Deshalb nicht mit dem Umzug vermischen.

@@ -118,7 +118,7 @@ spec:
       annotations:
         # settings_local.py wird vom initContainer ins PVC kopiert. Eine reine
         # ConfigMap-Aenderung startet den Pod nicht neu, deshalb Revision bumpen.
-        mailman.jit.services/settings-revision: "20260820-search-cap-256k"
+        mailman.jit.services/settings-revision: "20261102-search-off"
     spec:
       # Die lokalen Konfigurationsdateien werden in das PVC KOPIERT, statt sie
       # per subPath aus der ConfigMap zu mounten. Grund: das Entrypoint macht
@@ -136,6 +136,13 @@ spec:
               install -d /opt/mailman-web-data/templates/search/indexes/hyperkitty
               cp /config/settings_local.py /config/no_signup_adapter.py /opt/mailman-web-data/
               cp /config/email_text.txt /opt/mailman-web-data/templates/search/indexes/hyperkitty/
+              # Volltextsuche ist abgeschaltet: Suchfeld aus der Kopfzeile nehmen.
+              # Aus dem Image abgeleitet, damit Upgrades keine Template-Kopie
+              # veralten lassen; passt das Muster nicht mehr, bleibt nur das Feld.
+              install -d /opt/mailman-web-data/templates/hyperkitty
+              sed '/<form name="search"/,/<\/form>/d' \
+                /usr/lib/python3.12/site-packages/hyperkitty/templates/hyperkitty/base.html \
+                > /opt/mailman-web-data/templates/hyperkitty/base.html
           resources:
             requests: { cpu: 10m, memory: 32Mi }
             limits: { memory: 128Mi }
@@ -371,6 +378,14 @@ metadata:
     nginx.org/ssl-redirect: "true"
     nginx.org/redirect-to-https: "true"
     nginx.org/client-max-body-size: "50m"
+    # Volltextsuche seit 02.11.2026 abgeschaltet: der Whoosh-Index passte nicht
+    # in den Pod, eine anonyme Suche fuehrte zum OOMKill. Siehe
+    # docs/learnings/mailman-whoosh-reindex-performance.md.
+    nginx.org/server-snippets: |
+      location = /hyperkitty/search {
+        default_type text/plain;
+        return 410 "Die Volltextsuche des Archivs ist abgeschaltet.\n";
+      }
 spec:
   ingressClassName: nginx
   tls:
