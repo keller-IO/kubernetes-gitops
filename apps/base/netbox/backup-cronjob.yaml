@@ -65,7 +65,7 @@ spec:
                     --exclude "/lost+found/**" \
                     --backup-dir "garage:backup-netbox/media/archive/${STAMP}" \
                     --checksum --stats-one-line --stats 0 -v
-                  rclone delete garage:backup-netbox/media/archive --min-age 30d --rmdirs -v
+                  rclone delete garage:backup-netbox/media/archive --use-server-modtime --min-age 30d --rmdirs -v
                   rclone size garage:backup-netbox/media/current
               env:
                 - { name: HOME, value: /tmp }
