@@ -17,6 +17,9 @@ Format und Kriterien: siehe AGENTS.md → „Operational Learnings".
   RBD-Volume, Goloom fiel mit Multi-Attach aus. Charts auf 3.17.x gehalten.
 - [Collabora-HPA skalierte auf 55 Replicas](collabora-hpa-runaway.md) — Chart-Default-HPA
   ignorierte replicaCount und legte am 28.07.2026 ArgoCD, cert-manager und ceph-csi lahm.
+- [CNPG-Backup auf dem Standby endet in nicht archiviertem WAL](cnpg-standby-backup-unarchived-wal.md) — bei
+  schreibruhigen Clustern bleibt das Ende-WAL ungesichert, obwohl der Backup-Status `completed` ist;
+  `target: primary` am ScheduledBackup.
 - [Cloud-dev Proxy-Cutover](cloud-dev-proxy-cutover.md) — Single-File-Bind-Mounts
   folgen keinem atomaren Host-Rename; Nextcloud muss zusaetzlich dem Pod-CIDR
   des neuen Proxy-Hops vertrauen.
