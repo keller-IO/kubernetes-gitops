@@ -1,0 +1,102 @@
+# Offsite-Backup der NetBox-Medien: PVC netbox-media -> Garage Potsdam, Bucket backup-netbox.
+#
+#   media/current/          Spiegel der PVC (rclone sync)
+#   media/archive/<Zeit>/   von sync geloeschte/ueberschriebene Dateien, 30 Tage
+#
+# Die Datenbank sichert CNPG nach s3://backup-netbox/cnpg/ (database.yaml).
+#
+# netbox-media ist RWO: der Pod muss auf dem Node des NetBox-Servers laufen
+# (podAffinity). Die Labels hier duerfen den Selector von Deployment/Service
+# nicht treffen, deshalb fehlt app.kubernetes.io/instance.
+#
+# Zugang: netbox-backup-s3 (Garage-Key backup-netbox, RW nur auf den eigenen
+# Bucket, Quota 20 GiB). Restore: docs/runbooks/backup-restore.md, Abschnitt NetBox.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: netbox-media-offsite
+  namespace: netbox
+  labels:
+    app.kubernetes.io/name: netbox
+    app.kubernetes.io/component: media-offsite
+spec:
+  schedule: "50 3 * * *"
+  timeZone: Europe/Berlin
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 3600
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: netbox
+            app.kubernetes.io/component: media-offsite
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          affinity:
+            podAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - topologyKey: kubernetes.io/hostname
+                  labelSelector:
+                    matchLabels:
+                      app.kubernetes.io/name: netbox
+                      app.kubernetes.io/instance: netbox
+                      app.kubernetes.io/component: netbox
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            seccompProfile: { type: RuntimeDefault }
+          containers:
+            - name: rclone
+              image: rclone/rclone:1.75.2 # renovate: image=rclone/rclone
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -eu
+                  STAMP=$(date -u +%Y-%m-%dT%H%M%SZ)
+                  # lost+found gehoert root: ein Lesefehler dort wuerde die Sync-Phase abbrechen.
+                  rclone sync /data garage:backup-netbox/media/current \
+                    --exclude "/lost+found/**" \
+                    --backup-dir "garage:backup-netbox/media/archive/${STAMP}" \
+                    --checksum --stats-one-line --stats 0 -v
+                  rclone delete garage:backup-netbox/media/archive --use-server-modtime --min-age 30d --rmdirs -v
+                  rclone size garage:backup-netbox/media/current
+              env:
+                - { name: HOME, value: /tmp }
+                - { name: RCLONE_CONFIG, value: /tmp/rclone.conf } # existiert nicht (harmloser NOTICE); Remote kommt aus RCLONE_CONFIG_*
+                - { name: RCLONE_CACHE_DIR, value: /tmp/cache }
+                - { name: RCLONE_CONFIG_GARAGE_TYPE, value: s3 }
+                - { name: RCLONE_CONFIG_GARAGE_PROVIDER, value: Other }
+                - { name: RCLONE_CONFIG_GARAGE_ENDPOINT, value: "http://192.168.23.21:3900" }
+                - { name: RCLONE_CONFIG_GARAGE_FORCE_PATH_STYLE, value: "true" }
+                # Der Key darf keine Buckets anlegen; ohne no_check_bucket scheitert
+                # rclone vor jedem Upload an CreateBucket (403).
+                - { name: RCLONE_CONFIG_GARAGE_NO_CHECK_BUCKET, value: "true" }
+                - name: RCLONE_CONFIG_GARAGE_REGION
+                  valueFrom: { secretKeyRef: { name: netbox-backup-s3, key: region } }
+                - name: RCLONE_CONFIG_GARAGE_ACCESS_KEY_ID
+                  valueFrom: { secretKeyRef: { name: netbox-backup-s3, key: ACCESS_KEY_ID } }
+                - name: RCLONE_CONFIG_GARAGE_SECRET_ACCESS_KEY
+                  valueFrom: { secretKeyRef: { name: netbox-backup-s3, key: SECRET_ACCESS_KEY } }
+              resources:
+                requests: { cpu: 50m, memory: 64Mi }
+                limits: { memory: 512Mi }
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: { drop: ["ALL"] }
+              volumeMounts:
+                - { name: data, mountPath: /data, readOnly: true }
+                - { name: tmp, mountPath: /tmp }
+          volumes:
+            - name: data
+              persistentVolumeClaim:
+                claimName: netbox-media
+            - name: tmp
+              emptyDir: { sizeLimit: 256Mi }

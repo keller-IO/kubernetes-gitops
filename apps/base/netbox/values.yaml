@@ -1,0 +1,123 @@
+image:
+  # Explizit statt Chart-appVersion, damit Renovate das Image sieht.
+  tag: v4.7.4 # renovate: image=ghcr.io/netbox-community/netbox
+  pullPolicy: IfNotPresent
+
+allowedHosts:
+  - netbox.jit.services
+csrf:
+  trustedOrigins:
+    - https://netbox.jit.services
+
+# NetBox ist per Default ohne Login lesbar.
+loginRequired: true
+timeZone: Europe/Berlin
+
+# Mail ueber mx02, IP-Relay wie bei ciso-assistant. Klartext-SMTP bleibt im LAN.
+email:
+  server: 192.168.2.209
+  port: 25
+  from: "NetBox <noreply@jit-creatives.de>"
+
+# Keycloak-Client netbox im Realm bgt (confidential, PKCE S256). Secret: oidc.sops.yaml.
+# Redirect-URI: https://netbox.jit.services/oauth/complete/oidc/
+# bgt foederiert alle Mailkonten, und NetBox legt jeden OIDC-Nutzer automatisch an.
+# Deshalb laesst der client-eigene Browser-Flow netbox-browser nur die Gruppe
+# netbox-users (Client-Rolle netbox.access) durch, alle anderen bekommen "Deny access".
+# Neue Nutzer in Keycloak in diese Gruppe aufnehmen. Rechte in NetBox vergibt danach ein
+# Admin: neue Nutzer haben zunaechst keine Berechtigungen.
+remoteAuth:
+  # Bleibt false: Der Schalter aktiviert nur die Header-Anmeldung (Remote-User),
+  # SSO laeuft allein ueber das Backend hier. Der lokale Admin-Login bleibt nutzbar.
+  enabled: false
+  backends:
+    - social_core.backends.open_id_connect.OpenIdConnectAuth
+extraConfig:
+  - values:
+      SOCIAL_AUTH_OIDC_OIDC_ENDPOINT: https://auth.savar.de/realms/bgt
+      SOCIAL_AUTH_OIDC_KEY: netbox
+      SOCIAL_AUTH_OIDC_USE_PKCE: true
+      SOCIAL_AUTH_BACKEND_ATTRS:
+        oidc: ["Keycloak", "login"]
+  - secret:
+      secretName: netbox-oidc
+
+existingSecret: netbox-config
+superuser:
+  existingSecret: netbox-superuser
+
+postgresql:
+  enabled: false
+externalDatabase:
+  host: netbox-pg-rw
+  port: 5432
+  database: netbox
+  username: netbox
+  existingSecretName: netbox-db-app
+  existingSecretKey: password
+
+valkey:
+  enabled: false
+tasksDatabase:
+  host: netbox-valkey
+  existingSecretName: netbox-valkey
+  existingSecretKey: password
+cachingDatabase:
+  host: netbox-valkey
+  existingSecretName: netbox-valkey
+  existingSecretKey: password
+
+persistence:
+  enabled: true
+  storageClass: ceph-rbd
+  accessMode: ReadWriteOnce
+  size: 5Gi
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+
+# RWO-Volume: der alte Pod muss das Volume freigeben, bevor der neue startet.
+updateStrategy:
+  type: Recreate
+
+# Startwerte ohne Messung (neue App); nach der ersten Betriebswoche per
+# `kubectl top` nachziehen.
+resources:
+  requests: { cpu: 100m, memory: 512Mi }
+  limits: { memory: 1Gi }
+
+worker:
+  resources:
+    requests: { cpu: 50m, memory: 256Mi }
+    limits: { memory: 768Mi }
+
+ingress:
+  enabled: true
+  className: nginx
+  pathType: Prefix
+  annotations:
+    # Ingress-Controller ist nginx-inc: nginx.org/*, nicht nginx.ingress.kubernetes.io/*.
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.org/ssl-redirect: "true"
+    nginx.org/redirect-to-https: "true"
+    # Geraete- und Rackbilder; Controller-Default ist 10m.
+    nginx.org/client-max-body-size: "25m"
+    # Nur interne Netze. *.jit.services loest zwar auf .246 (RFC1918) auf, der
+    # Router leitet 443 aber auf genau diesen LB: Wer den Host-Header setzt,
+    # kaeme sonst von aussen an die Login-Seite.
+    #   192.168.0.0/16  LAN Halbe, Potsdam
+    #   10.0.0.0/8      Pod-Netz, victorianix 10.10.10/24
+    #   100.64.0.0/10   NetBird
+    nginx.org/server-snippets: |
+      allow 192.168.0.0/16;
+      allow 10.0.0.0/8;
+      allow 100.64.0.0/10;
+      deny all;
+  hosts:
+    - host: netbox.jit.services
+      paths:
+        - /
+  tls:
+    # Von cert-manager (Annotation oben) per DNS-01 befuellt.
+    - secretName: netbox-tls
+      hosts:
+        - netbox.jit.services

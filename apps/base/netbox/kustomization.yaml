@@ -1,0 +1,55 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: netbox
+# NetBox (IPAM/DCIM) unter netbox.jit.services, Neuaufbau ohne Altdaten.
+#
+#   - Oberflaeche NUR intern: IP-Allowlist im Ingress (values.yaml), der
+#     Bestand beschreibt die Infrastruktur.
+#   - Postgres via CNPG, Valkey als eigener StatefulSet (NetBox braucht Redis
+#     zwingend). Die Bitnami-Subcharts des Charts bleiben aus.
+#   - Alle Secrets kommen aus SOPS. Die Chart-Secrets wuerden per lookup/rand
+#     erzeugt; ArgoCD rendert ohne Cluster-Zugriff, Passwoerter und Peppers
+#     wuerden sich also bei jedem Render aendern.
+#   - Login per OIDC ueber den Keycloak-Client netbox im Realm bgt, siehe values.yaml.
+helmCharts:
+  - name: netbox
+    repo: oci://ghcr.io/netbox-community/netbox-chart
+    version: 8.3.98 # renovate: helm
+    releaseName: netbox
+    namespace: netbox
+    valuesFile: values.yaml
+    # Sonst landet das Helm-Test-Pod netbox-test-connection im Render.
+    skipTests: true
+resources:
+  - namespace.yaml
+  - database.yaml
+  - backup.yaml
+  - cache.yaml
+  - backup-cronjob.yaml
+
+generators:
+  - ./secret-generator.yaml
+
+patches:
+  # Der Chart haengt die Medien-PVC auch in den Worker. Sie ist RWO: Nach einem
+  # Server-Neustart auf einem anderen Node bliebe der neue Pod am Multi-Attach
+  # haengen, solange der Worker das Volume haelt. Der Worker braucht die Medien
+  # nicht (Bild-Uploads laufen ueber den Server), und eigene Scripts gibt es
+  # hier nicht. Wer spaeter Scripts mit Medienzugriff einfuehrt, muss das
+  # neu bewerten.
+  - target:
+      kind: Deployment
+      name: netbox-worker
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: netbox-worker
+      spec:
+        template:
+          spec:
+            volumes:
+              - name: media
+                persistentVolumeClaim: null
+                emptyDir:
+                  sizeLimit: 64Mi

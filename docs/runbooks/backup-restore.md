@@ -138,6 +138,7 @@ Referenz: `ciso-assistant` (PR #198) → `s3://backup-ciso-assistant/cnpg/`.
 | `backup-goloom` (`GK4fa170…`) | RW auf `backup-goloom` (Quota 20 GiB) | neues Schema, seit 14.10.2026 |
 | `backup-monitoring-db` (`GK398386…`) | RW auf `backup-monitoring-db` (Quota 20 GiB) | CNPG `monitoring-pg` (Gatus, Gatus public, Kite), seit 19.10.2026 |
 | `backup-paperless` (`GK3800ac…`) | RW auf `backup-paperless` (Quota 20 GiB) | CronJob `paperless-offsite-backup` (Dokument-Export), seit 27.10.2026; CNPG `paperless-pg` noch auf `backups` |
+| `backup-netbox` (`GKc5926f…`) | RW auf `backup-netbox` (Quota 20 GiB) | CNPG `netbox-pg` (`cnpg/`) und CronJob `netbox-media-offsite` (`media/`), angelegt 02.11.2026 |
 
 Klartext eines Secrets ansehen: `sops -d apps/base/roundcube/secret.sops.yaml`.
 
@@ -384,6 +385,27 @@ muessen alle Konten neu verbunden werden.
 Restore-Tests: SQLite-Stand 14.10.2026 (lokal, `/healthz` 200). Fuer `goloom-pg` steht
 ein eigener Recovery-Test noch aus (erstes Basis-Backup 18.10.2026 `completed`).
 Migration SQLite -> Postgres: `docs/learnings/goloom-sqlite-nach-postgres.md`.
+
+## NetBox (Postgres + Medien)
+
+| Was | Wie | Ziel | Aufbewahrung |
+|---|---|---|---|
+| Datenbank | CNPG `netbox-pg`, WAL-Archiv + `ScheduledBackup` 02:55 | `s3://backup-netbox/cnpg/` | 30 Tage (PITR) |
+| Medien | CronJob `netbox-media-offsite` 03:50, `rclone sync` der PVC `netbox-media` | `media/current/`, Archiv `media/archive/<Zeit>/` | Archiv 30 Tage |
+
+Key `backup-netbox` (RW nur auf diesen Bucket), Secret `netbox-backup-s3`.
+
+**Restore Datenbank:** wie im Abschnitt *Restore (Point-in-Time / Disaster
+Recovery)* mit `netbox-pg` und `s3://backup-netbox/cnpg/`. Die App vorher stoppen und
+Auto-Sync fuer `app-netbox` aussetzen, weil ArgoCD die Replikas sonst zuruecksetzt.
+
+**Restore Medien:** Wegwerf-Pod mit `netbox-media` unter `/data` (UID/GID 1000,
+Restricted-PSA, per podAffinity auf dem Node des Servers oder bei gestoppter App),
+`media/current/` nach `/data/` kopieren; Vorlage fuer die rclone-Umgebung ist der
+CronJob.
+
+**`secret_key` und `api_token_peppers` aus `secret.sops.yaml` muessen dieselben
+bleiben.** Mit neuen Peppers werden bestehende API-Tokens ungueltig.
 
 ## Paperless (Postgres + Dokument-Export)
 

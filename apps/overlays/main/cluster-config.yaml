@@ -33,5 +33,6 @@ data:
   host_nextcloud_dev: cloud-dev.savar.de
   host_ciso_assistant: grc.jit.services # intern, IP-Allowlist im Ingress
   host_litellm: litellm.jit.services
+  host_netbox: netbox.jit.services # intern, IP-Allowlist im Ingress
   host_eurooffice_public: eurooffice.jit-creatives.de # explizites CNAME halbe auf dns01
   host_goloom: goloom.binaergewitter.de

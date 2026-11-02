@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: Secret
+metadata:
+    name: netbox-oidc
+    namespace: netbox
+type: Opaque
+stringData:
+    oidc.yaml: ENC[AES256_GCM,data:l2kQIoBZneeFHUkyupfjmierwGFBB0tzAT5SDOhkyGnOhqXeZSHQGrUWqrk48pINMOYNbrR71REi/Hv3wFaReFteMb4pGdLWTVouckD4uYrrocOT7sphRREZIQRh78VhT2XTgUiJfOc8sRG6amNgpA==,iv:TTYBQCzOp1qGWgAfElzw/HTgoZ4uD44OSk2BchXbFBg=,tag:0Owhet8jYNr8F2dbld+rig==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBlWi8rYUVHS0pURWg4clVO
+            L2JpRXNGZUNZZGlVSHlnbHBEV2ZRWGZRL0hNCm5HM01jT3BuU3ZCYnpacTZtSDRm
+            VUdER1RYMVdZVm5wTkZoOG8xQi9zeTgKLS0tIE5rM2xwQ09SNnRrRVVwZXBNU1M1
+            VkkyWG5RVmc3UWtIR2xwbkY0bVZSMUUKkWLhSo1eCfbOYmsS1uQ186xuk4qMg5aA
+            Ov7VH+WZsOM9d2ELxtW3aD+meiWX4VlJRO65vkZmfjlEeybImW7e5w==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age17x04ga87qyu9lzcuja9k83z90veew9cez7jusul4y5xyr09xaejs9rq755
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBYM2FyVmxpR0s4bkk5ZFhn
+            NEtjdjJEZ0YwZEVBUUUrRGZRa3dkM0pXTzNZCmRwZnprUGw1K2I4UXRqRWZNZmg3
+            L3dtZU55Myt4dzdEc2s3eGpGczlkdkUKLS0tIEV5U3lHWUlVRis5YVpwaE9qL1Uv
+            eE1KaDhaQ0tDTUNxTWl3R1haRnJHOVEKea6+mal94U1P2VdnOx1NGSdeMEEn/xgD
+            FXVJo/tpHjBeTxfQ85E3vrPMJwn3Z6jxYCWD5b68Ih0C0k3YVDsaXA==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1hjq0mgzc2npw9lhtwr49qqrfvkxzc2ss8qu7e06fk5n84qm7xs7qrgxfxa
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-11-02T06:33:28Z"
+    mac: ENC[AES256_GCM,data:TJdXTlQoiqik7ZH3rDCN/d84RrPt7c1j1M307tWNNBPiNIRO1wh0y9Jj7D99/sMEuQnx1rkIXZ4PVfdBQHJNVtiJF4WVTNQjVDMmaRwgfSh8rxX39EIismaQUBw7XI5IPzu32N3N4ezr9j8kl1+xuFVQ55beuTKn1dC/KiVdIRE=,iv:z3vFic8JX8Ud5cL8LsPoD3Encfp/QB1oLWaoN7zQN7E=,tag:pHQBrlzg7bQJAp6RP3ONKQ==,type:str]
+    version: 3.13.3
