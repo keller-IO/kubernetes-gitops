@@ -666,10 +666,14 @@ rclone copy garage:backup-<app>/files/current /data -v
 # wordpress-N
 rclone copy garage:backup-wordpress/files-wordpress-N/current /data -v
 # Zeitpunkt aus dem Archiv (WordPress: Prefix files-wordpress-N statt files, Bucket backup-wordpress):
-rclone lsf garage:backup-<app>/files/archive/
+rclone lsf garage:backup-<app>/files/archive/                    # ausser Tonu
 rclone lsf garage:backup-wordpress/files-wordpress-N/archive/    # nur WordPress
-rclone copy   garage:backup-<app>/files/archive/<Zeit>/<verzeichnis> /data/<verzeichnis> -v   # Verzeichnis
-rclone copyto garage:backup-<app>/files/archive/<Zeit>/<datei> /data/<datei> -v               # Einzeldatei
+rclone lsf garage:backup-tonu/uploads/archive/                   # nur Tonu
+rclone copy   garage:backup-<app>/files/archive/<Zeit>/<verzeichnis> /data/<verzeichnis> -v   # Verzeichnis, ausser Tonu
+rclone copyto garage:backup-<app>/files/archive/<Zeit>/<datei> /data/<datei> -v               # Einzeldatei, ausser Tonu
+# Tonu (Archiv nur fuer uploads, Pfade relativ zu /data/uploads):
+rclone copy   garage:backup-tonu/uploads/archive/<Zeit>/<verzeichnis> /data/uploads/<verzeichnis> -v
+rclone copyto garage:backup-tonu/uploads/archive/<Zeit>/<datei> /data/uploads/<datei> -v
 # WordPress analog, z. B.: rclone copyto garage:backup-wordpress/files-wordpress-N/archive/<Zeit>/<datei> /data/<datei> -v
 # flurfunk: Dateien wie oben, dann die Datenbank aus dem App-Dump
 rclone copy garage:backup-flurfunk/files/current /data -v
