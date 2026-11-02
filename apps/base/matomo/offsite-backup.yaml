@@ -1,0 +1,112 @@
+# Offsite-Backup von Matomo: PVC matomo-data -> Garage Potsdam, Bucket backup-matomo.
+#
+#   files/current/          Spiegel von /var/www/html (rclone sync)
+#   files/archive/<Zeit>/   von sync geloeschte/ueberschriebene Dateien, 30 Tage
+#   files/last-run.txt      Heartbeat
+#
+# Gesichert wird das Webroot inkl. config/config.ini.php, plugins und misc (238 MB). Ausgenommen:
+# tmp/ (Cache, Sessions mit Modus 0600, regenerierbar). Die Datenbank sichert der
+# mariadb-operator (backup.yaml). Dateien gehoeren www-data (33:33); der App-Container laeuft
+# als root. matomo-data ist RWO: podAffinity auf app.kubernetes.io/name=matomo.
+# Namespace-PSA: baseline, restricted-konform.
+#
+# Offen nach dem Merge (Abnahme): Garage-Bucket/-Key backup-matomo pruefen, ersten Lauf anstossen,
+# Restore-Test. Das Secret matomo-files-backup-s3 liegt verschluesselt in Git und ist eingebunden
+# (secret-generator.yaml). Fehlt ein Key im Secret oder stimmt der Name nicht, scheitert der Pod
+# mit CreateContainerConfigError (KubeJobFailed); Ursache steht in den Pod-Events.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: matomo-offsite-backup
+  namespace: matomo
+  labels:
+    app.kubernetes.io/name: matomo-offsite-backup
+    app.kubernetes.io/part-of: matomo
+    app.kubernetes.io/component: offsite-backup
+spec:
+  schedule: "0 6 * * *"
+  timeZone: Europe/Berlin
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 3600
+      # Abgeschlossene Jobs verschwinden nach 7 Tagen, damit ein laengst
+      # abgeloester Fehllauf KubeJobFailed nicht dauerhaft aktiv haelt.
+      ttlSecondsAfterFinished: 604800
+      template:
+        metadata:
+          # Bewusst ohne app.kubernetes.io/instance und mit eigenem name-Wert:
+          # Deployment und Service selektieren auf app.kubernetes.io/name=matomo.
+          labels:
+            app.kubernetes.io/name: matomo-offsite-backup
+            app.kubernetes.io/part-of: matomo
+            app.kubernetes.io/component: offsite-backup
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          affinity:
+            podAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - topologyKey: kubernetes.io/hostname
+                  labelSelector:
+                    matchLabels:
+                      app.kubernetes.io/name: matomo
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 33
+            runAsGroup: 33
+            seccompProfile: { type: RuntimeDefault }
+          containers:
+            - name: rclone
+              image: rclone/rclone:1.75.2 # renovate: image=rclone/rclone
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -eu
+                  STAMP=$(date -u +%Y-%m-%dT%H%M%SZ)
+                  rclone sync /data garage:backup-matomo/files/current \
+                    --exclude "/lost+found/**" \
+                    --exclude "/tmp/**" \
+                    --backup-dir "garage:backup-matomo/files/archive/${STAMP}" \
+                    --checksum --stats-one-line --stats 0 -v
+                  rclone delete garage:backup-matomo/files/archive --use-server-modtime --min-age 30d --rmdirs -v
+                  date -u +%Y-%m-%dT%H:%M:%SZ > /tmp/last-run
+                  rclone copyto /tmp/last-run garage:backup-matomo/files/last-run.txt
+                  rclone size garage:backup-matomo
+              env:
+                - { name: HOME, value: /tmp }
+                - { name: RCLONE_CONFIG, value: /tmp/rclone.conf } # existiert nicht (harmloser NOTICE); Remote kommt aus RCLONE_CONFIG_*
+                - { name: RCLONE_CACHE_DIR, value: /tmp/cache }
+                - { name: RCLONE_CONFIG_GARAGE_TYPE, value: s3 }
+                - { name: RCLONE_CONFIG_GARAGE_PROVIDER, value: Other }
+                - { name: RCLONE_CONFIG_GARAGE_ENDPOINT, value: "http://192.168.23.21:3900" }
+                - { name: RCLONE_CONFIG_GARAGE_FORCE_PATH_STYLE, value: "true" }
+                # Der Key darf keine Buckets anlegen; ohne no_check_bucket scheitert
+                # rclone vor jedem Upload an CreateBucket (403).
+                - { name: RCLONE_CONFIG_GARAGE_NO_CHECK_BUCKET, value: "true" }
+                - name: RCLONE_CONFIG_GARAGE_REGION
+                  valueFrom: { secretKeyRef: { name: matomo-files-backup-s3, key: region } }
+                - name: RCLONE_CONFIG_GARAGE_ACCESS_KEY_ID
+                  valueFrom: { secretKeyRef: { name: matomo-files-backup-s3, key: ACCESS_KEY_ID } }
+                - name: RCLONE_CONFIG_GARAGE_SECRET_ACCESS_KEY
+                  valueFrom: { secretKeyRef: { name: matomo-files-backup-s3, key: SECRET_ACCESS_KEY } }
+              resources:
+                requests: { cpu: 50m, memory: 64Mi }
+                limits: { memory: 512Mi }
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: { drop: ["ALL"] }
+              volumeMounts:
+                - { name: data, mountPath: /data, readOnly: true }
+                - { name: tmp, mountPath: /tmp }
+          volumes:
+            - name: data
+              persistentVolumeClaim:
+                claimName: matomo-data
+            - name: tmp
+              emptyDir: { sizeLimit: 256Mi }

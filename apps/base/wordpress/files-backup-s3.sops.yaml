@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: Secret
+metadata:
+    name: wordpress-files-backup-s3
+type: Opaque
+stringData:
+    ACCESS_KEY_ID: ENC[AES256_GCM,data:qJqM9KZV5MHS/nGrmZ17SFLZyYlLktDgsyg=,iv:GANdFqpKSrHH1laFmeZAb66kW/mk4mjpAagEV/SNFuY=,tag:WYMMuIiaxc3dr2O39yT+jg==,type:str]
+    SECRET_ACCESS_KEY: ENC[AES256_GCM,data:lshPznBZZb/nBrjmUf7RKarA41ZTriUEce8QHcYGxpvfrACIqPjziuMkEnC4u8uS0BlktjUzzSzzdonLnVezig==,iv:qT2ofD6TY26TR/oD93IGtJScMbgmPrMfF6S6mRkWj8Q=,tag:DX80zdMdBm/5MhC354dn+A==,type:str]
+    region: ENC[AES256_GCM,data:RUAKxiXBxti/lFBfHs0=,iv:LaazEc2+t4J8uVs3rvt+fZU9RFz2MtxTEQGom37zwSY=,tag:PVyWrAfzAotREjsBrMvh6w==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBpc2xORXRJaUpZL2VWRjNa
+            azZucFhQaGw2QWIyZVh4cjRmNDExZXh1M0NRCjZYb0RrYWlnVXNDa0FLOStSRVV5
+            U0NLUlY2Q3hjck9TSXN1UlZGamJhMzgKLS0tIDlHNC9pWnA3T3J3Wjg4b3pqeFlY
+            MVluSElJWjN4TXMzZDRyMUdSUHhnRVEKlHIfzmUOokZiDT25LYDkhj8kdTVWOgl6
+            AmpeDMvAKZW9JeLALdxPd8KEch4vCHaxxQJwVR+1wwfMVqorV1xV4A==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age17x04ga87qyu9lzcuja9k83z90veew9cez7jusul4y5xyr09xaejs9rq755
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBwdlVTSHlYb1c4eVlITk9V
+            ZzBFUkxCdlNJbDJMa0VFdVJqVFl1Q3RTSW0wCnd5Mm9oV1ZIU2RqUmhMMEoyWGJZ
+            cFZ3WEdtbWRSWlllUk5tK1QvS1FVTWcKLS0tIGFYUFlvOFlMS3dpV2RhL2VPME9F
+            S0VEUS9DMGZsd1VmcVZoazJWTTJOVEkKGhm/pQGNe60gMASJkf2AvZyP2WXSi4nd
+            8Bewyhj/xp6hUaAn77AZ1jrRmZBiHcioqn/N5nK96ofBYAvrX7XDMA==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1hjq0mgzc2npw9lhtwr49qqrfvkxzc2ss8qu7e06fk5n84qm7xs7qrgxfxa
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-11-02T12:56:36Z"
+    mac: ENC[AES256_GCM,data:ytzVAkIK91IqcHK6au0jcMFYOOKRAUORSwpNIjyGQioFEwUNb1W+MKnrvb26mn50hVID86fq6vn2eOge8Z35QAnIcVyKRbVswlCxh6LKfn83GorSt+VFN2G9erSCjDznCmly3F2JKmuqhtNaDBIFeLliSc7x50Hkx8VdvJfGA0o=,iv:QUJxrVEwmOfpu2ANpy0mOop1iWQOebgBLMzsVRreR7w=,tag:TRtzuGqTprIDfk712ai9Zg==,type:str]
+    version: 3.13.3

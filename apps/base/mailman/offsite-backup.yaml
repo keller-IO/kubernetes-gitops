@@ -1,0 +1,124 @@
+# Offsite-Backup von Mailman-Core: PVC mailman-core-data -> Garage Potsdam, Bucket backup-mailman.
+#
+#   files/current/          Spiegel von /opt/mailman (rclone sync), ohne Logs/Locks/Cache
+#   files/archive/<Zeit>/   von sync geloeschte/ueberschriebene Dateien, 30 Tage
+#   files/last-run.txt      Heartbeat
+#
+# Gesichert wird var/ (lists, archives, messages, data, etc, templates). Ausgenommen:
+# var/logs (391 MB von 398 MB, rotierend), var/locks, var/cache, var/queue (fluechtig), master.pid (Laufzeit).
+# Die Mailman-Datenbank liegt in Postgres und wird von CNPG (mailman-pg) gesichert.
+# mailman-web-data wird bewusst NICHT gesichert: settings_local.py, no_signup_adapter.py und
+# templates schreibt der initContainer install-settings bei jedem Start aus der ConfigMap
+# mailman-web-settings; fulltext_index (10 GB), diskcache, logs und static sind neu erzeugbar.
+#
+# Dateien gehoeren mailman:nogroup (UID 100, GID 65533, Modus 0660/0755); der Container der
+# App laeuft als root, der Backup-Pod als 100:65533. Queue-Dateien koennen waehrend des
+# Laufs wechseln und lassen rclone mit "source file is being updated" scheitern (set -eu, dann
+# kein Heartbeat); /var/queue wird deshalb nicht gesichert (fluechtige Zustellwarteschlange).
+# mailman-core-data ist RWO: podAffinity auf app.kubernetes.io/name=mailman-core.
+# Namespace mailman hat keine PodSecurity-Labels; der Pod ist restricted-konform.
+#
+# Offen nach dem Merge (Abnahme): Garage-Bucket/-Key backup-mailman pruefen, ersten Lauf anstossen,
+# Restore-Test. Das Secret mailman-files-backup-s3 liegt verschluesselt in Git und ist eingebunden
+# (secret-generator.yaml). Fehlt ein Key im Secret oder stimmt der Name nicht, scheitert der Pod
+# mit CreateContainerConfigError (KubeJobFailed); Ursache steht in den Pod-Events.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: mailman-offsite-backup
+  namespace: mailman
+  labels:
+    app.kubernetes.io/name: mailman-offsite-backup
+    app.kubernetes.io/part-of: mailman
+    app.kubernetes.io/component: offsite-backup
+spec:
+  schedule: "10 5 * * *"
+  timeZone: Europe/Berlin
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 3600
+      # Abgeschlossene Jobs verschwinden nach 7 Tagen, damit ein laengst
+      # abgeloester Fehllauf KubeJobFailed nicht dauerhaft aktiv haelt.
+      ttlSecondsAfterFinished: 604800
+      template:
+        metadata:
+          # Bewusst ohne app.kubernetes.io/instance und mit eigenem name-Wert:
+          # Deployment und Service selektieren auf app.kubernetes.io/name=mailman-core.
+          labels:
+            app.kubernetes.io/name: mailman-offsite-backup
+            app.kubernetes.io/part-of: mailman
+            app.kubernetes.io/component: offsite-backup
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          affinity:
+            podAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - topologyKey: kubernetes.io/hostname
+                  labelSelector:
+                    matchLabels:
+                      app.kubernetes.io/name: mailman-core
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 100
+            runAsGroup: 65533
+            seccompProfile: { type: RuntimeDefault }
+          containers:
+            - name: rclone
+              image: rclone/rclone:1.75.2 # renovate: image=rclone/rclone
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -eu
+                  STAMP=$(date -u +%Y-%m-%dT%H%M%SZ)
+                  rclone sync /data garage:backup-mailman/files/current \
+                    --exclude "/lost+found/**" \
+                    --exclude "/var/logs/**" \
+                    --exclude "/var/locks/**" \
+                    --exclude "/var/cache/**" \
+                    --exclude "/var/queue/**" \
+                    --exclude "/var/master.pid" \
+                    --backup-dir "garage:backup-mailman/files/archive/${STAMP}" \
+                    --checksum --stats-one-line --stats 0 -v
+                  rclone delete garage:backup-mailman/files/archive --use-server-modtime --min-age 30d --rmdirs -v
+                  date -u +%Y-%m-%dT%H:%M:%SZ > /tmp/last-run
+                  rclone copyto /tmp/last-run garage:backup-mailman/files/last-run.txt
+                  rclone size garage:backup-mailman
+              env:
+                - { name: HOME, value: /tmp }
+                - { name: RCLONE_CONFIG, value: /tmp/rclone.conf } # existiert nicht (harmloser NOTICE); Remote kommt aus RCLONE_CONFIG_*
+                - { name: RCLONE_CACHE_DIR, value: /tmp/cache }
+                - { name: RCLONE_CONFIG_GARAGE_TYPE, value: s3 }
+                - { name: RCLONE_CONFIG_GARAGE_PROVIDER, value: Other }
+                - { name: RCLONE_CONFIG_GARAGE_ENDPOINT, value: "http://192.168.23.21:3900" }
+                - { name: RCLONE_CONFIG_GARAGE_FORCE_PATH_STYLE, value: "true" }
+                # Der Key darf keine Buckets anlegen; ohne no_check_bucket scheitert
+                # rclone vor jedem Upload an CreateBucket (403).
+                - { name: RCLONE_CONFIG_GARAGE_NO_CHECK_BUCKET, value: "true" }
+                - name: RCLONE_CONFIG_GARAGE_REGION
+                  valueFrom: { secretKeyRef: { name: mailman-files-backup-s3, key: region } }
+                - name: RCLONE_CONFIG_GARAGE_ACCESS_KEY_ID
+                  valueFrom: { secretKeyRef: { name: mailman-files-backup-s3, key: ACCESS_KEY_ID } }
+                - name: RCLONE_CONFIG_GARAGE_SECRET_ACCESS_KEY
+                  valueFrom: { secretKeyRef: { name: mailman-files-backup-s3, key: SECRET_ACCESS_KEY } }
+              resources:
+                requests: { cpu: 50m, memory: 64Mi }
+                limits: { memory: 512Mi }
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: { drop: ["ALL"] }
+              volumeMounts:
+                - { name: data, mountPath: /data, readOnly: true }
+                - { name: tmp, mountPath: /tmp }
+          volumes:
+            - name: data
+              persistentVolumeClaim:
+                claimName: mailman-core-data
+            - name: tmp
+              emptyDir: { sizeLimit: 256Mi }

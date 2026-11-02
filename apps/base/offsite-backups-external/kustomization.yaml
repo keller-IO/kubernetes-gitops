@@ -1,0 +1,16 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# Offsite-Backups fuer Apps, deren Manifeste NICHT in diesem Repo liegen
+# (ADR 0004: flurfunk und tonu im GitLab-Repo tommy/*). Die Application dieser
+# Apps (clusters/main/app-flurfunk.yaml, app-tonu.yaml) bleibt unveraendert;
+# ihr Namespace gehoert ihr. Dieses Verzeichnis liefert nur die CronJobs und
+# deren Secrets in die Namespaces flurfunk und tonu.
+#
+# Bewusst KEIN `namespace:` hier: jede Ressource traegt ihren Namespace selbst.
+resources:
+  - namespace.yaml
+  - flurfunk-offsite-backup.yaml
+  - tonu-offsite-backup.yaml
+
+generators:
+  - ./secret-generator.yaml

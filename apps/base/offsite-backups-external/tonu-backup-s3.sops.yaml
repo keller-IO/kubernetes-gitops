@@ -1,0 +1,34 @@
+apiVersion: v1
+kind: Secret
+metadata:
+    name: tonu-backup-s3
+    namespace: tonu
+type: Opaque
+stringData:
+    ACCESS_KEY_ID: ENC[AES256_GCM,data:wZAVJOnk0xqkutjTKX/vL6a1x9gQe1ppTvY=,iv:FwsT8SVexm5pRpvP86G0WzLOirS5yn+utTrhJyevTWE=,tag:4eleI/85ei6dtToNRPTtYg==,type:str]
+    SECRET_ACCESS_KEY: ENC[AES256_GCM,data:0QPIvNg4TQQAJj3Gnm3zcEK6IBFIFjmLceSykSRlqc5FFG/5wSc8jyWmvLduzlN9z7KdoeuHG+t+7Jkh+fMx4g==,iv:/RPJyNm2bB9aqfe7SP4NeayGgsTj/ZvAYKrkKMBmaUA=,tag:UFFd0ipcvDsoxZWSGeHO8A==,type:str]
+    region: ENC[AES256_GCM,data:Wl4k07098Cw94RkkzcE=,iv:HV+mkcWDhV1qTw1oS3jhxvPuskk4+reYgHHfD4b6n2Y=,tag:6G/B/rK0kIXAn80knRcoMQ==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBnZU85N0ZRR0ROMW9YajVr
+            OFI5WHVzMkNRRmh1MXprVnhjRUJVSnN2amlFCldKT3gwSkhiVVlVVnVRRkdxMzgw
+            TkVaRXBMVnF3bDQ4N1hRaFdZZUM1a00KLS0tIHpGSUszaUEvYmpOdElGKzlKM0tX
+            UFN5NWR2SGgzTEFRRmpoRDVBNUY5aVEKgRpy3EuNZM7bM4xo3srYYQ4h8mFbEqKG
+            4srYwEA4dQBTw4GbQbuqWTjeE+JDm/asWWX11kFMXjlM3GbIultRgA==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age17x04ga87qyu9lzcuja9k83z90veew9cez7jusul4y5xyr09xaejs9rq755
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSA1cHFFK2JzSHdSdU5SZlph
+            Y0l3OGM3UkhGWlhoTFRHbUk4cWVyNEdyTVdVCkhCUDdhRm1pU1IxcTE1T3crRUJz
+            MmNxMVJ5ZlI4a0F6NjA4TGJucmVEdk0KLS0tIFljb0ZHdmQwd1JKWHBMOHU2MkVz
+            TEQzV1JUclN6QTZXZnBFdmNvTHY5aFUKKr7hxVCeaEgQdab1VN6mlD3Ms3gfp9QK
+            CYHw1MCKhKMdn9QUmJPUv0GLh47tO7dzO1D9SfUrImaNaHfkz5hFQg==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1hjq0mgzc2npw9lhtwr49qqrfvkxzc2ss8qu7e06fk5n84qm7xs7qrgxfxa
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-11-02T12:56:35Z"
+    mac: ENC[AES256_GCM,data:z4Dwm5KL+uRDbh4l6DBruLMHAQQtIEay3gBFFTrBhxfp+M6wQfN5au7p+VgvkDcrYdTO/BHI1RTBQfg75IBtdvV0RlX3YOqKtFtOPoOmNicvzUUsPLtVSa9SjBfrcjMpiHLGWH5r+h4DLTVZAafE6yYsMQGIM2QiBaVrzccRx6E=,iv:Z8i+xWQoqI1y3yT+k6Gl8crGImJtZin68alIPnfdv1s=,tag:AQxuHYcHTahk6C1RMzj1Uw==,type:str]
+    version: 3.13.3

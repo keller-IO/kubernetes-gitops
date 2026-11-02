@@ -10,6 +10,7 @@ resources:
   - deployment.yaml
   - ingress.yaml
   - backup.yaml
+  - offsite-backup.yaml
 
 generators:
   - ./secret-generator.yaml
