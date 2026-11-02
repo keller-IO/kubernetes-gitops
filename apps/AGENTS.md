@@ -7,7 +7,7 @@ Application workloads. Functional blueprints with placeholders.
 Owns `base/<app>/` (generic) and `overlays/main/<app>/` (cluster patches).
 
 ## Local Contracts
-- **Apps**: kimai, roundcube, collabora, eurooffice, paperless-ngx, forgejo, renovate, wordpress, mastodon, gatus, kite, ciso-assistant.
+- **Apps**: kimai, roundcube, collabora, eurooffice, paperless-ngx, forgejo, renovate, wordpress, mastodon, gatus, kite, ciso-assistant, netbox.
 - **Structure**: `kustomization.yaml` plus a chart/values or workload manifest,
   storage and cache manifests as needed, backup, and SOPS-encrypted secrets.
 - **Database**: Choose the first suitable option: PostgreSQL (CNPG),

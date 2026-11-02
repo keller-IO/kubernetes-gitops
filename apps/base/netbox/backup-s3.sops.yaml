@@ -1,0 +1,34 @@
+apiVersion: v1
+kind: Secret
+metadata:
+    name: netbox-backup-s3
+    namespace: netbox
+type: Opaque
+stringData:
+    ACCESS_KEY_ID: ENC[AES256_GCM,data:E1D1Er/8ESfIMELDOqeXDSw8odDRDrrlBTA=,iv:F1PzvMG3XtKarFYxkJMNP3msDEfZobOFuXjm9fiBWRo=,tag:spJfvUCpu9R/IfUUqJ1sBw==,type:str]
+    SECRET_ACCESS_KEY: ENC[AES256_GCM,data:A2RYdeN3b2EXcd0hOdJZmND9IgDA0E5vJZKewCgNMMc9Ej0wc0QQS2EDjCnosoBHTYdoWhXGISkhzB2/ZWpO5w==,iv:OiOEkd4LnvvqazbqknFJz357YWfab2zHQK663h8wNjg=,tag:EvoHVfoZ7A8RGWrPUSC7qw==,type:str]
+    region: ENC[AES256_GCM,data:I4DA9aoxF/Kt9cm0zTU=,iv:PqQTPW9yMaPGqzllMrvql6ILo6+KPxmp6YCc/FYYlEs=,tag:LCMseFieoBDRmCVQcN/A5Q==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSA1L1pSZDVSd3Y5RFhuVVlE
+            WGRSMG9VeXoxNUtLYWxhREJIVnNGSDNnakNZCk1ZU1IycjVsWkg3L2xDOU03U3Ux
+            elFZY0JDNnJRYnBGSkloNTdyeFZsQm8KLS0tIHFWN3E0Z1htNVpkdFpDOWFzL1JK
+            OEw5eEdlaTh2alEwSUdGMkpIb1pWWk0KpXiqb9aX6BpK6umIZHSQTuMMR+BTcRyY
+            /Pim38iTateztSBjRB+K0ePYaPitKnZa0xCtKo+x2BdRFRc5H8c7uA==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age17x04ga87qyu9lzcuja9k83z90veew9cez7jusul4y5xyr09xaejs9rq755
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBqM0VNU1pnV0hiYjd6RS9x
+            ajlGQUh5OTNoMThINnNuVFJkL2pDVTZ6c0FrCkZmeXNLdTNvaTJLMTBJaCt5Z3NL
+            L0RNbHpSMXZDa3BUaVFOdzhMQW5weUUKLS0tIE1JQ3JLWTQ3UjQrMG1pcFlyakRG
+            ZjZQUno0akdSQVkvc0RFZDIxcFN6OXcKX6MBnsw+OrasV0jcUWu62xIezhKrLdz6
+            9akdPQDJAKSHLbpIfNEz/OANmYQ5MMt7HXtG7w9ktvLc/BpoulzDOA==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1hjq0mgzc2npw9lhtwr49qqrfvkxzc2ss8qu7e06fk5n84qm7xs7qrgxfxa
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-11-02T06:22:55Z"
+    mac: ENC[AES256_GCM,data:LexEPMmXu0ZH8d186iOsN3nejPuFUwXidSo/YFnxWofdykZvevqrKOq+6G0/EMLYV0WgYVk4Bd10pxQx0gbCLXlt4R+/WJHpBX6wu62YqYKgLQWsVA94hl9DINOF2niq+DuNdkFXbBEZUsq0m+FsmhWFvvF7edj8VNEq2xFFE4k=,iv:JwNJcKbPuAln1LKZdt66nT4eBeJVBHkqpGvjhAqQzF0=,tag:+Alupex4hIbOQVNhDAeipA==,type:str]
+    version: 3.13.3

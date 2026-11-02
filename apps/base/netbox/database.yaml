@@ -1,0 +1,49 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: netbox-pg
+  namespace: netbox
+spec:
+  instances: 2
+  # Zwei Instanzen (Primary + Standby), damit ein Node-Drain per Switchover
+  # statt als DB-Ausfall laeuft. required: Standby landet nie auf dem Node des
+  # Primary.
+  affinity:
+    enablePodAntiAffinity: true
+    podAntiAffinityType: required
+    topologyKey: kubernetes.io/hostname
+  primaryUpdateMethod: switchover
+  primaryUpdateStrategy: unsupervised
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.11 # renovate: image=ghcr.io/cloudnative-pg/postgresql
+  # Startwert wie ciso-assistant-pg; nach der ersten Betriebswoche per
+  # `kubectl top` nachziehen.
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+  storage:
+    size: 5Gi
+    storageClass: ceph-rbd # CNPG-Feld heißt storageClass (nicht storageClassName)
+  bootstrap:
+    initdb:
+      database: netbox
+      owner: netbox
+      secret:
+        name: netbox-db-app
+  # Backup nach Garage-S3 in einen EIGENEN Bucket mit eigenem Key (RW nur auf
+  # diesen Bucket, 20 GiB Quota). Schema siehe docs/runbooks/backup-restore.md.
+  backup:
+    retentionPolicy: "30d"
+    barmanObjectStore:
+      destinationPath: s3://backup-netbox/cnpg/
+      endpointURL: http://192.168.23.21:3900
+      s3Credentials:
+        accessKeyId: { name: netbox-backup-s3, key: ACCESS_KEY_ID }
+        secretAccessKey: { name: netbox-backup-s3, key: SECRET_ACCESS_KEY }
+        region: { name: netbox-backup-s3, key: region } # Garage erzwingt Region-Match bei HeadBucket
+      wal: { compression: gzip }
+      data: { compression: gzip }
+  monitoring:
+    enablePodMonitor: true

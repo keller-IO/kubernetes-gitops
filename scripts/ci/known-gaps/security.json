@@ -176,6 +176,14 @@
     "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
   },
   {
+    "target": "apps_overlays_main_netbox.yaml",
+    "id": "KSV-0109",
+    "message": "ConfigMap 'netbox' in 'netbox' namespace stores secrets in key(s) or value(s) '{\"            f\\\"Invalid api_token_peppers secret\", \"        secret \"}'",
+    "count": 1,
+    "expires": "2027-01-18",
+    "reason": "False positive: the chart's configuration.py only reads /run/secrets files and contains no secret values (checked in the render); re-check on chart bumps."
+  },
+  {
     "target": "apps_overlays_main_icecast.yaml",
     "id": "KSV-0014",
     "message": "Container 'icecast' of Deployment 'icecast' should set 'securityContext.readOnlyRootFilesystem' to true",
