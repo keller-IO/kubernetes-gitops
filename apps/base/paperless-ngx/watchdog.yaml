@@ -93,6 +93,9 @@ spec:
   jobTemplate:
     spec:
       backoffLimit: 1
+      # Abgeschlossene Jobs verschwinden nach 7 Tagen; sonst bleibt KubeJobFailed wegen eines
+      # laengst abgeloesten Fehllaufs dauerhaft aktiv und erzeugt alle 12 h Mails.
+      ttlSecondsAfterFinished: 604800
       template:
         spec:
           restartPolicy: Never
