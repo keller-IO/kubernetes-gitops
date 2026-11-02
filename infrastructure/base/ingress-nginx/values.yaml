@@ -96,7 +96,7 @@ controller:
       # Laufzeit keine DNS-Auflösung nötig.
       # Defense-in-depth default so an Ingress that forgets client-max-body-size
       # doesn't silently fall back to NGINX' built-in 1m cap. Heavier apps
-      # (forgejo, collabora, mastodon, ...) still override per-Ingress.
+      # (collabora, mastodon, ...) still override per-Ingress.
       client-max-body-size: "10m"
       # Echte Client-IP wiederherstellen. Ohne das loggt nginx für JEDEN Request
       # eine Proxy-/Node-Adresse, weil (a) der .15-Traefik davor terminiert und

@@ -2,7 +2,7 @@
 
 ## Symptom
 
-Befund 02.11.2026: Bei `forgejo-pg`, `expense-pg` und `ciso-assistant-pg` meldeten
+Befund 02.11.2026 (Forgejo wurde am selben Tag aus Git entfernt; die Messwerte bleiben als Beleg stehen): Bei `forgejo-pg`, `expense-pg` und `ciso-assistant-pg` meldeten
 die Backups `completed`, `LastBackupSucceeded` und `ContinuousArchiving` waren `True`.
 Trotzdem lag das Ende-WAL des Backups nach dem zuletzt archivierten Segment:
 
@@ -26,8 +26,8 @@ Diese Backups lassen sich allein aus dem Objektspeicher nicht wiederherstellen,
 solange das Segment nur im `pg_wal` der Primary liegt. Aktuelle Daten sind nicht
 verloren (ohne relevantes WAL gab es keine neuen Commits), und ältere Backups vor
 dem jeweiligen Datum sind noch wiederherstellbar. Bei 30 d Retention laufen sie
-aber ab etwa Mitte November aus dem Fenster. Forgejo steht zudem auf 0 Replicas und
-heilt sich ohne Schreiblast nicht selbst.
+aber ab etwa Mitte November aus dem Fenster. Forgejo stand zudem auf 0 Replicas und
+heilte sich ohne Schreiblast nicht selbst (inzwischen entfernt, siehe oben).
 
 ## Korrektur
 
