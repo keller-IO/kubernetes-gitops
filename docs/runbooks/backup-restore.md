@@ -6,7 +6,7 @@ Kontinuierliche PostgreSQL-Backups der CNPG-Apps nach **Garage-S3 Potsdam**
 ## Überblick
 
 ```
-CNPG-Cluster (roundcube-pg, paperless-pg, forgejo-pg, mailman-pg, mastodon-pg)
+CNPG-Cluster (roundcube-pg, paperless-pg, mailman-pg, mastodon-pg)
   ├─ WAL-Archiving (kontinuierlich)   ─┐
   └─ ScheduledBackup (Base-Backup)    ─┴─► s3://backups/cnpg-<app>/  @ Garage
                                               http://192.168.23.21:3900
@@ -17,7 +17,7 @@ CNPG-Cluster (roundcube-pg, paperless-pg, forgejo-pg, mailman-pg, mastodon-pg)
 - **Was:** Alle CNPG-Postgres-Datenbanken (Base-Backup + WAL → Point-in-Time-Recovery).
   MariaDB-Apps (kimai, wordpress) sind hier NICHT abgedeckt — separater Weg nötig.
 - **Retention:** 30 Tage (`retentionPolicy` je Cluster).
-- **Pfad je App:** `s3://backups/cnpg-<app>/` (roundcube, paperless, forgejo, mailman, mastodon).
+- **Pfad je App:** `s3://backups/cnpg-<app>/` (roundcube, paperless, mailman, mastodon). Der Pfad `cnpg-forgejo/` ist Rest der entfernten Forgejo-Instanz (02.11.2026) und kann nach Entscheidung des Auftraggebers gelöscht werden.
 
 ## Ceph-RBD-PVC-Snapshots
 
@@ -129,7 +129,7 @@ Referenz: `ciso-assistant` (PR #198) → `s3://backup-ciso-assistant/cnpg/`.
 
 | Key | Rechte | Nutzer |
 |---|---|---|
-| `cnpg-backups` (`GK4abeaff…`) | **RWO** auf `backups` | roundcube, paperless, forgejo, mailman, mastodon (CNPG); kimai, wordpress-1/-2/-3, matomo (MariaDB) |
+| `cnpg-backups` (`GK4abeaff…`) | **RWO** auf `backups` | roundcube, paperless, mailman, mastodon (CNPG; forgejo bis zur Entfernung am 02.11.2026); kimai, wordpress-1/-2/-3, matomo (MariaDB) |
 | `cnpg-crowdsec`, `cnpg-expense` | RW auf `backups` | je ein CNPG-Cluster, aber auf dem gemeinsamen Bucket |
 | `docker15-legacy-dumps` | RW auf `backups` | einmalige .15-Dumps unter `docker15-legacy/` |
 | `default access key` | **RWO** auf `backups` | beim Garage-Setup angelegt, kein bekannter Nutzer |
@@ -161,7 +161,7 @@ Pro App ein eigener PR, damit ein Fehler nur eine App trifft:
    Restore von dort braucht den alten Key `cnpg-backups`.
 
 Reihenfolge nach Risiko: mastodon (kein aktiver DB-Pod) → matomo → kimai →
-wordpress-1/-2/-3 → forgejo → paperless → mailman → roundcube; dann crowdsec
+wordpress-1/-2/-3 → paperless → mailman → roundcube; dann crowdsec
 und expense (nur Bucket-Umzug, Key neu nach Schema).
 
 Abschluss, frühestens 30 Tage nach der letzten Umstellung und nach je einem

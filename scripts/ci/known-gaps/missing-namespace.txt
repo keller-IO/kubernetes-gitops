@@ -9,7 +9,6 @@
 # new component should ship its own namespace.yaml from day one).
 apps/base/collabora
 apps/base/eurooffice
-apps/base/forgejo
 apps/base/gatus
 apps/base/icecast
 apps/base/kimai

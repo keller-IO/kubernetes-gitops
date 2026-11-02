@@ -16,7 +16,6 @@ data:
   host_roundcube: webmail.jit.services
   host_collabora: office.jit.services
   host_paperless: paperless.jit.services
-  host_forgejo: git.jit.services
   host_wordpress_1: site1.jit.services
   host_wordpress_2: site2.jit.services
   host_wordpress_3: site3.jit.services

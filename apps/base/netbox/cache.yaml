@@ -1,4 +1,4 @@
-# Standalone Valkey fuer NetBox-Tasks (RQ) und -Cache. Anders als bei forgejo mit
+# Standalone Valkey fuer NetBox-Tasks (RQ) und -Cache. Anders als bei den uebrigen Apps mit
 # Passwort: RQ deserialisiert Jobs per pickle, Schreibzugriff auf die Queue waere
 # Codeausfuehrung im Worker, und im Cluster gibt es keine NetworkPolicy davor.
 apiVersion: apps/v1

@@ -112,7 +112,6 @@ Die ausgerollten Workloads liegen unter `apps/base/` (Blaupause) und
 
 | Anwendung | Beschreibung |
 |-----------|--------------|
-| **[Forgejo](https://forgejo.org/)** | Git-Hosting (diese Plattform) |
 | **[Kimai](https://www.kimai.org/)** | Zeiterfassung |
 | **[Mastodon](https://joinmastodon.org/)** | Föderiertes soziales Netzwerk |
 | **[Paperless-ngx](https://docs.paperless-ngx.com/)** | Dokumenten-Management / Archiv |
@@ -187,8 +186,8 @@ werden chiffriert — Metadaten bleiben lesbar und diffbar.
 ```bash
 age-keygen -o age.agekey                 # 1. age-Schlüssel erzeugen (privat, NICHT committen)
 # 2. Public Key in .sops.yaml unter creation_rules eintragen
-just encrypt apps/base/forgejo/secret.sops.yaml   # 3. Secret verschlüsseln
-just decrypt apps/base/forgejo/secret.sops.yaml   #    bzw. zum Ansehen entschlüsseln
+just encrypt apps/base/kimai/secret.sops.yaml   # 3. Secret verschlüsseln
+just decrypt apps/base/kimai/secret.sops.yaml   #    bzw. zum Ansehen entschlüsseln
 ```
 
 > Der private age-Key gehört **niemals** ins Git — er ist bereits in `.gitignore`

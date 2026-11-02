@@ -100,7 +100,7 @@ grep -rn --exclude-dir=.git --exclude-dir=.terraform --exclude-dir=charts \
       ```
 
 Betroffen u.a.: `infrastructure/base/cert-manager/cluster-issuer.sops.yaml`,
-`apps/base/{kimai,roundcube,paperless-ngx,forgejo,mastodon,wordpress,gatus,kite,collabora,renovate}/secret.sops.yaml`.
+`apps/base/{kimai,roundcube,paperless-ngx,mastodon,wordpress,gatus,kite,collabora,renovate}/secret.sops.yaml`.
 
 ---
 

@@ -228,7 +228,7 @@ spec:
 
 ## 7. Datenbanken
 
-**Postgres (CNPG):** `infrastructure/base/cnpg/`, `apps/base/{roundcube,paperless-ngx,forgejo,mastodon,mailman}/database.yaml`; legacy Authentik manifests remain in-tree but are excluded from ArgoCD
+**Postgres (CNPG):** `infrastructure/base/cnpg/`, `apps/base/{roundcube,paperless-ngx,mastodon,mailman}/database.yaml`; legacy Authentik manifests remain in-tree but are excluded from ArgoCD
 **MariaDB (Operator):** `infrastructure/base/mariadb-operator/`, `apps/base/{kimai,wordpress}/database.yaml`
 
 **Offen:**
@@ -244,7 +244,7 @@ spec:
   instances: 3
   backup:
     barmanObjectStore:
-      destinationPath: s3://cnpg-backups/forgejo
+      destinationPath: s3://cnpg-backups/paperless
       endpointURL: https://s3.DEINE-DOMAIN.tld
       s3Credentials: { accessKeyId: {name: cnpg-s3, key: ACCESS}, secretAccessKey: {name: cnpg-s3, key: SECRET} }
 ```
@@ -270,12 +270,12 @@ spec:
 - [ ] `storageClassName` (`ceph-rbd`) und Größe pro App final setzen.
 - [ ] `mastodon-redis`-Passwort setzen + verschlüsseln (Valkey `requirepass` ↔ App müssen identisch sein).
 
-**Beispiel** (`apps/base/forgejo/cache.yaml`) — eine kleine, isolierte Instanz pro App:
+**Beispiel** (`apps/base/paperless-ngx/cache.yaml`) — eine kleine, isolierte Instanz pro App:
 ```yaml
 apiVersion: apps/v1
 kind: StatefulSet
-metadata: { name: forgejo-valkey, namespace: forgejo }
-spec: { serviceName: forgejo-valkey, replicas: 1, ... } # + Service forgejo-valkey:6379
+metadata: { name: paperless-valkey, namespace: paperless-ngx }
+spec: { serviceName: paperless-valkey, replicas: 1, ... } # + Service paperless-valkey:6379
 ```
 
 ---
@@ -356,7 +356,7 @@ https://auth.savar.de/realms/bgt
 
 **Verdrahtet (Blaupause):** DB-Backups sind in den Manifesten aktiv — täglich 02:00 nach Ceph S3,
 30 Tage Retention.
-- **CNPG** (roundcube, paperless, forgejo, mastodon, mailman): `backup.barmanObjectStore` im
+- **CNPG** (roundcube, paperless, mastodon, mailman): `backup.barmanObjectStore` im
   jeweiligen `database.yaml` (bzw. `postgres.yaml`) + `ScheduledBackup` in `backup.yaml`.
   Continuous WAL + base → PITR.
 - **Ausnahme mastodon-search (Elasticsearch 8.19):** bewusst ohne Backup. Der Index
@@ -390,28 +390,28 @@ https://auth.savar.de/realms/bgt
       Ein Restore aus Garage läuft ungedrosselt über das VPN nach Potsdam: Leitung
       einplanen und `# guardrails: allow-garage-restore` setzen
       ([Learning](learnings/restore-klon-ueber-vpn.md)).
-- [ ] PVC-Daten (paperless data/media, forgejo repos, wordpress wp-content,
+- [ ] PVC-Daten (paperless data/media, wordpress wp-content,
       Mailman-Dateien) nach dem CSI-Smoke-Test per quiesced Snapshot absichern.
       Fuer die SMB-Scanner-Inbox und Ceph-Ausfaelle zusaetzlich eine
       Offsite-Strategie festlegen.
 - [ ] Restore-Abläufe aus `docs/runbooks/backup-restore.md` je Backend testen.
 
-**Beispiel** — CNPG continuous backup (`apps/base/forgejo/database.yaml` + `backup.yaml`):
+**Beispiel** — CNPG continuous backup (`apps/base/paperless-ngx/database.yaml` + `backup.yaml`):
 ```yaml
 # Cluster.spec:
 backup:
   retentionPolicy: "30d"
   barmanObjectStore:
-    destinationPath: s3://cnpg-forgejo/
+    destinationPath: s3://cnpg-paperless/
     endpointURL: https://s3.DEINE-DOMAIN.tld
     s3Credentials:
-      accessKeyId: { name: forgejo-backup-s3, key: ACCESS_KEY_ID }
-      secretAccessKey: { name: forgejo-backup-s3, key: SECRET_ACCESS_KEY }
+      accessKeyId: { name: paperless-backup-s3, key: ACCESS_KEY_ID }
+      secretAccessKey: { name: paperless-backup-s3, key: SECRET_ACCESS_KEY }
 ---
 apiVersion: postgresql.cnpg.io/v1
 kind: ScheduledBackup
-metadata: { name: forgejo-pg, namespace: forgejo }
-spec: { schedule: "0 0 2 * * *", cluster: { name: forgejo-pg } }
+metadata: { name: paperless-pg, namespace: paperless-ngx }
+spec: { schedule: "0 0 2 * * *", cluster: { name: paperless-pg } }
 ```
 
 ---
@@ -516,8 +516,7 @@ Seit 01.11.2026 hat auch die EuroOffice-Liveness-Probe `timeoutSeconds: 5` (31 F
 | **collabora** | `apps/base/collabora/` | `aliasgroups`-Regex auf reale WOPI-Hosts; Admin-Passwort; WOPI-Client (z.B. Nextcloud) anbinden. |
 | **eurooffice** | `apps/base/eurooffice/` | JWT-Secret (`jwt-secret`, bereits generiert/verschlüsselt) in der Nextcloud-Connector-App spiegeln (`occ config:app:set eurooffice ...` auf nc01/nc02-dev, URL `https://eurooffice.jit.services`); All-in-One-Image (interne PG/RabbitMQ/Redis) — bei >1 Nextcloud auf offizielles Kubernetes-Docs-Chart + CNPG umstellen (braucht CephFS-RWX); Erststart dauert (Font-Cache), Healthcheck `/healthcheck`. Zusaetzlich oeffentlich als `eurooffice.jit-creatives.de` (explizites CNAME `halbe` auf dns01, 23.10.2026), damit die externe Statusseite pruefen kann; Nextcloud nutzt weiter `eurooffice.jit.services`. |
 | **paperless-ngx** | `apps/base/paperless-ngx/` | Version 2.20.15 laeuft produktiv und erfuellt den verpflichtenden Zwischenstand vor 3.x. Vom Phase-1-Stand am 02.08.2026 bestehen Export und PVC-Snapshots; das CNPG-Backup ist nach 30 Tagen abgelaufen, daher ist kein punktgenauer 2.20.6-Rollback mehr moeglich. Die CNPG-Retention ist fuer den neuen 3.x-Recovery-Punkt auf 90 Tage erhoeht. Offsite-Backup der Dokumente: CronJob `paperless-offsite-backup` (taeglich `document_exporter` + `rclone` nach `s3://backup-paperless/export/`, 30 Tage Archiv, Gatus-Heartbeat `paperless/offsite-backup`); Restore-Test auf u22 am 01.11.2026 bestanden (683 Dokumente, alle Checksummen gleich). Vor 3.x muss das Stabilitaets-Gate (`scripts/ops/paperless-stabilitaet.sh`, sieben Tage ohne Celery-Timeout, Restart oder OOMKill, fruehestens 04.11.2026) bestehen, danach unter erzwungener Schreibsperre einen echt getesteten Recovery-Punkt erzeugen. Aktuelles Ziel ist 3.3.4; dabei SMB-Polling auf `PAPERLESS_CONSUMER_POLLING_INTERVAL` migrieren. Vollstaendiger Ablauf: `docs/runbooks/paperless-v3-upgrade.md`. Scanner-Inbox `//192.168.2.75/scanner` ist via SMB-CSI eingebunden und wird alle 10 Sekunden abgefragt. Externe Domain `paperless.savar.de`; TLS terminiert am Cluster-Ingress. Der Upload-Fortschritt laeuft per WebSocket ueber `/ws/status/`; dafuer braucht der Ingress `nginx.org/websocket-services: paperless-paperless-ngx`, und der Wert muss dem gerenderten Service-Namen entsprechen (bei Chart-Bumps im gerenderten Ingress pruefen; ohne die Annotation antwortet der Ingress mit 200 statt 101 und der Upload-Dialog haengt). Web-Uploads und OCR-Zwischendateien liegen in `PAPERLESS_SCRATCH_DIR` (`/tmp/paperless`), einem emptyDir mit `sizeLimit: 10Gi`. Es uebersteht OOM-/Container-Neustarts, aber keinen Pod-Wechsel; Rollouts und Node-Drains deshalb nur, wenn keine Consume-Tasks, Uploads oder Exporte laufen und die Verarbeitungs-Warteschlange leer ist. Speicher: Request 1Gi, Limit 3Gi (OOMKilled bei 1536Mi am 26.10.2026 waehrend eines Massen-Uploads). OCR-Grenze `PAPERLESS_OCR_MAX_IMAGE_PIXELS: 30000000` (#405): ab 30 MP pro Seite nur Warnung, ab 60 MP scheitert der Consume-Task und es entsteht kein Dokument (Grund: ein 103-MP-Plan ohne Text brauchte im Force-OCR 2,3 GiB und killte den Pod am 26. und 28.10.2026). Grossformatige Plaene so verkleinern, dass jede Seite unter 60 MP bleibt (Breite x Hoehe in Pixeln; 150 dpi reichen bis etwa A0 = 35 MP, darueber die Aufloesung weiter senken). `continue_on_soft_render_error` gilt global; Archiv-PDF und OCR-Text koennen bei Renderfehlern optisch abweichen, das Original bleibt unveraendert. Abnahme nach dem Rollout: Env im Pod pruefen, eine Datei mit Ghostscript-Fehler erneut hochladen und Archiv-PDF gegen das Original vergleichen. Admin + SECRET_KEY; OIDC-JSON `server_url`/`secret`; RBD-Snapshot/Restore vor dem Upgrade testen. CronJob `paperless-watchdog`: abgeschlossene Jobs verschwinden nach 7 Tagen (`ttlSecondsAfterFinished: 604800`), damit ein laengst abgeloester Fehllauf `KubeJobFailed` nicht dauerhaft aktiv haelt; die Job-Historie reicht damit hoechstens 7 Tage zurueck. |
-| **forgejo** | `apps/base/forgejo/` | Admin-Secret; SSH-Service exponieren (LB/NodePort); OIDC-Provider in Forgejo anlegen; LFS→S3 optional. Backup-Ziel des ScheduledBackup ist `primary` (statt Cluster-Default `prefer-standby`), weil das Backup sonst auf schreibruhigem Cluster in nicht archiviertem WAL endet; erwartet wird, dass `pg_backup_stop` auf der Primary den WAL-Switch erzwingt. Offen: nach dem naechsten Backup `status.endWal` gegen `last_archived_wal` pruefen (`docs/learnings/cnpg-standby-backup-unarchived-wal.md`). Gleiches gilt fuer `expense-pg` (expense-tracker hat keine eigene Zeile). |
-| **renovate** | `apps/base/renovate/` | Forgejo-Token; `autodiscover` vs. feste Repo-Liste; Schedule abstimmen. |
+| **renovate** | `apps/base/renovate/` | Token der Git-Plattform (Forgejo ist entfernt, Ziel-Plattform klären); `autodiscover` vs. feste Repo-Liste; Schedule abstimmen. |
 | **wordpress-1/2/3** | `apps/base/wordpress/` + `apps/overlays/main/wordpress-{1,2,3}/` | Pro Instanz Secret + Host (in Overlay gepatcht); „Redis Object Cache"-Plugin installieren; `mariadb.enabled:false` + externalDatabase final schalten. |
 | **mastodon** | `apps/base/mastodon/` | `jit.social` ist seit 19.10.2026 im Cluster in Betrieb; Web, Streaming und Sidekiq `default` laufen mit je zwei Repliken und PDB, der Scheduler einzeln. Valkey bleibt ein Single Point of Failure ([Betriebsrunbook](runbooks/mastodon-betrieb.md)). Letzter verifizierter Betriebsstand: 4.7.3 seit 25.10.2026 (#386), Messwerte im [Runbook](runbooks/mastodon-migration.md), Abschnitt „4.6.9 → 4.7.3“. GitOps-Ziel 4.7.4 (Sicherheitsupdate); Rollout und Health nach dem Merge verifizieren. Restore-Test aus `backup-mastodon` am 25.10.2026 bestanden (Klon in Potsdam). Registrierung seit 25.10.2026 geschlossen, weil Spam-Anmeldungen Bestätigungsmails über `mail.jit-creatives.de` verschickten ([Learning](learnings/mastodon-anmeldespam-mailversand.md)). Offen: die 8 bestätigten, wartenden Konten in der Moderation prüfen; Retention überwachen; Elasticsearch für Volltextsuche bei Bedarf anbinden. |
 | **gatus** | `apps/base/gatus/` | `gatus-oidc`-Secret mit Keycloak-Client-Secret füllen; `issuer-url`/`redirect-url`/`client-id` auf reale Domain. Alle kanonischen Web-App-Endpunkte sind eingetragen; Paperless wird über `paperless.savar.de` geprüft und folgt dem Login-Redirect bis HTTP 200. Gewünschte Legacy- und Alias-Domains bei Bedarf als eigene Routengruppe ergänzen. Historie persistent in Postgres (`monitoring-pg`, DB `gatus`, Secret `gatus-db`; ADR 0008). |
@@ -614,7 +613,7 @@ Dasselbe gilt für die Apache-Logs der WordPress-Pods (die sehen die nginx-Pod-I
       `just encrypt infrastructure/base/crowdsec/secret.sops.yaml`.
 - [ ] Garage-S3-Bucket `cnpg-crowdsec` anlegen, `crowdsec-backup-s3`-Credentials setzen.
 - [ ] Nach ein paar Tagen Laufzeit `cscli alerts list` / `cscli metrics` prüfen —
-      False-Positives? Fehlende Collections für weitere Apps (forgejo, roundcube, ...)?
+      False-Positives? Fehlende Collections für weitere Apps (roundcube, ...)?
 - [ ] Enforcement-Entscheidung treffen (siehe oben) und in einem Folge-PR umsetzen.
 - [ ] Optional: CrowdSec Console/Community-Blocklist aktivieren, falls das
       Datenteilen mit crowdsec.net gewünscht ist (aktuell bewusst deaktiviert).
