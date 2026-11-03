@@ -7,6 +7,7 @@ Pro Vorgang eine Markdown-Datei.
 - [talos-live-audit-2026-10-18.md](talos-live-audit-2026-10-18.md) — verifizierte Nodes, N-1-Kapazitaet, Datenbanken, Backups und konkrete Freigabeschritte.
 - [cluster-inspection-2026-10-20.md](cluster-inspection-2026-10-20.md) — Read-only-Bestandsaufnahme von Workloads, Speicher, CNPG/WAL, Alert-Historie und noch offenen Benachrichtigungs-/Bereinigungsschritten.
 - [cluster-inspection-2026-10-31.md](cluster-inspection-2026-10-31.md) — Read-only-Bestandsaufnahme: ingress-nginx-OOMKills, Kapazitaet wrk3, Speicher, CNPG/Backups, stumme Alarmierung und offene Empfehlungen.
+- [cluster-inspection-2026-11-03.md](cluster-inspection-2026-11-03.md) — Read-only-Bestandsaufnahme: 5 von 9 CNPG-Basisbackups in der Nacht fehlgeschlagen (Garage-Timeouts, mdcheck auf u22), Alarmierungsluecke, Speicher, Slots und offene Entscheidungen.
 - [netbird-cluster-access.md](netbird-cluster-access.md) — Read-only-Clusterzugang ueber den jit-Tenant und Proxy-Policy-Diagnose.
 
 - [inbetriebnahme.md](inbetriebnahme.md) — Go-Live-Checkliste (Blaupause → Produktion),

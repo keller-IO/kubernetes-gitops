@@ -63,11 +63,14 @@ spec:
             tcpSocket:
               port: valkey
             initialDelaySeconds: 10
+            timeoutSeconds: 3
           readinessProbe:
             exec:
               # grep, weil auch eine NOAUTH-Antwort sonst als Erfolg zaehlen kann.
               command: ["sh", "-c", "valkey-cli ping | grep -q PONG"]
             initialDelaySeconds: 5
+            # 3 s statt 1 s: der Default loeste 24 Timeout-Events in 16 h aus.
+            timeoutSeconds: 3
           volumeMounts:
             - name: data
               mountPath: /data
