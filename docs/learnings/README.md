@@ -24,6 +24,7 @@ Format und Kriterien: siehe AGENTS.md → „Operational Learnings".
   folgen keinem atomaren Host-Rename; Nextcloud muss zusaetzlich dem Pod-CIDR
   des neuen Proxy-Hops vertrauen.
 - [EuroOffice-Connector behält transiente Verbindungsfehler](eurooffice-stale-settings-error.md)
+- [Garage: mdadm-Prüflauf im Backup-Fenster](garage-mdcheck-backup-window.md) — zufälliger `mdcheck` auf dem HDD-RAID unter Garage/PBS ließ CNPG-Backups in Timeouts laufen; Prüfung per Pod-Log und Host-Journal statt nur per Backup-Status.
 - [Externes CephFS nach Node-Stall](external-cephfs-client-stall-recovery.md) — Node
   und Mount koennen gesund wirken, obwohl die MDS-Session verworfen wurde; erst
   ein echter Cross-Node-I/O-Test bestaetigt die Recovery.
