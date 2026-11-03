@@ -31,14 +31,20 @@ im zentralen Ansible-Repo, nicht hier. Ob das wirkt, zeigt erst der Backup-Lauf 
 `completed` oder `failed` am Backup-Objekt reicht nicht; `lastSuccessfulBackup` im
 Clusterstatus widersprach am 03.11. dem Objekt. Zusätzlich:
 
+```bash
+# Backup-Objekte und Clusterstatus
+kubectl -n <ns> get backups.postgresql.cnpg.io
+kubectl -n <ns> get clusters.postgresql.cnpg.io <cluster> \
+  -o jsonpath='{.status.lastSuccessfulBackup}{"\n"}{.status.lastFailedBackup}{"\n"}'
+# Das Backup läuft in der Instanz, siehe status.instanceID.podName am Backup-Objekt
+kubectl -n <ns> logs <instanz-pod> -c postgres --since=12h \
+  | grep -E 'Read timeout|Connection was closed'
+# Auf dem Garage-CT: erwartet ist HTTP 500 "error reading a body from connection"
+docker logs garage --since <start> --until <ende> 2>&1 | grep 'error 500' | cut -c1-16 | uniq -c
+# Auf u22
+journalctl -u 'mdcheck*' --since '-2 days'
+sar -d -f /var/log/sysstat/sa<DD>
 ```
-$ kubectl -n <ns> get backup
-$ kubectl -n <ns> logs <backup-pod> | grep -E 'Read timeout|Connection was closed'
-$ journalctl -u 'mdcheck*' --since '-2 days'          # auf u22
-$ sar -d -f /var/log/sysstat/sa<DD>                   # auf u22, Auslastung von md0
-```
-
-Garage-Log auf HTTP 500 „error reading a body from connection“ im Backup-Fenster prüfen.
 
 ## Prävention
 

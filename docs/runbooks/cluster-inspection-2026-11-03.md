@@ -59,16 +59,21 @@ sichert nur sonntags.
 
 ### Zustand danach
 
-- Der Prüflauf stand um 07:50 UTC bei 76 % (Sektor 23838057472 von 31251490816). Der
-  nächste Lauf ist für Mi 04.11. 07:56 CET gemeldet.
-- WAL-Archivierung: Fehler 04:50–05:11 UTC (Exit 4), seit etwa 07:45 UTC archivieren
-  alle Primaries wieder, `ContinuousArchiving=True`. Point-in-Time-Recovery ist damit
-  weiter möglich; verloren ist nur das jeweilige Basisbackup der Nacht.
+- Der Prüflauf stand um 07:50 UTC bei 76 % (Sektor 23838057472 von 31251490816). Beim
+  Rollout des neuen Zeitplans startete er um 08:05 UTC wegen `Persistent=true` erneut
+  und läuft bis etwa 14:05 UTC, außerhalb der Backup-Fenster. Danach startet er täglich
+  um 07:00 Europe/Berlin.
+- WAL-Archivierung: Fehler 04:50–05:11 UTC (Exit 4), `ContinuousArchiving=True`. Um
+  09:20 UTC warteten auf allen 10 Primaries 0 Segmente (`pg_ls_archive_statusdir()`,
+  keine `.ready`-Dateien), `last_archived_wal` lag jeweils direkt vor dem aktuellen
+  Segment. Die Segmente aus dem Fehlerfenster gelten damit als archiviert. Ihr Inhalt in
+  Garage wurde nicht einzeln geprüft und kein Restore getestet; Point-in-Time-Recovery
+  über dieses Fenster ist also plausibel, aber nicht nachgewiesen.
 
 ### Maßnahmen und Nachweis
 
-- „`mdcheck`-Zeitplan und Alarm `kellerio-cnpg-backup-failed` werden im zentralen
-  Ansible-Repo umgesetzt.“ In diesem Repo gibt es dafür keine Änderung.
+- `mdcheck`-Zeitplan und Alarm `kellerio-cnpg-backup-failed` sind im zentralen
+  Ansible-Repo umgesetzt und ausgerollt. In diesem Repo gibt es dafür keine Änderung.
 - **Nächster Nachweis ist der Backup-Lauf am 04.11. ca. 02:00–03:00 UTC; er ist noch
   nicht geprüft.** Erst danach lässt sich sagen, ob der neue Zeitplan die Fehler
   vermeidet. Siehe auch `docs/learnings/garage-mdcheck-backup-window.md`.
