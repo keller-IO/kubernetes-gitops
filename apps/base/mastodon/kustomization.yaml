@@ -6,7 +6,7 @@ namespace: mastodon
 helmCharts:
   - name: mastodon
     repo: https://mastodon.github.io/helm-charts
-    version: 1.2.5 # renovate: helm; chart appVersion v4.7.3, image tags in values.yaml override it with v4.7.4
+    version: 1.2.6 # renovate: helm; chart appVersion v4.7.3, image tags in values.yaml override it with v4.7.4
     releaseName: mastodon
     namespace: mastodon
     valuesFile: values.yaml
