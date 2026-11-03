@@ -159,6 +159,15 @@ grep -qF 'ACCOUNT_ADAPTER = "no_signup_adapter.DisableSignupAdapter"' "$mailman_
 grep -qE '^[[:space:]]+return False[[:space:]]*$' "$mailman_settings" \
   || report "$mailman_settings: DisableSignupAdapter no longer rejects signup"
 
+section "Mailman search index jobs stay disabled"
+matches="$(sed 's/#.*//' "$mailman_settings" \
+  | grep -E '^[[:space:]]*unique-cron[[:space:]]*=' \
+  | grep -E 'runjobs[[:space:]]+(hourly|monthly)|update_index|update_and_clean_index' || true)"
+if [[ -n "$matches" ]]; then
+  printf '%s\n' "$matches"
+  report "$mailman_settings: search-index cron jobs must stay disabled (docs/learnings/mailman-whoosh-reindex-performance.md)"
+fi
+
 section "Mastodon retention also removes remote attachments"
 mastodon_retention="apps/base/mastodon/media-retention.yaml"
 grep -E 'args:.*"media",[[:space:]]*"remove"' "$mastodon_retention" \

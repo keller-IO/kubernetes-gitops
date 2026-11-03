@@ -1,5 +1,9 @@
 # Mailman: Volltextindex nach Datenmenge statt Mailanzahl planen
 
+> **Stand 02.11.2026: Volltextsuche dauerhaft abgeschaltet.** Dieses Dokument
+> beschreibt den Weg dorthin und gilt nur noch, falls die Suche jemals neu
+> aufgebaut werden soll. Siehe „Abschaltung am 02.11.2026“ am Ende.
+
 ## Kontext
 
 Beim Upgrade von Mailman Web auf `maxking/mailman-web` 0.5.2 musste der
@@ -232,3 +236,31 @@ war vom Reindex nicht betroffen.
   direkter Benchmark keinen Vorteil zeigt.
 - Xapian auf einer Restore-Kopie nach einem Body-Limit benchmarken und nur bei
   messbarem Vorteil sowie korrekter Suchfunktion dauerhaft aktivieren.
+
+## Abschaltung am 02.11.2026
+
+Die Suche hat im laufenden Betrieb nie funktioniert: `uwsgi.log` enthielt seit
+dem 13.07.2026 keinen einzigen beendeten Suchrequest. Ein Test am 02.11. lief
+60 s ohne Antwort; wenige Sekunden nach einer zweiten Suche wurde der Container
+am 3-GiB-Limit `OOMKilled`. Auslösbar war das anonym. Der Neubau wurde verworfen,
+weil der Nutzen den Aufwand nicht trägt. Die Archivansicht bleibt vollständig.
+
+Umgesetzt:
+
+- `/hyperkitty/search` liefert am Ingress HTTP 410, das Suchfeld ist aus der
+  Kopfzeile entfernt (initContainer leitet `base.html` per `sed` aus dem Image ab).
+- `runjobs monthly` ist durch `runjob hyperkitty empty_threads` ersetzt; der
+  Index-Job `update_and_clean_index` läuft nicht mehr.
+- Der Whoosh-Index im Web-PVC und der PVC `mailman-web-index-staging` samt aller
+  Build-Stände wurden gelöscht. Das Staging enthielt keinen vollständigen Index.
+
+**Falle:** `.../thread/<id>/reattach-suggest` öffnet den Index ebenfalls, und zwar
+öffentlich. Haystack legt beim ersten Zugriff einen leeren Whoosh-Index an, das
+ist harmlos. Gefährlich wird ein leerer Index nur, wenn `update_index` wieder
+läuft: er würde dann alles neu indexieren. Weder `runjobs hourly` noch
+`runjobs monthly` dürfen deshalb zurück in `uwsgi.ini`, auch nicht bei einem
+Image-Upgrade.
+
+Für einen späteren Neubau: `email_text.txt`
+(256-KiB-Limit) und `xapian-haystack` im Image sind vorhanden. Die Mails in der
+Datenbank bleiben die Quelle; ein neuer Index lässt sich jederzeit daraus bauen.

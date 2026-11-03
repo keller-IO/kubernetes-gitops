@@ -499,25 +499,9 @@ aus Phase 1 ansetzen, Richtwert 2–3 h.
    Erscheint hier trotzdem `Running migrations` mit angewandten Schritten, ist
    etwas an der Image-Pinnung vorbeigelaufen: abbrechen und klären.
 
-8. **Volltextindex neu bauen** (der alte Whoosh-Index wird nicht übernommen):
-
-   Nicht im Web-Pod und nicht direkt im produktiven PVC ausfuehren. Der Bestand
-   hat zwar nur rund 42.000 Mails, aber 4,3 GiB stark ungleich verteilten Text;
-   ein naiver Whoosh-Aufbau dauerte viele Stunden und verursachte bei falscher
-   Node-Platzierung einen System-OOM. Auf lokalem Scratch nach Textbytes
-   geshardet bauen, fertige Shards persistent checkpointen, alle 41.925
-   `django_id` pruefen und erst dann atomar in den produktiven Indexpfad
-   umschalten. Ablauf, Messwerte und Bewertung von CephFS/NFS sowie Xapian:
+8. **Volltextindex: entfällt.** Die Suche ist seit 02.11.2026 abgeschaltet. Es
+   wird kein Index aufgebaut und kein Indexpfad umgeschaltet. Hintergrund:
    `docs/learnings/mailman-whoosh-reindex-performance.md`.
-
-   Seit 01.08.2026 begrenzt das verwaltete Haystack-Template nur den fuer die
-   Suche aufbereiteten Body auf 1 MiB pro Mail. Archivinhalt und Anzeige bleiben
-   vollstaendig; Betreff, Absender, Tags, Datum und Attachment-Namen werden
-   weiterhin komplett indexiert.
-
-   Der Aufbau ist nicht mail-cutover-kritisch und kann danach laufen, solange
-   Web bis zum validierten Index auf null bleibt oder eindeutig kommuniziert
-   wird, dass die Archivsuche unvollstaendig ist.
 
 9. **Sofort-Backup** ziehen, bevor Mail fließt:
 
@@ -700,7 +684,8 @@ Listenmail stabil verarbeitet und ein verifiziertes Backup existiert.
 10. `/accounts/signup/` muss weiterhin „Registrierung geschlossen“ zeigen und
     darf keine Passwortfelder anbieten. `ACCOUNT_ADAPTER` und
     `MAILMAN_WEB_SOCIAL_AUTH=[]` bleiben verpflichtend.
-11. Volltextindex nach dem HyperKitty-Sprung 1.3.4 → 1.3.12 neu bauen.
+11. Volltextindex: entfällt, die Suche ist seit 02.11.2026 abgeschaltet
+    (`docs/learnings/mailman-whoosh-reindex-performance.md`).
 
 Rollback ist hier nur über das Backup möglich — Django- und alembic-Migrationen
 laufen nicht rückwärts. Deshalb nicht mit dem Umzug vermischen.
