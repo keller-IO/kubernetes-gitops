@@ -252,7 +252,10 @@ Umgesetzt:
 - `runjobs monthly` ist durch `runjob hyperkitty empty_threads` ersetzt; der
   Index-Job `update_and_clean_index` läuft nicht mehr.
 - Der Whoosh-Index im Web-PVC und der PVC `mailman-web-index-staging` samt aller
-  Build-Stände wurden gelöscht. Das Staging enthielt keinen vollständigen Index.
+  Build-Stände wurden entgegen der ersten Fassung dieses Dokuments nicht am 02.11.
+  gelöscht, sondern erst am 06.11.2026 (siehe
+  [Clusterinspektion 06.11.2026](../runbooks/cluster-inspection-2026-11-06.md)).
+  Das Staging enthielt keinen vollständigen Index.
 
 **Falle:** `.../thread/<id>/reattach-suggest` öffnet den Index ebenfalls, und zwar
 öffentlich. Haystack legt beim ersten Zugriff einen leeren Whoosh-Index an, das
