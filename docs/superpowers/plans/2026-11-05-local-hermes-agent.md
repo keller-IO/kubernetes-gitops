@@ -60,7 +60,7 @@
 Run:
 
 ```bash
-command -v git curl sha256sum podman vulkaninfo
+command -v git curl sha256sum jq podman vulkaninfo
 podman info --format '{{.Host.Security.Rootless}}'
 vulkaninfo --summary
 test -n "${SAIA_API_KEY:-}"
@@ -318,13 +318,15 @@ hermes config set terminal.env_passthrough '[]'
 
 Expected: config readback has the exact values. Leave `terminal.docker_image` unset so Hermes v0.22.7 owns the compatible default. The explicit zero disables Hermes' otherwise-default 50-GB storage quota, so Podman storage-driver quota support is not assumed.
 
-Then inspect pre-existing credential mounts before any sandbox exists:
+Then inspect every config path that can add host mounts before any sandbox exists:
 
 ```bash
-hermes config get terminal.credential_files --json
+terminal_json=$(hermes config get terminal --json)
+jq -e '[.credential_files, .docker_volumes, .docker_extra_args]
+       | all(. == null or . == [] or . == "")' <<<"$terminal_json"
 ```
 
-Expected: the list is empty or absent. Hermes mounts every configured entry read-only into the container, and this config path does not apply the `.env`/`auth.json` block list used for skill-registered files. Remove any entry before the first tool call; empty `docker_forward_env` and `env_passthrough` do not cover this path.
+Expected: `jq` prints `true` and exits 0. `credential_files`, `docker_volumes`, and `docker_extra_args` are optional and may be absent on a fresh install, so only their absence counts as empty; a failing `hermes config get terminal` must still abort. Hermes mounts every `credential_files` entry read-only without the `.env`/`auth.json` block list used for skill-registered files, and `docker_volumes`/`docker_extra_args` can add arbitrary bind mounts. Remove any entry before the first tool call; empty `docker_forward_env` and `env_passthrough` do not cover these paths.
 
 - [ ] **Step 6: Validate the complete static configuration**
 
@@ -397,7 +399,7 @@ Also inspect resource fields with:
 podman inspect --format '{{.HostConfig.Memory}} {{.HostConfig.NanoCpus}}' "$container_id"
 ```
 
-Expected: the workspace mount source is the directory where Hermes was launched, the mount classification and all four checks pass, the resource fields are `17179869184 8000000000`, no storage-size option is present, and the container runs under rootless Podman. If the rootless cgroup probe made Hermes omit CPU or memory limits, stop acceptance and fix cgroup delegation rather than accepting an unbounded sandbox. Fixing delegation does not change the existing persistent container, which Hermes would reuse. At this point it holds only the Step 3 sentinel state, so remove exactly that unbounded Hermes-labeled container with `podman rm -f "$container_id"`, then repeat Steps 3 and 4 and accept only when the resource fields match. No other agent tool call may run against an unbounded container. Do not print the container environment.
+Expected: the workspace mount source is the directory where Hermes was launched, the mount classification and all four checks pass, the resource fields are `17179869184 8000000000`, no storage-size option is present, and the container runs under rootless Podman. If the rootless cgroup probe made Hermes omit CPU or memory limits, stop acceptance and fix cgroup delegation rather than accepting an unbounded sandbox. Fixing delegation does not change the existing persistent container, which Hermes would reuse. Remove it only after confirming it was newly created by Step 3: its `podman inspect --format '{{.Created}}'` timestamp lies after the start of Step 3 and `podman diff "$container_id"` shows no changes beyond the Step 3 commands. If either check fails, the container predates this setup and may hold state outside the mounts; export it with `podman export` and ask for explicit approval before removing it. Then remove exactly that unbounded Hermes-labeled container with `podman rm -f "$container_id"`, repeat Steps 3 and 4, and accept only when the resource fields match. No other agent tool call may run against an unbounded container. Do not print the container environment.
 
 - [ ] **Step 5: Test SAIA directly with chat and one terminal tool call**
 

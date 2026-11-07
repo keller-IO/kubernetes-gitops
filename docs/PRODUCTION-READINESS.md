@@ -507,6 +507,8 @@ wird von der regulaeren roundcube-Instanz bedient, die ohnehin auf mail05 zeigt.
       kein Request > 20 s, >= 99 % parsebar, >= 20 % RAM-Reserve).
 - [ ] Rspamd-Ollama: Shadow Mode mit allen GPT-Scores 0 fuer mindestens 14 Tage
       und 100 Klassifikationen, inklusive Gesamtlatenz bis Ende GPT-Request.
+      Freigabeblocker: p99 der Vorpruefungen > 5 s oder ein Task-Timeout mit
+      GPT-Beteiligung.
 - [ ] Rspamd-Ollama: Shadow-Ergebnisse manuell pruefen, danach ausschliesslich
       `GPT_SPAM` mit hoechstens +3 freigeben (Gruppe `max_score = 3`).
 - [ ] Rspamd-Ollama: echte SMTP-Zustellung nach `DATA` auf beiden Scannerpfaden.
