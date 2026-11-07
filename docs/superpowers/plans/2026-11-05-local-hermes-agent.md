@@ -325,7 +325,11 @@ terminal_json=$(hermes config get terminal --json)
 jq -e '[.credential_files, .docker_volumes, .docker_extra_args, .docker_env]
        | all(. == null or . == [] or . == {} or . == "")' <<<"$terminal_json"
 jq -e '.cwd == null or .cwd == "" or .cwd == "."' <<<"$terminal_json"
+! grep -E -o '^[[:space:]]*(export[[:space:]]+)?TERMINAL_[A-Z0-9_]+=' "$HOME/.hermes/.env"
+! env | grep -E -o '^TERMINAL_[A-Z0-9_]+='
 ```
+
+The last two checks print only variable names, never values, and must find nothing: `TERMINAL_*` variables in `~/.hermes/.env` or the launching environment (for example `TERMINAL_DOCKER_EXTRA_ARGS`) override `config.yaml` and would bypass the `jq` checks. Remove any such entry before the first tool call.
 
 Expected: both `jq` calls print `true` and exit 0; neither prints values beyond that. `credential_files`, `docker_volumes`, `docker_extra_args`, `docker_env`, and `cwd` are optional and may be absent on a fresh install, so only their absence counts as empty; a failing `hermes config get terminal` must still abort. Hermes mounts every `credential_files` entry read-only without the `.env`/`auth.json` block list used for skill-registered files, `docker_volumes`/`docker_extra_args` can add arbitrary bind mounts, `docker_env` sets container variables directly, and a set `terminal.cwd` would mount a host path other than the reviewed launch directory at `/workspace`. Remove any such entry before the first tool call; empty `docker_forward_env` and `env_passthrough` do not cover these paths.
 
