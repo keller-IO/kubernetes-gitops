@@ -11,6 +11,10 @@ env:
   PAPERLESS_TIME_ZONE: Europe/Berlin
   # CIFS does not reliably propagate inotify events; poll the scanner inbox.
   PAPERLESS_CONSUMER_POLLING: "10"
+  # Duplikate (gleiche Pruefsumme) lehnt Paperless ab, liess sie aber bisher im
+  # Scanner-Share liegen; dort loeste jede Datei nach 30 min den Watchdog-Alarm
+  # paperless_consume-queue aus (29.10.2026: 5 Dateien, alle schon im Bestand).
+  PAPERLESS_CONSUMER_DELETE_DUPLICATES: "true"
   # OCR-Einstellungen wie im Alt-System auf 192.168.2.15
   PAPERLESS_OCR_LANGUAGE: deu+eng
   PAPERLESS_OCR_LANGUAGES: deu # Paket-Liste (Leerzeichen-Format), eng ist im Image enthalten
