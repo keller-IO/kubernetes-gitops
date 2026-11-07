@@ -45,7 +45,7 @@
 
 - [ ] **Step 1: Write failing tests for the complete role contract**
 
-Cover pinned release/model digests, disabled defaults, loopback-only service, cloud disablement, CPU/RAM limits, pre/post model digest checks, GPT request fields, timeout relationship, score neutrality, playbook ordering, and explicit disabled production flags.
+Cover pinned release/model digests, disabled defaults, disabled-mode stop/disable of an existing unit, loopback-only service, cloud disablement, CPU/RAM limits, `MemAvailable` reserve preflight, pre/post model digest checks, GPT request fields, disabled GPT cache, GPT group `max_score = 3`, timeout relationship, score neutrality, playbook ordering, and explicit disabled production flags.
 
 - [ ] **Step 2: Run the test and verify it fails**
 
@@ -78,7 +78,9 @@ Define the enabled flag, archive URL/checksum, model name/digests, `127.0.0.1:11
 
 - [ ] **Step 2: Implement guarded preflight and installation tasks**
 
-When enabled, assert Debian x86_64, at least 4 vCPU, AVX2, at least 10 GiB total RAM, download/unarchive the pinned artifact, create the unprivileged account and model directory, and enable the service. No task may run when disabled.
+When enabled, assert Debian x86_64, at least 4 vCPU, AVX2, at least 10 GiB total RAM, and before every service start `MemAvailable` of at least the 8-GiB Ollama limit plus 20 percent of total RAM (the same reserve as the benchmark gate); then download/unarchive the pinned artifact, create the unprivileged account and model directory, and enable the service.
+
+When disabled, no download, install, account, or model task runs. The only disabled-mode tasks stop and disable `ollama.service` if its unit file already exists, so a rollback releases resources; on a host that never had Ollama they are no-ops.
 
 - [ ] **Step 3: Implement remote and local model digest verification**
 
@@ -119,11 +121,11 @@ Define 20s request timeout, 1s connect timeout, 1000 input tokens, 4096 context 
 
 - [ ] **Step 2: Render the built-in GPT module configuration**
 
-Use `type = "ollama"`, `http://127.0.0.1:11434/api/chat`, plain output, no autolearn, no ham/passthrough expansion, no reason header, `keep_alive = -1`, and Ollama-native nested `options`.
+Use `type = "ollama"`, `http://127.0.0.1:11434/api/chat`, plain output, no autolearn, no ham/passthrough expansion, no reason header, `keep_alive = -1`, and Ollama-native nested `options`. Disable the GPT response cache: the 4.1.0 cache key omits subject and sender, and the module falls back to the global Redis servers, so the contract test must prove that `gpt` creates no cache context.
 
 - [ ] **Step 3: Render score overrides**
 
-Set `GPT_SPAM`, `GPT_HAM`, `GPT_MARKETING`, `GPT_PHISHING`, `GPT_SCAM`, `GPT_MALWARE`, and `GPT_UNCERTAIN` to the configured values, all 0 in this change.
+Set `GPT_SPAM`, `GPT_HAM`, `GPT_MARKETING`, `GPT_PHISHING`, `GPT_SCAM`, `GPT_MALWARE`, and `GPT_UNCERTAIN` to the configured values, all 0 in this change. Give the GPT symbol group `max_score = 3`, because 4.1.0 does not clamp plain-text probabilities to 0..1 and a reply of `3` would otherwise yield factor 5.
 
 - [ ] **Step 4: Make task timeout conditional**
 
@@ -197,7 +199,7 @@ Document read-only preflight, Ansible check/diff, model benchmark, shadow observ
 
 - [ ] **Step 3: Update production readiness**
 
-Add unchecked gates for `spam02` reachability, both-host resource validation, benchmark results, 14-day/100-message shadow acceptance, and final +3 score activation.
+The unchecked gates were added together with the design. Update them with the implemented evidence and keep each gate unchecked until it has passed.
 
 - [ ] **Step 4: Run repository validation**
 

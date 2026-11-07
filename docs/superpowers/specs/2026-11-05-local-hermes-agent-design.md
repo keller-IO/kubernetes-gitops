@@ -88,7 +88,12 @@ ueber Hermes-Prozesse und Sitzungen hinweg erhalten.
 
 `docker_mount_cwd_to_workspace: true` bindet das Verzeichnis, aus dem Hermes
 gestartet wurde, nach `/workspace` ein. Dies ist der einzige allgemeine
-Host-Arbeitsbereich. Hermes v0.22.7 bindet zusaetzlich sein persistentes,
+Host-Arbeitsbereich. Hermes wird deshalb nur aus geprueften
+Repository-Arbeitsverzeichnissen gestartet, nie aus `$HOME`, `~/.hermes`,
+`~/.ssh`, `~/.kube`, `/home/ingo/ansible` oder einem anderen Verzeichnis mit
+Host-Geheimnissen oder einem ihrer Elternverzeichnisse. Vor jedem Start wird
+das tatsaechliche Startverzeichnis (`pwd -P`) gegen diese Regel geprueft;
+erfuellt es sie nicht, wird Hermes dort nicht gestartet. Hermes v0.22.7 bindet zusaetzlich sein persistentes,
 containerprivates Sandbox-Home unter `/root` schreibbar sowie seine eigenen
 Skill-, Attachment- und Cache-Staging-Verzeichnisse unter `/root/.hermes`
 read-only ein. Diese Support-Mounts sind in dieser Version nicht per

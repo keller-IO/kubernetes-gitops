@@ -76,37 +76,43 @@ First run `ls "$HOME"` to verify the backup parent. If `~/.hermes` already exist
 ```bash
 backup_dir="$HOME/.hermes/backups/pre-local-setup-$(date -u +%Y%m%dT%H%M%SZ)"
 install -d -m 0700 "$backup_dir"
+: > "$backup_dir/absent-files"
 for name in config.yaml .env auth.json; do
   if test -f "$HOME/.hermes/$name"; then
     cp -a "$HOME/.hermes/$name" "$backup_dir/$name"
+  else
+    printf '%s\n' "$name" >> "$backup_dir/absent-files"
   fi
 done
 ```
 
-Expected: the backup directory contains only existing control files and is not inside the Git worktree.
+Expected: the backup directory contains only existing control files plus `absent-files`, which names every control file that did not exist before the change, and is not inside the Git worktree. If `~/.hermes` does not exist yet, create the same backup directory after installation with all three names in `absent-files` and no copies.
 
 - [ ] **Step 3: Download and verify the pinned installer**
 
 Run:
 
 ```bash
-curl -fsSLo /tmp/opencode/hermes-install-v0.22.7.sh \
+installer_dir=$(mktemp -d)
+installer="$installer_dir/hermes-install-v0.22.7.sh"
+curl -fsSLo "$installer" \
   https://raw.githubusercontent.com/NousResearch/hermes-agent/b200f5bc60e31588ba2cb60e288029c4a54ba5fa/scripts/install.sh
 printf '%s  %s\n' \
   abf338605dae6dd28d101673ac6aed7995c955745db46d47676bc591a7957209 \
-  /tmp/opencode/hermes-install-v0.22.7.sh | sha256sum --check --strict
+  "$installer" | sha256sum --check --strict
 ```
 
-Expected: `...: OK`.
+Expected: `...: OK`. Keep `installer_dir` and `installer` in the same shell for Step 4.
 
 - [ ] **Step 4: Install the exact release without optional desktop tools**
 
 Run:
 
 ```bash
-bash /tmp/opencode/hermes-install-v0.22.7.sh \
+bash "$installer" \
   --commit b200f5bc60e31588ba2cb60e288029c4a54ba5fa \
   --skip-browser --skip-computer-use --non-interactive
+rm -f -- "$installer" && rmdir -- "$installer_dir"
 ```
 
 Expected: installer exits 0 and creates `~/.local/bin/hermes` without launching an interactive setup wizard.
@@ -217,6 +223,7 @@ set +x
 set -euo pipefail
 : "${SAIA_API_KEY:?SAIA_API_KEY is not exported}"
 saia_key=$SAIA_API_KEY
+unset BLABLADOR_API_KEY
 set -a
 source /home/ingo/ansible/apikey.env
 set +a
@@ -224,7 +231,7 @@ set +a
 blablador_key=$BLABLADOR_API_KEY
 ```
 
-Expected: success is silent. Any missing value aborts before a temporary `.env` file is created.
+Expected: success is silent. Any missing value aborts before a temporary `.env` file is created. The `unset` ensures that only the protected source, not an inherited environment value, can satisfy the Blablador check.
 
 - [ ] **Step 2: Replace only the three managed `.env` entries atomically**
 
@@ -311,6 +318,14 @@ hermes config set terminal.env_passthrough '[]'
 
 Expected: config readback has the exact values. Leave `terminal.docker_image` unset so Hermes v0.22.7 owns the compatible default. The explicit zero disables Hermes' otherwise-default 50-GB storage quota, so Podman storage-driver quota support is not assumed.
 
+Then inspect pre-existing credential mounts before any sandbox exists:
+
+```bash
+hermes config get terminal.credential_files --json
+```
+
+Expected: the list is empty or absent. Hermes mounts every configured entry read-only into the container, and this config path does not apply the `.env`/`auth.json` block list used for skill-registered files. Remove any entry before the first tool call; empty `docker_forward_env` and `env_passthrough` do not cover this path.
+
 - [ ] **Step 6: Validate the complete static configuration**
 
 Run:
@@ -382,7 +397,7 @@ Also inspect resource fields with:
 podman inspect --format '{{.HostConfig.Memory}} {{.HostConfig.NanoCpus}}' "$container_id"
 ```
 
-Expected: the workspace mount source is the directory where Hermes was launched, the mount classification and all four checks pass, the resource fields are `17179869184 8000000000`, no storage-size option is present, and the container runs under rootless Podman. If the rootless cgroup probe made Hermes omit CPU or memory limits, stop acceptance and fix cgroup delegation rather than accepting an unbounded sandbox. Do not print the container environment.
+Expected: the workspace mount source is the directory where Hermes was launched, the mount classification and all four checks pass, the resource fields are `17179869184 8000000000`, no storage-size option is present, and the container runs under rootless Podman. If the rootless cgroup probe made Hermes omit CPU or memory limits, stop acceptance and fix cgroup delegation rather than accepting an unbounded sandbox. Fixing delegation does not change the existing persistent container, which Hermes would reuse. At this point it holds only the Step 3 sentinel state, so remove exactly that unbounded Hermes-labeled container with `podman rm -f "$container_id"`, then repeat Steps 3 and 4 and accept only when the resource fields match. No other agent tool call may run against an unbounded container. Do not print the container environment.
 
 - [ ] **Step 5: Test SAIA directly with chat and one terminal tool call**
 
@@ -432,8 +447,8 @@ Expected: Hermes diagnostics pass the selected configuration. Git shows only the
 ## Rollback Procedure
 
 1. Stop active Hermes CLI processes and leave managed model files in place unless deletion is explicitly requested.
-2. Restore backed-up `config.yaml`, `.env`, and `auth.json` from the Task 1 backup, preserving mode `0600` for secret-bearing files.
-3. If there was no prior configuration, remove only the new `config.yaml` and `.env`; do not remove the model, runtime, sessions, or sandbox without separate approval.
+2. Restore each of `config.yaml`, `.env`, and `auth.json` that exists in the Task 1 backup, preserving mode `0600` for secret-bearing files.
+3. Independently of step 2, remove each of these three files that is listed in the backup's `absent-files`, so a file that did not exist before the change does not survive the rollback. Do not remove the model, runtime, sessions, or sandbox without separate approval.
 4. Verify rollback with `hermes config check` and `hermes doctor`.
 5. Remove the Hermes-labeled Podman container or the 16.5-GB GGUF only on explicit request because both are destructive and force recreation or redownload.
 6. To revert the host-runtime corrections, remove the Hermes delegation
