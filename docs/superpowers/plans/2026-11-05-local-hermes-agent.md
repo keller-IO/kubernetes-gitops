@@ -318,15 +318,24 @@ hermes config set terminal.env_passthrough '[]'
 
 Expected: config readback has the exact values. Leave `terminal.docker_image` unset so Hermes v0.22.7 owns the compatible default. The explicit zero disables Hermes' otherwise-default 50-GB storage quota, so Podman storage-driver quota support is not assumed.
 
-Then inspect every config path that can add host mounts before any sandbox exists:
+Then, before the first tool call and again from each launch directory before any later session, inspect every config path that can add host mounts, container environment, or a different workspace:
 
 ```bash
 terminal_json=$(hermes config get terminal --json)
-jq -e '[.credential_files, .docker_volumes, .docker_extra_args]
-       | all(. == null or . == [] or . == "")' <<<"$terminal_json"
+jq -e '[.credential_files, .docker_volumes, .docker_extra_args, .docker_env]
+       | all(. == null or . == [] or . == {} or . == "")' <<<"$terminal_json"
+jq -e '.cwd == null or .cwd == "" or .cwd == "."' <<<"$terminal_json"
 ```
 
-Expected: `jq` prints `true` and exits 0. `credential_files`, `docker_volumes`, and `docker_extra_args` are optional and may be absent on a fresh install, so only their absence counts as empty; a failing `hermes config get terminal` must still abort. Hermes mounts every `credential_files` entry read-only without the `.env`/`auth.json` block list used for skill-registered files, and `docker_volumes`/`docker_extra_args` can add arbitrary bind mounts. Remove any entry before the first tool call; empty `docker_forward_env` and `env_passthrough` do not cover these paths.
+Expected: both `jq` calls print `true` and exit 0; neither prints values beyond that. `credential_files`, `docker_volumes`, `docker_extra_args`, `docker_env`, and `cwd` are optional and may be absent on a fresh install, so only their absence counts as empty; a failing `hermes config get terminal` must still abort. Hermes mounts every `credential_files` entry read-only without the `.env`/`auth.json` block list used for skill-registered files, `docker_volumes`/`docker_extra_args` can add arbitrary bind mounts, `docker_env` sets container variables directly, and a set `terminal.cwd` would mount a host path other than the reviewed launch directory at `/workspace`. Remove any such entry before the first tool call; empty `docker_forward_env` and `env_passthrough` do not cover these paths.
+
+Finally, list containers Hermes could reuse without printing their environment:
+
+```bash
+podman ps -a --filter label=hermes-agent=1 --format '{{.ID}} {{.Created}} {{.Status}}'
+```
+
+Expected: no output on a fresh setup. A pre-existing Hermes container may carry stale provider variables or unbounded resource settings from an earlier configuration; export it with `podman export` and replace it only after explicit approval, before the first tool call.
 
 - [ ] **Step 6: Validate the complete static configuration**
 
