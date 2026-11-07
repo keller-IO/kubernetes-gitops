@@ -499,6 +499,19 @@ wird von der regulaeren roundcube-Instanz bedient, die ohnehin auf mail05 zeigt.
 - [ ] Mailman: `MAILMAN_ADMIN_EMAIL`, `SMTP_HOST_USER`, `HYPERKITTY_API_KEY`, `SECRET_KEY` und
       REST-Passwort in `apps/base/mailman/secret.sops.yaml` setzen + verschlüsseln.
 - [ ] SPF/DKIM/DMARC beim externen Mailprovider (außerhalb des Clusters).
+- [ ] Rspamd-Ollama (`spam01`/`spam02`, Ansible, standardmaessig deaktiviert;
+      [Design](superpowers/specs/2026-11-05-rspamd-ollama-design.md)):
+      `spam02` per SSH erreichbar machen und Ressourcen/Rspamd-Version auf
+      beiden Hosts pruefen.
+- [ ] Rspamd-Ollama: warmer `qwen3:8b`-Benchmark auf beiden Hosts (p95 <= 5 s,
+      kein Request > 20 s, >= 99 % parsebar, >= 20 % RAM-Reserve).
+- [ ] Rspamd-Ollama: Shadow Mode mit allen GPT-Scores 0 fuer mindestens 14 Tage
+      und 100 Klassifikationen, inklusive Gesamtlatenz bis Ende GPT-Request.
+      Freigabeblocker: p99 der Vorpruefungen > 5 s oder ein Task-Timeout mit
+      GPT-Beteiligung.
+- [ ] Rspamd-Ollama: Shadow-Ergebnisse manuell pruefen, danach ausschliesslich
+      `GPT_SPAM` mit hoechstens +3 freigeben (Gruppe `max_score = 3`).
+- [ ] Rspamd-Ollama: echte SMTP-Zustellung nach `DATA` auf beiden Scannerpfaden.
 
 **Beispiel** (`apps/base/roundcube/workload.yaml`):
 ```yaml
