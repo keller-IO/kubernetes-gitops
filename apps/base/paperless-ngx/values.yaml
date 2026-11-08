@@ -88,14 +88,19 @@ persistence:
     sizeLimit: 10Gi
 resources:
   # Gemessen am 28.07.2026: 574Mi, knapp oberhalb des alten 512Mi-Requests.
-  requests: { cpu: 200m, memory: 1Gi }
+  # CPU 500m statt 200m: Celery-Timeout ("Timed out waiting for UP message") am
+  # 02.11.2026 13:00, als kellerio-wrk1 zu ~80 % ausgelastet war (NetBox ~2 Kerne);
+  # der Request bestimmt den CPU-Anteil des Containers bei Konkurrenz.
+  requests: { cpu: 500m, memory: 1Gi }
   # 1Gi war zu knapp: OOMKilled am 28.07.2026 um 13:35 kurz nach einem Rollout,
   # waehrend der Dauerverbrauch am 29.07. bei nur 529Mi lag. Der Ausschlag kommt
   # also vom Start (Index-/Migrations-Arbeit), nicht vom Normalbetrieb — gleiche
   # Klasse wie mailman-web, siehe apps/base/mailman/workload.yaml.
   # 1536Mi reichte nicht: OOMKilled am 26.10.2026 18:18 waehrend eines Massen-
   # Uploads (~170 PDFs, OCR mit 4 Seiten parallel); Pod stand davor bei 1,1Gi.
-  limits: { memory: 3Gi }
+  # 3Gi ohne Reserve: memory.peak 3221200896 Byte (24 KiB unter dem Limit) im Pod
+  # vom 28.10.2026, ohne OOM; Working-Set-Spitze im 1-min-Raster 2676Mi.
+  limits: { memory: 4Gi }
 # bjw-s common-library: ingress is a named map (main), not a flat block.
 ingress:
   main:

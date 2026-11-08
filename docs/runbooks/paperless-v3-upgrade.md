@@ -30,7 +30,7 @@ ueberspringen.
 |---|---|---|
 | 0: Offsite-Backup der Dokumente | Abgeschlossen 01.11.: laeuft taeglich seit 28.10., Restore-Test bestanden | Gatus `paperless/offsite-backup` beobachten |
 | 1: 2.20.15 | Abgeschlossen | Export und PVC-Snapshots vom 02.08. behalten; das damalige CNPG-Backup ist abgelaufen |
-| Stabilisierung | Laeuft, fruehestens 04.11. vormittags bestanden (OOMKill 28.10.) | `scripts/ops/paperless-stabilitaet.sh` muss fuer sieben Tage bestehen |
+| Stabilisierung | Laeuft neu ab Rollout mit 500m CPU / 4Gi (Celery-Timeout 02.11., Gate 06.11. nicht bestanden) | `scripts/ops/paperless-stabilitaet.sh` muss fuer sieben Tage bestehen |
 | 2: 3.x-Recovery-Punkt | Teilweise vorbereitet | CNPG-Retention ist auf 90 Tage gesetzt; erst nach Phase 0 und Gate einen neuen quieszierten Export, CNPG-Backup und Snapshots erzeugen |
 | 3: 3.x-Change | Offen | Separater PR auf die dann aktuelle gepruefte 3.x-Patchversion, derzeit 3.3.4 |
 | Abnahme | Offen | Migration, Tantivy-Aufbau, OIDC, OCR, Suche, Mail und SMB-Consume pruefen |
@@ -255,6 +255,21 @@ Nachtrag 01.11.2026:
 - Der Pod laeuft seit 28.10. 15:42 ohne Restart und ohne `max`-/`oom`-Ereignisse,
   `memory.peak` 2716 MiB von 3072 MiB. Keine neuen Celery-Timeouts seit 16.10.
 - Neuer fruehester Termin fuer das Gate: **04.11.2026 vormittags**.
+
+Nachtrag 06.11.2026, Gate nicht bestanden:
+
+- Kein Restart, kein OOMKill, kube-state-metrics-Abdeckung 100 %. Aber ein
+  Celery-Timeout am 02.11. um 13:00:13: Ein frisch geforkter Worker meldete sich
+  nicht rechtzeitig. Folgen hatte das nicht (Celery ersetzte den Prozess, um
+  13:01 lief ein Import fehlerfrei). Im Container weder IO- noch Speicherdruck,
+  aber CPU-PSI 22 %; `kellerio-wrk1` (4 Kerne) war zu ~80 % ausgelastet, davon
+  NetBox ~2 Kerne. Paperless forderte nur 200m CPU an.
+- `memory.peak` 3221200896 Byte, also 24 KiB unter dem Limit von 3 GiB, ohne
+  `max`-/`oom`-Ereignisse; das 1-min-Raster von VictoriaMetrics zeigt hoechstens
+  2676 MiB Working Set. Die Spitze ist kurz und faellt zwischen die Scrapes.
+- Massnahme: CPU-Request 500m, Memory-Limit 4Gi (`values.yaml`). Der Rollout
+  erzeugt einen neuen Pod; die sieben Tage zaehlen ab dessen Start. Termin fuer
+  das Gate: Rollout-Zeitpunkt plus sieben Tage.
 
 Weiterhin gilt: Ein laengerer Start-Timeout allein kaschiert Ressourcen- oder
 I/O-Stalls und ist kein Stabilitaetsnachweis. Requests/Limits aus Messungen
