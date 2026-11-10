@@ -12,6 +12,7 @@ resources:
   - cronjob-rechnungslauf.yaml
   - cronjob-bankabgleich.yaml
   - cronjob-mahnlauf.yaml
+  - cronjob-zertifikatspruefung.yaml
   - pvc-fints.yaml
 
 patches:

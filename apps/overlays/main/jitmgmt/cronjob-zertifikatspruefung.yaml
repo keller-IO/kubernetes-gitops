@@ -1,0 +1,52 @@
+# Zertifikatspruefung: fragt fuer die verwalteten Kundenzertifikate ab, was am
+# hinterlegten Host ausgeliefert wird, und schickt dem Support eine Sammelmail,
+# wenn ein Ablauf oder das Ende einer bezahlten Laufzeit naht. Je Termin und
+# Stufe hoechstens einmal; an Kunden geht nichts. Ein ausgefallener Tag wird
+# beim naechsten Lauf mit erledigt.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: zertifikatspruefung
+  namespace: jitmgmt
+spec:
+  schedule: "30 6 * * *"
+  timeZone: Europe/Berlin
+  concurrencyPolicy: Forbid
+  # Beim Anlegen oder nach einer Pause nicht nachholen; das erledigt der naechste Lauf.
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      # Kein Neuversuch am selben Tag: der naechste Lauf meldet, was offen ist.
+      backoffLimit: 0
+      activeDeadlineSeconds: 900
+      template:
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            seccompProfile: { type: RuntimeDefault }
+          imagePullSecrets:
+            - name: gitlab-registry
+          containers:
+            - name: zertifikatspruefung
+              image: registry.jit-creatives.de/jit/jitmgmt:e36fc883
+              command: ["python", "manage.py", "check_certificates"]
+              envFrom:
+                - configMapRef: { name: jitmgmt-config }
+                - secretRef: { name: jitmgmt-secrets }
+              resources:
+                requests: { cpu: 20m, memory: 128Mi }
+                limits: { memory: 384Mi }
+              volumeMounts:
+                - { name: tmp, mountPath: /tmp }
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: { drop: ["ALL"] }
+          volumes:
+            - name: tmp
+              emptyDir: { sizeLimit: 64Mi }
