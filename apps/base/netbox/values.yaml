@@ -85,6 +85,15 @@ resources:
   requests: { cpu: 100m, memory: 512Mi }
   limits: { memory: 2Gi }
 
+# Der Chart-Default timeoutSeconds: 1 loeste seit dem Start am 02.11.2026 413
+# Readiness-Fehler ("context deadline exceeded", ca. 48 pro Tag in 8,5 Tagen) aus,
+# obwohl /login/ in ~10 ms antwortet und der Pod nie neu startete. Startup-Probe
+# bleibt unveraendert.
+readinessProbe:
+  timeoutSeconds: 5
+livenessProbe:
+  timeoutSeconds: 5
+
 worker:
   resources:
     requests: { cpu: 50m, memory: 256Mi }
