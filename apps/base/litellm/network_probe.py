@@ -4,6 +4,8 @@ from collections.abc import Callable
 
 
 BLABLADOR_HOST = "api.blablador.fz-juelich.de"
+SAIA_HOST = "chat-ai.academiccloud.de"
+PROVIDERS = (("blablador", BLABLADOR_HOST), ("saia", SAIA_HOST))
 
 
 class _UnexpectedAllowed(RuntimeError):
@@ -64,12 +66,13 @@ def _blocked(name: str, action: Callable[[], None]) -> bool:
 
 
 def main() -> int:
-    try:
-        verified_tls(BLABLADOR_HOST, BLABLADOR_HOST)
-    except Exception:
-        print("blablador-tls: FAIL")
-        return 1
-    print("blablador-tls: PASS")
+    for name, host in PROVIDERS:
+        try:
+            verified_tls(host, host)
+        except Exception:
+            print(f"{name}-tls: FAIL")
+            return 1
+        print(f"{name}-tls: PASS")
 
     if not _blocked("unrelated-dns", lambda: resolve("example.com")):
         return 1
@@ -87,18 +90,20 @@ def main() -> int:
     ):
         return 1
 
-    try:
-        provider_ip = resolve(BLABLADOR_HOST)[0]
-    except Exception:
-        print("wrong-sni: FAIL")
-        return 1
-    if not _blocked(
-        "wrong-sni",
-        lambda: _tls_handshake_without_certificate_validation(
-            provider_ip, "example.com"
-        ),
-    ):
-        return 1
+    for name, host in PROVIDERS:
+        case = f"{name}-wrong-sni"
+        try:
+            provider_ip = resolve(host)[0]
+        except Exception:
+            print(f"{case}: FAIL")
+            return 1
+        if not _blocked(
+            case,
+            lambda ip=provider_ip: _tls_handshake_without_certificate_validation(
+                ip, "example.com"
+            ),
+        ):
+            return 1
     return 0
 
 

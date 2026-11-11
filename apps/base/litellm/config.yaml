@@ -7,6 +7,14 @@ model_list:
     model_info:
       id: hermes-blablador
       mode: chat
+  - model_name: hermes-saia-qwen-coder
+    litellm_params:
+      model: openai/qwen3-coder-next
+      api_base: https://chat-ai.academiccloud.de/v1
+      api_key: os.environ/SAIA_API_KEY
+    model_info:
+      id: hermes-saia-qwen-coder
+      mode: chat
 
 router_settings:
   num_retries: 0

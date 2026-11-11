@@ -23,7 +23,7 @@ spec:
         app.kubernetes.io/component: server
         network-policy.jit.land/identity: litellm
       annotations:
-        litellm.jit.land/secret-revision: v2
+        litellm.jit.land/secret-revision: v3
     spec:
       automountServiceAccountToken: false
       securityContext:
@@ -54,6 +54,11 @@ spec:
                 secretKeyRef:
                   name: litellm
                   key: BLABLADOR_API_KEY
+            - name: SAIA_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: litellm
+                  key: SAIA_API_KEY
             - name: LITELLM_MASTER_KEY
               valueFrom:
                 secretKeyRef:

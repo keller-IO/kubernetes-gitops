@@ -1,7 +1,9 @@
 from collections.abc import Mapping
 
 
-MODEL = "hermes-blablador"
+# Jedes Modell hier ist fuer Chat freigeschaltet. Beide Anbieter sind mit genau
+# COMMON_CHAT_PARAMETERS geprueft (Blablador 13.10.2026, SAIA 11.11.2026).
+MODELS = frozenset({"hermes-blablador", "hermes-saia-qwen-coder"})
 
 COMMON_CHAT_PARAMETERS = frozenset(
     {
@@ -65,7 +67,8 @@ def validate_proxy_request(data: Mapping[str, object]) -> None:
         if header.lower().startswith("x-litellm-"):
             raise PolicyViolation(header)
 
-    if body.get("model") != MODEL:
+    model = body.get("model")
+    if not isinstance(model, str) or model not in MODELS:
         raise PolicyViolation("model")
     if not isinstance(body.get("messages"), list):
         raise PolicyViolation("messages")
