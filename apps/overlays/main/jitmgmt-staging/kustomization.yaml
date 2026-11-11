@@ -9,7 +9,7 @@ resources:
 
 images:
   - name: registry.jit-creatives.de/jit/jitmgmt
-    newTag: 1ce3ccb4
+    newTag: 1dffbab6
 
 configMapGenerator:
   - name: jitmgmt-config
