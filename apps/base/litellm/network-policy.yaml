@@ -31,6 +31,7 @@ spec:
           rules:
             dns:
               - matchName: api.blablador.fz-juelich.de
+              - matchName: chat-ai.academiccloud.de
     - toFQDNs:
         - matchName: api.blablador.fz-juelich.de
       toPorts:
@@ -39,3 +40,11 @@ spec:
               protocol: TCP
           serverNames:
             - api.blablador.fz-juelich.de
+    - toFQDNs:
+        - matchName: chat-ai.academiccloud.de
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+          serverNames:
+            - chat-ai.academiccloud.de

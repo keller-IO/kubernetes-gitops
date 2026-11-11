@@ -24,6 +24,8 @@ from litellm.proxy.proxy_server import app, initialize
 
 MODEL = "hermes-blablador"
 DEPLOYMENT_ID = "hermes-blablador"
+SAIA_MODEL = "hermes-saia-qwen-coder"
+SAIA_DEPLOYMENT_ID = "hermes-saia-qwen-coder"
 MASTER_KEY = "sk-" + ("a" * 64)
 INVALID_MASTER_KEY = "sk-" + ("b" * 64)
 WORK_DIR = Path(__file__).resolve().parent
@@ -231,6 +233,16 @@ model_list:
     model_info:
       id: {DEPLOYMENT_ID}
       mode: chat
+  - model_name: {SAIA_MODEL}
+    litellm_params:
+      model: openai/qwen3-coder-next
+      api_base: http://127.0.0.1:{cls.server.server_port}/v1
+      api_key: sk-test
+      headers:
+        x-stub-deployment-id: {SAIA_DEPLOYMENT_ID}
+    model_info:
+      id: {SAIA_DEPLOYMENT_ID}
+      mode: chat
 router_settings:
   num_retries: 0
   disable_cooldowns: true
@@ -432,6 +444,43 @@ litellm_settings:
 
         self.assertEqual(response.status_code, 200)
         self.assert_single_attempt()
+
+    def test_each_model_reaches_only_its_own_deployment_once(self):
+        for model, deployment_id in (
+            (MODEL, DEPLOYMENT_ID),
+            (SAIA_MODEL, SAIA_DEPLOYMENT_ID),
+        ):
+            for scenario in ("success", 400, 401, 429, 500):
+                with self.subTest(model=model, scenario=scenario):
+                    self.server.state.reset(scenario)
+                    response = self.client.post(
+                        "/v1/chat/completions",
+                        json=self.request_body(model=model),
+                    )
+                    expected = 200 if scenario == "success" else scenario
+                    self.assertEqual(response.status_code // 100, expected // 100)
+                    self.assertEqual(
+                        self.server.state.snapshot(), (1, (deployment_id,))
+                    )
+
+    def test_models_endpoint_lists_exactly_both_models(self):
+        response = self.client.get("/v1/models")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            sorted(model["id"] for model in response.json()["data"]),
+            [MODEL, SAIA_MODEL],
+        )
+
+    def test_unlisted_models_never_reach_an_upstream(self):
+        for model in ("qwen3-coder-next", "alias-code", "openai/qwen3-coder-next", "*"):
+            with self.subTest(model=model):
+                response = self.client.post(
+                    "/v1/chat/completions",
+                    json=self.request_body(model=model),
+                )
+                self.assertEqual(response.status_code // 100, 4)
+                self.assertEqual(self.server.state.snapshot()[0], 0)
 
     def test_400_401_429_and_5xx_each_call_blablador_once(self):
         for status in (400, 401, 429, 500):
