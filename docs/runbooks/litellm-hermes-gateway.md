@@ -55,6 +55,40 @@ by the gateway configuration. Contract evidence contains no credentials,
 prompts, responses, headers, request identifiers, tool argument values, or
 provider-generated content.
 
+## SAIA provider contract
+
+Verified on 2026-11-11 directly against `https://chat-ai.academiccloud.de/v1`
+with model `qwen3-coder-next` (public gateway name `hermes-saia-qwen-coder`).
+Decision: ADR 0009.
+
+- Authenticated `/v1/models` lists the exact ID `qwen3-coder-next`.
+- Streaming with `temperature`, `max_tokens` and
+  `stream_options: {include_usage: true}`: pass, multiple chunks, clean
+  termination, usage chunk present.
+- Automatic tool choice with two offered functions: pass, one call with
+  JSON-object arguments.
+- Forced tool choice: pass, exactly the requested function.
+- Observed request latency: 0.3-0.9 seconds.
+- Accepted fields are the same `COMMON_CHAT_PARAMETERS` as for Blablador.
+- SAIA enforces per-account request windows (10 seconds, hour, day) and reports
+  them in `x-ratelimit-*` response headers. An exhausted window returns HTTP
+  429, which the gateway passes through; Hermes then uses Codex for that turn.
+
+The exact-image proxy contract (`just litellm-contract`, 11 tests) proves for
+both models: one upstream attempt per request, the stable deployment ID of the
+requested model only, `/v1/models` listing exactly both names, and no upstream
+attempt for unlisted model names including the upstream names.
+
+The PostSync probe now prints `blablador-tls`, `saia-tls`, `unrelated-dns`,
+`public-tls`, `private-ip`, `metadata-ip`, `blablador-wrong-sni` and
+`saia-wrong-sni`, each with PASS.
+
+SAIA key rotation: replace the field with
+`sops set --value-stdin apps/base/litellm/secret.sops.yaml '["stringData"]["SAIA_API_KEY"]'`
+(JSON string on stdin, never as an argument), raise
+`litellm.jit.land/secret-revision` in `workload.yaml` and the matching check in
+`scripts/ci/check-litellm.sh`.
+
 ## Pinned LiteLLM proxy contract
 
 Base contract verified on 2026-10-14 against the immutable image reference

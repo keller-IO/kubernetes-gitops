@@ -66,20 +66,20 @@ class NetworkProbeTests(unittest.TestCase):
     def test_main_runs_allowed_and_all_blocked_cases_without_values(
         self, resolve, verified_tls, wrong_sni_handshake
     ):
-        resolved_provider_ip = "203.0.113.10"
+        provider_ips = {
+            network_probe.BLABLADOR_HOST: "203.0.113.10",
+            network_probe.SAIA_HOST: "203.0.113.20",
+        }
 
         def resolve_side_effect(host):
-            if host == network_probe.BLABLADOR_HOST:
-                return (resolved_provider_ip,)
+            if host in provider_ips:
+                return (provider_ips[host],)
             if host == "example.com":
                 raise socket.gaierror()
             self.fail(f"unexpected host requested: {host}")
 
         def tls_side_effect(connect_host, server_hostname, timeout_seconds=5.0):
-            if (connect_host, server_hostname) == (
-                network_probe.BLABLADOR_HOST,
-                network_probe.BLABLADOR_HOST,
-            ):
+            if connect_host in provider_ips and connect_host == server_hostname:
                 return None
             if connect_host in {"10.255.255.1", "169.254.169.254"}:
                 raise socket.timeout()
@@ -100,14 +100,17 @@ class NetworkProbeTests(unittest.TestCase):
             output.getvalue().splitlines(),
             [
                 "blablador-tls: PASS",
+                "saia-tls: PASS",
                 "unrelated-dns: PASS",
                 "public-tls: PASS",
                 "private-ip: PASS",
                 "metadata-ip: PASS",
-                "wrong-sni: PASS",
+                "blablador-wrong-sni: PASS",
+                "saia-wrong-sni: PASS",
             ],
         )
-        self.assertNotIn(resolved_provider_ip, output.getvalue())
+        for provider_ip in provider_ips.values():
+            self.assertNotIn(provider_ip, output.getvalue())
         self.assertEqual(
             verified_tls.call_args_list,
             [
@@ -115,12 +118,16 @@ class NetworkProbeTests(unittest.TestCase):
                     network_probe.BLABLADOR_HOST,
                     network_probe.BLABLADOR_HOST,
                 ),
+                call(network_probe.SAIA_HOST, network_probe.SAIA_HOST),
                 call("1.1.1.1", "one.one.one.one"),
                 call("10.255.255.1", "10.255.255.1"),
                 call("169.254.169.254", "169.254.169.254"),
             ],
         )
-        wrong_sni_handshake.assert_called_once_with(resolved_provider_ip, "example.com")
+        self.assertEqual(
+            wrong_sni_handshake.call_args_list,
+            [call(provider_ip, "example.com") for provider_ip in provider_ips.values()],
+        )
 
 
 if __name__ == "__main__":

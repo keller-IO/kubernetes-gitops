@@ -13,8 +13,6 @@ from unittest.mock import patch
 from request_policy_core import PolicyViolation, validate_proxy_request
 
 
-MODEL = "hermes-blablador"
-
 
 class FakeCustomLogger:
     enforces_request_content = False
@@ -75,6 +73,8 @@ def proxy_data(body, headers=None):
 
 
 class RequestPolicyTests(unittest.TestCase):
+    MODEL = "hermes-blablador"
+
     def assert_rejected_without_mutation(self, data, field):
         original = copy.deepcopy(data)
 
@@ -88,7 +88,7 @@ class RequestPolicyTests(unittest.TestCase):
         # Mutation caught: omitting a verified common parameter or rewriting accepted request data.
         data = proxy_data(
             {
-                "model": MODEL,
+                "model": self.MODEL,
                 "messages": [{"role": "user", "content": "synthetic"}],
                 "temperature": 0,
                 "max_tokens": 64,
@@ -106,7 +106,7 @@ class RequestPolicyTests(unittest.TestCase):
         # Mutation caught: rejecting Hermes' usage stream extension or allowing it to carry controls.
         data = proxy_data(
             {
-                "model": MODEL,
+                "model": self.MODEL,
                 "messages": [],
                 "stream": True,
                 "stream_options": {"include_usage": True},
@@ -129,7 +129,7 @@ class RequestPolicyTests(unittest.TestCase):
             with self.subTest(value=value):
                 invalid = proxy_data(
                     {
-                        "model": MODEL,
+                        "model": self.MODEL,
                         "messages": [],
                         "stream": True,
                         "stream_options": value,
@@ -139,7 +139,7 @@ class RequestPolicyTests(unittest.TestCase):
 
         non_streaming = proxy_data(
             {
-                "model": MODEL,
+                "model": self.MODEL,
                 "messages": [],
                 "stream": False,
                 "stream_options": {"include_usage": True},
@@ -151,8 +151,13 @@ class RequestPolicyTests(unittest.TestCase):
         # Mutation caught: accepting a different route target or a body without list-valued messages.
         cases = (
             ("other model", {"model": "other-model", "messages": []}, "model"),
-            ("missing messages", {"model": MODEL}, "messages"),
-            ("malformed messages", {"model": MODEL, "messages": {}}, "messages"),
+            ("upstream Blablador name", {"model": "alias-code", "messages": []}, "model"),
+            ("upstream SAIA name", {"model": "qwen3-coder-next", "messages": []}, "model"),
+            ("other SAIA model", {"model": "glm-5.3", "messages": []}, "model"),
+            ("missing model", {"messages": []}, "model"),
+            ("unhashable model", {"model": ["hermes-blablador"], "messages": []}, "model"),
+            ("missing messages", {"model": self.MODEL}, "messages"),
+            ("malformed messages", {"model": self.MODEL, "messages": {}}, "messages"),
         )
 
         for name, body, field in cases:
@@ -163,7 +168,7 @@ class RequestPolicyTests(unittest.TestCase):
         # Mutation caught: forwarding a provider parameter outside the empirically verified allowlist.
         data = proxy_data(
             {
-                "model": MODEL,
+                "model": self.MODEL,
                 "messages": [],
                 "frequency_penalty": "provider-value-must-not-leak",
             }
@@ -178,7 +183,7 @@ class RequestPolicyTests(unittest.TestCase):
         # Regression contract: Hermes must suppress this unverified field instead of proxying it.
         data = proxy_data(
             {
-                "model": MODEL,
+                "model": self.MODEL,
                 "messages": [],
                 "reasoning_effort": "provider-value-must-not-leak",
             }
@@ -210,7 +215,7 @@ class RequestPolicyTests(unittest.TestCase):
             with self.subTest(control=control):
                 data = proxy_data(
                     {
-                        "model": MODEL,
+                        "model": self.MODEL,
                         "messages": [],
                         control: "control-value-must-not-leak",
                     }
@@ -225,7 +230,7 @@ class RequestPolicyTests(unittest.TestCase):
         for header in ("x-litellm-num-retries", "X-LiteLLM-Num-Retries", "x-LiTeLlM-drop-params"):
             with self.subTest(header=header):
                 data = proxy_data(
-                    {"model": MODEL, "messages": []},
+                    {"model": self.MODEL, "messages": []},
                     headers={header: "header-value-must-not-leak"},
                 )
                 self.assert_rejected_without_mutation(data, header)
@@ -260,7 +265,7 @@ class RequestPolicyTests(unittest.TestCase):
         # Mutation caught: forwarding rejection of v1.104.0's metadata injection or mutation of its snapshot.
         data = proxy_data(
             {
-                "model": MODEL,
+                "model": self.MODEL,
                 "messages": [],
                 "metadata": {
                     "litellm_api_version": "1.104.0",
@@ -277,7 +282,7 @@ class RequestPolicyTests(unittest.TestCase):
     def test_adapter_matches_four_argument_hook_and_returns_original_data(self):
         # Mutation caught: changing LiteLLM's hook interface, marker, or returning a copied request.
         adapter = load_adapter()
-        data = proxy_data({"model": MODEL, "messages": []})
+        data = proxy_data({"model": self.MODEL, "messages": []})
 
         parameters = tuple(inspect.signature(adapter.HermesRequestPolicy.async_pre_call_hook).parameters)
         result = asyncio.run(
@@ -318,6 +323,11 @@ class RequestPolicyTests(unittest.TestCase):
         self.assertEqual(raised.exception.status_code, 400)
         self.assertIn("model", raised.exception.detail)
         self.assertNotIn("provider-value-must-not-leak", raised.exception.detail)
+
+
+class SaiaRequestPolicyTests(RequestPolicyTests):
+    # Dieselben Faelle fuer das zweite freigeschaltete Modell.
+    MODEL = "hermes-saia-qwen-coder"
 
 
 if __name__ == "__main__":
