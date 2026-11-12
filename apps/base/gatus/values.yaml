@@ -203,3 +203,37 @@ config:
         - "[BODY].installed == true"
         - "[BODY].maintenance == false"
         - "[BODY].needsDbUpgrade == false"
+    # jitmgmt (www.jit-creatives.de): Erreichbarkeit und Zugriffsschutz.
+    # Die drei Verwaltungsseiten duerfen ohne Anmeldung nur zum Login umleiten.
+    # Liefert eine davon 200, ist der Schutz weg - egal ob durch die Anwendung
+    # oder eine Ingress-Aenderung. ignore-redirect, sonst folgt Gatus der
+    # Umleitung und sieht die Loginseite mit 200.
+    # Diese Gatus-Instanz alarmiert nicht - sie zeigt nur an.
+    - name: jitmgmt Website
+      group: jitmgmt
+      url: https://www.jit-creatives.de/healthz
+      interval: 60s
+      conditions:
+        - "[STATUS] == 200"
+        - "[CERTIFICATE_EXPIRATION] > 168h"
+    - name: jitmgmt Rechnungsformular nur mit Login
+      group: jitmgmt
+      url: https://www.jit-creatives.de/generate/1/
+      interval: 5m
+      client:
+        ignore-redirect: true
+      conditions: ["[STATUS] == 302"]
+    - name: jitmgmt Rechnungs-PDF nur mit Login
+      group: jitmgmt
+      url: https://www.jit-creatives.de/pdf/1/
+      interval: 5m
+      client:
+        ignore-redirect: true
+      conditions: ["[STATUS] == 302"]
+    - name: jitmgmt Kundenverwaltung nur mit Login
+      group: jitmgmt
+      url: https://www.jit-creatives.de/customers/add-domain/
+      interval: 5m
+      client:
+        ignore-redirect: true
+      conditions: ["[STATUS] == 302"]
