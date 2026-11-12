@@ -13,6 +13,7 @@ Pro Vorgang eine Markdown-Datei.
 - [inbetriebnahme.md](inbetriebnahme.md) — Go-Live-Checkliste (Blaupause → Produktion),
   über beide Repos, mit Shell-Commands und Datei-Hinweisen.
 - [mailman-migration.md](mailman-migration.md) — Migration der Mailman-3-Suite von `192.168.2.15` nach Kubernetes.
+- [rspamd-ollama-integration.md](rspamd-ollama-integration.md) — Deaktivierter lokaler Ollama-Rollout auf beiden externen Rspamd-Scannern mit Benchmark-, Shadow-, SMTP- und Rollback-Gates.
 - [cloud-dev-proxy-cutover.md](cloud-dev-proxy-cutover.md) — `cloud-dev.savar.de` vom direkten Traefik-Backend auf nginx-inc im Cluster umstellen.
 - [paperless-v3-upgrade.md](paperless-v3-upgrade.md) — Zweistufiges Upgrade von Paperless-ngx 2.20.15 auf 3.x mit Preflight und Rollback-Gates.
 - [mariadb-lts-upgrade.md](mariadb-lts-upgrade.md) — Stufenweises MariaDB-Server-Upgrade 11.4 → 11.8 → 12.3 mit Pre-Upgrade-Dumps und Rollback.

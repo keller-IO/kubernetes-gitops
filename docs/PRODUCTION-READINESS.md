@@ -499,6 +499,13 @@ wird von der regulaeren roundcube-Instanz bedient, die ohnehin auf mail05 zeigt.
 - [ ] Mailman: `MAILMAN_ADMIN_EMAIL`, `SMTP_HOST_USER`, `HYPERKITTY_API_KEY`, `SECRET_KEY` und
       REST-Passwort in `apps/base/mailman/secret.sops.yaml` setzen + verschlüsseln.
 - [ ] SPF/DKIM/DMARC beim externen Mailprovider (außerhalb des Clusters).
+- [x] Rspamd-Ollama offline implementiert und geprueft: gepinnte
+      `rspamd_ollama`-Runtime, natives Rspamd-GPT-Modul, deaktivierter Cache,
+      neutrale Scores, `max_score = 3`, bedingter 8s/25s-Task-Timeout sowie
+      explizit deaktivierte Produktions-Playbooks; 20 Contract-Tests und der
+      Zwei-Rollen-Syntaxcheck sind gruen. Kein Live-Rollout. Siehe
+      [ADR 0010](decisions/0010-rspamd-ollama-integration.md) und
+      [Runbook](runbooks/rspamd-ollama-integration.md).
 - [ ] Rspamd-Ollama (`spam01`/`spam02`, Ansible, standardmaessig deaktiviert;
       [Design](superpowers/specs/2026-11-05-rspamd-ollama-design.md)):
       `spam02` per SSH erreichbar machen und Ressourcen/Rspamd-Version auf
