@@ -3,7 +3,7 @@
 Dieses Runbook gilt fuer `spam01.jit.land` und `spam02.jit.land`. Beide Hosts
 liegen ausserhalb des Kubernetes-Clusters und werden im Repository
 `jit/ansible` verwaltet. Die Architekturentscheidung steht in
-[ADR 0009](../decisions/0009-rspamd-ollama-integration.md).
+[ADR 0010](../decisions/0010-rspamd-ollama-integration.md).
 
 ## Aktueller Zustand
 

@@ -504,7 +504,7 @@ wird von der regulaeren roundcube-Instanz bedient, die ohnehin auf mail05 zeigt.
       neutrale Scores, `max_score = 3`, bedingter 8s/25s-Task-Timeout sowie
       explizit deaktivierte Produktions-Playbooks; 20 Contract-Tests und der
       Zwei-Rollen-Syntaxcheck sind gruen. Kein Live-Rollout. Siehe
-      [ADR 0009](decisions/0009-rspamd-ollama-integration.md) und
+      [ADR 0010](decisions/0010-rspamd-ollama-integration.md) und
       [Runbook](runbooks/rspamd-ollama-integration.md).
 - [ ] Rspamd-Ollama (`spam01`/`spam02`, Ansible, standardmaessig deaktiviert;
       [Design](superpowers/specs/2026-11-05-rspamd-ollama-design.md)):

@@ -180,7 +180,7 @@ git commit -m "feat(rspamd): wire Ollama shadow rollout"
 ### Task 5: Record the External-Mail Operational Contract
 
 **Files:**
-- Create: `docs/decisions/0009-rspamd-ollama-integration.md`
+- Create: `docs/decisions/0010-rspamd-ollama-integration.md`
 - Create: `docs/runbooks/rspamd-ollama-integration.md`
 - Modify: `docs/runbooks/README.md`
 - Modify: `docs/PRODUCTION-READINESS.md`
@@ -209,7 +209,7 @@ Expected: PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add docs/decisions/0009-rspamd-ollama-integration.md docs/runbooks/rspamd-ollama-integration.md docs/runbooks/README.md docs/PRODUCTION-READINESS.md
+git add docs/decisions/0010-rspamd-ollama-integration.md docs/runbooks/rspamd-ollama-integration.md docs/runbooks/README.md docs/PRODUCTION-READINESS.md
 git commit -m "docs(rspamd): define local Ollama rollout"
 ```
 

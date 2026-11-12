@@ -1,4 +1,4 @@
-# ADR 0009 - Lokale Ollama-Klassifikation fuer Rspamd
+# ADR 0010 - Lokale Ollama-Klassifikation fuer Rspamd
 
 - **Status:** Angenommen; offline umgesetzt, produktiver Rollout gesperrt
 - **Datum:** 2026-11-05
