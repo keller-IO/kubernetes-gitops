@@ -31,11 +31,3 @@ patches:
                 env:
                   - name: PAPERLESS_URL
                     value: https://paperless.savar.de
-  # WARTUNG 3.x-Upgrade: Offsite-Export pausiert, solange Paperless gestoppt ist
-  # (der Job braucht den App-Pod per podAffinity und das zur DB passende Image).
-  # Nach der 3.x-Abnahme entfernen (Runbook, Beobachtung und Abnahme, Schritt 8).
-  - target: { kind: CronJob, name: paperless-offsite-backup }
-    patch: |
-      - op: add
-        path: /spec/suspend
-        value: true

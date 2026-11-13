@@ -36,8 +36,8 @@ ueberspringen.
 | 1: 2.20.15 | Abgeschlossen | Export und PVC-Snapshots vom 02.08. behalten; das damalige CNPG-Backup ist abgelaufen |
 | Stabilisierung | Abgeschlossen 13.11.: Skript bestanden; Upgrade auf Entscheidung von Ingo vorgezogen, der Pod mit 500m CPU / 4Gi lief erst 5 von 7 Tagen (siehe Nachtrag 13.11.) | Vor Phase 2 und vor dem Merge von Phase 3 das Skript erneut laufen lassen |
 | 2: 3.x-Recovery-Punkt | Abgeschlossen 13.11.: erzeugt bei gestopptem Paperless (#485), Snapshot- und Postgres-Restore getestet | Artefakte bis nach der Abnahme behalten (Abschnitt Phase-2-Artefakte) |
-| 3: 3.x-Change | #486: Image 3.4.2, hebt `replicas: 0` auf | Ersten Start beobachten, dann Abnahme |
-| Abnahme | Offen | Migration, Tantivy-Aufbau, OIDC, OCR, Suche, Mail und SMB-Consume pruefen |
+| 3: 3.x-Change | Abgeschlossen 13.11.: #486 gemergt, 3.4.2 laeuft seit 12:50 UTC | – |
+| Abnahme | Teilweise 13.11. (siehe Ergebnis erster 3.x-Start) | Offen: Duplikat-Test, Hermes-MCP, erster Offsite-Export unter 3.4.2, Startup-Probe enger setzen, #415 schliessen |
 
 ## Gepruefter Ist-Stand
 
@@ -434,6 +434,20 @@ Beim ersten 3.x-Sync:
    Job aus dem CronJob starten (Phase 0, Schritt 3), auf Erfolg pruefen und den
    gruenen Gatus-Heartbeat `paperless/offsite-backup` abwarten.
    `export/pre-3x-<Datum>/` bleibt als Rueckweg zu 2.20.15 erhalten.
+
+### Ergebnis erster 3.x-Start, 13.11.2026
+
+| Pruefung | Ergebnis |
+|---|---|
+| Start | Pod 12:49:52 UTC, bereit 12:51 UTC; alle Migrationen `OK`, `System check identified no issues`; 0 Restarts |
+| Speicher | `memory.peak` 1620 MiB von 4096 MiB, keine `max`-/`oom`-Ereignisse |
+| Bestand | 727 Dokumente (1 im Papierkorb), 7 Benutzer, 22 Tags, 2 Workflows wie vor dem Upgrade; MD5-Digest ueber Inhalte und Titel unveraendert |
+| Checksummen | Migration `documents.0026` stellt `checksum`/`archive_checksum` von MD5 auf SHA-256 um. `scripts/ops/paperless-restore-test.sh` und die MD5-Vergleiche in diesem Runbook gelten nur fuer 2.x-Exporte |
+| Suchindex | Tantivy neu aufgebaut, 726 Dokumente (ohne Papierkorb) |
+| Consumer | `Watching /usr/src/paperless/consume using polling (interval: 10.0s)` |
+| Task-Historie | geleert (erwartet) |
+| HTTP | Login-Seite 200, Keycloak-Schaltflaeche vorhanden |
+| Durch Ingo | Keycloak-Login, Scannen und Suche funktionieren |
 
 ## Rollback
 
