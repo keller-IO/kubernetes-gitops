@@ -35,8 +35,8 @@ ueberspringen.
 | 0: Offsite-Backup der Dokumente | Abgeschlossen 01.11.: laeuft taeglich seit 28.10., Restore-Test bestanden | Gatus `paperless/offsite-backup` beobachten |
 | 1: 2.20.15 | Abgeschlossen | Export und PVC-Snapshots vom 02.08. behalten; das damalige CNPG-Backup ist abgelaufen |
 | Stabilisierung | Abgeschlossen 13.11.: Skript bestanden; Upgrade auf Entscheidung von Ingo vorgezogen, der Pod mit 500m CPU / 4Gi lief erst 5 von 7 Tagen (siehe Nachtrag 13.11.) | Vor Phase 2 und vor dem Merge von Phase 3 das Skript erneut laufen lassen |
-| 2: 3.x-Recovery-Punkt | Erzeugt 13.11. bei gestopptem Paperless (#485); Snapshot-Restore getestet, **Postgres-Restore-Test (Schritt 8) offen** | Postgres aus Barman-ID `20261113T122116` mit `targetName` `pre_3x_20261113` auf u22 restaurieren und Zahlen pruefen |
-| 3: 3.x-Change | PR offen (Draft), Paperless steht bis zum Merge auf null Replicas | Nach Schritt 8 mergen; der PR hebt `replicas: 0` auf |
+| 2: 3.x-Recovery-Punkt | Abgeschlossen 13.11.: erzeugt bei gestopptem Paperless (#485), Snapshot- und Postgres-Restore getestet | Artefakte bis nach der Abnahme behalten (Abschnitt Phase-2-Artefakte) |
+| 3: 3.x-Change | #486: Image 3.4.2, hebt `replicas: 0` auf | Ersten Start beobachten, dann Abnahme |
 | Abnahme | Offen | Migration, Tantivy-Aufbau, OIDC, OCR, Suche, Mail und SMB-Consume pruefen |
 
 ## Gepruefter Ist-Stand
@@ -364,7 +364,7 @@ geloest, keine Verbindung der Rolle `paperless`).
 | Data-Snapshot | `paperless-data-pre-3x-20261113`; Content `snapcontent-37b216b0-333c-47cc-afec-f216f222e652`; 12:21:52 UTC |
 | Media-Snapshot | `paperless-media-pre-3x-20261113`; Content `snapcontent-c9d7aae2-8cde-4787-8255-3f925f13af5b`; 12:21:52 UTC |
 | Snapshot-Restore-Test | Bestanden: Wegwerf-PVCs aus beiden Snapshots gemountet; 727 Originale, 741 Archiv-PDFs, 727 Thumbnails; MD5 aller 1454 in der DB gefuehrten Dateien gleich `checksum`/`archive_checksum`; 14 Archiv-PDFs ohne DB-Eintrag (Altbestand); Schreib-/Loeschprobe nur auf dem Restore-PVC; danach geloescht |
-| Postgres-Restore-Test | **Offen** (Schritt 8) |
+| Postgres-Restore-Test | Bestanden: CT 8032 auf u22 (Docker, CNPG-Image 17.11 per Digest), temporaerer Garage-Key nur mit Leserecht (Schreibversuch 403). `barman-cloud-restore` der Barman-ID `20261113T122116`, `recovery_target_name = 'pre_3x_20261113'`: Log `recovery stopping at restore point "pre_3x_20261113"`, Promotion auf Timeline 5. Dokument-, Benutzer-, Tag-, Workflow- und Migrationszahlen sowie MD5-Digests ueber Checksummen, Inhalte und Benutzer gleich der Produktion. CT und Key danach geloescht |
 
 Die beiden Snapshots stehen deklarativ in
 `apps/overlays/main/paperless-ngx/pre-3x-recovery-points.yaml`.
