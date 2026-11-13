@@ -1,17 +1,21 @@
 # Paperless-ngx: Upgrade von 2.20.15 auf 3.x
 
-Stand: 27.10.2026. Dieses Runbook trennt den verpflichtenden 2.x-Zwischenstand
+Stand: 13.11.2026. Dieses Runbook trennt den verpflichtenden 2.x-Zwischenstand
 bewusst vom Major-Upgrade. ArgoCD darf beide Schritte nicht in einem Sync
 ueberspringen.
 
 ## Zielversionen
 
 - Letztes stabiles 2.x-Release: `2.20.15` vom 27.04.2026.
-- Aktuelles stabiles 3.x-Release: `3.3.4` vom 22.10.2026. Der direkte Sprung von
-  der nachweislich gelaufenen 2.20.15 auf die aktuelle 3.x ist unterstuetzt;
-  Zwischenversionen muessen nicht einzeln ausgerollt werden. 3.3.0 bis 3.3.4
-  nennen keine Breaking Changes; vor dem PR `docs/migration-v3.md` im Ziel-Tag
-  trotzdem erneut lesen.
+- Aktuelles stabiles 3.x-Release und Ziel: `3.4.2` vom 03.11.2026 (geprueft
+  13.11.2026). Der direkte Sprung von der nachweislich gelaufenen 2.20.15 auf
+  die aktuelle 3.x ist unterstuetzt; Zwischenversionen muessen nicht einzeln
+  ausgerollt werden. 3.3.0 bis 3.4.2 nennen keine Breaking Changes, und
+  `docs/migration-v3.md` ist in `v3.4.2` zeichengleich mit `v3.3.4`. Seit
+  3.3.4 gibt es kein neues Security Advisory.
+- 3.4.0 erzeugt PDF-Vorschaubilder mit poppler-utils und entfernt ImageMagick
+  aus dem Image; 3.4.1/3.4.2 sind reine Fehlerkorrekturen. Bei der Abnahme
+  deshalb die Vorschaubilder neu konsumierter Dokumente pruefen.
 - Versionen vor `3.3.2` nicht einsetzen: 3.3.2 schliesst GHSA-c8f3-pqr2-rr24
   (Informationsabfluss bei KI-Klassifizierung besitzerloser Dokumente).
 - `3.0.1` nicht einsetzen: dessen Datenbankmigration verhindert den Start;
@@ -30,9 +34,9 @@ ueberspringen.
 |---|---|---|
 | 0: Offsite-Backup der Dokumente | Abgeschlossen 01.11.: laeuft taeglich seit 28.10., Restore-Test bestanden | Gatus `paperless/offsite-backup` beobachten |
 | 1: 2.20.15 | Abgeschlossen | Export und PVC-Snapshots vom 02.08. behalten; das damalige CNPG-Backup ist abgelaufen |
-| Stabilisierung | Laeuft neu ab Rollout mit 500m CPU / 4Gi (Celery-Timeout 02.11., Gate 06.11. nicht bestanden) | `scripts/ops/paperless-stabilitaet.sh` muss fuer sieben Tage bestehen |
-| 2: 3.x-Recovery-Punkt | Teilweise vorbereitet | CNPG-Retention ist auf 90 Tage gesetzt; erst nach Phase 0 und Gate einen neuen quieszierten Export, CNPG-Backup und Snapshots erzeugen |
-| 3: 3.x-Change | Offen | Separater PR auf die dann aktuelle gepruefte 3.x-Patchversion, derzeit 3.3.4 |
+| Stabilisierung | Abgeschlossen 13.11.: Skript bestanden; Upgrade auf Entscheidung von Ingo vorgezogen, der Pod mit 500m CPU / 4Gi lief erst 5 von 7 Tagen (siehe Nachtrag 13.11.) | Vor Phase 2 und vor dem Merge von Phase 3 das Skript erneut laufen lassen |
+| 2: 3.x-Recovery-Punkt | Naechster Schritt | CNPG-Retention ist auf 90 Tage gesetzt; neuen quieszierten Export, CNPG-Backup und Snapshots erzeugen und den Restore testen |
+| 3: 3.x-Change | Offen | Separater PR auf `3.4.2`, inklusive `PAPERLESS_CONSUMER_DELETE_DUPLICATES` (ersetzt #415) |
 | Abnahme | Offen | Migration, Tantivy-Aufbau, OIDC, OCR, Suche, Mail und SMB-Consume pruefen |
 
 ## Gepruefter Ist-Stand
@@ -271,6 +275,19 @@ Nachtrag 06.11.2026, Gate nicht bestanden:
   erzeugt einen neuen Pod; die sieben Tage zaehlen ab dessen Start. Termin fuer
   das Gate: Rollout-Zeitpunkt plus sieben Tage.
 
+Nachtrag 13.11.2026, Upgrade vorgezogen:
+
+- `paperless-stabilitaet.sh 7` um 07:20 UTC: **Gate BESTANDEN**. Kein Restart,
+  kein OOMKill, kube-state-metrics-Abdeckung 100 %, letzter Celery-Timeout am
+  02.11. (ausserhalb des Fensters ab 06.11.). Working-Set-Spitze 1437 MiB,
+  `memory.peak` 1600 MiB von 4096 MiB, keine `max`-/`oom`-Ereignisse.
+- Das Skript prueft das Kalenderfenster, nicht die Laufzeit des Pods. Der Pod
+  mit 500m CPU / 4Gi laeuft seit 08.11. 07:52 UTC, also fuenf statt der am
+  06.11. festgelegten sieben Tage; die Frist waere am 15.11. 07:52 UTC
+  abgelaufen. Ingo hat am 13.11. entschieden, das Upgrade auf heute
+  vorzuziehen. Die verkuerzte Beobachtung ist damit bewusst akzeptiert; der
+  getestete Recovery-Punkt aus Phase 2 bleibt Pflicht.
+
 Weiterhin gilt: Ein laengerer Start-Timeout allein kaschiert Ressourcen- oder
 I/O-Stalls und ist kein Stabilitaetsnachweis. Requests/Limits aus Messungen
 ableiten, nicht schaetzen.
@@ -336,8 +353,8 @@ ist kein gueltiger Rollback.
 
 In einem neuen PR nach bestandenem Stabilitaets- und Backup-Gate:
 
-1. `image.tag` auf die dann aktuelle, gepruefte 3.x-Patchversion setzen. Stand
-   27.10.2026 ist das `3.3.4`; vor dem PR Releases erneut pruefen. Das Image des
+1. `image.tag` auf `3.4.2` setzen (Stand 13.11.2026 das aktuelle Release;
+   unmittelbar vor dem PR die Releases noch einmal pruefen). Das Image des
    Watchdogs (`watchdog.yaml`) und des Exporters (`offsite-backup.yaml`) im selben
    PR mitziehen; der Exporter muss zur Datenbank-Version passen.
 2. Wegen der SMB-Inbox `PAPERLESS_CONSUMER_POLLING` zwingend in
@@ -347,16 +364,21 @@ In einem neuen PR nach bestandenem Stabilitaets- und Backup-Gate:
 4. `PAPERLESS_ARCHIVE_FILE_GENERATION=always` setzen, um das bisherige Verhalten
    von `skip` beizubehalten: OCR bei vorhandenem Text ueberspringen, aber immer
    eine Archivdatei erzeugen.
-5. Entscheiden, ob das bisherige Ablehnen von Duplikaten erhalten bleiben soll.
-   Falls ja, `PAPERLESS_CONSUMER_DELETE_DUPLICATES="true"` setzen; 3.x erlaubt
-   Duplikate standardmaessig.
+5. `PAPERLESS_CONSUMER_DELETE_DUPLICATES="true"` setzen. 3.x erlaubt Duplikate
+   standardmaessig; mit dem Wert bleibt das bisherige Ablehnen erhalten, und
+   die abgelehnte Datei wird aus dem Scanner-Share geloescht, statt dort den
+   Watchdog `paperless_consume-queue` auszuloesen. Der Wert und der Absatz fuer
+   `docs/PRODUCTION-READINESS.md` kommen aus dem Draft-PR #415; #415 danach
+   ohne Merge schliessen, damit kein zusaetzlicher Pod-Wechsel entsteht.
 6. Das Startup-Probe-Budget von derzeit 150 Sekunden fuer den ersten Rollout auf
    mindestens zehn Minuten erhoehen. Beim ersten 3.x-Start wird der inkompatible
    Whoosh-Index automatisch als Tantivy-Index neu aufgebaut. Nach der Abnahme
    anhand der gemessenen Startzeit wieder enger setzen.
 7. Den unter dem Stabilitaets-Gate ermittelten Ressourcen-/Worker-Wert
-   beibehalten; insbesondere das 3-Gi-Limit nicht ungeprueft fuer Migration und
-   Index-Neuaufbau voraussetzen.
+   beibehalten: CPU-Request 500m, Memory-Request 1Gi, Limit 4Gi. Unter 2.20.15
+   lag die Spitze seit 08.11. bei 1600 MiB; fuer Migration und
+   Index-Neuaufbau ist der Bedarf nicht gemessen, deshalb `memory.peak` und
+   `memory.events` waehrend des ersten Starts beobachten.
 8. Manifest rendern und kontrollieren: genau eine App-Replica, `Recreate`, kein
    HPA, unveraenderte Storage-Mounts und alle Env-Werte am richtigen Namen.
 9. `nix develop -c just validate` ausfuehren und den Change separat mergen.
@@ -373,7 +395,11 @@ Beim ersten 3.x-Sync:
 4. Bei Login-HTTP-403 die reale `X-Forwarded-For`-Kette pruefen und erst danach
    `PAPERLESS_TRUSTED_PROXIES`, `PAPERLESS_ALLAUTH_TRUSTED_PROXY_COUNT` oder
    `PAPERLESS_ALLAUTH_TRUSTED_CLIENT_IP_HEADER` konfigurieren.
-5. Dokumentanzeige, Download, Suche, OCR, Consume und Mail-Regeln testen.
+5. Dokumentanzeige, Download, Suche, OCR, Consume und Mail-Regeln testen. Ein
+   PDF neu konsumieren und sein Vorschaubild pruefen (seit 3.4.0 poppler statt
+   ImageMagick). Ein bereits archiviertes Dokument erneut in den Scanner-Share
+   legen: Es darf kein zweites Dokument entstehen, und die Datei muss aus dem
+   Share verschwinden.
 6. OCR-Konfiguration in der Admin-Oberflaeche pruefen. DB-gespeicherte Werte
    werden migriert, Env-Werte haben jedoch Vorrang.
 7. Erwartete Datenwirkung bestaetigen: Die bestehende Task-Historie wird bei der
@@ -434,13 +460,14 @@ logische Rekonstruktion nicht als Restore des damaligen Gesamtstands behandeln.
 ## Quellen
 
 - [Paperless-ngx 2.20.15](https://github.com/paperless-ngx/paperless-ngx/releases/tag/v2.20.15)
-- [Offizieller v3-Migrationsleitfaden (3.3.4)](https://github.com/paperless-ngx/paperless-ngx/blob/v3.3.4/docs/migration-v3.md)
-- [Paperless-ngx 3.3.4](https://github.com/paperless-ngx/paperless-ngx/releases/tag/v3.3.4)
+- [Offizieller v3-Migrationsleitfaden (3.4.2)](https://github.com/paperless-ngx/paperless-ngx/blob/v3.4.2/docs/migration-v3.md)
+- [Paperless-ngx 3.4.2](https://github.com/paperless-ngx/paperless-ngx/releases/tag/v3.4.2)
+- [Paperless-ngx 3.4.0](https://github.com/paperless-ngx/paperless-ngx/releases/tag/v3.4.0)
 - [Paperless-ngx 3.2.1](https://github.com/paperless-ngx/paperless-ngx/releases/tag/v3.2.1)
 - [Security Advisory GHSA-c8f3-pqr2-rr24 (behoben in 3.3.2)](https://github.com/paperless-ngx/paperless-ngx/security/advisories/GHSA-c8f3-pqr2-rr24)
 - [Warnung zu 3.0.1](https://github.com/paperless-ngx/paperless-ngx/releases/tag/v3.0.1)
 - [Security Advisory GHSA-2jhj-xqrq-rmrq](https://github.com/paperless-ngx/paperless-ngx/security/advisories/GHSA-2jhj-xqrq-rmrq)
-- [Paperless Backup und Export (3.3.4)](https://github.com/paperless-ngx/paperless-ngx/blob/v3.3.4/docs/administration.md#backup)
+- [Paperless Backup und Export (3.4.2)](https://github.com/paperless-ngx/paperless-ngx/blob/v3.4.2/docs/administration.md#backup)
 - [Celery 5.5: `worker_proc_alive_timeout`](https://docs.celeryq.dev/en/v5.5.3/userguide/configuration.html#worker-proc-alive-timeout)
 - [Helm-Chart 0.24.1](https://github.com/gabe565/charts/blob/main/charts/paperless-ngx/Chart.yaml)
 - [CNPG 1.25: Recovery Targets](https://cloudnative-pg.io/docs/1.25/recovery#recovery-targets)
