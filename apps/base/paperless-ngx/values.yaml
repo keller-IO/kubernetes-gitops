@@ -1,6 +1,8 @@
 image:
-  # Letztes 2.x-Release und zwingender Migrationsstand vor Paperless 3.x.
-  tag: 2.20.15 # renovate: image=ghcr.io/paperless-ngx/paperless-ngx
+  # 3.x seit 13.11.2026 (Runbook docs/runbooks/paperless-v3-upgrade.md). Ein
+  # Downgrade auf 2.x per Tag ist nach der Migration kein gueltiger Rollback.
+  # watchdog.yaml und offsite-backup.yaml nutzen dasselbe Image: mitziehen.
+  tag: 3.4.2 # renovate: image=ghcr.io/paperless-ngx/paperless-ngx
 env:
   PAPERLESS_URL: https://paperless.jit.services
   PAPERLESS_DBENGINE: postgresql
@@ -10,11 +12,22 @@ env:
   PAPERLESS_REDIS: redis://paperless-valkey:6379
   PAPERLESS_TIME_ZONE: Europe/Berlin
   # CIFS does not reliably propagate inotify events; poll the scanner inbox.
-  PAPERLESS_CONSUMER_POLLING: "10"
+  # 3.x: PAPERLESS_CONSUMER_POLLING heisst jetzt ..._POLLING_INTERVAL; der alte
+  # Name wird nicht mehr ausgewertet (dann inotify, auf CIFS unzuverlaessig).
+  PAPERLESS_CONSUMER_POLLING_INTERVAL: "10"
+  # 3.x laesst Duplikate standardmaessig zu. Mit true lehnt Paperless Dateien
+  # mit bekannter Pruefsumme wie bisher ab und loescht sie aus dem
+  # Scanner-Share; dort loeste jede liegengebliebene Datei nach 30 min den
+  # Watchdog-Alarm paperless_consume-queue aus (29.10.2026: 5 Dateien, alle
+  # schon im Bestand).
+  PAPERLESS_CONSUMER_DELETE_DUPLICATES: "true"
   # OCR-Einstellungen wie im Alt-System auf 192.168.2.15
   PAPERLESS_OCR_LANGUAGE: deu+eng
   PAPERLESS_OCR_LANGUAGES: deu # Paket-Liste (Leerzeichen-Format), eng ist im Image enthalten
-  PAPERLESS_OCR_MODE: skip
+  # 3.x trennt OCR und Archivdatei: auto + always entspricht dem frueheren
+  # skip (OCR ueberspringen, wenn Text vorhanden ist, aber immer archivieren).
+  PAPERLESS_OCR_MODE: auto
+  PAPERLESS_ARCHIVE_FILE_GENERATION: always
   PAPERLESS_OCR_CLEAN: clean
   PAPERLESS_OCR_ROTATE_PAGES: "true"
   # Pillow warnt ab 30 MP pro Seite und bricht erst beim DOPPELTEN Wert ab
@@ -86,6 +99,15 @@ persistence:
     type: emptyDir
     mountPath: /tmp/paperless
     sizeLimit: 10Gi
+# Erster 3.x-Start: Datenbankmigration und Neuaufbau des Suchindex (Whoosh ->
+# Tantivy) laufen, bevor Port 8000 oeffnet. 180 x 5 s = 15 min statt der
+# Chart-Vorgabe 30 x 5 s. Nach der Abnahme anhand der gemessenen Startzeit
+# wieder enger setzen.
+probes:
+  startup:
+    spec:
+      failureThreshold: 180
+      periodSeconds: 5
 resources:
   # Gemessen am 28.07.2026: 574Mi, knapp oberhalb des alten 512Mi-Requests.
   # CPU 500m statt 200m: Celery-Timeout ("Timed out waiting for UP message") am

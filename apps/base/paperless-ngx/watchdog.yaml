@@ -103,7 +103,7 @@ spec:
             - name: watchdog
               # Dasselbe Image wie die App: bringt python3 und psycopg schon mit,
               # liegt auf den Nodes bereits im Cache.
-              image: ghcr.io/paperless-ngx/paperless-ngx:2.20.15
+              image: ghcr.io/paperless-ngx/paperless-ngx:3.4.2
               # /init (s6) NICHT durchlaufen — wir wollen nur das Skript.
               command: [python3, /opt/watchdog/watchdog.py]
               env:

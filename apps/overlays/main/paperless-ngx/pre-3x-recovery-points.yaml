@@ -1,0 +1,27 @@
+# Recovery-Punkt vor dem Upgrade auf Paperless 3.x (13.11.2026), erzeugt bei
+# gestopptem Paperless (replicas: 0). Zugehoerig: CNPG-Backup
+# paperless-pg-pre-3x-20261113 und PostgreSQL-Restore-Punkt pre_3x_20261113
+# (docs/runbooks/paperless-v3-upgrade.md). Bis nach der 3.x-Abnahme behalten.
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshot
+metadata:
+  name: paperless-data-pre-3x-20261113
+  namespace: paperless-ngx
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  volumeSnapshotClassName: ceph-rbd-retain
+  source:
+    persistentVolumeClaimName: paperless-paperless-ngx-data
+---
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshot
+metadata:
+  name: paperless-media-pre-3x-20261113
+  namespace: paperless-ngx
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  volumeSnapshotClassName: ceph-rbd-retain
+  source:
+    persistentVolumeClaimName: paperless-paperless-ngx-media

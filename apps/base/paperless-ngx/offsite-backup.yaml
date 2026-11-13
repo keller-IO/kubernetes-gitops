@@ -79,7 +79,7 @@ spec:
             # manage.py direkt, nicht der s6-Wrapper document_exporter:
             # docs/learnings/paperless-cli-without-s6.md
             - name: exporter
-              image: ghcr.io/paperless-ngx/paperless-ngx:2.20.15
+              image: ghcr.io/paperless-ngx/paperless-ngx:3.4.2
               workingDir: /usr/src/paperless/src
               command: ["/bin/sh", "-c"]
               args:
