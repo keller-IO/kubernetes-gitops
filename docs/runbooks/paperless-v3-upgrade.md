@@ -37,7 +37,7 @@ ueberspringen.
 | Stabilisierung | Abgeschlossen 13.11.: Skript bestanden; Upgrade auf Entscheidung von Ingo vorgezogen, der Pod mit 500m CPU / 4Gi lief erst 5 von 7 Tagen (siehe Nachtrag 13.11.) | Vor Phase 2 und vor dem Merge von Phase 3 das Skript erneut laufen lassen |
 | 2: 3.x-Recovery-Punkt | Abgeschlossen 13.11.: erzeugt bei gestopptem Paperless (#485), Snapshot- und Postgres-Restore getestet | Artefakte bis nach der Abnahme behalten (Abschnitt Phase-2-Artefakte) |
 | 3: 3.x-Change | Abgeschlossen 13.11.: #486 gemergt, 3.4.2 laeuft seit 12:50 UTC | – |
-| Abnahme | Teilweise 13.11. (siehe Ergebnis erster 3.x-Start) | Offen: Duplikat-Test, Hermes-MCP, erster Offsite-Export unter 3.4.2, Startup-Probe enger setzen, #415 schliessen |
+| Abnahme | 13.11. bis auf den Duplikat-Test erledigt (siehe Ergebnis erster 3.x-Start) | Duplikat-Test; Recovery-Artefakte und 90-Tage-Retention erst nach Ingos Verzicht auf den Rollback abbauen |
 
 ## Gepruefter Ist-Stand
 
@@ -448,6 +448,10 @@ Beim ersten 3.x-Sync:
 | Task-Historie | geleert (erwartet) |
 | HTTP | Login-Seite 200, Keycloak-Schaltflaeche vorhanden |
 | Durch Ingo | Keycloak-Login, Scannen und Suche funktionieren |
+| Hermes-MCP | `paperless` auf hermes01 gegen 3.4.2: `list_metadata`, `search_documents`, `get_document`, `similar_documents` ohne Fehler, API durchgehend 200; Tag „Privat“ bleibt ausgeblendet |
+| Offsite-Export | Job `paperless-offsite-backup-manuell-202611131459` mit Image 3.4.2: 731 Dokumente, 0 Originale fehlen, Sync nach Garage ok. #488 entfernte `suspend` nur; ArgoCD meldete `Synced`, der CronJob blieb aber auf `suspend: true`. Erst #489 mit ausdruecklichem `suspend: false` hat ihn reaktiviert |
+| Watchdog | Lauf `paperless-watchdog-29909640` mit Image 3.4.2: beide Pushes erfolgreich |
+| Nacharbeit | Startup-Probe auf 5 min, `paperless-restore-test.sh` waehlt MD5 oder SHA-256 nach Laenge der Pruefsumme (unter 3.x noch nicht gelaufen), #415 ohne Merge geschlossen |
 
 ## Rollback
 
