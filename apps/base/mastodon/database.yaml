@@ -43,6 +43,14 @@ spec:
       # 64 GiB, davon sind nach dem Restore rund 15 GB belegt.
       max_wal_size: "4GB"
       checkpoint_timeout: "15min"
+      # WAL-Obergrenze fuer Replikationsslots (13.11.2026): Ohne Limit (-1) haelt der
+      # HA-Slot bei Standby-Ausfall unbegrenzt WAL zurueck, bis das Volume voll ist
+      # und der Primary steht. 64 Gi, Daten ~22 GB, 40 GB frei, max_wal_size 4GB:
+      # 16GB passt mit Reserve ins Volume und ueberbrueckt einen Standby-Ausfall
+      # von Stunden. Kehrseite: darueber wird der Slot invalidiert (wal_status=lost),
+      # das Replica holt sich WAL aus dem Archiv bzw. wird neu aufgebaut — gewollt,
+      # ein voller Primary waere schlimmer. sighup (Reload, kein Neustart).
+      max_slot_wal_keep_size: "16GB"
   # PHYSISCHE Migration statt logischem Dump (Entscheidung 23.09.2026): Quelle
   # und Ziel sind beide PG 16.14 auf Debian Bookworm, also gleiche Major-Version
   # und gleiche glibc-Kollation. Die Indizes kommen fertig mit, statt nach dem
