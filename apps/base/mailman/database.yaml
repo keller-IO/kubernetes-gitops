@@ -39,6 +39,20 @@ spec:
   # pg_dump-Import kommt ebenfalls aus einer 16er.
   # renovate: datasource=docker depName=ghcr.io/cloudnative-pg/postgresql
   imageName: ghcr.io/cloudnative-pg/postgresql:16.15
+  # WAL-Obergrenze fuer Replikationsslots (13.11.2026): Ohne Limit (-1) haelt der
+  # HA-Slot des Standbys bei dessen Ausfall unbegrenzt WAL zurueck, pg_wal waechst
+  # auf dem Datenvolume, bis es voll ist und der Primary steht. Gegen einen
+  # Stau durch ein totes Archivziel (roundcube-pg, 12.07.) hilft die Grenze nicht,
+  # dafuer gibt es die Regeln in infrastructure/base/monitoring/vmrule-cnpg.yaml.
+  # 30-Gi-Volume, Daten ~2,6 GB, 27 GiB frei: 8GB (Faktor ~3 unter dem freien Platz) laesst Raum fuer Wachstum.
+  # Kehrseite: wird die Grenze ueberschritten, wird der Slot invalidiert
+  # (wal_status=lost); das Replica holt sich das WAL dann aus dem Archiv bzw. wird
+  # neu aufgebaut. Gewollt: ein voller Primary waere schlimmer. Parameter ist
+  # sighup (Reload, kein Neustart/Switchover); muss > wal_keep_size (512MB) und
+  # max_wal_size sein.
+  postgresql:
+    parameters:
+      max_slot_wal_keep_size: "8GB"
   storage:
     # 30Gi: das HyperKitty-Archiv des Altsystems bringt 5,9 GB Rohdaten mit
     # (4,3 GB Mail-Bodies + 1,6 GB Anhänge als BYTEA), dazu Indizes, WAL und
