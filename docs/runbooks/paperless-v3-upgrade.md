@@ -35,8 +35,8 @@ ueberspringen.
 | 0: Offsite-Backup der Dokumente | Abgeschlossen 01.11.: laeuft taeglich seit 28.10., Restore-Test bestanden | Gatus `paperless/offsite-backup` beobachten |
 | 1: 2.20.15 | Abgeschlossen | Export und PVC-Snapshots vom 02.08. behalten; das damalige CNPG-Backup ist abgelaufen |
 | Stabilisierung | Abgeschlossen 13.11.: Skript bestanden; Upgrade auf Entscheidung von Ingo vorgezogen, der Pod mit 500m CPU / 4Gi lief erst 5 von 7 Tagen (siehe Nachtrag 13.11.) | Vor Phase 2 und vor dem Merge von Phase 3 das Skript erneut laufen lassen |
-| 2: 3.x-Recovery-Punkt | Naechster Schritt | CNPG-Retention ist auf 90 Tage gesetzt; neuen quieszierten Export, CNPG-Backup und Snapshots erzeugen und den Restore testen |
-| 3: 3.x-Change | Offen | Separater PR auf `3.4.2`, inklusive `PAPERLESS_CONSUMER_DELETE_DUPLICATES` (ersetzt #415) |
+| 2: 3.x-Recovery-Punkt | Erzeugt 13.11. bei gestopptem Paperless (#485); Snapshot-Restore getestet, **Postgres-Restore-Test (Schritt 8) offen** | Postgres aus Barman-ID `20261113T122116` mit `targetName` `pre_3x_20261113` auf u22 restaurieren und Zahlen pruefen |
+| 3: 3.x-Change | PR offen (Draft), Paperless steht bis zum Merge auf null Replicas | Nach Schritt 8 mergen; der PR hebt `replicas: 0` auf |
 | Abnahme | Offen | Migration, Tantivy-Aufbau, OIDC, OCR, Suche, Mail und SMB-Consume pruefen |
 
 ## Gepruefter Ist-Stand
@@ -344,6 +344,30 @@ Metadaten aendern. Ein leerer Queue-Stand allein ist keine Schreibsperre.
    festhalten. Ohne erfolgreichen Restore-Test kein Major-Upgrade.
 9. Die drei oben genannten manuellen Punkte pruefen: externe Consume-Skripte,
    gespeicherte Suchen und den vollstaendigen Export.
+
+### Phase-2-Artefakte vom 13.11.2026
+
+Paperless 2.20.15 lief beim Export und war fuer Backup, Snapshots und
+Restore-Punkt auf null Replicas (#485, Pod weg, alle drei `VolumeAttachment`s
+geloest, keine Verbindung der Rolle `paperless`).
+
+| Artefakt | Wert |
+|---|---|
+| Bestand | 727 Dokumente, davon 1 im Papierkorb; 7 Benutzer, 22 Tags, 2 Workflows; `max(modified)` 2026-11-12 05:06:01 UTC, vor dem Export und nach dem Stopp identisch |
+| Schreibsperre | Nicht technisch erzwungen (Abweichung von Schritt 1). Stattdessen belegt: Queue 0, Scanner-Inbox auf oberster Ebene leer, keine Mailkonten/-regeln, letzter Login 28.10., Bestand vor Export und nach Stopp gleich |
+| Scanner-Inbox | Keine unverarbeiteten Dateien. 381 Dateien liegen im NAS-Papierkorb `@Recycle` (wird nicht konsumiert, nicht gesichert) |
+| Export | Job `paperless-offsite-backup-manuell-202611131300`: 726 Dokumente, 0 Originale fehlen |
+| Export in Garage | `s3://backup-paperless/export/pre-3x-20261113/`, 2180 Objekte, 1446699434 Byte, `rclone check` gegen `export/current/`: 0 Abweichungen |
+| Export lokal | `/home/ingo/ansible/backups/paperless-pre-3x-20261113.tar.gz`, 1318606506 Byte, SHA-256 `2e1913e800ff414b19481744d0ba0fb326d846e4e076097b60aa23b22b034b21`; SHA-256 aller 2180 Dateien gleich dem Stand auf der Export-PVC |
+| CNPG-Backup | `paperless-pg-pre-3x-20261113`; Barman-ID `20261113T122116`; 12:21:16 bis 12:21:40 UTC; WAL `00000004000000560000006D` bis `...6E`; von `paperless-pg-1` |
+| Restore-Punkt | `pre_3x_20261113`, LSN `56/6F000090`, WAL `00000004000000560000006F`, archiviert 12:22:14 UTC (`pg_stat_archiver`) |
+| Data-Snapshot | `paperless-data-pre-3x-20261113`; Content `snapcontent-37b216b0-333c-47cc-afec-f216f222e652`; 12:21:52 UTC |
+| Media-Snapshot | `paperless-media-pre-3x-20261113`; Content `snapcontent-c9d7aae2-8cde-4787-8255-3f925f13af5b`; 12:21:52 UTC |
+| Snapshot-Restore-Test | Bestanden: Wegwerf-PVCs aus beiden Snapshots gemountet; 727 Originale, 741 Archiv-PDFs, 727 Thumbnails; MD5 aller 1454 in der DB gefuehrten Dateien gleich `checksum`/`archive_checksum`; 14 Archiv-PDFs ohne DB-Eintrag (Altbestand); Schreib-/Loeschprobe nur auf dem Restore-PVC; danach geloescht |
+| Postgres-Restore-Test | **Offen** (Schritt 8) |
+
+Die beiden Snapshots stehen deklarativ in
+`apps/overlays/main/paperless-ngx/pre-3x-recovery-points.yaml`.
 
 Nur das CNPG-Backup reicht nicht: Dokumente und Such-/Classifier-Daten liegen
 auch auf RBD-PVCs. Ein reiner Image-Downgrade nach ausgefuehrten 3.x-Migrationen

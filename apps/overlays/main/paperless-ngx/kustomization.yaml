@@ -4,6 +4,7 @@ namespace: paperless-ngx
 resources:
   - ../../../base/paperless-ngx
   - pre-22015-recovery-points.yaml
+  - pre-3x-recovery-points.yaml
 patches:
   - target: { kind: Ingress, name: paperless-paperless-ngx }
     patch: |
@@ -23,10 +24,6 @@ patches:
       metadata:
         name: paperless-paperless-ngx
       spec:
-        # WARTUNG 3.x-Upgrade (Runbook paperless-v3-upgrade.md, Phase 2 Schritt 4):
-        # Paperless ist gestoppt, bis der 3.x-Change gemergt wird. Der 3.x-PR
-        # entfernt diese Zeile wieder.
-        replicas: 0
         template:
           spec:
             containers:
