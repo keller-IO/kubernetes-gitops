@@ -1,0 +1,179 @@
+# CNPG-Alarmregeln (13.11.2026). Die Regeln des Charts victoria-metrics-k8s-stack
+# kennen keine CloudNativePG-Metriken: ausbleibende Backups, Archivierungsstau,
+# inaktive Slots oder Replikationsprobleme meldete der Cluster-Alertmanager bisher
+# nicht. vmalert laedt die Regel ueber selectAllByDefault (alle Namespaces, keine
+# Label-Auswahl). Die Metriken kommen aus dem PodMonitor jedes CNPG-Clusters
+# (enablePodMonitor: true); das Label `job` hat die Form `<namespace>/<cluster>`.
+# Alle Ausdruecke sind am 13.11.2026 gegen vmsingle getestet (aktuell kein Treffer,
+# 14-Tage-Rueckblick im PR). Alle Cluster haben 2 Instanzen (Primary + 1 Standby).
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: cnpg-alerts
+  namespace: monitoring
+spec:
+  groups:
+    - name: cnpg.replication
+      rules:
+        - alert: CNPGReplicationSlotInactive
+          # Nur der Primary liefert Slot-Metriken. Ein inaktiver HA-Slot haelt WAL
+          # zurueck (siehe max_slot_wal_keep_size in den Cluster-Manifesten).
+          expr: cnpg_pg_replication_slots_active == 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "CNPG-Replikationsslot inaktiv"
+            description: >-
+              Der Replikationsslot {{ $labels.slot_name }} auf {{ $labels.namespace }}/{{ $labels.pod }}
+              (Cluster {{ $labels.job }}) ist seit 15 Minuten inaktiv. Das Replica
+              streamt nicht, der Primary haelt WAL zurueck.
+        - alert: CNPGReplicationSlotRetainsWal
+          expr: cnpg_pg_replication_slots_pg_wal_lsn_diff > 1073741824
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "CNPG-Replikationsslot haelt viel WAL zurueck"
+            description: >-
+              Der Slot {{ $labels.slot_name }} auf {{ $labels.namespace }}/{{ $labels.pod }}
+              (Cluster {{ $labels.job }}) haelt seit 15 Minuten {{ $value | humanize1024 }}B WAL
+              zurueck (Schwelle 1 GiB). pg_wal liegt auf dem Datenvolume; bei
+              Erreichen von max_slot_wal_keep_size wird der Slot invalidiert.
+        - alert: CNPGNoStreamingReplica
+          # Erwartet ist genau ein streamendes Replica je Cluster (instances: 2).
+          expr: |
+            cnpg_pg_replication_streaming_replicas < 1
+            and on (namespace, pod)
+            cnpg_pg_replication_in_recovery == 0
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "CNPG-Primary ohne streamendes Replica"
+            description: >-
+              Auf dem Primary {{ $labels.namespace }}/{{ $labels.pod }} streamt seit
+              10 Minuten kein Replica; Switchover und Failover sind nicht moeglich.
+        - alert: CNPGReplicationReplayLagHigh
+          expr: cnpg_pg_stat_replication_replay_lag_seconds > 300
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "CNPG-Replica hinkt hinterher"
+            description: >-
+              Der Replay-Lag des Replicas {{ $labels.application_name }} am Primary
+              {{ $labels.namespace }}/{{ $labels.pod }} liegt seit 10 Minuten bei
+              {{ $value | humanizeDuration }} (Schwelle 5 Minuten).
+    - name: cnpg.archive-backup
+      rules:
+        - alert: CNPGWalArchivingStuck
+          # Fehlgeschlagener Archivierungsversuch ist juenger als der letzte Erfolg
+          # und noch aktiv (Retry < 15 min). for 30m: Garage-Aussetzer von 1-10
+          # Minuten (03., 08., 11.11.2026) feuern nicht.
+          expr: |
+            cnpg_pg_stat_archiver_seconds_since_last_failure
+              < cnpg_pg_stat_archiver_seconds_since_last_archival
+            and
+            cnpg_pg_stat_archiver_seconds_since_last_failure < 900
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: "CNPG-WAL-Archivierung schlaegt fehl"
+            description: >-
+              Die WAL-Archivierung auf {{ $labels.namespace }}/{{ $labels.pod }} schlaegt
+              seit mindestens 30 Minuten fehl (zuletzt vor
+              {{ $value | humanizeDuration }}). WAL staut sich in pg_wal; PITR-Luecke
+              und volles Datenvolume drohen. Garage-Erreichbarkeit pruefen.
+        - alert: CNPGWalArchiveBacklog
+          # Dauerhaft mindestens eine .ready-Datei im archive_status (30 Minuten
+          # lang ohne Unterbrechung); faengt auch haengende Uploads ohne Fehler.
+          expr: |
+            min_over_time(
+              max by (namespace, job) (cnpg_collector_pg_wal_archive_status{value="ready"})[30m:1m]
+            ) > 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "CNPG-WAL-Archiv hat Rueckstand"
+            description: >-
+              Im Cluster {{ $labels.job }} (Namespace {{ $labels.namespace }}) wartet seit
+              ueber 30 Minuten durchgehend mindestens ein WAL-Segment auf die
+              Archivierung ({{ $value }} .ready-Dateien).
+        - alert: CNPGBackupTooOld
+          # taeglicher Plan: 36 h Schwelle. mastodon-pg sichert nur woechentlich
+          # (sonntags), daher eigene Regel mit 8 Tagen.
+          expr: |
+            time() - max by (namespace, job) (
+              cnpg_collector_last_available_backup_timestamp{job!="mastodon/mastodon-pg"}
+            ) > 36 * 3600
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: "CNPG-Basebackup veraltet"
+            description: >-
+              Das juengste erfolgreiche Basebackup von Cluster {{ $labels.job }}
+              (Namespace {{ $labels.namespace }}) ist {{ $value | humanizeDuration }} alt
+              (Schwelle 36 Stunden, taeglicher Plan).
+        - alert: CNPGBackupTooOldWeekly
+          expr: |
+            time() - max by (namespace, job) (
+              cnpg_collector_last_available_backup_timestamp{job="mastodon/mastodon-pg"}
+            ) > 8 * 86400
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: "CNPG-Basebackup veraltet (woechentlicher Plan)"
+            description: >-
+              Das juengste erfolgreiche Basebackup von Cluster {{ $labels.job }}
+              (Namespace {{ $labels.namespace }}) ist {{ $value | humanizeDuration }} alt
+              (Schwelle 8 Tage, Plan woechentlich sonntags).
+        - alert: CNPGLastBackupFailed
+          # Letzter Fehlschlag ist juenger als der letzte Erfolg: seither kein
+          # erfolgreiches Backup. Heilt sich mit dem naechsten erfolgreichen Lauf.
+          expr: |
+            max by (namespace, job) (cnpg_collector_last_failed_backup_timestamp)
+              > max by (namespace, job) (cnpg_collector_last_available_backup_timestamp)
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: "CNPG-Backup fehlgeschlagen"
+            description: >-
+              Das letzte Backup von Cluster {{ $labels.job }} (Namespace
+              {{ $labels.namespace }}) ist fehlgeschlagen, seither gab es kein
+              erfolgreiches. Backup-Objekte und Operator-Log pruefen.
+    - name: cnpg.exporter
+      rules:
+        - alert: CNPGCollectorDown
+          expr: cnpg_collector_up == 0
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "CNPG-Instanz meldet Postgres nicht erreichbar"
+            description: >-
+              Der CNPG-Exporter auf {{ $labels.namespace }}/{{ $labels.pod }}
+              (Cluster {{ $labels.cluster }}) meldet seit 10 Minuten, dass PostgreSQL
+              nicht erreichbar ist.
+        - alert: CNPGMetricsMissing
+          # Ein Cluster, der vor einer Stunde noch Metriken lieferte und jetzt gar
+          # keine mehr (beide Instanzen). Feuert nach dem bewussten Entfernen eines
+          # Clusters hoechstens eine Stunde lang.
+          expr: |
+            count by (namespace, cluster) (cnpg_collector_up offset 1h)
+            unless
+            count by (namespace, cluster) (cnpg_collector_up)
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "CNPG-Cluster liefert keine Metriken mehr"
+            description: >-
+              Vom Cluster {{ $labels.cluster }} (Namespace {{ $labels.namespace }})
+              kommen seit 10 Minuten keine CNPG-Metriken mehr, obwohl sie vor einer
+              Stunde noch da waren. Pods und PodMonitor pruefen.

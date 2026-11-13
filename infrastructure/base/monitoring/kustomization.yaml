@@ -12,6 +12,7 @@ helmCharts:
 resources:
   - namespace.yaml
   - vmsingle-ingress.yaml
+  - vmrule-cnpg.yaml
 
 generators:
   - ./secret-generator.yaml
