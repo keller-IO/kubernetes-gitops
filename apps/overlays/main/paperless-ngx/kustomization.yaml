@@ -23,6 +23,10 @@ patches:
       metadata:
         name: paperless-paperless-ngx
       spec:
+        # WARTUNG 3.x-Upgrade (Runbook paperless-v3-upgrade.md, Phase 2 Schritt 4):
+        # Paperless ist gestoppt, bis der 3.x-Change gemergt wird. Der 3.x-PR
+        # entfernt diese Zeile wieder.
+        replicas: 0
         template:
           spec:
             containers:
@@ -30,3 +34,11 @@ patches:
                 env:
                   - name: PAPERLESS_URL
                     value: https://paperless.savar.de
+  # WARTUNG 3.x-Upgrade: Offsite-Export pausiert, solange Paperless gestoppt ist
+  # (der Job braucht den App-Pod per podAffinity und das zur DB passende Image).
+  # Nach der 3.x-Abnahme entfernen (Runbook, Beobachtung und Abnahme, Schritt 8).
+  - target: { kind: CronJob, name: paperless-offsite-backup }
+    patch: |
+      - op: add
+        path: /spec/suspend
+        value: true
