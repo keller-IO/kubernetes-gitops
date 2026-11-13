@@ -30,6 +30,23 @@ spec:
             # landen in vendor/, aber nie in plugins/ -> "Failed to load plugin".
             - name: COMPOSER_ALLOW_SUPERUSER
               value: "1"
+            # ImageMagick begrenzen (13.11.2026). Roundcube erzeugt Bildvorschauen mit der
+            # PHP-Erweiterung Imagick; deren Speicher liegt ausserhalb von memory_limit
+            # (64M). Das Image erlaubt je Prozess 1 GiB RAM und 2 GiB Memory-Map, also
+            # mehr als das Pod-Limit. Am 12.11.2026 wurde der Container so per OOM-Kill
+            # beendet: drei Apache-Prozesse mit 304/190/167 MiB, Sprung von 177 MiB ueber
+            # 768Mi in unter 30 s. Gemessen im Pod: Vorschau eines 12-MP-JPEG = 220 MiB,
+            # 24 MP = 400 MiB je Prozess. Mit diesen Grenzen bleibt der Pixel-Cache bis
+            # 8 MP im RAM und weicht darueber auf eine Temp-Datei in /tmp aus: 24 MP in
+            # 1,6 s bei 40 MiB, Vorschaubild identisch. MAP bewusst klein: bei 512MiB
+            # stieg der Prozess wieder auf 400 MiB. DISK nicht auf 0 setzen, sonst
+            # scheitert Imagick und der GD-Rueckfall laeuft ins memory_limit (HTTP 500).
+            - name: MAGICK_MEMORY_LIMIT
+              value: 64MiB
+            - name: MAGICK_MAP_LIMIT
+              value: 64MiB
+            - name: MAGICK_DISK_LIMIT
+              value: 1GiB
             - name: ROUNDCUBEMAIL_DB_TYPE
               value: pgsql
             - name: ROUNDCUBEMAIL_DB_HOST
