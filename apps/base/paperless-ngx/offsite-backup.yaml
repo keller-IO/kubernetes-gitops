@@ -38,6 +38,10 @@ spec:
   # Nach dem CNPG-Base-Backup (02:00), vor dem Scanner-Betrieb am Morgen.
   schedule: "15 3 * * *"
   timeZone: Europe/Berlin
+  # Ausdruecklich false: ArgoCD setzt ein nur entferntes suspend nicht zurueck
+  # (13.11.2026: nach #488 blieb der CronJob trotz Synced auf suspend=true).
+  # Zum Pausieren hier true setzen und danach wieder false, nicht loeschen.
+  suspend: false
   concurrencyPolicy: Forbid
   startingDeadlineSeconds: 3600
   successfulJobsHistoryLimit: 3
