@@ -28,7 +28,8 @@ set -euo pipefail
 
 restore_dir="${RESTORE_DIR:-/srv/restore}"
 # Muss die Version des Exports sein, also die von apps/base/paperless-ngx/values.yaml.
-paperless_image="${PAPERLESS_IMAGE:-ghcr.io/paperless-ngx/paperless-ngx:2.20.15}"
+# Muss die Version sein, mit der exportiert wurde (seit 13.11.2026: 3.4.2).
+paperless_image="${PAPERLESS_IMAGE:-ghcr.io/paperless-ngx/paperless-ngx:3.4.2}"
 pg_image="${PG_IMAGE:-postgres:17}"
 valkey_image="${VALKEY_IMAGE:-valkey/valkey:9.2-alpine}"
 net=paperless-restore
@@ -133,12 +134,15 @@ fehlend = sorted(set(prod) - restore_ids)
 print("in Produktion, nicht im Restore:", fehlend)
 # Nach dem Export endgueltig geloeschte oder in den Papierkorb gelegte Dokumente.
 print("im Restore, nicht in Produktion:", sorted(restore_ids - set(prod) - set(papierkorb)))
+# Paperless 2.x speichert MD5 (32 Zeichen), 3.x SHA-256 (64 Zeichen).
+def pruefsumme(pfad, soll):
+    return hashlib.new("sha256" if len(soll) == 64 else "md5", pfad.read_bytes()).hexdigest()
 abw_db = abw_orig = abw_arch = 0
 for d in docs.filter(id__in=prod):
     c, a = prod[d.id]
     abw_db += d.checksum != c or (d.archive_checksum or "") != a
-    abw_orig += hashlib.md5(d.source_path.read_bytes()).hexdigest() != c
-    abw_arch += d.has_archive_version and hashlib.md5(d.archive_path.read_bytes()).hexdigest() != a
+    abw_orig += pruefsumme(d.source_path, c) != c
+    abw_arch += d.has_archive_version and pruefsumme(d.archive_path, a) != a
 print("abweichend: DB-Checksummen", abw_db, "Originale", abw_orig, "Archive", int(abw_arch))
 if fehlend:
     raise SystemExit("Dokumente der Produktion fehlen im Restore")
@@ -155,7 +159,7 @@ web() {
   docker run -d --name "$web_ctr" --network "$net" --user 1000:1000 -w /usr/src/paperless/src \
     -p 127.0.0.1:8000:8000 "${pl_env[@]}" "${pl_vols[@]}" --entrypoint granian "$paperless_image" \
     --interface asginl --host 0.0.0.0 --port 8000 paperless.asgi:application >/dev/null
-  local url=http://127.0.0.1:8000 auth="${test_user}:${test_pass}" id code md5 prod fehler=0
+  local url=http://127.0.0.1:8000 auth="${test_user}:${test_pass}" id code summe prod fehler=0
   for _ in $(seq 1 60); do curl -sf -o /dev/null "$url/accounts/login/" && break; sleep 1; done
   # erwarte NAME SOLL IST: Abweichung ausgeben und am Ende scheitern.
   erwarte() {
@@ -167,10 +171,11 @@ web() {
   curl -sf -u "$auth" "$url/api/documents/?page_size=1&ordering=-added" | jq -c '{count, neuestes: .results[0] | {id, title}}'
   id=$(curl -sf -u "$auth" "$url/api/documents/?page_size=1&ordering=-added" | jq -e .results[0].id)
   curl -sf -u "$auth" -o /tmp/restore-doc "$url/api/documents/$id/download/?original=true"
-  md5=$(md5sum < /tmp/restore-doc | cut -c1-32)
   prod=$(awk -F'|' -v i="$id" '$1==i{print $2}' prod-checksums.txt)
+  # 2.x: MD5 (32 Zeichen), 3.x: SHA-256 (64 Zeichen)
+  if [ "${#prod}" -eq 64 ]; then summe=$(sha256sum < /tmp/restore-doc | cut -c1-64); else summe=$(md5sum < /tmp/restore-doc | cut -c1-32); fi
   [ -n "$prod" ] || { echo "NICHT OK: #$id fehlt in prod-checksums.txt" >&2; fehler=1; }
-  erwarte "Download #$id md5" "$prod" "$md5"
+  erwarte "Download #$id Pruefsumme" "$prod" "$summe"
   erwarte "Thumbnail HTTP" 200 "$(curl -s -u "$auth" -o /dev/null -w '%{http_code}' "$url/api/documents/$id/thumb/")"
   code=$(curl -sf -u "$auth" "$url/api/documents/?query=rechnung&page_size=1" | jq .count)
   echo "Volltextsuche 'rechnung': $code Treffer"

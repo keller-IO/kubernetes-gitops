@@ -489,7 +489,8 @@ ssh root@192.168.23.21 'docker exec $(docker ps -qf name=garage | head -1) \
 nicht per `nix develop --command` in eine Pipe schreiben, sondern in der Shell
 von `nix develop` ausfuehren. Erwartet: Bestand wie in der Produktion bis auf
 Dokumente im Papierkorb (exportiert der Exporter nicht), 0 abweichende
-Checksummen, Login-Seite 200, API ohne Login 401, Download MD5-gleich.
+Checksummen, Login-Seite 200, API ohne Login 401, Download mit gleicher
+Pruefsumme (2.x MD5, seit 3.x SHA-256; das Skript waehlt nach der Laenge).
 
 Ablauf und Abnahme: `docs/runbooks/paperless-v3-upgrade.md`, Phase 0.
 

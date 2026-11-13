@@ -99,14 +99,14 @@ persistence:
     type: emptyDir
     mountPath: /tmp/paperless
     sizeLimit: 10Gi
-# Erster 3.x-Start: Datenbankmigration und Neuaufbau des Suchindex (Whoosh ->
-# Tantivy) laufen, bevor Port 8000 oeffnet. 180 x 5 s = 15 min statt der
-# Chart-Vorgabe 30 x 5 s. Nach der Abnahme anhand der gemessenen Startzeit
-# wieder enger setzen.
+# Startzeit bis Ready: 70 s beim ersten 3.4.2-Start am 13.11.2026 inklusive
+# aller 3.x-Migrationen und Tantivy-Neuaufbau (731 Dokumente). 60 x 5 s = 5 min
+# statt der Chart-Vorgabe 30 x 5 s = 150 s, damit Migrationen kuenftiger
+# Updates nicht in den Neustart laufen. Fuer den ersten 3.x-Start galten 15 min.
 probes:
   startup:
     spec:
-      failureThreshold: 180
+      failureThreshold: 60
       periodSeconds: 5
 resources:
   # Gemessen am 28.07.2026: 574Mi, knapp oberhalb des alten 512Mi-Requests.
