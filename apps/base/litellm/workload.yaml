@@ -67,6 +67,10 @@ spec:
             - { name: LITELLM_MODE, value: PRODUCTION }
             - { name: LITELLM_LOCAL_MODEL_COST_MAP, value: "True" }
             - { name: LITELLM_LOG, value: ERROR }
+            # Embeddings: router_settings.num_retries greift dort nicht, LiteLLM
+            # macht aus max_retries=0 den Standard 2 und sendet 429/5xx dreimal
+            # an SAIA (Vertragstest 14.11.2026). 0 als Standard verhindert das.
+            - { name: DEFAULT_MAX_RETRIES, value: "0" }
             - { name: LITELLM_DONT_SHOW_FEEDBACK_BOX, value: "True" }
             - { name: LITELLM_MIGRATION_DIR, value: /app/migrations }
             - { name: XDG_CACHE_HOME, value: /app/.cache }

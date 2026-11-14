@@ -15,6 +15,14 @@ model_list:
     model_info:
       id: hermes-saia-qwen-coder
       mode: chat
+  - model_name: paperless-saia-embedding
+    litellm_params:
+      model: openai/qwen3-embedding-4b
+      api_base: https://chat-ai.academiccloud.de/v1
+      api_key: os.environ/SAIA_API_KEY
+    model_info:
+      id: paperless-saia-embedding
+      mode: embedding
 
 router_settings:
   num_retries: 0

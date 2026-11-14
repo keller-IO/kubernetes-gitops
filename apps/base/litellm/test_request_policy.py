@@ -72,6 +72,137 @@ def proxy_data(body, headers=None):
     }
 
 
+def embedding_data(body, headers=None):
+    data = proxy_data(body, headers)
+    data["proxy_server_request"]["url"] = "http://testserver/v1/embeddings"
+    return data
+
+
+class EmbeddingPolicyTests(unittest.TestCase):
+    MODEL = "paperless-saia-embedding"
+    CALL_TYPE = "aembedding"
+
+    def assert_rejected_without_mutation(self, data, field, call_type=None):
+        original = copy.deepcopy(data)
+
+        with self.assertRaises(PolicyViolation) as raised:
+            validate_proxy_request(data, self.CALL_TYPE if call_type is None else call_type)
+
+        self.assertIn(field, str(raised.exception))
+        self.assertEqual(data, original)
+
+    def test_accepts_exact_embedding_request_for_every_embedding_call_type(self):
+        # Mutation caught: rejecting what the llama-index OpenAI client sends or rewriting it.
+        for call_type in ("embeddings", "aembedding", "embedding"):
+            for body in (
+                {"model": self.MODEL, "input": ["a", "b"], "encoding_format": "base64"},
+                {"model": self.MODEL, "input": "a", "encoding_format": "float"},
+                {"model": self.MODEL, "input": ["a"], "metadata": {}},
+            ):
+                with self.subTest(call_type=call_type, body=body):
+                    data = embedding_data(body)
+                    original = copy.deepcopy(data)
+
+                    self.assertIsNone(validate_proxy_request(data, call_type))
+                    self.assertEqual(data, original)
+
+    def test_embedding_route_rejects_chat_and_unlisted_models(self):
+        # Mutation caught: sharing one model set between chat and embeddings.
+        for model in ("hermes-blablador", "hermes-saia-qwen-coder", "qwen3-embedding-4b", "", None, 1):
+            with self.subTest(model=model):
+                self.assert_rejected_without_mutation(
+                    embedding_data({"model": model, "input": ["a"]}), "model"
+                )
+
+    def test_chat_route_rejects_embedding_model_for_every_other_call_type(self):
+        # Mutation caught: treating an unknown call type as an embedding call.
+        body = {"model": self.MODEL, "messages": [{"role": "user", "content": "x"}]}
+        for call_type in (None, "acompletion", "completion", "text_completion", "moderation", 1):
+            with self.subTest(call_type=call_type):
+                data = proxy_data(body)
+                original = copy.deepcopy(data)
+                with self.assertRaises(PolicyViolation) as raised:
+                    validate_proxy_request(data, call_type)
+                self.assertIn("model", str(raised.exception))
+                self.assertEqual(data, original)
+
+    def test_embedding_body_without_messages_is_rejected_on_chat_route(self):
+        data = proxy_data({"model": "hermes-blablador", "input": ["a"]})
+        with self.assertRaises(PolicyViolation):
+            validate_proxy_request(data, "acompletion")
+
+    def test_rejects_malformed_or_oversized_input(self):
+        for value in (None, "", [], [""], ["a", 1], [["a"]], {"a": 1}, 1, ["a"] * 129):
+            with self.subTest(value=value if not isinstance(value, list) else len(value)):
+                self.assert_rejected_without_mutation(
+                    embedding_data({"model": self.MODEL, "input": value}), "input"
+                )
+
+        data = embedding_data({"model": self.MODEL, "input": ["a"] * 128})
+        self.assertIsNone(validate_proxy_request(data, self.CALL_TYPE))
+
+    def test_rejects_unknown_encoding_format(self):
+        for value in ("binary", "", None, 1, ["float"]):
+            with self.subTest(value=value):
+                self.assert_rejected_without_mutation(
+                    embedding_data(
+                        {"model": self.MODEL, "input": ["a"], "encoding_format": value}
+                    ),
+                    "encoding_format",
+                )
+
+    def test_rejects_chat_parameters_provider_parameters_and_controls(self):
+        # Mutation caught: reusing the chat allowlist or dropping the control denylist.
+        for field in (
+            "messages",
+            "temperature",
+            "max_tokens",
+            "stream",
+            "tools",
+            "dimensions",
+            "user",
+            "input_type",
+            "extra_body",
+            "fallbacks",
+            "api_base",
+            "timeout",
+            "num_retries",
+            "drop_params",
+        ):
+            with self.subTest(field=field):
+                self.assert_rejected_without_mutation(
+                    embedding_data({"model": self.MODEL, "input": ["a"], field: 1}), field
+                )
+
+    def test_rejects_x_litellm_control_header(self):
+        self.assert_rejected_without_mutation(
+            embedding_data(
+                {"model": self.MODEL, "input": ["a"]},
+                headers={"X-LiteLLM-Timeout": "1"},
+            ),
+            "X-LiteLLM-Timeout",
+        )
+
+    def test_missing_or_malformed_proxy_snapshot_fails_closed(self):
+        for data in ({}, {"proxy_server_request": None}, {"proxy_server_request": {"body": None, "headers": {}}}):
+            with self.subTest(data=data):
+                with self.assertRaises(PolicyViolation):
+                    validate_proxy_request(data, self.CALL_TYPE)
+
+    def test_adapter_passes_call_type_to_the_core(self):
+        # Mutation caught: the adapter dropping call_type, which would apply chat rules to embeddings.
+        adapter = load_adapter()
+        policy = adapter.HermesRequestPolicy()
+        data = embedding_data({"model": self.MODEL, "input": ["a"], "encoding_format": "base64"})
+
+        result = asyncio.run(policy.async_pre_call_hook(None, None, data, "aembedding"))
+        self.assertIs(result, data)
+
+        with self.assertRaises(FakeHTTPException) as raised:
+            asyncio.run(policy.async_pre_call_hook(None, None, data, "acompletion"))
+        self.assertEqual(raised.exception.status_code, 400)
+
+
 class RequestPolicyTests(unittest.TestCase):
     MODEL = "hermes-blablador"
 

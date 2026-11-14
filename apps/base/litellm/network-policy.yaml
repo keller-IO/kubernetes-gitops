@@ -17,6 +17,22 @@ spec:
         - ports:
             - port: "4000"
               protocol: TCP
+    # Paperless (ADR 0011) spricht den Service direkt an, nicht den Ingress:
+    # Die Identitaet ist der App-Pod (Watchdog und Offsite-Export tragen kein
+    # instance-Label), erlaubt ist ausschliesslich POST /v1/embeddings.
+    - fromEndpoints:
+        - matchLabels:
+            "k8s:io.kubernetes.pod.namespace": paperless-ngx
+            "k8s:app.kubernetes.io/instance": paperless
+            "k8s:app.kubernetes.io/name": paperless-ngx
+      toPorts:
+        - ports:
+            - port: "4000"
+              protocol: TCP
+          rules:
+            http:
+              - method: POST
+                path: /v1/embeddings
   egress:
     - toEndpoints:
         - matchLabels:
