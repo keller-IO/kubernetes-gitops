@@ -27,7 +27,7 @@ class HermesRequestPolicy(CustomLogger):
         call_type,
     ) -> dict:
         try:
-            validate_proxy_request(data)
+            validate_proxy_request(data, call_type)
         except PolicyViolation as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from None
         return data

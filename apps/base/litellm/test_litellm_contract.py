@@ -12,6 +12,10 @@ from pathlib import Path
 
 os.environ.setdefault("LITELLM_DONT_SHOW_FEEDBACK_BOX", "True")
 os.environ.setdefault("LITELLM_LOCAL_MODEL_COST_MAP", "True")
+# Wie workload.yaml: ohne diesen Wert wiederholt LiteLLM Embeddings bei 429 und
+# 5xx zweimal (llms/openai/openai.py: "max_retries or DEFAULT_MAX_RETRIES"
+# macht aus 0 den Standard 2). Muss vor dem Import von litellm gesetzt sein.
+os.environ["DEFAULT_MAX_RETRIES"] = "0"
 
 from fastapi.testclient import TestClient
 import litellm
@@ -26,6 +30,8 @@ MODEL = "hermes-blablador"
 DEPLOYMENT_ID = "hermes-blablador"
 SAIA_MODEL = "hermes-saia-qwen-coder"
 SAIA_DEPLOYMENT_ID = "hermes-saia-qwen-coder"
+EMBEDDING_MODEL = "paperless-saia-embedding"
+EMBEDDING_DEPLOYMENT_ID = "paperless-saia-embedding"
 MASTER_KEY = "sk-" + ("a" * 64)
 INVALID_MASTER_KEY = "sk-" + ("b" * 64)
 WORK_DIR = Path(__file__).resolve().parent
@@ -162,7 +168,20 @@ class StubHandler(BaseHTTPRequestHandler):
             self.close_connection = True
             return
 
-        if scenario == "success":
+        if scenario == "success" and self.path.endswith("/embeddings"):
+            status = 200
+            texts = body.get("input")
+            texts = [texts] if isinstance(texts, str) else texts
+            payload = {
+                "object": "list",
+                "model": "qwen3-embedding-4b",
+                "data": [
+                    {"object": "embedding", "index": index, "embedding": [0.0, 1.0]}
+                    for index, _ in enumerate(texts)
+                ],
+                "usage": {"prompt_tokens": 1, "total_tokens": 1},
+            }
+        elif scenario == "success":
             status = 200
             payload = {
                 "id": "chatcmpl-stub",
@@ -243,6 +262,16 @@ model_list:
     model_info:
       id: {SAIA_DEPLOYMENT_ID}
       mode: chat
+  - model_name: {EMBEDDING_MODEL}
+    litellm_params:
+      model: openai/qwen3-embedding-4b
+      api_base: http://127.0.0.1:{cls.server.server_port}/v1
+      api_key: sk-test
+      headers:
+        x-stub-deployment-id: {EMBEDDING_DEPLOYMENT_ID}
+    model_info:
+      id: {EMBEDDING_DEPLOYMENT_ID}
+      mode: embedding
 router_settings:
   num_retries: 0
   disable_cooldowns: true
@@ -463,14 +492,82 @@ litellm_settings:
                         self.server.state.snapshot(), (1, (deployment_id,))
                     )
 
-    def test_models_endpoint_lists_exactly_both_models(self):
+    def test_models_endpoint_lists_exactly_the_three_models(self):
         response = self.client.get("/v1/models")
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             sorted(model["id"] for model in response.json()["data"]),
-            [MODEL, SAIA_MODEL],
+            [MODEL, SAIA_MODEL, EMBEDDING_MODEL],
         )
+
+    def embedding_body(self, **parameters):
+        return {
+            "model": EMBEDDING_MODEL,
+            "input": ["synthetic one", "synthetic two"],
+            "encoding_format": "base64",
+            **parameters,
+        }
+
+    def test_embedding_reaches_only_its_deployment_once_with_the_reviewed_body(self):
+        for scenario in ("success", 400, 401, 429, 500):
+            with self.subTest(scenario=scenario):
+                self.server.state.reset(scenario)
+                response = self.client.post("/v1/embeddings", json=self.embedding_body())
+                expected = 200 if scenario == "success" else scenario
+                self.assertEqual(response.status_code // 100, expected // 100)
+                self.assertEqual(
+                    self.server.state.snapshot(), (1, (EMBEDDING_DEPLOYMENT_ID,))
+                )
+
+        self.server.state.reset("success")
+        response = self.client.post("/v1/embeddings", json=self.embedding_body())
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json()["data"]), 2)
+        (upstream_body,) = self.server.state.body_snapshot()
+        self.assertEqual(upstream_body["model"], "qwen3-embedding-4b")
+        self.assertEqual(upstream_body["input"], ["synthetic one", "synthetic two"])
+        self.assertEqual(
+            sorted(upstream_body), ["encoding_format", "input", "model"]
+        )
+
+    def test_embedding_and_chat_models_are_not_interchangeable(self):
+        for path, body in (
+            ("/v1/embeddings", self.embedding_body(model=MODEL)),
+            ("/v1/embeddings", self.embedding_body(model=SAIA_MODEL)),
+            ("/v1/embeddings", self.embedding_body(model="qwen3-embedding-4b")),
+            ("/v1/chat/completions", self.request_body(model=EMBEDDING_MODEL)),
+        ):
+            with self.subTest(path=path, model=body["model"]):
+                self.server.state.reset("success")
+                response = self.client.post(path, json=body)
+                self.assertEqual(response.status_code // 100, 4)
+                self.assertEqual(self.server.state.snapshot()[0], 0)
+
+    def test_embedding_rejects_unreviewed_fields_without_calling_upstream(self):
+        for field, value in (
+            ("dimensions", 256),
+            ("user", "x"),
+            ("messages", []),
+            ("extra_body", {}),
+            ("timeout", 1),
+            ("api_base", "http://127.0.0.1:1"),
+        ):
+            with self.subTest(field=field):
+                self.server.state.reset("success")
+                response = self.client.post(
+                    "/v1/embeddings", json=self.embedding_body(**{field: value})
+                )
+                # api_base weist LiteLLM schon vor dem Hook mit 401 ab.
+                self.assertEqual(response.status_code, 401 if field == "api_base" else 400)
+                self.assertEqual(self.server.state.snapshot()[0], 0)
+
+    def test_embedding_requires_the_master_key(self):
+        response = self.unauthenticated_client.post(
+            "/v1/embeddings", json=self.embedding_body()
+        )
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(self.server.state.snapshot()[0], 0)
 
     def test_unlisted_models_never_reach_an_upstream(self):
         for model in ("qwen3-coder-next", "alias-code", "openai/qwen3-coder-next", "*"):
