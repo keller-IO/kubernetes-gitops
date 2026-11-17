@@ -15,6 +15,12 @@ metadata:
     nginx.org/ssl-redirect: "true"
     nginx.org/redirect-to-https: "true"
     nginx.org/client-max-body-size: "0" # keine Upload-Grenze (Web/FTP)
+    # Das Altsystem (VM 142 mgmt02, 192.168.2.234) ist seit dem 30.10.2026
+    # heruntergefahren; beide Hosts lieferten seitdem 502. Bis zur Stilllegung
+    # leiten sie dauerhaft auf die Webseite um (keine Dubletten im Suchindex).
+    # Rueckweg auf das Altsystem: VM 142 starten und diesen Snippet entfernen.
+    nginx.org/server-snippets: |
+      return 301 https://www.jit-creatives.de$request_uri;
 spec:
   ingressClassName: nginx
   tls:
