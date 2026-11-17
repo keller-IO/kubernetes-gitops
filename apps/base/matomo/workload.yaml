@@ -49,7 +49,7 @@ spec:
         - name: upgrade-code
           # Muss immer dasselbe Image wie der matomo-Container sein.
           # renovate: image=matomo
-          image: matomo:5.14.0-apache@sha256:c7abe4fa279bc5f80d1e6820b48586106408d15c8f5e774a8ebc10350868ceb4
+          image: matomo:5.14.2-apache@sha256:db40a508196ba5327a53dcae07d12835e50c7764bdaae3ea7822c35d432e64dc
           command: ["/bin/sh", "-euc"]
           args:
             - |
@@ -108,7 +108,7 @@ spec:
         - name: matomo
           # Digest = Neubau vom 21.10.2026 mit PHP 8.4.27 (CVE-2026-109618/-109619).
           # renovate: image=matomo
-          image: matomo:5.14.0-apache@sha256:c7abe4fa279bc5f80d1e6820b48586106408d15c8f5e774a8ebc10350868ceb4
+          image: matomo:5.14.2-apache@sha256:db40a508196ba5327a53dcae07d12835e50c7764bdaae3ea7822c35d432e64dc
           ports: [{ containerPort: 80, name: http }]
           env:
             - name: MATOMO_DATABASE_ADAPTER
