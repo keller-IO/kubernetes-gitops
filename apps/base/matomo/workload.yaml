@@ -26,6 +26,11 @@ spec:
   template:
     metadata:
       labels: { app.kubernetes.io/name: matomo }
+      annotations:
+        # common.config.ini.php kommt per subPath und wird deshalb im laufenden
+        # Pod nie aktualisiert. Bei jeder Aenderung an configmap.yaml diesen
+        # Wert hochsetzen, damit der Rollout den Pod neu startet.
+        jit-creatives.de/matomo-config-rev: "2026-11-17-proxy-ips"
     spec:
       # Das Image entpackt /usr/src/matomo nur, wenn /var/www/html noch kein
       # matomo.php hat (/entrypoint.sh). Auf dem PVC blieb der Code daher fuer

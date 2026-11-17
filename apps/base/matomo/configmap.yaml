@@ -24,6 +24,17 @@ data:
     proxy_client_headers[] = "HTTP_X_FORWARDED_FOR"
     proxy_host_headers[] = "HTTP_X_FORWARDED_HOST"
 
+    ; Matomo nimmt aus X-Forwarded-For die LETZTE Adresse, die nicht in
+    ; proxy_ips steht. Seit dem 29.10.2026 laeuft der Tracker durch zwei
+    ; Proxys im Cluster (Ingress -> jitmgmt /stats/ -> Ingress -> Matomo);
+    ; ohne diese Liste war die letzte Adresse die Pod-IP 10.244.x, und vom
+    ; 29.10. bis zu diesem Fix hatte jeder Besuch dieselbe IP: keine
+    ; Geolokalisierung, verschmolzene Besuche, kein Ausschluss eigener IPs.
+    ; Nur interne Netze eintragen: Matomo ueberspringt sie, eine vom Client
+    ; gefaelschte XFF-Adresse steht davor und wird nie gewaehlt.
+    proxy_ips[] = "10.0.0.0/8"
+    proxy_ips[] = "192.168.0.0/16"
+
     ; Schutz gegen Host-Header-Injection. Nur diese Namen darf Matomo als
     ; eigene Adresse akzeptieren.
     trusted_hosts[] = "matomo.jit.services"
