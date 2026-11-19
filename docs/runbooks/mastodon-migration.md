@@ -448,6 +448,14 @@ braucht das Docker-Upgrade von 4.7.3 nur einen Neustart der Prozesse; die
 externen Abhängigkeiten bleiben gleich. Vor dem Merge Backup/WAL-Stand prüfen,
 danach Hooks, Rollout und Föderation gemäß Ablauf unten kontrollieren.
 
+**Update 19.11.2026:** 4.7.6 (über 4.7.5) bringt Ruby 4.0.10 gegen
+Ruby2Shell (GHSA-34m4-m9fh-gqp5 / CVE-2026-132825, Pre-Auth-RCE im
+Ruby-Interpreter, Rails in Standardkonfiguration erreichbar). 4.7.5 behebt
+zusätzlich u. a. einen Passwort-Auth-Bypass für inaktive Konten und lässt
+`Forwarded` nicht mehr vor `X-Forwarded-For` gewinnen. Zwischen v4.7.4 und
+v4.7.6 ändert sich nichts unter `db/` (GitHub-Compare geprüft); für Docker
+genügt laut Release Notes ein Neustart. Die Hooks laufen trotzdem (No-op).
+
 **Stand 23.10.2026:** 4.6.9 läuft seit 09:03Z (#338). Backup davor:
 `mastodon-pg-pre-4-6-20261022`, PITR-Ziel 2026-10-23T08:49:37Z. Beim
 PreSync-Hook fiel die Seite fünf Minuten aus
