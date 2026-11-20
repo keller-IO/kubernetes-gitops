@@ -21,8 +21,8 @@ spec:
         - name: phpmyadmin
           # Docker Official Image (docker-library, gleiche Quelle phpmyadmin/docker), wird bei
           # PHP-Updates neu gebaut – anders als phpmyadmin/phpmyadmin (letzter Build 10/2025, PHP 8.3.26).
-          # Digest = Build vom 21.10.2026 mit PHP 8.3.36 (CVE-2026-109618/-109619).
-          image: phpmyadmin:5.2.3-apache@sha256:527a161fa6c0192cc66180e17e5541aaea028a23a9590e86ce08ecf7daa4fbc8
+          # Digest = Build vom 19.11.2026 mit PHP 8.3.37 (CVE-2026-126714/-129481 u. a.).
+          image: phpmyadmin:5.2.3-apache@sha256:7d0b1d9826aa1345a4cab1feded7b19b5f8b1d90579b3180fbc1353157e35c7b
           ports:
             - containerPort: 80
           env:
