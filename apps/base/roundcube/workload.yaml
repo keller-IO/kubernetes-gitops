@@ -15,14 +15,16 @@ spec:
         - name: gitlab-registry
       containers:
         - name: roundcube
-          # Voruebergehend eigener Rebuild (21.10.2026): roundcube/roundcubemail:1.7.4-apache
-          # enthaelt PHP 8.4.26 und ist gegen CVE-2026-109618/-109619 (PHP2Shell) nicht gefixt.
+          # Voruebergehend eigener Rebuild (seit 21.10.2026, erneuert 20.11.2026): die Upstream-Images
+          # hinken den PHP-Sicherheitsreleases hinterher (21.10.: CVE-2026-109618/-109619;
+          # 19.11.: CVE-2026-126714/-129481, roundcube/roundcubemail:1.7.5-apache hat noch 8.4.27).
           # Gebaut aus roundcube/roundcubemail-docker@2297664 (apache/Dockerfile, --target root,
-          # ROUNDCUBEMAIL_VERSION=1.7.4) auf docker.io/library/php:8.4-apache (PHP 8.4.27).
-          # Zurueck auf roundcube/roundcubemail:<version>-apache@<digest>, sobald Upstream PHP >= 8.4.27 hat
+          # ROUNDCUBEMAIL_VERSION=1.7.4) auf docker.io/library/php:8.4-apache@sha256:20da4cbf…
+          # (PHP 8.4.28, Build 19.11.2026). Module, Entrypoint, INI und vendor/ identisch zum Vorgaenger.
+          # Zurueck auf roundcube/roundcubemail:<version>-apache@<digest>, sobald Upstream PHP >= 8.4.28 hat
           # (Release-Builds montags 02:23 UTC, roundcube/roundcubemail-docker#468); dann auch
           # imagePullSecrets und registry-pull.sops.yaml wieder entfernen.
-          image: registry.jit-creatives.de/jit/container-rebuilds/roundcubemail:1.7.4-apache-php8.4.27@sha256:6231f984378169da56317de558de85d57e4006c77ffed3d1fe9fbc771ac5890c
+          image: registry.jit-creatives.de/jit/container-rebuilds/roundcubemail:1.7.4-apache-php8.4.28@sha256:4ca6fb295fb08d5bdda9efc87a022d2705d07f01281ec657c82ce9063b971635
           ports: [{ containerPort: 80 }]
           env:
             # Ohne dies deaktiviert Composer (läuft als root) den roundcube/
