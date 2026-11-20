@@ -18,12 +18,20 @@ spec:
       labels:
         app.kubernetes.io/name: kimai
     spec:
+      imagePullSecrets:
+        - name: gitlab-registry
       containers:
         - name: kimai
-          # renovate: image=kimai/kimai2
-          # Seit 2.58 heisst das Apache-Image nur noch <version> (apache-<version> ist eingestellt).
-          # Digest = Multi-Arch-Index von 2.70.1 (21.10.2026, PHP 8.3.36, fixt CVE-2026-109618/-109619).
-          image: kimai/kimai2:2.70.1@sha256:7ccc9597309b9f76ded0a3cf168b5e137167fec6c8aa6a588194dcf6ce26ec2f
+          # Voruebergehend eigener Rebuild (20.11.2026): kimai/kimai2 hat das PHP-Sicherheits-
+          # release vom 19.11.2026 (CVE-2026-126714/-129481) noch nicht (2.70.1: PHP 8.3.36,
+          # 2.72.0: 8.5.12). Gebaut aus kimai/kimai@2.70.1 (Dockerfile, --target prod,
+          # BASE=apache, KIMAI=2.70.1) auf docker.io/library/php:8.3-apache-bookworm@sha256:d60f7be7…
+          # (PHP 8.3.37). Module, php.ini, Entrypoint, Apache-vhost und App-Code/vendor/ sind
+          # byteidentisch zu kimai/kimai2:2.70.1@sha256:7ccc9597…
+          # Zurueck auf kimai/kimai2:<version>@<digest>, sobald Upstream PHP >= 8.3.37 bzw. 8.5.13
+          # hat; dann auch imagePullSecrets und registry-pull.sops.yaml wieder entfernen.
+          # Seit 2.58 heisst das Apache-Image upstream nur noch <version> (apache-<version> ist eingestellt).
+          image: registry.jit-creatives.de/jit/container-rebuilds/kimai2:2.70.1-apache-php8.3.37@sha256:4755ced9a849ea7d3b485b50b4e0b1234ad49ea9456d9da8c6ac7e63c1898ff8
           ports:
             - containerPort: 8001
           env:

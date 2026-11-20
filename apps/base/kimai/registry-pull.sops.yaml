@@ -1,0 +1,36 @@
+# Pull-Secret fuer registry.jit-creatives.de/jit/container-rebuilds
+# (GitLab-Deploy-Token kellerio-pull, nur read_registry). Kopie des Secrets aus
+# apps/base/roundcube (20.11.2026) fuer den lokalen Kimai-Rebuild mit PHP 8.3.37
+# (CVE-2026-126714/-129481). Wieder entfernen, sobald kimai/kimai2 PHP >= 8.3.37 hat.
+apiVersion: v1
+kind: Secret
+metadata:
+    name: gitlab-registry
+    namespace: kimai
+type: kubernetes.io/dockerconfigjson
+data:
+    .dockerconfigjson: ENC[AES256_GCM,data:olfR4QAooHpZYm2iDUrsN3rm0TL3bL3/8ydPX+dUgiO9j62Zefoappa1zha2QdYkmb56F3dz0DU73gPFLXYFauBXgLVbe7TzHMt6w68zV2KwN+JI9kb6GIsYLuDUxqjVAHSRSgz91TMe+4hUcuh7YeP3vIadFXmQKdhWgMDfgYNTGODsqCbdoX448zUXtNHxcqtKvpDB7KmY/Hu/Whnm20+idk36Dw1wrKzBiejE6iERsc1j/Uym+kR31loGqSxtZv6OF81BYuR68DsulQQjJ9ucLcmT04tmKzASWgc96gAZ74AM,iv:bDAUR1AccgYt4nDtFicfEk/P46/6rnfhI9mQ8kbIWnY=,tag:S9Jz5VxIIVbqsg/6uP3VTA==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSAwcnpZYjZ3akpVQlVZbkl1
+            STF1cHVMYTU0RFNLUE8vUXZiSUxucFNqdG4wCmtza09kN1c5Smhhc2hrU2JFZFJa
+            K1Zwa25MeC8yWlNLNzNMRHpTM3RDZlkKLS0tIEgyVStzMnczZ1VRYU9MYzQxTXZN
+            UnFDVnVvK0ZFaTZLS1AxRXJ0ZmYzSVUKdixmFLrk9om5ZFIE9ToBzXamscqFTCnr
+            NZy7956Ok6lEtMXF8PS2ZONQqSz/K/eHsX+v5efXj6sBRb42VmXMOw==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age17x04ga87qyu9lzcuja9k83z90veew9cez7jusul4y5xyr09xaejs9rq755
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBsNWhzWU05YVU3UlczTmdN
+            YnozN09JelYyalhXOVNxTXNnazZ5Rllwd253CmtCbk5pMnBBZXYzeTZjeHM0RGFB
+            U05RbTUzc1U5ZnJIVFI2UmNGZnhwZGcKLS0tIEpVNTBvY1VtVFl5NVY5bEhjK09E
+            V3ZEMTVvNUhjOE56Mi9zS1huYXJCNVkK/x7p1y8Pgt66P0WsMl2SWNhmLe47Ev+c
+            dh2Lx3NbVITWDixIM+uPJSsY3dChRT+1kBbQHiN4QzWRs04crqHnHg==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1hjq0mgzc2npw9lhtwr49qqrfvkxzc2ss8qu7e06fk5n84qm7xs7qrgxfxa
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-11-20T07:01:39Z"
+    mac: ENC[AES256_GCM,data:j+/BwtpprMqLiJnpiYmLCRSWwW4N7XYEGvZ4Cie3y97Yf5vAm7tD1DNgf0jDGf5sL+7YnwHGdsQaI0TvRifGY2g/mC6wlXvsgFETNINoorDjN9190171ggpdeIAuOsYSLUddtBkdXMrj8pSA+JEHzpAP7du//3faUqmPsh9Eso4=,iv:Sl1Z+D1EtmGfLpKEEd64f+gAGenSdpuXyLzsb0dutgA=,tag:SqZANMFq5KMqAi3pof7T3g==,type:str]
+    version: 3.13.3
