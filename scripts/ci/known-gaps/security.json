@@ -584,54 +584,6 @@
     "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
   },
   {
-    "target": "infrastructure_base_argocd.yaml",
-    "id": "KSV-0118",
-    "message": "container argocd-repo-server in argocd namespace is using the default security context",
-    "count": 1,
-    "expires": "2027-01-18",
-    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
-  },
-  {
-    "target": "infrastructure_base_argocd.yaml",
-    "id": "KSV-0118",
-    "message": "deployment argocd-applicationset-controller in argocd namespace is using the default security context, which allows root privileges",
-    "count": 1,
-    "expires": "2027-01-18",
-    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
-  },
-  {
-    "target": "infrastructure_base_argocd.yaml",
-    "id": "KSV-0118",
-    "message": "deployment argocd-repo-server in argocd namespace is using the default security context, which allows root privileges",
-    "count": 1,
-    "expires": "2027-01-18",
-    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
-  },
-  {
-    "target": "infrastructure_base_argocd.yaml",
-    "id": "KSV-0118",
-    "message": "deployment argocd-server in argocd namespace is using the default security context, which allows root privileges",
-    "count": 1,
-    "expires": "2027-01-18",
-    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
-  },
-  {
-    "target": "infrastructure_base_argocd.yaml",
-    "id": "KSV-0118",
-    "message": "job argocd-redis-secret-init in argocd namespace is using the default security context, which allows root privileges",
-    "count": 1,
-    "expires": "2027-01-18",
-    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
-  },
-  {
-    "target": "infrastructure_base_argocd.yaml",
-    "id": "KSV-0118",
-    "message": "statefulset argocd-application-controller in argocd namespace is using the default security context, which allows root privileges",
-    "count": 1,
-    "expires": "2027-01-18",
-    "reason": "Existing chart/workload hardening debt at be0dfa3; fix the named resource before expiry."
-  },
-  {
     "target": "infrastructure_base_authentik.yaml",
     "id": "KSV-0014",
     "message": "Container 'server' of Deployment 'authentik-server' should set 'securityContext.readOnlyRootFilesystem' to true",
