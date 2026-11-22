@@ -76,6 +76,18 @@
       ],
       "datasourceTemplate": "docker",
       "versioningTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "description": "SUC Plan CRD raw URL must move with the kustomize release ref and controller image (check-talos-upgrade.sh enforces equality).",
+      "managerFilePatterns": [
+        "infrastructure/base/system-upgrade-controller/kustomization.yaml"
+      ],
+      "matchStrings": [
+        "https://raw\\.githubusercontent\\.com/(?<depName>rancher/system-upgrade-controller)/(?<currentValue>v\\d+\\.\\d+\\.\\d+)/pkg/crds/"
+      ],
+      "datasourceTemplate": "github-tags",
+      "versioningTemplate": "semver"
     }
   ],
   "packageRules": [

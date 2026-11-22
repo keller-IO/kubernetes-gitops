@@ -3,9 +3,9 @@ kind: Kustomization
 namespace: system-upgrade-controller
 resources:
   # Keep this published release and the controller image tag identical.
-  - https://github.com/rancher/system-upgrade-controller?ref=v0.20.2
+  - https://github.com/rancher/system-upgrade-controller?ref=v0.21.1
   # Declarative CRD makes Argo ordering independent of controller startup.
-  - https://raw.githubusercontent.com/rancher/system-upgrade-controller/v0.20.2/pkg/crds/yaml/generated/upgrade.cattle.io_plans.yaml
+  - https://raw.githubusercontent.com/rancher/system-upgrade-controller/v0.21.1/pkg/crds/yaml/generated/upgrade.cattle.io_plans.yaml
   - namespace.yaml
   - job-defaults.yaml
   - talos-plan.yaml
@@ -24,7 +24,7 @@ patches:
         name: system-upgrade
 images:
   - name: rancher/system-upgrade-controller
-    newTag: v0.20.2
+    newTag: v0.21.1
 configMapGenerator:
   - name: talos-upgrade-preflight
     files:
