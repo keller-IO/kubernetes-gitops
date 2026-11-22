@@ -9,7 +9,7 @@ data:
     $config['product_name'] = 'J.I.T. - Mail';
     $config['skin_logo'] = 'skins/jit-logo.png'; // J.I.T.-Logo (customizations-CM)
     $config['useragent'] = 'Roundcube Webmail';
-    $config['support_url'] = 'http://www.jit-creatives.de';
+    $config['support_url'] = 'https://www.jit-creatives.de/help/'; // FAQ statt Startseite, https statt 301-Umweg
     $config['max_recipients'] = 250;
     $config['draft_autosave'] = 30;
     $config['imap_delimiter'] = '/';
