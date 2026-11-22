@@ -37,6 +37,18 @@ jq -e --arg file "$talos_file" --arg version "$talos_version" '
   exit 1
 }
 
+# SUC release ref, Plan CRD URL and controller image must be bumped together (PR #477).
+suc_file=infrastructure/base/system-upgrade-controller/kustomization.yaml
+jq -e --arg file "$suc_file" '
+  any(.regex[]?; .packageFile == $file and
+    any(.deps[]?; .depName == "rancher/system-upgrade-controller" and .datasource == "github-tags")) and
+  any(.kustomize[]?; .packageFile == $file and
+    ([.deps[]? | select(.depName == "rancher/system-upgrade-controller")] | length == 2))
+' "$audit_dir/deps.json" >/dev/null || {
+  echo 'SUC release ref, Plan CRD URL and controller image must all be extracted' >&2
+  exit 1
+}
+
 # Check every extracted file, without app-specific expected dependencies.
 jq -e '
   ([.[][]] | length > 0) and
