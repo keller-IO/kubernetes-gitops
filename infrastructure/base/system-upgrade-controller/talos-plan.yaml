@@ -17,7 +17,7 @@ spec:
   serviceAccountName: talos-upgrade
   jobActiveDeadlineSecs: 5400
   # Renovate proposes; a human merges. Never skip a minor line (preflight blocks it).
-  version: v1.14.4 # renovate: datasource=github-releases depName=siderolabs/talos versioning=semver
+  version: v1.14.6 # renovate: datasource=github-releases depName=siderolabs/talos versioning=semver
   nodeSelector:
     matchLabels:
       kubernetes.io/os: linux
@@ -88,7 +88,7 @@ spec:
       capabilities:
         drop: [ALL]
   upgrade:
-    image: ghcr.io/siderolabs/talosctl:v1.14.4
+    image: ghcr.io/siderolabs/talosctl:v1.14.6
     envs:
       - name: NODE_IP
         valueFrom:
@@ -102,7 +102,7 @@ spec:
       - -n
       - $(NODE_IP)
       - upgrade
-      - --image=factory.talos.dev/nocloud-installer/3abf06e1d81e509d779dc256f9feae6cd6d82c69337c661cbfc383a92594faf5:v1.14.4
+      - --image=factory.talos.dev/nocloud-installer/3abf06e1d81e509d779dc256f9feae6cd6d82c69337c661cbfc383a92594faf5:v1.14.6
       - --drain=false
       # On-node process cannot survive its own reboot. This acknowledges the
       # request only; prepare verifies recovery before the NEXT node can drain.
