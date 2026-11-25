@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: Secret
+metadata:
+    name: paperless-ai-gateway
+    namespace: paperless-ngx
+stringData:
+    PAPERLESS_AI_LLM_EMBEDDING_API_KEY: ENC[AES256_GCM,data:qu+eIfDS1398sNWOqW2BQ3Ha7rUJTEctcbyLBJSXnVhvd3DjxeMhKYLWk8u728X9YXMJOwUOfHr9CprbLd0wjpB9yw==,iv:WXFHciY98sKrJuv9mZ//AMIYeAyZFSdoC4U2xyd8gc8=,tag:sq6r3gm5FFwxmAP6Vq8EXA==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBMQ055Z093OUlWaStvVDJC
+            ZHZLeVJQUUw4QVVPZGlCQ3pueFdaYXdlaUJnCk5xZ0p3bUl5djJrQjdrLzkzdFRI
+            b1Q2UDc1T1ZwbFJTUWRoazFQcHE5azgKLS0tIHduWmNpSlNWUm5aeXc1UHB4RHhT
+            S0dZeE5mY0hlQ0tmYzcwTit5K1VtSWMKgJ+829rKK7RJXTYy+x6DqPi/7+KxxNIp
+            P9R65RR2q6EH3EP6edCHY+D2Fpoxe9d5L4SWKjMP2rYJKxmmrrFfWg==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age17x04ga87qyu9lzcuja9k83z90veew9cez7jusul4y5xyr09xaejs9rq755
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBUZGMxRnBaNnR5RzhRRTNF
+            bUU4clB4M1h4YnhSZFRzekk5clhVSTFSSkE4CmpPa2JOMXlScDlDREduRTQ3SXlG
+            ZGdJWER5QUxUR0hZWXRVWHUvd3hmbjQKLS0tIFpORUZKeDhkVHVxL1BuUTJROG4x
+            MURhRVhKZGJ6N3RsWWxVMHdiSlQ1bkUKsniUT1yhuTiUf1HpiIwGYzm5zMWVCW+C
+            /OyhiHEpqdlw6aDJiFjqWOHpEpws4QoktQEk1qykXKZfP0jZUQiYOw==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1hjq0mgzc2npw9lhtwr49qqrfvkxzc2ss8qu7e06fk5n84qm7xs7qrgxfxa
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-11-14T07:10:25Z"
+    mac: ENC[AES256_GCM,data:i7XbkoVhhva7FaS66RhuK3E53byJVxAbi3FbFzc1mj61Khx6UKayjyzA0YjmEwHjj/t1QqSUIt8G7xQCSGzyilPg8UZxeUTaaqXAkXe7UNG7XigV2Rv7oC2IqirEhwqBomJR/ynOrVo/NL4HoUV9Xe1kzq1A31Vh6yKUZ/BUTpg=,iv:KJUaHtEkgK10t6qzKYUYFl/hTTuYp4JxFEgSPo82vOo=,tag:maUF/rI+TtqbNyDomj0ytA==,type:str]
+    version: 3.13.3

@@ -43,12 +43,27 @@ env:
   # werden trotzdem gerastert; Archiv-PDF und OCR-Text koennen optisch vom
   # Original abweichen. Das Original bleibt unveraendert gespeichert.
   PAPERLESS_OCR_USER_ARGS: '{"continue_on_soft_render_error": true}'
+  # LLM-Index (ADR 0011): Vektorindex ueber ALLE Dokumente fuer "aehnliche
+  # Dokumente". Es gibt keinen Tag- oder Besitzerfilter: auch Dokumente mit dem
+  # Tag "Privat" gehen als Text an SAIA (GWDG). Kein Chat-Modell gesetzt, also
+  # keine AI-Vorschlaege und kein Dokument-Chat (die Chat-Schaltflaeche
+  # erscheint trotzdem und endet in einem Fehler).
+  # Der Gateway wird direkt am Service angesprochen; die CiliumNetworkPolicy in
+  # apps/base/litellm erlaubt diesem Pod nur POST /v1/embeddings. Der Schluessel
+  # kommt aus paperless-ai-gateway (ai-gateway.sops.yaml).
+  # Aktualisierung taeglich 02:10 (PAPERLESS_LLM_INDEX_TASK_CRON, Standard).
+  PAPERLESS_AI_ENABLED: "true"
+  PAPERLESS_AI_LLM_EMBEDDING_BACKEND: openai-like
+  PAPERLESS_AI_LLM_EMBEDDING_MODEL: paperless-saia-embedding
+  PAPERLESS_AI_LLM_EMBEDDING_ENDPOINT: http://litellm.litellm.svc.cluster.local:4000/v1
   # OIDC via django-allauth. Provider JSON lives in paperless-secret and must
   # match the Keycloak client in Realm bgt before login is enabled.
   PAPERLESS_APPS: allauth.socialaccount.providers.openid_connect
 envFrom:
   - secretRef:
       name: paperless-secret
+  - secretRef:
+      name: paperless-ai-gateway
 # Bitnami-redis-Subchart des Charts abschalten (Images tot, wir nutzen die
 # eigene Valkey-Instanz aus cache.yaml — PAPERLESS_REDIS zeigt dorthin).
 redis:
