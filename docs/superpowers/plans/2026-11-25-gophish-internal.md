@@ -50,6 +50,14 @@
 
 ### Task 1: Image und internes Deployment
 
+**Freigegebene Anpassung 26.11.2026:** Nach dem Sicherheitsstopp eigener
+Build statt altem Upstream-Image. `images/gophish/` hält Source-Commit,
+Modul-Lockfiles, Source-Patch und Runtime-/Scan-Tests;
+`scripts/ops/build-gophish-image.sh` und `just gophish-build` bauen lokal.
+Bootstrap-Passwortausgabe direkt an der Quelle entfernen statt Shell-Logfilter.
+Ersten Registry-Push vor Veröffentlichung gesondert freigeben lassen.
+Bis dahin Task 1 nur teilweise bearbeitet, keine Deployment-Fertigmeldung.
+
 **Interfaces:** Konsumiert offizielles GoPhish-Image und SQLite-Konfiguration.
 Produziert ein lokal startfähiges, exakt per Digest gepinntes Deployment
 `gophish`, PVC `gophish-data` und Overlay ohne externe Freigaben.
@@ -74,11 +82,11 @@ Produziert ein lokal startfähiges, exakt per Digest gepinntes Deployment
   default-deny, keine SMTP-Erlaubnis. Port-Forward funktioniert unabhängig vom
   öffentlichen Routing; tatsächliches Cilium-Verhalten bei Abnahme prüfen.
 - [ ] Bootstrap-Passwort und Token sicher generieren und direkt mit SOPS
-  verschlüsseln; Secret über KSOPS laden. Upstream loggt das Initialpasswort:
-  vor Ausrollen einen lokal getesteten, gezielten Log-Filter verwenden, der nur
-  die Bootstrap-Passwortzeile entfernt und Fehler unverändert weitergibt.
-  Testfälle: Passwortzeile entfernt, normale Fehlermeldung erhalten,
-  Prozess-Exitcode und SIGTERM korrekt weitergereicht.
+  verschlüsseln; Secret über KSOPS laden. Der freigegebene Eigenbuild entfernt
+  die Passwortausgabe direkt in `models/models.go`; der ursprüngliche
+  Shell-Logfilter-Ansatz ist damit **ersetzt**, nicht zusätzlich einzubauen.
+  Testfälle: konfiguriertes Passwort funktioniert und wird nicht geloggt,
+  Passwortwechsel bleibt erforderlich, SIGTERM beendet den Prozess sauber.
 - [ ] `test-gophish-contract.sh` mit synthetischen Daten schreiben: Start mit
   Restricted-vergleichbaren Flags, Login/erzwungener Passwortwechsel,
   Admin nicht über Container-Netz erreichbar, Landinglistener auf 8080;

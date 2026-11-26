@@ -21,6 +21,17 @@ Schnellstart-Checkliste (Reihenfolge):
 
 ---
 
+### GoPhish — Eigenbuild vor Cluster-Onboarding (26.11.2026)
+
+- Eigener Build mit gepinnter Go-Toolchain/Source und aktualisierten Modulen
+  in `images/gophish/`; `just gophish-build` baut, testet und scannt nur lokal.
+- Kein Namespace/Deployment, kein Registry-Push, kein Mailversand eingerichtet.
+- Offen: Runtime-Image-Scan abnehmen, erste Veröffentlichung freigeben,
+  Image-Digest pinnen, GitOps-Manifeste/Secrets und konsistentes Offsite-Backup
+  ergänzen. Mittleren CSRF-Befund bei leerer TrustedOrigins-Liste dokumentieren;
+  vendorte Browser-Assets zusätzlich prüfen.
+- Verfahren und Grenzen: [GoPhish-Runbook](runbooks/gophish.md).
+
 ## 1. Bootstrap & Talos
 
 **Autoupdate (18.10.2026):** SUC und zielnode-bezogenes Prepare sind implementiert,

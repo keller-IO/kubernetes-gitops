@@ -1,0 +1,129 @@
+diff --git a/controllers/phish.go b/controllers/phish.go
+index 71b25a8..ea273b3 100644
+--- a/controllers/phish.go
++++ b/controllers/phish.go
+@@ -94 +94,4 @@ func (ps *PhishingServer) Start() {
+-		log.Fatal(ps.server.ListenAndServeTLS(ps.config.CertPath, ps.config.KeyPath))
++		if err := ps.server.ListenAndServeTLS(ps.config.CertPath, ps.config.KeyPath); err != nil && !errors.Is(err, http.ErrServerClosed) {
++			log.Fatal(err)
++		}
++		return
+@@ -98 +101,3 @@ func (ps *PhishingServer) Start() {
+-	log.Fatal(ps.server.ListenAndServe())
++	if err := ps.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
++		log.Fatal(err)
++	}
+diff --git a/controllers/route.go b/controllers/route.go
+index 382039f..033cb23 100644
+--- a/controllers/route.go
++++ b/controllers/route.go
+@@ -6,0 +7 @@ import (
++	"errors"
+@@ -107 +108,4 @@ func (as *AdminServer) Start() {
+-		log.Fatal(as.server.ListenAndServeTLS(as.config.CertPath, as.config.KeyPath))
++		if err := as.server.ListenAndServeTLS(as.config.CertPath, as.config.KeyPath); err != nil && !errors.Is(err, http.ErrServerClosed) {
++			log.Fatal(err)
++		}
++		return
+@@ -111 +115,3 @@ func (as *AdminServer) Start() {
+-	log.Fatal(as.server.ListenAndServe())
++	if err := as.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
++		log.Fatal(err)
++	}
+@@ -159,0 +166,8 @@ func (as *AdminServer) registerRoutes() {
++	if !as.config.UseTLS {
++		// gorilla/csrf assumes HTTPS unless explicitly told otherwise.
++		// This is the configured transport, never a client-supplied header.
++		protected := adminHandler
++		adminHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
++			protected.ServeHTTP(w, csrf.PlaintextHTTPRequest(r))
++		})
++	}
+diff --git a/gophish.go b/gophish.go
+index 67ccab1..7ebb836 100644
+--- a/gophish.go
++++ b/gophish.go
+@@ -33,0 +34 @@ import (
++	"syscall"
+@@ -134 +135 @@ func main() {
+-	signal.Notify(c, os.Interrupt)
++	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+@@ -136 +137 @@ func main() {
+-	log.Info("CTRL+C Received... Gracefully shutting down servers")
++	log.Info("Shutdown signal received; gracefully shutting down servers")
+diff --git a/models/attachment_test.go b/models/attachment_test.go
+index 611426c..6d7290a 100644
+--- a/models/attachment_test.go
++++ b/models/attachment_test.go
+@@ -3,0 +4 @@ import (
++	"archive/zip"
+@@ -4,0 +6 @@ import (
++	"bytes"
+@@ -60 +62,29 @@ func (s *ModelsSuite) TestAttachment(c *check.C) {
+-			c.Assert(templatedFile, check.Equals, expectedOutput)
++			switch filepath.Ext(fname) {
++			case ".docx", ".docm", ".pptx", ".xlsx", ".xlsm":
++				// Compression bytes vary across Go versions. Compare every
++				// archive member's name and uncompressed content instead.
++				expectedBytes, err := base64.StdEncoding.DecodeString(expectedOutput)
++				c.Assert(err, check.IsNil)
++				gotArchive, err := zip.NewReader(bytes.NewReader(tt), int64(len(tt)))
++				c.Assert(err, check.IsNil)
++				wantArchive, err := zip.NewReader(bytes.NewReader(expectedBytes), int64(len(expectedBytes)))
++				c.Assert(err, check.IsNil)
++				c.Assert(gotArchive.File, check.HasLen, len(wantArchive.File))
++				for i, wantFile := range wantArchive.File {
++					gotFile := gotArchive.File[i]
++					c.Assert(gotFile.Name, check.Equals, wantFile.Name)
++					gotReader, err := gotFile.Open()
++					c.Assert(err, check.IsNil)
++					gotContent, err := ioutil.ReadAll(gotReader)
++					gotReader.Close()
++					c.Assert(err, check.IsNil)
++					wantReader, err := wantFile.Open()
++					c.Assert(err, check.IsNil)
++					wantContent, err := ioutil.ReadAll(wantReader)
++					wantReader.Close()
++					c.Assert(err, check.IsNil)
++					c.Assert(gotContent, check.DeepEquals, wantContent)
++				}
++			default:
++				c.Assert(templatedFile, check.Equals, expectedOutput)
++			}
+diff --git a/models/maillog_test.go b/models/maillog_test.go
+index 88619f9..f1dcae0 100644
+--- a/models/maillog_test.go
++++ b/models/maillog_test.go
+@@ -4,0 +5 @@ import (
++	"encoding/base64"
+@@ -400,5 +401,18 @@ func (s *ModelsSuite) TestEmbedAttachment(ch *check.C) {
+-	// The email package simply ignores attachments where the Content-Disposition header is set
+-	// to inline, so the best we can do without replacing the whole thing is to check that only
+-	// the text file was added as an attachment.
+-	ch.Assert(got.Attachments, check.HasLen, 1)
+-	ch.Assert(got.Attachments[0].Filename, check.Equals, "test.txt")
++	// The updated parser also preserves inline attachment payloads, but does
++	// not retain their original MIME headers. Verify both filenames and bytes.
++	ch.Assert(got.Attachments, check.HasLen, 2)
++	seen := map[string]bool{}
++	for _, attachment := range got.Attachments {
++		ch.Assert(seen[attachment.Filename], check.Equals, false)
++		seen[attachment.Filename] = true
++		switch attachment.Filename {
++		case "test.png":
++			want, err := base64.StdEncoding.DecodeString(campaign.Template.Attachments[0].Content)
++			ch.Assert(err, check.IsNil)
++			ch.Assert(attachment.Content, check.DeepEquals, want)
++		case "test.txt":
++			ch.Assert(string(attachment.Content), check.Equals, "Test text file")
++		default:
++			ch.Fatalf("unexpected attachment %q", attachment.Filename)
++		}
++	}
+diff --git a/models/models.go b/models/models.go
+index 29a6815..039046e 100644
+--- a/models/models.go
++++ b/models/models.go
+@@ -122 +122 @@ func createTemporaryPassword(u *User) error {
+-	log.Infof("Please login with the username admin and the password %s", temporaryPassword)
++	log.Info("Initial admin password configured; change it after the first login")

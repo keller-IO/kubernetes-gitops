@@ -1,0 +1,36 @@
+FROM docker.io/library/golang:1.27.4-trixie@sha256:430985542100b871e108ccc00e8dcc5eef08ca14ee5825e98ebf563d8ffec4ee AS build
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download && go mod verify
+COPY . .
+# The build script pins the source commit and applies the reviewed patch first.
+# Tests and compilation are offline; only module download needs registry access.
+RUN --network=none go test -mod=readonly -count=1 ./... \
+    && CGO_ENABLED=1 go build -mod=readonly -trimpath -buildvcs=false \
+       -tags netgo,osusergo,sqlite_omit_load_extension \
+       -ldflags '-linkmode external -extldflags -static' -o /out/gophish . \
+    && CGO_ENABLED=0 go test -mod=readonly -c -o /out/contract.test ./rebuildcontract
+
+FROM scratch AS runtime
+COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY --from=build /out/gophish /opt/gophish/gophish
+COPY --from=build /src/VERSION /src/LICENSE /opt/gophish/
+COPY --from=build /src/db /opt/gophish/db
+COPY --from=build /src/templates /opt/gophish/templates
+COPY --from=build /src/static /opt/gophish/static
+LABEL org.opencontainers.image.source="https://github.com/gophish/gophish" \
+      org.opencontainers.image.revision="b1648f0759c6d57ac989157c55d8b47c40254fe6" \
+      org.opencontainers.image.version="0.12.1-jit-go1.27.4" \
+      org.opencontainers.image.licenses="MIT"
+WORKDIR /opt/gophish
+USER 10001:10001
+ENTRYPOINT ["/opt/gophish/gophish"]
+# No config or credentials are embedded. Mailer stays off for internal staging.
+CMD ["--config", "/etc/gophish/config.json", "--disable-mailer"]
+
+FROM runtime AS contract
+COPY --from=build /out/contract.test /test/contract.test
+COPY contract-config.json /test/config.json
+ENV GOPHISH_RUNTIME_CONTRACT=1
+ENTRYPOINT ["/test/contract.test"]
+CMD ["-test.v", "-test.run", "^TestRuntime$", "-test.timeout=60s"]

@@ -43,9 +43,11 @@ keine direkten schreibenden Clusterbefehle und kein eigenmächtiger Merge.
 - Konfiguration über ConfigMap, Datenbank unter `/data/gophish.db`.
   Direktstart der Binary statt Upstream-Wrapper, der Konfiguration überschreibt
   und ausgibt. UID, Pfade und Schreibverzeichnisse am tatsächlichen Image prüfen.
-- Initialpasswort und API-Token nur SOPS-verschlüsselt. GoPhish 0.12.1 schreibt
-  das Initialpasswort ins Log: Bootstrap ohne zentrale Offenlegung behandeln,
-  danach Passwort wechseln; das Bootstrap-Secret ersetzt kein späteres Passwort.
+- Initialpasswort und API-Token nur SOPS-verschlüsselt. Das ursprüngliche
+  Upstream-Logging des Initialpassworts ist im freigegebenen Eigenbuild
+  an der Quelle entfernt und durch einen Regressionstest abgesichert.
+  Nach Bootstrap Passwort wechseln; das Bootstrap-Secret ersetzt kein
+  späteres Passwort.
 
 ## Backup und Datenschutz
 
@@ -63,6 +65,13 @@ Backups, Snapshots, Exporte und Logs abstimmen und technisch nachweisen.
 Kein Öffnungstracking oder Formular-Tracking in Phase 1.
 
 ## Vor dem Rollout zu prüfende Risiken
+
+**Ergänzung 26.11.2026:** Das offizielle Image wurde am Sicherheitsgate
+gestoppt. Ingo hat den Eigenbuild mit aktueller Go-Toolchain und geprüften
+Modulupdates freigegeben. Rezept und Tests unter `images/gophish/`, Ablauf in
+`docs/runbooks/gophish.md`. Die Source-Patches entfernen die Passwortausgabe
+direkt und behandeln SIGTERM; ein nachgelagerter Log-Filter ist damit unnötig.
+Veröffentlichung des Images und Cluster-Rollout sind noch nicht erfolgt.
 
 Die offizielle GitHub-Release-API liefert v0.12.1 vom 14.09.2022 als neuestes
 Release. Deshalb nicht blind deployen: verfügbares Image, Digest, Architektur,
