@@ -137,3 +137,28 @@ defaultRules:
     "count:up0":
       spec:
         expr: "sum(up == bool 0) without(instance,pod,node)"
+    KubeJobFailed:
+      spec:
+        # Forbid/Replace prevent overlapping runs, so a success after the failed
+        # Job was created proves recovery even after the successful Job is pruned.
+        expr: |
+          kube_job_failed{job="kube-state-metrics"} > 0
+          unless on (cluster, namespace, job_name) (
+            (
+              kube_job_created{job="kube-state-metrics"}
+              * on (cluster, namespace, job_name) group_left (cronjob)
+              max by (cluster, namespace, job_name, cronjob) (
+                label_replace(kube_job_owner{job="kube-state-metrics",owner_kind="CronJob",owner_is_controller="true"},
+                  "cronjob", "$1", "owner_name", "(.+)")
+              )
+            ) < on (cluster, namespace, cronjob) group_left
+            max by (cluster, namespace, cronjob) (
+              kube_cronjob_status_last_successful_time{job="kube-state-metrics"}
+              and on (cluster, namespace, cronjob)
+              kube_cronjob_info{job="kube-state-metrics",concurrency_policy=~"Forbid|Replace"}
+            )
+          )
+        annotations:
+          description: >-
+            Job {{ $labels.namespace }}/{{ $labels.job_name }} failed to complete on cluster {{ $labels.cluster }}.
+            Inspect the failed Job and its Pod logs.
