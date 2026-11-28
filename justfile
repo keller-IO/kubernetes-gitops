@@ -36,6 +36,11 @@ test:
     PYTHONDONTWRITEBYTECODE=1 python3 -m unittest apps/base/litellm/test_network_probe.py
     PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s apps/base/paperless-ngx -p 'test_*.py'
     bash scripts/ops/test-paperless-stabilitaet.sh
+    PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s images/gophish -p 'test_*.py'
+
+# Build, test and scan GoPhish locally; never publish or change the cluster.
+gophish-build OUTPUT_DIRECTORY:
+    bash scripts/ops/build-gophish-image.sh {{quote(OUTPUT_DIRECTORY)}}
 
 # Encrypt a single secret in place.
 encrypt FILE:
